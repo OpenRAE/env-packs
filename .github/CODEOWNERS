@@ -6,6 +6,12 @@
 # is tracked separately in ADR 0018. This file is the in-repo half of that
 # control, and is inert until the setting is enabled.
 #
+# That setting is currently OFF, deliberately. Scorecard's tier 4 needs code-owner
+# review AND two approving reviews; with a single active maintainer the second is
+# unobtainable, so enabling code-owner review scored nothing while costing an
+# override on every merge. This file stays committed so turning it on is a
+# one-line change once a second maintainer makes that tier reachable.
+#
 # Ordering matters: the LAST matching pattern wins, so the catch-all comes first
 # and the security-sensitive paths that follow deliberately override it.
 

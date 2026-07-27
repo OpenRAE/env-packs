@@ -120,12 +120,17 @@ Branch protection on `main`:
 | Force pushes / deletions | blocked |
 | Pull request required | yes |
 | Required approving reviews | **1** |
-| Code-owner review required | yes (`.github/CODEOWNERS`) |
+| Code-owner review required | **no** (see below) |
 | Dismiss stale reviews | yes |
 | Require branch up to date (`strict`) | yes |
 | Required status check | `verify` |
 | Require last-push approval | **no** |
 | Administrator enforcement | **no** |
+
+Two repository *rulesets* sit alongside this and pin merge methods -- `dev` is
+squash-only, `main` is merge/rebase-only. They require zero approvals, so they
+add no review friction, but note that rulesets have no bypass actors configured
+and therefore cannot be admin-overridden the way the settings above can.
 
 **This does not reach Scorecard's top tier, and that is a deliberate, bounded
 decision rather than an oversight.**
@@ -144,10 +149,23 @@ lets the maintainer merge at all, and it is also what lets release-please's own
 release PR and bot-created back-merge PRs land, since neither triggers the
 required checks (both are opened with `GITHUB_TOKEN`).
 
-The review requirements are still declared rather than deleted. They cost the
-maintainer one "merge without waiting for requirements" override per merge, and
-they take effect automatically the moment a second reviewer is available --
-which is the point of leaving them in place.
+Code-owner review is off for the same reason, and specifically because leaving it
+on bought nothing. Scorecard's tier 4 requires code-owner review **and** two
+approving reviews; with one approval that tier cannot be satisfied either way, so
+the setting scored zero points while costing an override on every merge.
+`.github/CODEOWNERS` is still committed, so enabling it is a one-line change when
+a second maintainer makes tier 4 reachable.
+
+The single-approval requirement is still declared rather than deleted. It costs
+the maintainer one "merge without waiting for requirements" override per merge,
+and becomes enforceable automatically the moment a second reviewer exists --
+which is the point of leaving it in place.
+
+The required `verify` status check is kept because it is worth real points
+(tier 3) and runs normally on maintainer-opened pull requests. It does not report
+on release-please's release pull request or the bot back-merge pull request,
+since neither triggers workflows when opened with `GITHUB_TOKEN`; those merge via
+the same administrator override, exactly as before this decision.
 
 Consequence for the score: `Branch-Protection` satisfies tiers 1-3 and caps
 around **8/10** rather than 10. It therefore remains a reported finding. The
