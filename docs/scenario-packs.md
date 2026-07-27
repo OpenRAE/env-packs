@@ -12,6 +12,12 @@ the layout contract, template, and tooling as package data, so an author
 validates against the same version they build against. Packs live in their own
 catalog repositories and consume this package; this repo does not host packs.
 
+Owning the format is distinct from owning a scenario authored in it, and from
+realizing that scenario at runtime. The
+[ownership boundary](ownership-boundary.md) sets out the four owners — RAES,
+this repository, the downstream scenario or experiment owner, and APTL — and
+what each may not decide for the others.
+
 ## Required Shape
 
 Every new pack starts under `scenarios/<name>/` in a catalog repo and follows

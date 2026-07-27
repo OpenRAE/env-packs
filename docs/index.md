@@ -11,6 +11,7 @@ this repo does not host packs.
 ## Definition
 
 - [Scenario packs — what a pack is](scenario-packs.md)
+- [Ownership boundary — RAES, this repository, downstream, APTL](ownership-boundary.md)
 - [Golden readiness](golden-readiness.md)
 - [Migration scrub policy](scrub-policy.md)
 - Layout contract, schemas, and template ship as package data under
@@ -30,6 +31,7 @@ this repo does not host packs.
 :caption: Definition
 
 scenario-packs
+ownership-boundary
 golden-readiness
 scrub-policy
 ```
