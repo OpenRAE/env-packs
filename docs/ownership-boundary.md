@@ -9,11 +9,6 @@ acquires scenario semantics.
 This page is the env-packs-side statement of the boundary APTL records for its
 issue #589; the two are meant to agree and to be read together.
 
-**Terminology.** RAES is the renamed ACES project. The `aces_*` distribution,
-package, and CLI names this repository ships — `aces-scenario-packs`,
-`aces_sdl`, `aces-pack-validate` — remain technical compatibility identifiers,
-not a second project.
-
 ## Four owners
 
 | Concern | Owner |
