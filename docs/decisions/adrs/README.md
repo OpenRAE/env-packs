@@ -23,3 +23,12 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0015](0015-attest-python-distribution-build-provenance.md) | Attest Python distribution build provenance | Accepted |
 | [0016](0016-automate-dependency-updates.md) | Automate dependency updates and ship ACES bumps as releases | Accepted |
 | [0017](0017-sign-release-tags-with-keyless-sigstore.md) | Sign release tags with keyless Sigstore | Accepted |
+| [0018](0018-openssf-scorecard-posture.md) | OpenSSF Scorecard posture | Accepted |
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+:glob:
+
+0*
+```

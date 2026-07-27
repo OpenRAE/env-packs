@@ -400,14 +400,21 @@ class SdlValidationTests(PackValidationFixture):
 
 class ValidationBoundaryTests(PackValidationFixture):
     def test_duplicate_yaml_keys_are_rejected_without_echoing_values(self) -> None:
-        secret = "participant-secret-that-must-not-appear"
+        # A stand-in for confidential pack content. It is named for what it is
+        # rather than called `secret`: CodeQL's py/clear-text-storage-sensitive-data
+        # heuristic keys on the *variable name*, and that name made it report this
+        # fixture as stored sensitive data. That was a false positive -- the value
+        # is a literal sentinel written to a per-test temp directory, and the
+        # assertion below is precisely that it never reaches the output -- so the
+        # fix is an accurate name, not a suppression (#142).
+        never_echoed = "participant-value-that-must-not-appear"
         (self.root / "pack.yaml").write_text(
-            f"name: example-pack\nname: {secret}\ntitle: x\nversion: 1\n",
+            f"name: example-pack\nname: {never_echoed}\ntitle: x\nversion: 1\n",
             encoding="utf-8",
         )
         result = self.validate()
         self.assertIn("yaml.duplicate-key: pack.yaml", result.errors)
-        self.assertNotIn(secret, "\n".join(result.errors))
+        self.assertNotIn(never_echoed, "\n".join(result.errors))
 
     def test_symlink_hardlink_and_special_file_members_fail_closed(self) -> None:
         outside = self.tmp / "outside"

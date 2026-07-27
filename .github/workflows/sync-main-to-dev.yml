@@ -21,9 +21,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+# Least privilege (#142): read-only workflow token; the push + PR scopes live on
+# the job that performs them. A job-level block REPLACES the top-level one rather
+# than merging with it, so the job restates everything it needs.
+permissions: read-all
 
 concurrency:
   group: sync-main-to-dev
@@ -33,6 +34,9 @@ jobs:
   backmerge:
     name: Open main -> dev back-merge PR
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # push the sync/main-to-dev branch
+      pull-requests: write   # open or update the back-merge PR
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

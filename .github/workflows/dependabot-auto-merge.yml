@@ -12,15 +12,19 @@ name: Dependabot auto-merge
 
 on: pull_request
 
-permissions:
-  contents: write
-  pull-requests: write
+# Least privilege (#142): read-only workflow token; the merge scopes live on the
+# job that actually merges. A job-level block REPLACES the top-level one rather
+# than merging with it, so the job restates everything it needs.
+permissions: read-all
 
 jobs:
   auto-merge:
     # Only Dependabot PRs; fetch-metadata below only works for those events.
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # complete the squash merge
+      pull-requests: write   # enable native auto-merge on the PR
     steps:
       - name: Fetch Dependabot metadata
         id: meta

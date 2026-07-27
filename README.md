@@ -1,6 +1,7 @@
 # ACES Scenario Packs
 
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Brad-Edwards/aces-scenario-packs/badge)](https://scorecard.dev/viewer/?uri=github.com/Brad-Edwards/aces-scenario-packs)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/RAESystem/env-packs/badge)](https://scorecard.dev/viewer/?uri=github.com/RAESystem/env-packs)
+[![Documentation](https://app.readthedocs.org/projects/env-packs/badge/?version=latest)](https://env-packs.readthedocs.io/en/latest/)
 
 The canonical, shared home for the **ACES scenario-pack definition** and the
 **authoring / validation tooling** that goes with it, published as an installable

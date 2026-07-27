@@ -21,9 +21,20 @@ on:
 # The canonical signer trust policy, declared once (ADR 0017). Referenced by the
 # verification step; the ADR and SECURITY.md document the same values.
 env:
-  CERT_IDENTITY: https://github.com/Brad-Edwards/aces-scenario-packs/.github/workflows/release-please.yml@refs/heads/main
+  # Must match the repository's CURRENT path: the OIDC token's workflow ref is
+  # issued for wherever the repo lives now, and GitHub's redirect for a
+  # transferred repo does not apply to certificate-identity matching. After the
+  # move to RAESystem/env-packs a stale value here fails `gitsign verify-tag`
+  # closed, blocking every release (#142).
+  CERT_IDENTITY: https://github.com/RAESystem/env-packs/.github/workflows/release-please.yml@refs/heads/main
   CERT_OIDC_ISSUER: https://token.actions.githubusercontent.com
   GITSIGN_VERSION_FLOOR: "0.15.0"
+
+# Least privilege (#142): read-only workflow token. Every write this pipeline
+# needs -- the release PR, the signed tag, the Release, OIDC, attestations -- is
+# declared on the individual job that needs it, below. Scorecard penalizes a
+# top-level write or an undeclared top level, not a scoped job-level write.
+permissions: read-all
 
 # Serialize releases so two runs cannot race to create or publish the same tag.
 concurrency:
@@ -217,9 +228,13 @@ jobs:
 
       - name: Build sdist + wheel
         run: |
-          # Pin build tooling for reproducible, tamper-resistant releases (#60).
-          python -m pip install build==1.5.0
-          python -m build --outdir dist
+          # Hash-locked build tooling for reproducible, tamper-resistant
+          # releases (#60, #142). --no-isolation is deliberate: the default
+          # isolated build would resolve and download the hatchling backend at
+          # build time, unpinned, defeating the lock. The backend is pinned in
+          # requirements/build.txt and installed above instead.
+          python -m pip install --require-hashes -r requirements/build.txt
+          python -m build --no-isolation --outdir dist
 
       # ADR 0015: attest SLSA build provenance for the exact wheel + sdist just
       # built, before any publication (PyPI, GitHub Release), so each artifact
@@ -234,8 +249,12 @@ jobs:
       - name: Generate CycloneDX SBOM
         run: |
           set -euo pipefail
-          # dist/*.whl is the just-built package; pin the SBOM generator (#60).
-          python -m pip install dist/*.whl cyclonedx-bom==7.3.0
+          # Hash-locked runtime closure + SBOM generator, then the just-built
+          # wheel with --no-deps (#60, #142). Same resulting environment as the
+          # previous single unpinned install, so the SBOM contents are unchanged.
+          python -m pip install --require-hashes \
+            -r requirements/runtime.txt -r requirements/sbom.txt
+          python -m pip install --no-deps dist/*.whl
           mkdir -p sbom
           cyclonedx-py environment \
             --output-format JSON \
