@@ -24,7 +24,9 @@ the generic workflow. Ground Control injects this file into planning via
   must keep the logic in the canonical `.github/workflows/release-please.yml`
   and amend the governing ADR rather than add a parallel workflow (ADR 0017).
 - **Merge habits:** feature PRs are **squash-merged** (the title becomes the
-  Conventional Commit release-please reads).
+  Conventional Commit release-please reads). Open `dev`→`main` promotions with
+  `make devmain` and merge them with a **merge commit**, never squash or rebase,
+  so release-please retains every promoted Conventional Commit subject.
 
 See [ADR 0008](../docs/decisions/adrs/0008-adopt-release-please.md).
 
