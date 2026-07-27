@@ -1,6 +1,6 @@
 schema_version: 1
 project: aces-scenario-packs
-github_repo: Brad-Edwards/aces-scenario-packs
+github_repo: RAESystem/env-packs
 short_code: ASP
 rules:
   # Injected into /implement planning so the workflow follows the repo's release

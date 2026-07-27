@@ -19,6 +19,36 @@ updates:
         patterns:
           - "*"
 
+  # Hash-locked CI/docs toolchain (#142). These files are generated with
+  # `uv pip compile --generate-hashes`; Dependabot regenerates the hashes when it
+  # bumps a pin, so the `--require-hashes` installs keep resolving.
+  #
+  # CI-only toolchain, so `chore` (no release). Grouped into one PR because the
+  # locks share transitive packages and a job installs several of them into one
+  # environment -- splitting the bumps would land halves that disagree and fail
+  # `--require-hashes`. tests/test_dependency_pinning.py enforces that agreement.
+  #
+  # requirements/runtime.txt is the resolved closure of pyproject's own
+  # dependencies, so an aces-sdl bump can appear here. The auto-merge workflow
+  # excludes any PR naming aces-sdl, keeping ADR 0011's human review intact, and
+  # a lock that drifts from pyproject fails the contract test rather than
+  # silently installing a different version than the package declares.
+  - package-ecosystem: pip
+    directory: "/requirements"
+    schedule:
+      interval: weekly
+    target-branch: dev
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      ci-toolchain:
+        patterns:
+          - "*"
+
   # Runtime Python dependencies (PyYAML, aces-sdl). They ship inside the
   # installed package, so a bump is `fix(deps)` — it cuts a patch release
   # (ADR 0016) so consumers actually receive the new floor. aces-sdl is left as
