@@ -106,9 +106,28 @@ signature and the signer policy before any GitHub Release creation, PyPI
 publication, or artifact upload. The accepted identity is:
 
 ```text
-certificate identity: https://github.com/Brad-Edwards/aces-scenario-packs/.github/workflows/release-please.yml@refs/heads/main
+certificate identity: https://github.com/RAESystem/env-packs/.github/workflows/release-please.yml@refs/heads/main
 OIDC issuer:          https://token.actions.githubusercontent.com
 ```
+
+The identity is bound to the repository's path at signing time. A repository
+transfer therefore changes it: the OIDC token's workflow ref is issued for the
+repository's current location, and GitHub's redirect for a moved repository does
+not extend to certificate-identity matching. When this repository moved to
+`RAESystem/env-packs`, a stale value would have failed `gitsign verify-tag`
+closed and blocked every subsequent release (#142).
+
+Tags signed before that move remain valid under the previous identity:
+
+```text
+certificate identity: https://github.com/Brad-Edwards/aces-scenario-packs/.github/workflows/release-please.yml@refs/heads/main
+```
+
+Both are legitimate for their own release ranges, and neither is a fallback for
+the other -- verification asserts one exact identity, so the verifier picks the
+one matching the tag rather than trying both until one passes. Any future
+transfer must update the workflow, this ADR, `SECURITY.md`, and
+`tests/test_release_workflow_tag_signing.py` together.
 
 An existing tag during a rerun is acceptable only when it dereferences to the
 same release commit and passes that exact identity-and-issuer policy. Any other
@@ -170,10 +189,13 @@ run:
 ```sh
 git fetch --tags origin
 gitsign verify-tag \
-  --certificate-identity=https://github.com/Brad-Edwards/aces-scenario-packs/.github/workflows/release-please.yml@refs/heads/main \
+  --certificate-identity=https://github.com/RAESystem/env-packs/.github/workflows/release-please.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
   vX.Y.Z
 ```
+
+For a tag cut before the repository moved, substitute the previous identity
+recorded above.
 
 A successful result must report a valid Git signature, Rekor entry, and
 certificate claims. The release workflow performs the same policy check before

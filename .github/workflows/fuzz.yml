@@ -1,0 +1,85 @@
+# Coverage-guided fuzzing of the untrusted-pack-input boundary (issue #142).
+#
+# `validate_pack()` is this package's contract with foreign input: a consumer
+# points it at a pack directory somebody else authored. fuzz/fuzz_validate_pack.py
+# asserts the documented promise -- hostile input yields bounded error codes, never
+# an escaping exception -- and libFuzzer steers on the validator's real branches.
+#
+# This is a real check, not a marker: a crash fails the job. It runs bounded on
+# pull requests so a regression surfaces before merge, plus a longer weekly
+# session that explores further than a PR budget allows.
+#
+# Not fuzzed here, deliberately: `content_ci.main()` and the author-side
+# validators, which intentionally resolve imports and execute catalog-controlled
+# code (ADR 0013). Fuzzing those would push attacker input through a path
+# designed to trust it.
+name: Fuzz
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+  schedule:
+    # Weekly, Wednesday 06:37 UTC. Off the top of the hour (GitHub delays runs
+    # queued at :00) and staggered away from codeql.yml (Mon) and scorecard.yml
+    # (Tue) so the three security jobs do not contend.
+    - cron: "37 6 * * 3"
+
+# Least privilege (#142): fuzzing only reads the repository.
+permissions: read-all
+
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    name: Fuzz validate_pack
+    runs-on: ubuntu-latest
+    # Hard ceiling; the libFuzzer budget below is what normally ends the run.
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install fuzzing toolchain and package
+        run: |
+          # Hash-locked, like every other install in this repo (#142). Atheris
+          # ships a cp312 manylinux wheel, so no local build is needed.
+          # --no-build-isolation keeps the editable install's PEP 517 build from
+          # fetching the hatchling backend unpinned; it comes from build.txt.
+          python -m pip install --require-hashes \
+            -r requirements/runtime.txt -r requirements/fuzz.txt \
+            -r requirements/build.txt
+          python -m pip install --no-deps --no-build-isolation -e .
+
+      - name: Fuzz the pack-validation boundary
+        env:
+          # A PR gets a short session; the weekly run explores longer.
+          FUZZ_SECONDS: ${{ github.event_name == 'schedule' && '600' || '120' }}
+        run: |
+          set -euo pipefail
+          mkdir -p fuzz-artifacts
+          python fuzz/fuzz_validate_pack.py \
+            -max_total_time="${FUZZ_SECONDS}" \
+            -rss_limit_mb=4096 \
+            -timeout=60 \
+            -artifact_prefix=fuzz-artifacts/
+
+      - name: Upload crash reproducers
+        # Only on failure: these are the inputs that broke the validator.
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-crash-reproducers
+          path: fuzz-artifacts/
+          retention-days: 14
+          if-no-files-found: ignore

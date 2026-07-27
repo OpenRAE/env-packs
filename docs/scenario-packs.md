@@ -195,7 +195,7 @@ ACES-owned trust concepts; those are established by ACES mechanisms
 (scenario-snapshot digest, `aces.lock.json`, RegistryTrustPolicy signatures). ACES
 schemas are `stability: draft`, so the ledger references the policy now and the
 explicit upstream pin lands once ACES marks it stable. The bundled
-[layout contract](../src/aces_scenario_packs/resources/contract/pack-layout.md)
+[layout contract](https://github.com/RAESystem/env-packs/blob/main/src/aces_scenario_packs/resources/contract/pack-layout.md)
 carries the full field-by-field mapping.
 
 **ACES concept-authority governs concept vocabulary.** ATT&CK and ATLAS

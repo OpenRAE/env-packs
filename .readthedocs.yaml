@@ -1,0 +1,34 @@
+# Read the Docs build configuration (issue #142).
+# https://docs.readthedocs.io/en/stable/config-file/v2.html
+#
+# Publishes the narrative docs in docs/ -- the pack definition, the tooling
+# guides, and the ADR set -- as a browsable site with per-pull-request previews.
+#
+# The docs toolchain is hash-locked in requirements/docs.txt like every other
+# install in this repository, so a Read the Docs build resolves the same
+# artifacts as a local one (ADR 0004, #142). The package itself is NOT installed:
+# these pages are narrative markdown with no autodoc, and installing would pull
+# the entire pinned aces-sdl runtime closure just to render text. docs/conf.py
+# reads the version from pyproject.toml instead.
+
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    # Matches the version CI, SonarCloud, and the release build all use, so the
+    # docs build cannot drift onto a different interpreter than everything else.
+    python: "3.12"
+
+sphinx:
+  configuration: docs/conf.py
+  # Surface broken cross-references as build failures rather than publishing
+  # them; docs/conf.py sets nitpicky mode to match.
+  fail_on_warning: true
+
+python:
+  install:
+    - requirements: requirements/docs.txt
+
+formats:
+  - pdf

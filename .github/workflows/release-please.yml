@@ -21,9 +21,20 @@ on:
 # The canonical signer trust policy, declared once (ADR 0017). Referenced by the
 # verification step; the ADR and SECURITY.md document the same values.
 env:
-  CERT_IDENTITY: https://github.com/Brad-Edwards/aces-scenario-packs/.github/workflows/release-please.yml@refs/heads/main
+  # Must match the repository's CURRENT path: the OIDC token's workflow ref is
+  # issued for wherever the repo lives now, and GitHub's redirect for a
+  # transferred repo does not apply to certificate-identity matching. After the
+  # move to RAESystem/env-packs a stale value here fails `gitsign verify-tag`
+  # closed, blocking every release (#142).
+  CERT_IDENTITY: https://github.com/RAESystem/env-packs/.github/workflows/release-please.yml@refs/heads/main
   CERT_OIDC_ISSUER: https://token.actions.githubusercontent.com
   GITSIGN_VERSION_FLOOR: "0.15.0"
+
+# Least privilege (#142): read-only workflow token. Every write this pipeline
+# needs -- the release PR, the signed tag, the Release, OIDC, attestations -- is
+# declared on the individual job that needs it, below. Scorecard penalizes a
+# top-level write or an undeclared top level, not a scoped job-level write.
+permissions: read-all
 
 # Serialize releases so two runs cannot race to create or publish the same tag.
 concurrency:
@@ -60,13 +71,13 @@ jobs:
       pr: ${{ steps.pr.outputs.number }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
@@ -122,13 +133,13 @@ jobs:
       VERSION: ${{ needs.detect-release.outputs.version }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
@@ -136,7 +147,7 @@ jobs:
       # this pin installs gitsign 0.16.1 with a verified checksum and configures
       # git for x509/Sigstore tag signing.
       - name: Install and configure gitsign
-        uses: chainguard-dev/actions/setup-gitsign@4d37df0d85a91f619edc34a8803323033cdcb124 # v1.6.27
+        uses: chainguard-dev/actions/setup-gitsign@fabe4ed3f66ceb5f8ec86ed7ae6d0c945ca362fb # v1.6.28
 
       # Defence in depth against CVE-2026-44310 (a verify-bypass fixed in 0.15.0):
       # fail closed if the installed gitsign is below the floor, regardless of how
@@ -217,9 +228,13 @@ jobs:
 
       - name: Build sdist + wheel
         run: |
-          # Pin build tooling for reproducible, tamper-resistant releases (#60).
-          python -m pip install build==1.5.0
-          python -m build --outdir dist
+          # Hash-locked build tooling for reproducible, tamper-resistant
+          # releases (#60, #142). --no-isolation is deliberate: the default
+          # isolated build would resolve and download the hatchling backend at
+          # build time, unpinned, defeating the lock. The backend is pinned in
+          # requirements/build.txt and installed above instead.
+          python -m pip install --require-hashes -r requirements/build.txt
+          python -m build --no-isolation --outdir dist
 
       # ADR 0015: attest SLSA build provenance for the exact wheel + sdist just
       # built, before any publication (PyPI, GitHub Release), so each artifact
@@ -234,8 +249,12 @@ jobs:
       - name: Generate CycloneDX SBOM
         run: |
           set -euo pipefail
-          # dist/*.whl is the just-built package; pin the SBOM generator (#60).
-          python -m pip install dist/*.whl cyclonedx-bom==7.3.0
+          # Hash-locked runtime closure + SBOM generator, then the just-built
+          # wheel with --no-deps (#60, #142). Same resulting environment as the
+          # previous single unpinned install, so the SBOM contents are unchanged.
+          python -m pip install --require-hashes \
+            -r requirements/runtime.txt -r requirements/sbom.txt
+          python -m pip install --no-deps dist/*.whl
           mkdir -p sbom
           cyclonedx-py environment \
             --output-format JSON \
@@ -268,7 +287,7 @@ jobs:
           fi
 
       - name: Publish to PyPI (OIDC trusted publishing)
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
         with:
           packages-dir: dist
 

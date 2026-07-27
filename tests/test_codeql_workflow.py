@@ -93,10 +93,21 @@ class CodeqlWorkflowContractTests(unittest.TestCase):
 
     # --- permissions ----------------------------------------------------
     def test_least_privilege_permissions(self) -> None:
-        perms = self.data.get("permissions") or self.job.get("permissions")
-        self.assertIsNotNone(perms, "CodeQL workflow must set explicit permissions")
+        # #142 moved the single write scope off the top level and onto the job
+        # that uses it: Scorecard's Token-Permissions check penalizes a top-level
+        # write but not a job-level one sitting under a read-only top level.
+        # The generic "top level is read-only / actions are SHA-pinned" rules are
+        # asserted repo-wide in tests/test_workflow_permissions.py; what is
+        # CodeQL-specific -- and therefore checked here -- is that `analyze` holds
+        # exactly the SARIF-upload scope and nothing more.
+        self.assertEqual(self.data.get("permissions"), "read-all",
+                         "CodeQL workflow token must be read-only at the top level")
+        perms = self.job.get("permissions")
+        self.assertIsNotNone(perms, "the analyze job must set explicit permissions")
         self.assertEqual(perms.get("security-events"), "write",
                          "analyze needs security-events: write to upload SARIF")
+        # A job-level block replaces the top-level one, so the read scope the
+        # checkout needs has to be restated on the job.
         self.assertEqual(perms.get("contents"), "read")
         self.assertEqual(set(perms), {"contents", "security-events"},
                          f"permissions must stay least-privilege: {perms!r}")

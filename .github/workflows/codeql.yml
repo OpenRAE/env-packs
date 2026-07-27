@@ -15,10 +15,10 @@ on:
     # branch (main); PR runs analyze the proposed merge into dev/main.
     - cron: "23 7 * * 1"
 
-# Least privilege: analyze uploads SARIF via GITHUB_TOKEN only.
-permissions:
-  contents: read
-  security-events: write
+# Least privilege (#142): read-only at the workflow level; the single write scope
+# CodeQL needs (SARIF upload) is declared on the `analyze` job below. Scorecard
+# penalizes a top-level write but not a job-level one under a read-only top.
+permissions: read-all
 
 # Cancel superseded runs on the same ref (e.g. a new push to a PR).
 concurrency:
@@ -29,6 +29,11 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
+    # A job-level block REPLACES the top-level one rather than merging with it,
+    # so `contents: read` is restated here alongside the SARIF upload scope.
+    permissions:
+      contents: read
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -39,15 +44,15 @@ jobs:
             build-mode: none
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@7188fc363630916deb702c7fdcf4e481b751f97a # v4.37.1
+        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a # v4.37.1
+        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           category: "/language:${{ matrix.language }}"

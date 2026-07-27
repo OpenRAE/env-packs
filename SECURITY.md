@@ -27,10 +27,23 @@ verification bypass) per the
 ```sh
 git fetch --tags origin
 gitsign verify-tag \
-  --certificate-identity=https://github.com/Brad-Edwards/aces-scenario-packs/.github/workflows/release-please.yml@refs/heads/main \
+  --certificate-identity=https://github.com/RAESystem/env-packs/.github/workflows/release-please.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
   vX.Y.Z
 ```
+
+**Tags signed before the repository moved to `RAESystem/env-packs`** carry the
+signer identity of its previous path. The signing certificate records the
+repository the workflow ran in at the time, and that is not rewritten by a
+transfer, so verifying an older tag needs the older identity:
+
+```sh
+--certificate-identity=https://github.com/Brad-Edwards/aces-scenario-packs/.github/workflows/release-please.yml@refs/heads/main
+```
+
+Both identities are legitimate for their respective release ranges. Neither is a
+fallback for the other: verification must assert one exact identity, so pick the
+one matching the tag's date rather than trying both to see which passes.
 
 A pass reports a valid Git signature, a Rekor transparency-log entry, and the
 expected certificate identity. Verify against the exact identity above, not

@@ -1,0 +1,39 @@
+# Code owners for this repository (issue #142).
+#
+# CODEOWNERS on its own does not require anything: it names who is requested for
+# review. It becomes an enforced control only when `main`'s branch protection
+# turns on "require review from Code Owners", which is a repository setting and
+# is tracked separately in ADR 0018. This file is the in-repo half of that
+# control, and is inert until the setting is enabled.
+#
+# That setting is currently OFF, deliberately. Scorecard's tier 4 needs code-owner
+# review AND two approving reviews; with a single active maintainer the second is
+# unobtainable, so enabling code-owner review scored nothing while costing an
+# override on every merge. This file stays committed so turning it on is a
+# one-line change once a second maintainer makes that tier reachable.
+#
+# Ordering matters: the LAST matching pattern wins, so the catch-all comes first
+# and the security-sensitive paths that follow deliberately override it.
+
+# Everything, unless a more specific rule below claims it.
+*                               @Brad-Edwards
+
+# Supply-chain and release surface. These decide what gets built, signed, and
+# published, and which token scopes CI holds -- ADRs 0004, 0008, 0015, 0016,
+# 0017, and the Scorecard posture in ADR 0018.
+/.github/workflows/             @Brad-Edwards
+/.github/dependabot.yml         @Brad-Edwards
+/.github/CODEOWNERS             @Brad-Edwards
+/requirements/                  @Brad-Edwards
+/release-please-config.json     @Brad-Edwards
+/.release-please-manifest.json  @Brad-Edwards
+/pyproject.toml                 @Brad-Edwards
+/tools/                         @Brad-Edwards
+
+# The untrusted-input boundary and the fuzz harness that guards it (ADR 0013).
+/src/aces_scenario_packs/validation.py  @Brad-Edwards
+/src/aces_scenario_packs/_pack_fs.py    @Brad-Edwards
+/fuzz/                                  @Brad-Edwards
+
+# Architecture decisions.
+/docs/decisions/adrs/           @Brad-Edwards
