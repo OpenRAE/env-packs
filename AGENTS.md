@@ -44,3 +44,8 @@ python3 -m compileall src tests
   which maintains a `chore(main): release X.Y.Z` PR; merging it publishes.
 - Squash-merge feature PRs. See
   `docs/decisions/adrs/0008-adopt-release-please.md`.
+- Open the `dev` → `main` promotion PR with `make devmain`. Merge it with a
+  **merge commit** — never squash or rebase it, or release-please loses the
+  individual Conventional Commit subjects it reads to decide the version and
+  build the changelog. See
+  [ADR 0019](docs/decisions/adrs/0019-preserve-history-in-dev-main-promotions.md).

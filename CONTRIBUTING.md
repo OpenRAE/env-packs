@@ -27,6 +27,14 @@ release-please maintains a `chore(main): release X.Y.Z` PR (version bump +
 `CHANGELOG.md`); merging that PR tags and publishes. See
 [ADR 0008](docs/decisions/adrs/0008-adopt-release-please.md).
 
+Work reaches `main` by promoting `dev`. Open that pull request with
+`make devmain`, which gives it a deterministic `chore: promote dev to main`
+title and a body stating the one rule that matters: **merge it with a merge
+commit, never a squash or a rebase.** Squashing collapses the promoted Conventional Commit
+subjects into one, and the next release loses both its changelog entries and its
+version decision. See
+[ADR 0019](docs/decisions/adrs/0019-preserve-history-in-dev-main-promotions.md).
+
 Changes to the public contract or schemas should include the rationale, the
 compatibility impact, and how you validated them. If you're moving content in
 from another repository, note the source repo and paths, and any scrub the
