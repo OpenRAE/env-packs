@@ -27,7 +27,7 @@ class AcesDependencyTests(unittest.TestCase):
 
         The concrete version is deliberately NOT asserted here. A Dependabot
         bump edits only ``pyproject.toml``; asserting the literal version would
-        turn every bump into a manual test edit and block auto-merge (ADR 0016).
+        turn every bump into a manual test edit (ADR 0016).
         This guards the *invariant* — exactly one ``aces-sdl`` requirement,
         pinned with ``==`` — while the version itself advances through the
         reviewed pin (ADR 0011) and the CI compatibility gate.
