@@ -24,6 +24,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0016](0016-automate-dependency-updates.md) | Automate dependency updates and ship ACES bumps as releases | Accepted |
 | [0017](0017-sign-release-tags-with-keyless-sigstore.md) | Sign release tags with keyless Sigstore | Accepted |
 | [0018](0018-openssf-scorecard-posture.md) | OpenSSF Scorecard posture | Accepted |
+| [0019](0019-preserve-history-in-dev-main-promotions.md) | Preserve history in dev-to-main promotions | Accepted |
 
 ```{toctree}
 :hidden:
