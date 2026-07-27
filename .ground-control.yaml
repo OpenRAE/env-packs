@@ -26,7 +26,7 @@ workflow:
   # contract (ADR 0019). Declared explicitly because the default `make policy`
   # assumes a convention this repo does not follow. A new governance invariant
   # belongs in this list as well as in the suite.
-  policy_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); "$PY" -m unittest tests.test_dependency_pinning tests.test_workflow_permissions tests.test_codeql_workflow tests.test_scorecard_workflow tests.test_release_workflow_attestation tests.test_release_workflow_tag_signing tests.test_pr_title_guard tests.test_readthedocs_config tests.test_makefile'
+  policy_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); "$PY" -m unittest tests.test_dependency_pinning tests.test_workflow_permissions tests.test_codeql_workflow tests.test_scorecard_workflow tests.test_release_workflow_attestation tests.test_release_workflow_tag_signing tests.test_pr_title_guard tests.test_readthedocs_config tests.test_makefile tests.test_ground_control_review_config'
   lint_command: python3 -m compileall src tests
   format_command: python3 -m compileall src tests
   # There is no pre-commit framework here -- no .pre-commit-config.yaml and no
@@ -42,6 +42,21 @@ workflow:
   pr_title:
     types: [feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert]
     require_scope: false
+  # One pre-push Codex review cycle and one pre-push test-quality review cycle,
+  # with automatic disposition of the review cap off so reaching a cap always
+  # escalates to a human. These match Ground Control's current defaults; they are
+  # declared explicitly so a future change to those defaults cannot silently alter
+  # this repo's review posture.
+  codex_review:
+    pre_push_cap: 1
+  test_quality_review:
+    pre_push_cap: 1
+  review_disposition:
+    enabled: false
+    mode: shadow
+    max_auto_overrides: 0
+    judge:
+      enabled: false
 docs:
   adr_dir: docs/decisions/adrs/
   workflow_reference: docs/scenario-packs.md
