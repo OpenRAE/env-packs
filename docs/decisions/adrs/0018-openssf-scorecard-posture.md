@@ -113,20 +113,46 @@ nobody mistakes a green run for exhaustive coverage.
 
 ### 4. Repository settings are recorded here because git cannot hold them
 
-Branch protection on `main` is set to Scorecard's full tier: required status
-checks, code-owner review, dismiss-stale-reviews, require-last-push-approval, two
-approving reviews, and administrator enforcement. `.github/CODEOWNERS` is the
-in-repo half; the settings are the other half and live only in GitHub.
+Branch protection on `main`:
 
-**This deliberately constrains the release flow.** [ADR 0016](0016-automate-dependency-updates.md)
-relies on an administrator bypass for automation whose checks do not auto-run:
-release-please opens its release PR with `GITHUB_TOKEN`, and bot-created
-back-merge PRs likewise do not trigger dev's required checks. With administrator
-enforcement on, those PRs need the same human review as any other, and the
-repository has the collaborators to provide it. The trade was made knowingly: the
-alternative is a permanent bypass that Scorecard correctly reports as a weakness.
-If this proves to deadlock releases in practice, the fix is to give
-release-please a PAT so its checks run -- not to quietly remove the protection.
+| Setting | Value |
+|---|---|
+| Force pushes / deletions | blocked |
+| Pull request required | yes |
+| Required approving reviews | **1** |
+| Code-owner review required | yes (`.github/CODEOWNERS`) |
+| Dismiss stale reviews | yes |
+| Require branch up to date (`strict`) | yes |
+| Required status check | `verify` |
+| Require last-push approval | **no** |
+| Administrator enforcement | **no** |
+
+**This does not reach Scorecard's top tier, and that is a deliberate, bounded
+decision rather than an oversight.**
+
+Scorecard's tier 4 wants two approving reviews and tier 5 wants administrator
+enforcement. This repository has a single active maintainer, and **GitHub does
+not permit a pull request author to approve their own pull request.** Any
+configuration that requires an approval the maintainer cannot supply, while also
+enforcing it against administrators, does not harden the repository -- it stops
+all work, including security fixes. Requiring *one* approval rather than two
+changes nothing about that: one is already unobtainable.
+
+So administrator enforcement stays off, which preserves
+[ADR 0016](0016-automate-dependency-updates.md)'s bypass. That bypass is what
+lets the maintainer merge at all, and it is also what lets release-please's own
+release PR and bot-created back-merge PRs land, since neither triggers the
+required checks (both are opened with `GITHUB_TOKEN`).
+
+The review requirements are still declared rather than deleted. They cost the
+maintainer one "merge without waiting for requirements" override per merge, and
+they take effect automatically the moment a second reviewer is available --
+which is the point of leaving them in place.
+
+Consequence for the score: `Branch-Protection` satisfies tiers 1-3 and caps
+around **8/10** rather than 10. It therefore remains a reported finding. The
+honest path to 10 is a second reviewer, or a PAT for release-please so its checks
+run under enforcement -- not a setting that makes the repository unworkable.
 
 ### 5. Signer identity is bound to the repository path
 
@@ -151,7 +177,8 @@ are reported, visible, and understood:
 
 | Check | Why it is not fixed by a change here |
 |---|---|
-| `Code-Review` | Scores the last ~30 changesets. Approvals cannot be applied retroactively, and fabricating reviews to clear it would be fraud against the control. The branch rules in §4 make future changesets count. |
+| `Branch-Protection` | Caps at tier 3 (~8/10) per §4. Tiers 4-5 need a second reviewer and administrator enforcement, which a single-maintainer repository cannot supply without blocking its own security fixes. |
+| `Code-Review` | Scores the last ~30 changesets and does not count self-merges. With one active maintainer there is nobody to approve, and fabricating reviews to clear it would be fraud against the control. |
 | `CI-Tests` | Historical, 25/27 at the time of writing. Self-heals as new PRs land with CI green. |
 | `SAST` | Historical, 22/30 commits. CodeQL (#132) runs on every PR now, so this rises as commits accrue. |
 | `CII-Best-Practices` | Requires registering the project at bestpractices.dev and completing a maintainer self-certification. It is external state that no repository change can produce. |
@@ -173,7 +200,9 @@ must say why it is false.
 - Bumping `aces-sdl` now touches `pyproject.toml` and `requirements/runtime.txt`
   together; the contract test fails if they drift. This is intentional -- ADR 0011
   keeps that bump under human review.
-- Releases require human approval on `main` under the rules in §4.
+- Merges to `main` surface a review requirement the sole maintainer satisfies with
+  an administrator override per §4. If a second maintainer joins, remove the
+  override habit first and the rules become real without any settings change.
 - The Scorecard score is only observable from a default-branch run. Local tests
   verify the workflow *shapes*; they cannot verify repository rules, historical
   review evidence, or published results. Acceptance for #142 is a fresh
