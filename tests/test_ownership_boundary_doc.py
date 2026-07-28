@@ -20,8 +20,8 @@ import re
 import unittest
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
-_DOC = _ROOT / "docs" / "ownership-boundary.md"
-_PACKS_DOC = _ROOT / "docs" / "environment-packs.md"
+_DOC = _ROOT / "docs" / "public" / "ownership-boundary.md"
+_PACKS_DOC = _ROOT / "docs" / "public" / "environment-packs.md"
 
 # The APTL-side record this guidance agrees with. Both halves are load-bearing:
 # the issue is the decision, the note is its durable statement.
@@ -68,7 +68,7 @@ class OwnershipBoundaryDocTests(unittest.TestCase):
         self.text = _flat(_DOC)
 
     def test_doc_exists(self) -> None:
-        self.assertTrue(_DOC.is_file(), "docs/ownership-boundary.md must exist (#138)")
+        self.assertTrue(_DOC.is_file(), "docs/public/ownership-boundary.md must exist (#138)")
 
     def test_names_four_distinct_owners(self) -> None:
         for owner in ("RAES", "RAESystem/env-packs", "APTL"):
@@ -124,7 +124,7 @@ class OwnershipBoundaryDocTests(unittest.TestCase):
         self.assertIn(
             "ownership-boundary.md",
             _flat(_PACKS_DOC),
-            "docs/environment-packs.md must cross-reference the ownership boundary",
+            "docs/public/environment-packs.md must cross-reference the ownership boundary",
         )
 
 

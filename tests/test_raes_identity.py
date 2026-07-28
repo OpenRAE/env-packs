@@ -35,7 +35,7 @@ _HISTORICAL_ALLOWLIST = {
     "SECURITY.md",
     "docs/decisions/adrs/README.md",
     "docs/decisions/adrs/0021-adopt-raes-environment-pack-identity.md",
-    "docs/raes-migration.md",
+    "docs/public/raes-migration.md",
     "requirements/recovery-v2.0.2.in",
     "requirements/recovery-v2.0.2.txt",
 }
@@ -168,8 +168,8 @@ class PackContractIdentityTests(unittest.TestCase):
     def test_current_surfaces_use_the_raes_lockfile_name(self) -> None:
         self.assertEqual(LOCKFILE_NAME, "raes.lock.json")
         current_surfaces = (
-            _ROOT / "docs" / "environment-packs.md",
-            _ROOT / "docs" / "raes-migration.md",
+            _ROOT / "docs" / "public" / "environment-packs.md",
+            _ROOT / "docs" / "public" / "raes-migration.md",
             _NEW_PACKAGE / "resources" / "contract" / "pack-layout.md",
             _NEW_PACKAGE / "resources" / "schemas" / "provenance.schema.yaml",
         )
@@ -227,7 +227,7 @@ class RepositoryIdentityTests(unittest.TestCase):
         self.assertEqual(ground_control["short_code"], "ASP")
         self.assertEqual(
             ground_control["docs"]["workflow_reference"],
-            "docs/environment-packs.md",
+            "docs/public/environment-packs.md",
         )
         self.assertEqual(
             ground_control["example_paths"]["source"],
