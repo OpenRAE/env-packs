@@ -89,7 +89,13 @@ PARTICIPANT_TIER = "participant"
 # would carry a set-user-id or world-writable bit straight into a distributed
 # artifact; a derived view is new content, not a copy of the author's filesystem
 # metadata (ADR 0028).
-STAGED_FILE_MODE = 0o644
+#
+# Owner-only. A release tree holds the operator, restricted, and commercial
+# boundary tiers beside the participant one, so granting group or world read to
+# the build output would expose restricted material to every local account.
+# Distribution happens through a separate packaging step that sets the
+# permissions appropriate to its own transport.
+STAGED_FILE_MODE = 0o600
 _STAGE_CHUNK = 64 * 1024
 
 # The contract version line lives in the packaged contract source as a single,
@@ -374,7 +380,9 @@ def _stage_tree(root_fd: int, pack_root: str, rel: str, dst: str,
     errors: list[str] = []
     src = os.path.join(pack_root, os.path.normpath(rel))
     base = rel.replace(os.sep, "/").rstrip("/")
-    for dirpath, _dirs, files in os.walk(src):  # followlinks=False
+    # os.walk does not descend into symlinked directories by default, and each
+    # file below is re-opened through a root-anchored no-follow descriptor.
+    for dirpath, _dirs, files in os.walk(src):
         suffix = os.path.relpath(dirpath, src)
         target = dst if suffix == "." else os.path.join(dst, suffix)
         os.makedirs(target, exist_ok=True)
@@ -409,35 +417,60 @@ def _resolve_release_paths(pc: "PackContracts", out_dir: str,
     return release_root, staging, []
 
 
-def _stage_boundary_row(pc: "PackContracts", pack_root: str, group: str, tier: str,
-                        row: object, staging: str,
-                        tier_stats: dict[str, dict[str, object]],
-                        staged_by_view: dict[str, list[str]] | None = None,
-                        root_fd: int | None = None) -> list[str]:
-    """Stage boundary row."""
+class _Staging(object):
+    """The invariants one staging pass carries across every boundary row."""
+
+    def __init__(self, pc: "PackContracts", pack_root: str, staging: str,
+                 tier_stats: dict[str, dict[str, object]],
+                 staged_by_view: dict[str, list[str]] | None,
+                 root_fd: int) -> None:
+        """Initialize the instance."""
+        self.pc = pc
+        self.pack_root = pack_root
+        self.staging = staging
+        self.tier_stats = tier_stats
+        self.staged_by_view = staged_by_view
+        self.root_fd = root_fd
+
+    def staged_for(self, tier: str) -> list[str] | None:
+        """The per-view staged-path accumulator, when one is being collected."""
+        if self.staged_by_view is None:
+            return None
+        return self.staged_by_view.setdefault(tier, [])
+
+    def record(self, tier: str, export: object, copied: int) -> None:
+        """Tally staged files and their distribution classes for one view."""
+        self.tier_stats[tier]["file_count"] += copied
+        if isinstance(export, str):
+            self.tier_stats[tier]["exports"][export] = (
+                self.tier_stats[tier]["exports"].get(export, 0) + copied)
+
+
+def _row_problem(pack_root: str, rel: str) -> str | None:
+    """Why a declared boundary path cannot be staged, or ``None`` when it can."""
+    ok, why = _safe_pack_path(pack_root, rel)
+    if not ok:
+        return why
+    if not os.path.exists(os.path.join(pack_root, rel)):
+        return "does not exist"
+    return None
+
+
+def _stage_boundary_row(ctx: "_Staging", group: str, tier: str,
+                        row: object) -> list[str]:
+    """Stage one declared boundary row into its release view."""
     rel = row.get("path") if isinstance(row, dict) else None
     if not isinstance(rel, str):
         return []
-    ok, why = _safe_pack_path(pack_root, rel)
-    src = os.path.join(pack_root, rel)
-    if not ok:
-        problem = why
-    elif not os.path.exists(src):
-        problem = "does not exist"
-    else:
-        problem = None
+    problem = _row_problem(ctx.pack_root, rel)
     if problem:
-        return [f"{pc.name}: boundary {group} path {rel} {problem}"]
-    export = row.get("export")
-    staged = staged_by_view.setdefault(tier, []) if staged_by_view is not None else None
+        return [f"{ctx.pc.name}: boundary {group} path {rel} {problem}"]
     copied, stage_errors = _stage(
-        root_fd, pack_root, rel,
-        os.path.join(staging, tier, os.path.normpath(rel)), staged)
-    tier_stats[tier]["file_count"] += copied
-    if isinstance(export, str):
-        tier_stats[tier]["exports"][export] = (
-            tier_stats[tier]["exports"].get(export, 0) + copied)
-    return [f"{pc.name}: boundary {group} {err}" for err in stage_errors]
+        ctx.root_fd, ctx.pack_root, rel,
+        os.path.join(ctx.staging, tier, os.path.normpath(rel)),
+        ctx.staged_for(tier))
+    ctx.record(tier, row.get("export"), copied)
+    return [f"{ctx.pc.name}: boundary {group} {err}" for err in stage_errors]
 
 
 def _stage_boundaries(pc: "PackContracts", pack_root: str, boundaries: object,
@@ -451,15 +484,42 @@ def _stage_boundaries(pc: "PackContracts", pack_root: str, boundaries: object,
         _root_real, root_fd = _pack_fs.open_root(pack_root)
     except _pack_fs.PackFilesystemError:
         return [f"{pc.name}: pack root is not a safe directory to stage from"]
+    ctx = _Staging(pc, pack_root, staging, tier_stats, staged_by_view, root_fd)
     try:
         for group, tier in BOUNDARY_TIERS.items():
             for row in (boundaries.get(group) or []):
-                failures += _stage_boundary_row(
-                    pc, pack_root, group, tier, row, staging, tier_stats,
-                    staged_by_view, root_fd)
+                failures += _stage_boundary_row(ctx, group, tier, row)
     finally:
         os.close(root_fd)
     return failures
+
+
+def _stage_views(pc: "PackContracts", pack_root: str, staging: str,
+                 tier_stats: dict[str, dict[str, object]],
+                 staged_by_view: dict[str, list[str]]) -> list[str]:
+    """Stage every boundary group and re-scan the staged participant tier.
+
+    A participant/restricted boundary overlap is rejected before any row is
+    copied (ADR 0013): release must be independently safe even if the shared
+    validation gate did not run first. On overlap nothing is staged at all; the
+    participant leak scan is defense in depth, not the declaration boundary.
+    """
+    boundaries = (pc.compatibility or {}).get("artifact_boundaries")
+    overlap_fields = validation._boundary_overlaps(boundaries)
+    if overlap_fields:
+        return [
+            f"{pc.name}: artifact boundary {field} overlaps an "
+            "operator/oracle/private root; refusing to stage a participant export"
+            for field in overlap_fields]
+    failures = _stage_boundaries(
+        pc, pack_root, boundaries, staging, tier_stats, staged_by_view)
+    # The participant tier is the one surface that must never carry an operator
+    # token; re-run the redacted leak scan over the *staged* artifact.
+    return failures + [
+        f"{pc.name}: participant release artifact leaks a {label} at "
+        f"{PARTICIPANT_TIER}/{locator} (match redacted)"
+        for label, locator in scan_tier_for_leaks(
+            os.path.join(staging, PARTICIPANT_TIER))]
 
 
 def build_release(pack_root: str, out_dir: str, *,
@@ -491,29 +551,7 @@ def build_release(pack_root: str, out_dir: str, *,
     # validated path; creates the resolved out_dir as a parent
     os.makedirs(staging)
     try:
-        boundaries = (pc.compatibility or {}).get("artifact_boundaries")
-        # Reject a participant/restricted boundary overlap before copying any
-        # row (ADR 0013): release must be independently safe even if the shared
-        # validation gate did not run first. On overlap, skip staging entirely so
-        # no boundary row is copied; the participant leak scan is defense-in-depth,
-        # not the declaration boundary.
-        overlap_fields = validation._boundary_overlaps(boundaries)
-        if overlap_fields:
-            failures += [
-                f"{pc.name}: artifact boundary {field} overlaps an "
-                "operator/oracle/private root; refusing to stage a participant export"
-                for field in overlap_fields]
-        else:
-            failures += _stage_boundaries(
-                pc, pack_root, boundaries, staging, tier_stats, staged_by_view)
-            # The participant tier is the one surface that must never carry an
-            # operator token; re-run the redacted leak scan over the *staged*
-            # artifact.
-            failures += [
-                f"{pc.name}: participant release artifact leaks a {label} at "
-                f"{PARTICIPANT_TIER}/{locator} (match redacted)"
-                for label, locator in scan_tier_for_leaks(
-                    os.path.join(staging, PARTICIPANT_TIER))]
+        failures += _stage_views(pc, pack_root, staging, tier_stats, staged_by_view)
         # The release carrier is a consumer contract, so it is validated before
         # it is written: shape against the packaged schema, and every supply
         # claim joined back to the RAES-authored requirement. An unverifiable
@@ -625,17 +663,25 @@ def _immutability_failures(pc: "PackContracts", release_root: str,
     published_path = os.path.join(release_root, "release.yaml")
     if not os.path.isfile(published_path):
         return []
-    try:
-        with open(published_path, "r", encoding="utf-8") as fh:
-            published = yaml.safe_load(fh)
-    except (OSError, yaml.YAMLError):
+    published = _read_published_profile(published_path)
+    if published is None:
         return [f"{pc.name}: published release.yaml is unreadable; refusing to "
                 "overwrite an immutable release"]
-    if publication.release_identity(published) == publication.release_identity(metadata):
-        return []
-    return [f"{pc.name}: release {metadata['release']['pack']['version']} is already "
-            "published with different bound identities; an immutable release is "
-            "not replaced (publish a new version instead)"]
+    same = (publication.release_identity(published)
+            == publication.release_identity(metadata))
+    return [] if same else [
+        f"{pc.name}: release {metadata['release']['pack']['version']} is already "
+        "published with different bound identities; an immutable release is "
+        "not replaced (publish a new version instead)"]
+
+
+def _read_published_profile(path: str) -> object | None:
+    """Load an already-published profile, or ``None`` when it cannot be read."""
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return yaml.safe_load(fh)
+    except (OSError, yaml.YAMLError):
+        return None
 
 
 def _staged_descriptor(descriptor: object, staged_path: str) -> object:
@@ -657,6 +703,33 @@ def _staged_descriptor(descriptor: object, staged_path: str) -> object:
         os.close(fd)
     checksum = descriptor.checksum.model_copy(update={"value": sha.hexdigest()})
     return descriptor.model_copy(update={"checksum": checksum, "size_bytes": size})
+
+
+def _view_descriptors(manifest: object, by_path: dict[str, str],
+                      rels: object, view: str,
+                      staging: str | None) -> tuple[dict[str, object], int]:
+    """Project the authored descriptors for one view onto its staged bytes.
+
+    Returns ``(artifacts, unreadable_count)``. Descriptors are rebound to the
+    staged file rather than the pack root, so the advertised set describes the
+    bytes about to be promoted.
+    """
+    artifacts: dict[str, object] = {}
+    unreadable = 0
+    for rel in sorted(set(rels or ())):
+        artifact_id = by_path.get(rel)
+        if artifact_id is None:
+            continue
+        authored = manifest.artifacts[artifact_id]
+        if staging is None:
+            artifacts[artifact_id] = authored
+            continue
+        try:
+            artifacts[artifact_id] = _staged_descriptor(
+                authored, os.path.join(staging, view, os.path.normpath(rel)))
+        except OSError:
+            unreadable += 1
+    return artifacts, unreadable
 
 
 def _bind_view_sets(pack_root: str, metadata: dict[str, object],
@@ -690,21 +763,13 @@ def _bind_view_sets(pack_root: str, metadata: dict[str, object],
     failures: list[str] = []
     for view in metadata["release"]["views"]:
         name = view["view"]
-        rels = sorted(set(staged_by_view.get(name, ())))
-        artifacts = {}
-        for rel in rels:
-            artifact_id = by_path.get(rel)
-            if artifact_id is None:
-                continue
-            try:
-                artifacts[artifact_id] = _staged_descriptor(
-                    manifest.artifacts[artifact_id],
-                    os.path.join(staging, name, os.path.normpath(rel)),
-                ) if staging else manifest.artifacts[artifact_id]
-            except OSError:
-                failures.append(
-                    f"{pack['name']}: staged {name} member could not be read for "
-                    "view identity derivation")
+        artifacts, read_failures = _view_descriptors(
+            manifest, by_path, staged_by_view.get(name, ()), name, staging)
+        failures += [
+            f"{pack['name']}: staged {name} member could not be read for "
+            "view identity derivation"
+            for _ in range(read_failures)
+        ]
         if not artifacts:
             # An empty view stays empty; RAES manifests require a non-empty
             # payload set, and inventing a placeholder artifact would be a lie.

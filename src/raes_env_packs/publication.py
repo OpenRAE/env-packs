@@ -51,6 +51,32 @@ PUBLICATION_SCHEMA_VERSION = "environment-pack-publication/v1"
 # *joins*, not a pack-defined role vocabulary.
 _SELECTORS = ("candidate_id", "locked_input_id", "specification_id")
 
+# Stable diagnostic codes. Named once so a code cannot drift between the site
+# that raises it, the tests that assert it, and the prose that documents it.
+CODE_REQUIREMENT_UNKNOWN = "publication.requirement-unknown"
+CODE_REQUIREMENT_ID_MISMATCH = "publication.requirement-id-mismatch"
+CODE_ADDRESS_INVALID = "publication.address-invalid"
+CODE_ADDRESS_AMBIGUOUS = "publication.address-ambiguous"
+CODE_SELECTOR_AMBIGUOUS = "publication.selector-ambiguous"
+CODE_SELECTOR_MISSING = "publication.selector-missing"
+CODE_SELECTOR_UNKNOWN = "publication.selector-unknown"
+CODE_EXACT_SUBSTITUTION = "publication.exact-substitution"
+CODE_ARTIFACT_MISMATCH = "publication.artifact-mismatch"
+CODE_ARTIFACT_INVALID = "publication.artifact-invalid"
+CODE_ARTIFACT_NOT_IN_VIEW = "publication.artifact-not-in-view"
+CODE_OPEN_OVERREACH = "publication.open-overreach"
+CODE_MATERIALIZATION_UNPERMITTED = "publication.materialization-unpermitted"
+CODE_MECHANISM_INVALID = "publication.mechanism-invalid"
+CODE_MECHANISM_UNPERMITTED = "publication.mechanism-unpermitted"
+CODE_CAPABILITY_UNPROVEN = "publication.capability-unproven"
+CODE_CAPABILITY_INAPPLICABLE = "publication.capability-inapplicable"
+CODE_BACKEND_PROFILE_UNTRUSTED = "publication.backend-profile-untrusted"
+CODE_BINDING_MISSING = "publication.binding-missing"
+CODE_VIEW_SET_MISSING = "publication.view-set-missing"
+CODE_IDENTITY_MUTABLE_FIELD = "publication.identity-mutable-field"
+CODE_AVAILABILITY_SECRET = "publication.availability-secret"
+CODE_CHANNEL_UNRESOLVED = "publication.channel-unresolved"
+
 
 @dataclasses.dataclass(frozen=True)
 class PublicationViolation(object):
@@ -98,7 +124,7 @@ def _exact_violations(
     """
 
     if _selectors(row) or not _matches_identity(row, requirement.exact_artifact):
-        return [PublicationViolation("publication.exact-substitution", path)]
+        return [PublicationViolation(CODE_EXACT_SUBSTITUTION, path)]
     return []
 
 
@@ -125,8 +151,8 @@ def _candidate_violations(
         if candidate.candidate_id == row.get("candidate_id"):
             if _matches_identity(row, candidate.artifact):
                 return []
-            return [PublicationViolation("publication.artifact-mismatch", path)]
-    return [PublicationViolation("publication.selector-unknown", path)]
+            return [PublicationViolation(CODE_ARTIFACT_MISMATCH, path)]
+    return [PublicationViolation(CODE_SELECTOR_UNKNOWN, path)]
 
 
 def _locked_input_violations(
@@ -138,8 +164,8 @@ def _locked_input_violations(
         if locked.input_id == row.get("locked_input_id"):
             if _matches_identity(row, locked.artifact):
                 return []
-            return [PublicationViolation("publication.artifact-mismatch", path)]
-    return [PublicationViolation("publication.selector-unknown", path)]
+            return [PublicationViolation(CODE_ARTIFACT_MISMATCH, path)]
+    return [PublicationViolation(CODE_SELECTOR_UNKNOWN, path)]
 
 
 def _specification_violations(
@@ -159,8 +185,8 @@ def _specification_violations(
                 and profile.get("digest") == spec.profile.digest
             ):
                 return []
-            return [PublicationViolation("publication.materialization-unpermitted", path)]
-    return [PublicationViolation("publication.selector-unknown", path)]
+            return [PublicationViolation(CODE_MATERIALIZATION_UNPERMITTED, path)]
+    return [PublicationViolation(CODE_SELECTOR_UNKNOWN, path)]
 
 
 _SELECTOR_CHECKS = {
@@ -182,7 +208,7 @@ def _constrained_violations(
 
     selectors = _selectors(row)
     if not selectors:
-        return [PublicationViolation("publication.selector-missing", path)]
+        return [PublicationViolation(CODE_SELECTOR_MISSING, path)]
     return _SELECTOR_CHECKS[selectors[0]](row, requirement, path)
 
 
@@ -196,7 +222,7 @@ def _open_violations(
     """
 
     if _selectors(row) or row.get("artifact") is not None:
-        return [PublicationViolation("publication.open-overreach", path)]
+        return [PublicationViolation(CODE_OPEN_OVERREACH, path)]
     return []
 
 
@@ -260,11 +286,12 @@ def _annotation_holds_source(annotation: object, seen: set[object]) -> bool:
         return False
     seen.add(annotation)
     nested = getattr(annotation, "model_fields", None)
-    if nested is not None:
-        return any(
-            _annotation_holds_source(info.annotation, seen) for info in nested.values()
-        )
-    return any(_annotation_holds_source(arg, seen) for arg in get_args(annotation))
+    children = (
+        [info.annotation for info in nested.values()]
+        if nested is not None
+        else list(get_args(annotation))
+    )
+    return any(_annotation_holds_source(child, seen) for child in children)
 
 
 def _iter_sources(
@@ -281,17 +308,23 @@ def _iter_sources(
     seen.add(id(value))
     if isinstance(value, Source):
         yield value, trail
+    for step, child in _child_nodes(value):
+        yield from _iter_sources(child, seen, trail + step)
+
+
+def _child_nodes(value: object) -> Iterator[tuple[tuple[str, ...], object]]:
+    """Yield ``(trail_step, child)`` for every traversable child of ``value``."""
+
     fields = getattr(type(value), "model_fields", None)
     if fields is not None:
         for field in fields:
-            yield from _iter_sources(getattr(value, field, None), seen, trail + (field,))
+            yield (field,), getattr(value, field, None)
     elif isinstance(value, Mapping):
         for key, item in value.items():
-            step = (str(key),) if isinstance(key, str) else ()
-            yield from _iter_sources(item, seen, trail + step)
+            yield ((str(key),) if isinstance(key, str) else ()), item
     elif isinstance(value, (list, tuple, set, frozenset)):
         for index, item in enumerate(value):
-            yield from _iter_sources(item, seen, trail + (str(index),))
+            yield (str(index),), item
 
 
 # RAES compiles a source artifact requirement under the provisioning plan root.
@@ -395,37 +428,63 @@ def _binding_violations(profile: object) -> list[PublicationViolation]:
     release = profile.get("release") if isinstance(profile, dict) else None
     if not isinstance(release, dict):
         return []
-    claims = any(
-        view.get("publications") or view.get("capability_claims")
-        for view in release.get("views") or []
-        if isinstance(view, dict)
-    )
-    if not claims:
+    claiming = [view for view in _views(release) if _view_claims(view)]
+    if not claiming:
         return []
+    return (
+        _parent_binding_violations(release)
+        + _claiming_view_violations(release)
+    )
+
+
+def _views(release: Mapping[str, object]) -> list[Mapping[str, object]]:
+    """Return the well-formed view entries of one release block."""
+
+    return [view for view in release.get("views") or [] if isinstance(view, Mapping)]
+
+
+def _view_claims(view: Mapping[str, object]) -> bool:
+    """True when a view publishes an artifact or asserts a capability."""
+
+    return bool(view.get("publications") or view.get("capability_claims"))
+
+
+def _parent_binding_violations(
+    release: Mapping[str, object],
+) -> list[PublicationViolation]:
+    """A claim needs the semantic parent and associated-artifact set bindings.
+
+    ADR 0028 identifies a release by the semantic parent *reference and digest*.
+    A parent id alone would let the same id carry changed semantics without
+    changing release identity, so a claim needs the digest too.
+    """
+
     violations = [
-        PublicationViolation("publication.binding-missing", f"$.release.{block}")
+        PublicationViolation(CODE_BINDING_MISSING, f"$.release.{block}")
         for block in ("semantic_parent", "source_set")
         if not release.get(block)
     ]
-    # ADR 0028 identifies a release by the semantic parent *reference and
-    # digest*. A parent id alone would let the same id carry changed semantics
-    # without changing release identity, so a claim needs the digest.
     parent = release.get("semantic_parent")
     if isinstance(parent, Mapping) and not parent.get("digest"):
         violations.append(PublicationViolation(
-            "publication.binding-missing", "$.release.semantic_parent.digest"))
-    # A view that publishes something must itself be a bound, non-empty view.
-    # Without this a claim could target a view that exposes no bytes at all, and
-    # a consumer would have no set against which to verify what it received.
-    violations.extend(
-        PublicationViolation("publication.view-set-missing",
-                             f"$.release.views[{index}].set")
-        for index, view in enumerate(release.get("views") or [])
-        if isinstance(view, dict)
-        and (view.get("publications") or view.get("capability_claims"))
-        and not view.get("set")
-    )
+            CODE_BINDING_MISSING, "$.release.semantic_parent.digest"))
     return violations
+
+
+def _claiming_view_violations(
+    release: Mapping[str, object],
+) -> list[PublicationViolation]:
+    """A view that publishes something must be a bound, non-empty view.
+
+    Without this a claim could target a view that exposes no bytes at all, and a
+    consumer would have no set against which to verify what it received.
+    """
+
+    return [
+        PublicationViolation(CODE_VIEW_SET_MISSING, f"$.release.views[{index}].set")
+        for index, view in enumerate(_views(release))
+        if _view_claims(view) and not view.get("set")
+    ]
 
 
 def _identity_block_violations(profile: object) -> list[PublicationViolation]:
@@ -435,7 +494,7 @@ def _identity_block_violations(profile: object) -> list[PublicationViolation]:
     if not isinstance(release, dict):
         return []
     return [
-        PublicationViolation("publication.identity-mutable-field", f"$.release.{key}")
+        PublicationViolation(CODE_IDENTITY_MUTABLE_FIELD, f"$.release.{key}")
         for key in sorted(release)
         if key in _MUTABLE_IDENTITY_KEYS or key in _SECRET_KEYS
     ]
@@ -482,10 +541,10 @@ def _availability_violations(profile: object) -> list[PublicationViolation]:
             value = row.get(field)
             if isinstance(value, str) and _location_is_secret_bearing(value):
                 violations.append(
-                    PublicationViolation("publication.availability-secret",
+                    PublicationViolation(CODE_AVAILABILITY_SECRET,
                                          f"{path}.{field}"))
         violations.extend(
-            PublicationViolation("publication.availability-secret", f"{path}.{key}")
+            PublicationViolation(CODE_AVAILABILITY_SECRET, f"{path}.{key}")
             for key in sorted(row)
             if key in _SECRET_KEYS
         )
@@ -499,7 +558,7 @@ def _channel_violations(profile: object) -> list[PublicationViolation]:
     rows = distribution.get("channels") if isinstance(distribution, dict) else None
     identity = release_identity(profile)
     return [
-        PublicationViolation("publication.channel-unresolved",
+        PublicationViolation(CODE_CHANNEL_UNRESOLVED,
                              f"$.distribution.channels[{index}]")
         for index, row in enumerate(rows or [])
         if not isinstance(row, Mapping) or row.get("release_identity") != identity
@@ -531,10 +590,10 @@ def _structure_violations(
     violations: list[PublicationViolation] = []
     artifact = row.get("artifact")
     if artifact is not None and not _upstream_valid(ArtifactIdentity, artifact):
-        violations.append(PublicationViolation("publication.artifact-invalid", path))
+        violations.append(PublicationViolation(CODE_ARTIFACT_INVALID, path))
     mechanism = row.get("mechanism")
     if mechanism is not None and not _upstream_valid(ArtifactMechanismProfile, mechanism):
-        violations.append(PublicationViolation("publication.mechanism-invalid", path))
+        violations.append(PublicationViolation(CODE_MECHANISM_INVALID, path))
     return violations
 
 
@@ -560,7 +619,7 @@ def _route_violations(
     ]
     if permitted:
         return []
-    return [PublicationViolation("publication.mechanism-unpermitted", path)]
+    return [PublicationViolation(CODE_MECHANISM_UNPERMITTED, path)]
 
 
 def _claims(profile: object) -> Iterator[tuple[Mapping[str, object], str]]:
@@ -594,7 +653,7 @@ def _claim_violations(
             continue
         capability = claim.get("mechanism_capability")
         if capability is None or not _upstream_valid(ArtifactMechanismCapability, capability):
-            violations.append(PublicationViolation("publication.capability-unproven", path))
+            violations.append(PublicationViolation(CODE_CAPABILITY_UNPROVEN, path))
             continue
         untrusted = _backend_profile_violations(claim, path)
         if untrusted:
@@ -622,17 +681,22 @@ def _backend_profile_violations(
     comes only from that backend at realization (ADR 0028).
     """
 
-    profile = claim.get("backend_profile")
+    return [] if _is_trusted_backend_profile(claim.get("backend_profile")) else [
+        PublicationViolation(CODE_BACKEND_PROFILE_UNTRUSTED, path)]
+
+
+def _is_trusted_backend_profile(profile: object) -> bool:
+    """True when the reference resolves to a real, artifact-aware RAES profile."""
+
     profile_id = profile.get("profile_id") if isinstance(profile, Mapping) else None
     if not isinstance(profile_id, str):
-        return [PublicationViolation("publication.backend-profile-untrusted", path)]
+        return False
     try:
         model = load_backend_profile(profile_id)
-    except Exception:  # upstream raises its own error types for unknown profiles
-        return [PublicationViolation("publication.backend-profile-untrusted", path)]
-    if _BACKEND_MANIFEST_CONTRACT not in getattr(model, "required_contracts", ()):
-        return [PublicationViolation("publication.backend-profile-untrusted", path)]
-    return []
+    # Upstream raises its own error types for an unknown or malformed profile.
+    except Exception:
+        return False
+    return _BACKEND_MANIFEST_CONTRACT in getattr(model, "required_contracts", ())
 
 
 def _capability_applies(
@@ -646,28 +710,33 @@ def _capability_applies(
     permitted route, and the requirement kind must be supported.
     """
 
-    mechanism = capability.get("mechanism")
-    mechanism = mechanism if isinstance(mechanism, Mapping) else {}
-    permitted = [
-        route for route in requirement.permitted_routes
-        if mechanism.get("mechanism") == route.mechanism.mechanism
-        and mechanism.get("profile") == route.mechanism.profile
-        and mechanism.get("version") == route.mechanism.version
-        and mechanism.get("digest") == route.mechanism.digest
-    ]
-    if not permitted:
-        return [PublicationViolation("publication.capability-inapplicable", path)]
+    permitted = _permitted_routes_for(capability.get("mechanism"), requirement)
     kinds = capability.get("supported_requirement_kinds") or []
-    if _REQUIREMENT_KIND not in kinds:
-        return [PublicationViolation("publication.capability-inapplicable", path)]
     supported = {
         (route.get("acquisition"), route.get("timing"))
         for route in capability.get("supported_routes") or []
         if isinstance(route, Mapping)
     }
-    if not any((route.acquisition, route.timing) in supported for route in permitted):
-        return [PublicationViolation("publication.capability-inapplicable", path)]
-    return []
+    applies = (
+        bool(permitted)
+        and _REQUIREMENT_KIND in kinds
+        and any((route.acquisition, route.timing) in supported for route in permitted)
+    )
+    return [] if applies else [
+        PublicationViolation(CODE_CAPABILITY_INAPPLICABLE, path)]
+
+
+def _permitted_routes_for(mechanism: object, requirement: ArtifactRequirement) -> list:
+    """Return the authored routes whose mechanism profile equals ``mechanism``."""
+
+    profile = mechanism if isinstance(mechanism, Mapping) else {}
+    return [
+        route for route in requirement.permitted_routes
+        if profile.get("mechanism") == route.mechanism.mechanism
+        and profile.get("profile") == route.mechanism.profile
+        and profile.get("version") == route.mechanism.version
+        and profile.get("digest") == route.mechanism.digest
+    ]
 
 
 def _resolve(
@@ -684,19 +753,34 @@ def _resolve(
     then honour under authority RAES never granted.
     """
 
-    address = claim.get("requirement_address")
-    try:
-        address = require_compiled_address(address, field_name="requirement_address")
-    except (TypeError, ValueError):
-        return None, [PublicationViolation("publication.address-invalid", path)]
-    if address in requirements and requirements[address] is None:
-        return None, [PublicationViolation("publication.address-ambiguous", path)]
-    requirement = requirements.get(address)
-    if requirement is None:
-        return None, [PublicationViolation("publication.requirement-unknown", path)]
-    if claim.get("requirement_id") != requirement.requirement_id:
-        return None, [PublicationViolation("publication.requirement-id-mismatch", path)]
+    code, requirement = _resolution_outcome(claim, requirements)
+    if code is not None:
+        return None, [PublicationViolation(code, path)]
     return requirement, []
+
+
+def _resolution_outcome(
+    claim: Mapping[str, object],
+    requirements: Mapping[str, ArtifactRequirement],
+) -> tuple[str | None, ArtifactRequirement | None]:
+    """Return ``(failure_code, requirement)`` for one address resolution."""
+
+    try:
+        address = require_compiled_address(
+            claim.get("requirement_address"), field_name="requirement_address")
+    except (TypeError, ValueError):
+        return CODE_ADDRESS_INVALID, None
+
+    requirement = requirements.get(address)
+    if address in requirements and requirement is None:
+        code = CODE_ADDRESS_AMBIGUOUS
+    elif requirement is None:
+        code = CODE_REQUIREMENT_UNKNOWN
+    elif claim.get("requirement_id") != requirement.requirement_id:
+        code = CODE_REQUIREMENT_ID_MISMATCH
+    else:
+        code = None
+    return code, (None if code else requirement)
 
 
 def _membership_violations(
@@ -721,7 +805,7 @@ def _membership_violations(
     digest = artifact.get("digest")
     if isinstance(digest, str) and digest in view_members.get(view, set()):
         return []
-    return [PublicationViolation("publication.artifact-not-in-view", path)]
+    return [PublicationViolation(CODE_ARTIFACT_NOT_IN_VIEW, path)]
 
 
 def publication_violations(
@@ -751,7 +835,7 @@ def publication_violations(
             violations.extend(structural)
             continue
         if len(_selectors(row)) > 1:
-            violations.append(PublicationViolation("publication.selector-ambiguous", path))
+            violations.append(PublicationViolation(CODE_SELECTOR_AMBIGUOUS, path))
             continue
         violations.extend(_route_violations(row, requirement, path))
         check = _POSTURE_CHECKS.get(requirement.explicitness.value)
