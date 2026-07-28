@@ -29,7 +29,7 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
-    # A job-level block REPLRAES the top-level one rather than merging with it,
+    # A job-level block REPLACES the top-level one rather than merging with it,
     # so `contents: read` is restated here alongside the SARIF upload scope.
     permissions:
       contents: read

@@ -26,6 +26,10 @@ this repo does not host packs.
 - [Pack issue skeleton generator (`raes-pack-issue-skeleton`)](pack-issue-skeleton-script.md)
 - `raes-pack-validate` / `raes-pack-release` — content-validation and release gates.
 
+## Development
+
+- [Continuous integration](ci.md) — the PR check surface, the `verify` merge gate, and local reproduction.
+
 ```{toctree}
 :hidden:
 :maxdepth: 2
@@ -45,6 +49,14 @@ scrub-policy
 
 new-pack-script
 pack-issue-skeleton-script
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+:caption: Development
+
+ci
 ```
 
 ```{toctree}
