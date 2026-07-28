@@ -65,7 +65,6 @@ from raes_env_packs import publication, validation
 
 REPO = cc._REPO
 PACKS_ROOT = cc.PACKS_ROOT
-METADATA_SCHEMA_VERSION = 1
 
 # Boundary group -> release tier / publication view. This mapping is the single
 # parameter over the boundary vocabulary (extensibility seam); the tool never
