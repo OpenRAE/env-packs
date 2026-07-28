@@ -11,6 +11,39 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.0.0](https://github.com/RAESystem/env-packs/compare/v2.0.2...v3.0.0) (2026-07-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* adopt RAES environment-pack identity
+
+### Features
+
+* adopt RAES environment-pack identity ([1fe4e57](https://github.com/RAESystem/env-packs/commit/1fe4e5749806a9e698d7b8cbb811a5d1f36f8488))
+* adopt RAES environment-pack identity ([#164](https://github.com/RAESystem/env-packs/issues/164)) ([1fe4e57](https://github.com/RAESystem/env-packs/commit/1fe4e5749806a9e698d7b8cbb811a5d1f36f8488))
+
+
+### Bug Fixes
+
+* adopt RAES 2 and recover interrupted releases ([#171](https://github.com/RAESystem/env-packs/issues/171)) ([687418e](https://github.com/RAESystem/env-packs/commit/687418e03e2fdf17293cc14176f461030c96006d))
+* **deps:** bump coverage from 7.13.1 to 7.15.2 ([#145](https://github.com/RAESystem/env-packs/issues/145)) ([81df034](https://github.com/RAESystem/env-packs/commit/81df0342c8c9a55386f195cddca6f8ed2fbc2892))
+* **deps:** bump cyclonedx-bom from 7.3.0 to 7.3.1 ([#150](https://github.com/RAESystem/env-packs/issues/150)) ([412f11a](https://github.com/RAESystem/env-packs/commit/412f11acf1aed467d9ea6fdaef15c6dbae0dca97))
+* **deps:** bump fastapi from 0.140.0 to 0.140.7 ([#167](https://github.com/RAESystem/env-packs/issues/167)) ([bf743a4](https://github.com/RAESystem/env-packs/commit/bf743a47deb75b44ac154bd6b251f173e2f4b92e))
+* **deps:** bump furo from 2025.7.19 to 2025.12.19 ([#149](https://github.com/RAESystem/env-packs/issues/149)) ([7fbf5f9](https://github.com/RAESystem/env-packs/commit/7fbf5f99a14fe3f628f64c4e750aa62b647991e8))
+* **deps:** bump hatchling from 1.30.0 to 1.31.0 ([#147](https://github.com/RAESystem/env-packs/issues/147)) ([5ed85e9](https://github.com/RAESystem/env-packs/commit/5ed85e95c3682c2b62c137e4057a84fcc771328d))
+* **deps:** bump myst-parser from 4.0.1 to 5.1.0 ([#151](https://github.com/RAESystem/env-packs/issues/151)) ([0e265ba](https://github.com/RAESystem/env-packs/commit/0e265ba7e9a15a66d5cc194ef7f950c9017c2816))
+* **deps:** bump raes from 1.1.0 to 2.0.0 ([#168](https://github.com/RAESystem/env-packs/issues/168)) ([42d0e31](https://github.com/RAESystem/env-packs/commit/42d0e31f31e12aaca7ccaf99a082fd458efd9c40))
+* export verified tags for manual recovery ([#175](https://github.com/RAESystem/env-packs/issues/175)) ([a8eca33](https://github.com/RAESystem/env-packs/commit/a8eca33f267056c3216b07c159d3be4301e03056))
+* pin working gitsign verifier ([#173](https://github.com/RAESystem/env-packs/issues/173)) ([4691f20](https://github.com/RAESystem/env-packs/commit/4691f20d108c18f5cc8658b72f628ea2e79395a4))
+* publish only the active PyPI distribution ([#179](https://github.com/RAESystem/env-packs/issues/179)) ([7ef700e](https://github.com/RAESystem/env-packs/commit/7ef700e6b99fdbb4586da35ff1dbbb9e7841cb75))
+* restore locked tooling for historical release ([#177](https://github.com/RAESystem/env-packs/issues/177)) ([d465e18](https://github.com/RAESystem/env-packs/commit/d465e18f4254087313dbe593a418843d76284863))
+
+
+### Documentation
+
+* clarify the RAES env-pack format ownership boundary ([#160](https://github.com/RAESystem/env-packs/issues/160)) ([d8b7835](https://github.com/RAESystem/env-packs/commit/d8b7835b224b353120f4f0ed576f69f6f9505aee))
+
 ## [2.0.2](https://github.com/Brad-Edwards/aces-scenario-packs/compare/v2.0.1...v2.0.2) (2026-07-20)
 
 
