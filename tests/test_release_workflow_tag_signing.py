@@ -46,6 +46,7 @@ _GITSIGN_PIN = "0.15.1"
 _GITSIGN_SHA256 = (
     "8712be2e5fe89c9728c50beed20f1d37340b9f2dc3306cfb8830ef975549e170"
 )
+_LEGACY_2_0_2_TARGET = "45f39a930625c9de4c44017e8966d00b82f65052"
 
 
 def _load_workflow() -> dict:
@@ -393,6 +394,37 @@ class TagSigningContractTests(unittest.TestCase):
         self.assertEqual(upload.get("with", {}).get("if-no-files-found"), "error")
         self.assertLess(steps.index(tag_step), steps.index(export))
         self.assertLess(steps.index(export), steps.index(upload))
+
+    def test_historical_release_materializes_hash_locked_tooling(self) -> None:
+        materialize = _step_run(
+            self.publish,
+            "requirements/recovery-v2.0.2.txt",
+        )
+        self.assertIn("GITHUB_SHA", materialize)
+        self.assertIn(_LEGACY_2_0_2_TARGET, materialize)
+        self.assertIn('"${TAG}" != "v2.0.2"', materialize)
+        self.assertIn('"${TARGET_SHA}"', materialize)
+        self.assertIn('git cat-file -e "${TARGET_SHA}:requirements/build.txt"', materialize)
+        self.assertIn(
+            'git show "${GITHUB_SHA}:requirements/recovery-v2.0.2.txt"',
+            materialize,
+        )
+        self.assertGreaterEqual(
+            materialize.count(
+                'git show "${GITHUB_SHA}:requirements/recovery-v2.0.2.txt"'
+            ),
+            3,
+        )
+        self.assertIn("> requirements/build.txt", materialize)
+        self.assertIn("> requirements/runtime.txt", materialize)
+        self.assertIn("> requirements/sbom.txt", materialize)
+
+        materialize_index = _index(
+            self.publish,
+            "requirements/recovery-v2.0.2.txt",
+        )
+        build_index = _index(self.publish, "-m build")
+        self.assertLess(materialize_index, build_index)
 
     def test_never_deletes_or_force_updates_tags(self) -> None:
         for forbidden in ("git tag -d", "git tag --delete", "git tag -f",

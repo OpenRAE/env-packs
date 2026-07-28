@@ -31,6 +31,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0023](0023-recover-interrupted-signed-releases.md) | Recover interrupted signed releases | Accepted |
 | [0024](0024-pin-gitsign-pre-regression-release.md) | Pin the pre-regression gitsign release | Accepted |
 | [0025](0025-recover-historical-tags-with-verified-handoff.md) | Recover historical tags with a verified object handoff | Accepted |
+| [0026](0026-separate-historical-source-from-release-tooling.md) | Separate historical source from release tooling | Accepted |
 
 ```{toctree}
 :hidden:
