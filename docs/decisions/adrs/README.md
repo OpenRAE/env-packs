@@ -34,6 +34,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0026](0026-separate-historical-source-from-release-tooling.md) | Separate historical source from release tooling | Accepted |
 | [0027](0027-publish-only-the-active-pypi-distribution.md) | Publish only the active PyPI distribution | Accepted |
 | [0028](0028-project-raes-artifact-satisfaction-into-publication.md) | Project RAES artifact satisfaction into pack publication | Accepted |
+| [0029](0029-parallel-pr-feedback-with-a-complete-merge-gate.md) | Parallel PR feedback with a complete merge gate | Accepted |
 
 ```{toctree}
 :hidden:

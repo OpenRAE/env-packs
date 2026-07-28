@@ -16,8 +16,28 @@ on:
 # by Scorecard's Token-Permissions check.
 permissions: read-all
 
+# Cancel a superseded run on the same ref so a fresh push does not queue behind
+# the commit it replaces (mirrors codeql.yml, fuzz.yml, scorecard.yml). This
+# shortens time-to-feedback under runner contention; the new head's run carries
+# the complete gate, so nothing verified is lost (#163).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Topology (issue #163, ADR 0029): the required protected-branch context is the
+# `verify` job, kept stable so branch protection needs no change. It no longer
+# does the work itself -- it is a fail-closed aggregate of the mandatory jobs
+# (`compile`, `tests`, `audit`, `content`) that now run concurrently. `sonar`
+# consumes the `tests` job's same-run coverage artifact instead of re-running the
+# suite, and depends only on that producer. Repo-wide security invariants
+# (action SHA pinning, read-only permissions, hash-locked pip shapes, no
+# auto-merge) are enforced across every workflow by tests/test_workflow_permissions.py
+# and tests/test_dependency_pinning.py; the topology here is guarded by
+# tests/test_ci_topology.py.
 jobs:
-  verify:
+  # Earliest possible feedback: byte-compile the tree with no dependency install
+  # at all, so a syntax error fails in seconds rather than after a full setup.
+  compile:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -28,17 +48,86 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Compile sources and tests
+        run: python -m compileall src tests
+
+  # The unit-test authority and the single coverage producer. It runs the suite
+  # under coverage once and publishes coverage.xml for the `sonar` job, so the
+  # suite is never executed twice (ADR 0029).
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          # Cache pip downloads keyed on the exact hash-locked files this job
+          # installs. Restores still pass through --require-hashes verification,
+          # so the cache cannot introduce an unpinned or tampered artifact (#163).
+          cache: pip
+          cache-dependency-path: |
+            requirements/runtime.txt
+            requirements/coverage.txt
+            requirements/build.txt
+
+      - name: Install package with coverage tooling
+        run: |
+          # Hash-locked runtime + coverage + build backend, then the package
+          # (#142). `coverage` was previously unversioned entirely, and
+          # --no-build-isolation keeps the editable install's PEP 517 build from
+          # fetching hatchling unpinned.
+          python -m pip install --require-hashes \
+            -r requirements/runtime.txt -r requirements/coverage.txt \
+            -r requirements/build.txt
+          python -m pip install --no-deps --no-build-isolation -e .
+
+      - name: Run unit tests with coverage
+        run: |
+          # `coverage run` propagates the unittest exit code, so a failing test
+          # fails this job just as a bare `unittest discover` would; coverage xml
+          # then renders the report .coveragerc scopes to src/raes_env_packs.
+          coverage run -m unittest discover -s tests
+          coverage xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          # A missing report is a defect, not an empty upload: fail loudly so the
+          # sonar job never scans stale or absent coverage.
+          if-no-files-found: error
+          retention-days: 1
+
+  # Dependency vulnerability audit. Independent of the tests so a failing test no
+  # longer waits behind the network-backed advisory lookup, and vice versa. The
+  # audited population (runtime + build + audit tool) is exactly what it was
+  # inside the old serial `verify` job (ADR 0029).
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements/runtime.txt
+            requirements/build.txt
+            requirements/pip-audit.txt
+
       - name: Install package
         run: |
           # Hash-locked dependency closure and build backend first, then the
           # package itself, so nothing unpinned can enter the environment (#142).
-          # A version pin alone still trusts whatever artifact the index serves.
-          #
-          # --no-build-isolation is load-bearing, not noise: an editable install
-          # is still a PEP 517 build, and the default isolated build downloads
-          # pyproject's build-system requirement (hatchling) unpinned into a
-          # throwaway env. --no-deps does not cover that. The backend comes from
-          # the hash-locked requirements/build.txt instead.
+          # --no-build-isolation keeps the editable install's PEP 517 build from
+          # fetching hatchling unpinned.
           python -m pip install --require-hashes \
             -r requirements/runtime.txt -r requirements/build.txt
           python -m pip install --no-deps --no-build-isolation -e .
@@ -57,8 +146,27 @@ jobs:
           echo "pip-audit failed after 3 attempts"
           exit 1
 
-      - name: Unit tests
-        run: python -m unittest discover -s tests
+  # Environment-pack content and release gates. Independent of tests and audit.
+  content:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements/runtime.txt
+            requirements/build.txt
+
+      - name: Install package
+        run: |
+          python -m pip install --require-hashes \
+            -r requirements/runtime.txt -r requirements/build.txt
+          python -m pip install --no-deps --no-build-isolation -e .
 
       - name: Environment-pack-content gate
         run: raes-pack-validate --repo .
@@ -68,7 +176,10 @@ jobs:
 
   sonar:
     runs-on: ubuntu-latest
-    needs: [verify]
+    # Depend only on the coverage producer, not on the audit or pack gates: the
+    # scanner's single input is the same-run coverage.xml, so it starts as soon
+    # as that artifact exists (ADR 0029).
+    needs: [tests]
     # SonarCloud needs SONAR_TOKEN, which GitHub withholds from PRs that don't
     # carry repository secrets: forks and Dependabot PRs (Dependabot runs read a
     # separate secret store that this token isn't in). Skip both — the scan still
@@ -85,25 +196,41 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - name: Download coverage report
+        # The exact, same-run artifact the tests job produced — never a cross-run
+        # or wildcard lookup. It lands as ./coverage.xml, which
+        # sonar-project.properties points the scanner at.
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          python-version: "3.12"
-
-      - name: Generate coverage report
-        run: |
-          # Hash-locked runtime + coverage + build backend, then the package
-          # (#142). `coverage` was previously unversioned entirely, and
-          # --no-build-isolation keeps the editable install's PEP 517 build from
-          # fetching hatchling unpinned.
-          python -m pip install --require-hashes \
-            -r requirements/runtime.txt -r requirements/coverage.txt \
-            -r requirements/build.txt
-          python -m pip install --no-deps --no-build-isolation -e .
-          coverage run -m unittest discover -s tests
-          coverage xml
+          name: coverage-xml
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # The required branch-protection status context (unchanged name). It is a
+  # fail-closed aggregate: it runs even when a dependency fails (`if: always()`)
+  # and is green only when every mandatory job succeeded, so a failed, cancelled,
+  # or skipped mandatory job blocks the merge. Adding a mandatory job means
+  # adding it to `needs` and to the check below (ADR 0029).
+  verify:
+    runs-on: ubuntu-latest
+    needs: [compile, tests, audit, content]
+    if: always()
+    steps:
+      - name: Require every mandatory verification job to pass
+        env:
+          COMPILE: ${{ needs.compile.result }}
+          TESTS: ${{ needs.tests.result }}
+          AUDIT: ${{ needs.audit.result }}
+          CONTENT: ${{ needs.content.result }}
+        run: |
+          echo "compile=$COMPILE tests=$TESTS audit=$AUDIT content=$CONTENT"
+          for result in "$COMPILE" "$TESTS" "$AUDIT" "$CONTENT"; do
+            if [ "$result" != "success" ]; then
+              echo "::error::A mandatory verification job did not succeed; blocking merge."
+              exit 1
+            fi
+          done
+          echo "All mandatory verification jobs passed."

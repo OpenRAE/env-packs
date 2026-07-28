@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
 
 # Least privilege (#142): read-only workflow token; the push + PR scopes live on
-# the job that performs them. A job-level block REPLRAES the top-level one rather
+# the job that performs them. A job-level block REPLACES the top-level one rather
 # than merging with it, so the job restates everything it needs.
 permissions: read-all
 
