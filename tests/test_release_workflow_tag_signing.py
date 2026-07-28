@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import pathlib
-import re
 import unittest
 
 import yaml
@@ -24,8 +23,6 @@ _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _WORKFLOW = _ROOT / ".github" / "workflows" / "release-please.yml"
 _CONFIG = _ROOT / "release-please-config.json"
 
-_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-_SETUP_GITSIGN = "chainguard-dev/actions/setup-gitsign@"
 _ATTEST_ACTION = "actions/attest-build-provenance@"
 _PYPI_ACTION = "pypa/gh-action-pypi-publish@"
 _CHECKOUT_ACTION = "actions/checkout@"
@@ -42,6 +39,10 @@ _CERT_IDENTITY = (
 )
 _OIDC_ISSUER = "https://token.actions.githubusercontent.com"
 _GITSIGN_FLOOR = "0.15.0"
+_GITSIGN_PIN = "0.15.1"
+_GITSIGN_SHA256 = (
+    "8712be2e5fe89c9728c50beed20f1d37340b9f2dc3306cfb8830ef975549e170"
+)
 
 
 def _load_workflow() -> dict:
@@ -216,14 +217,21 @@ class TagSigningContractTests(unittest.TestCase):
         self.publish = _job(self.data, "publish")
         self.text = _step_text(self.publish)
 
-    def test_setup_gitsign_is_sha_pinned(self) -> None:
-        for step in self.publish["steps"]:
-            uses = str(step.get("uses", ""))
-            if uses.startswith(_SETUP_GITSIGN):
-                ref = uses.split("@", 1)[1].split()[0]
-                self.assertRegex(ref, _SHA_RE, f"setup-gitsign must be SHA-pinned: {uses!r}")
-                return
-        self.fail("publish job must install gitsign via setup-gitsign")
+    def test_gitsign_binary_is_version_and_digest_pinned(self) -> None:
+        env = self.data.get("env", {})
+        self.assertEqual(env.get("GITSIGN_VERSION_PIN"), _GITSIGN_PIN)
+        self.assertEqual(env.get("GITSIGN_SHA256"), _GITSIGN_SHA256)
+        install = _step_run(self.publish, "gitsign_${GITSIGN_VERSION_PIN}_linux_amd64")
+        self.assertIn("curl --fail", install)
+        self.assertIn("sha256sum --check --strict", install)
+        self.assertIn("GITSIGN_SHA256", install)
+        self.assertIn("GITSIGN_BIN", install)
+        self.assertIn("GITHUB_ENV", install)
+        self.assertNotIn(
+            "setup-gitsign@",
+            self.text,
+            "the regressed setup-gitsign version must not overwrite the verified pin",
+        )
 
     def test_gitsign_version_floor_guard_present(self) -> None:
         # Defence in depth: fail closed if gitsign is below the CVE-2026-44310
@@ -232,14 +240,18 @@ class TagSigningContractTests(unittest.TestCase):
                          _GITSIGN_FLOOR)
         self.assertIn("GITSIGN_VERSION_FLOOR", self.text,
                       "the version-floor guard must reference the canonical floor")
-        self.assertIn("gitsign version", self.text,
+        self.assertIn('"${GITSIGN_BIN}" version', self.text,
                       "the guard must read the installed gitsign version")
         # Enforcing predicate: the floor check must run BEFORE the tag is signed,
         # or a below-floor (CVE-vulnerable) gitsign could sign the tag first.
+        install = _index(self.publish, "gitsign_${GITSIGN_VERSION_PIN}_linux_amd64")
         floor = _index(self.publish, "GITSIGN_VERSION_FLOOR")
         sign = _index(self.publish, "git tag -s")
+        self.assertGreaterEqual(install, 0)
         self.assertGreaterEqual(floor, 0)
         self.assertGreaterEqual(sign, 0)
+        self.assertLess(install, floor,
+                        "the digest-verified gitsign install must precede its version guard")
         self.assertLess(floor, sign,
                         "the version-floor guard must precede tag signing")
 
@@ -259,7 +271,7 @@ class TagSigningContractTests(unittest.TestCase):
         self.assertEqual(checkout["with"]["ref"], "${{ needs.detect-release.outputs.target }}")
 
     def test_verify_tag_is_identity_bound(self) -> None:
-        self.assertIn("gitsign verify-tag", self.text,
+        self.assertIn('"${GITSIGN_BIN}" verify-tag', self.text,
                       "workflow must verify the tag with gitsign verify-tag")
         self.assertIn("--certificate-identity", self.text)
         self.assertIn("--certificate-oidc-issuer", self.text)
@@ -271,7 +283,7 @@ class TagSigningContractTests(unittest.TestCase):
         self.assertNotIn("--certificate-oidc-issuer-regexp", self.text)
 
     def test_transparency_log_verification_has_bounded_retry(self) -> None:
-        run = _step_run(self.publish, "gitsign verify-tag")
+        run = _step_run(self.publish, '"${GITSIGN_BIN}" verify-tag')
         self.assertIn("for attempt in 1 2 3 4 5", run)
         self.assertIn("sleep", run)
         self.assertIn("return 1", run)
@@ -339,7 +351,7 @@ class TagSigningContractTests(unittest.TestCase):
 
     def test_sign_and_verify_precede_publication(self) -> None:
         sign = _index(self.publish, "git tag -s")
-        verify = _index(self.publish, "gitsign verify-tag")
+        verify = _index(self.publish, '"${GITSIGN_BIN}" verify-tag')
         build = _index(self.publish, "-m build")
         attest = _index(self.publish, _ATTEST_ACTION)
         release_create = _index(self.publish, "gh release create")
