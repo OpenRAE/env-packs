@@ -232,6 +232,7 @@ jobs:
       # deleted or force-updated. Auth for the push flows through the gh
       # credential helper (GH_TOKEN in env), never a remote URL or process arg.
       - name: Create, verify, and push the signed tag
+        id: signed-tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -272,9 +273,35 @@ jobs:
           else
             git tag -s "${TAG}" "${TARGET_SHA}" -m "Release ${TAG}"
             verify_tag
+            printf 'verified=true\n' >> "${GITHUB_OUTPUT}"
             gh auth setup-git
             git push origin "refs/tags/${TAG}"
           fi
+
+      # A historical release target can contain workflow files that differ from
+      # main. GitHub refuses to let GITHUB_TOKEN push that tag even after the
+      # signature verifies. Preserve the exact verified annotated-tag object for
+      # one day so an operator can re-verify and push it with workflow-scoped
+      # credentials, without storing a broad PAT in the repository (ADR 0025).
+      - name: Export verified tag after a rejected push
+        if: ${{ failure() && steps.signed-tag.outcome == 'failure' && steps.signed-tag.outputs.verified == 'true' }}
+        run: |
+          set -euo pipefail
+          artifact_dir="${RUNNER_TEMP}/signed-release-tag"
+          mkdir -p "${artifact_dir}"
+          git cat-file -e "${TAG}^{tag}"
+          git cat-file tag "${TAG}" > "${artifact_dir}/${TAG}.tag"
+          git rev-parse "${TAG}^{tag}" > "${artifact_dir}/${TAG}.object-sha"
+          git rev-list -n 1 "${TAG}" > "${artifact_dir}/${TAG}.target-sha"
+
+      - name: Upload verified tag for manual recovery
+        if: ${{ failure() && steps.signed-tag.outcome == 'failure' && steps.signed-tag.outputs.verified == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verified-signed-tag-${{ needs.detect-release.outputs.tag }}
+          path: ${{ runner.temp }}/signed-release-tag
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Build sdist + wheel
         run: |
