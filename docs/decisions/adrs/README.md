@@ -17,14 +17,16 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0009](0009-scenario-packs-subordinate-to-aces.md) | Scenario packs are strictly subordinate to ACES (zero extensions) | Accepted |
 | [0010](0010-consume-aces-reusable-asset-trust-policy.md) | Consume ACES reusable-asset trust policy for pack provenance | Accepted |
 | [0011](0011-require-pinned-aces-sdl-validation.md) | Require pinned ACES SDL validation for scenario packs | Accepted |
-| [0012](0012-pack-content-identity-and-trust-boundary.md) | Pack content identity consumes ACES associated-artifact manifests | Accepted |
+| [0012](0012-pack-content-identity-and-trust-boundary.md) | Pack content identity consumes RAES associated-artifact manifests | Accepted |
 | [0013](0013-separate-consumer-static-validation-from-author-ci.md) | Separate consumer static validation from author CI | Accepted |
 | [0014](0014-consume-aces-concept-authority.md) | Keep governed concept references in ACES concept-authority | Accepted |
 | [0015](0015-attest-python-distribution-build-provenance.md) | Attest Python distribution build provenance | Accepted |
-| [0016](0016-automate-dependency-updates.md) | Automate dependency updates and ship ACES bumps as releases | Accepted |
+| [0016](0016-automate-dependency-updates.md) | Automate dependency updates and ship RAES bumps as releases | Auto-merge superseded by 0020 |
 | [0017](0017-sign-release-tags-with-keyless-sigstore.md) | Sign release tags with keyless Sigstore | Accepted |
 | [0018](0018-openssf-scorecard-posture.md) | OpenSSF Scorecard posture | Accepted |
 | [0019](0019-preserve-history-in-dev-main-promotions.md) | Preserve history in dev-to-main promotions | Accepted |
+| [0020](0020-no-auto-merge.md) | No auto-merge; a human merges every pull request | Accepted |
+| [0021](0021-adopt-raes-environment-pack-identity.md) | Adopt the RAES environment-pack identity as a hard cut | Accepted |
 
 ```{toctree}
 :hidden:

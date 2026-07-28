@@ -1,12 +1,12 @@
-"""ACES schema-convention conformance guard (issue #86).
+"""RAES schema-convention conformance guard (issue #86).
 
-Every schema this repository ships is subordinate to ACES (ADR 0009/0010) and
-must follow ACES's governed schema-authoring conventions, not a placeholder:
+Every schema this repository ships is subordinate to RAES (ADR 0009/0010) and
+must follow RAES's governed schema-authoring conventions, not a placeholder:
 
-  * ``$schema`` is JSON Schema draft 2020-12 (the ACES corpus draft).
+  * ``$schema`` is JSON Schema draft 2020-12 (the RAES corpus draft).
   * ``$id`` lives under the governed ``https://aces.dev/schemas/`` namespace as
     ``<name>-v<n>.json`` -- never an ``example.com`` placeholder.
-  * ``schema_version`` is the ACES string form
+  * ``schema_version`` is the RAES string form
     ``{type: string, const: "<name>/v<n>"}``, with ``<name>``/``<n>`` derived
     from the ``$id``.
 
@@ -26,7 +26,7 @@ import yaml
 _SCHEMAS_DIR = (
     Path(__file__).parents[1]
     / "src"
-    / "aces_scenario_packs"
+    / "raes_env_packs"
     / "resources"
     / "schemas"
 )

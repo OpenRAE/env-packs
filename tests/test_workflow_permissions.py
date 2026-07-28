@@ -43,6 +43,17 @@ _READ_ONLY_SCALARS = frozenset({"read-all"})
 # are not third-party supply chain, so they are exempt from SHA pinning.
 _LOCAL_PREFIXES = ("./", ".github/")
 
+# Every route a workflow has to auto-merge, lowercased (ADR 0020): the gh CLI
+# flag, the GraphQL mutation the API exposes, and the community actions that
+# wrap one of the two.
+_AUTO_MERGE_MARKERS = (
+    "--auto",
+    "enablepullrequestautomerge",
+    "enable-pull-request-auto-merge",
+    "automerge",
+    "auto-merge",
+)
+
 
 def _workflows() -> list[pathlib.Path]:
     paths = sorted(
@@ -64,6 +75,23 @@ def _is_read_only(perms: object) -> bool:
     if isinstance(perms, dict):
         return all(str(level) in ("read", "none") for level in perms.values())
     return False
+
+
+def _scalars(node: object) -> list[str]:
+    """Every string in a parsed workflow, comments excluded.
+
+    Scanning the raw file would flag prose: ``sync-main-to-dev.yml`` has a
+    comment explaining why it does *not* auto-merge. Going through the parser
+    drops comments, so the auto-merge guard reads what a workflow does rather
+    than what it says about itself.
+    """
+    if isinstance(node, str):
+        return [node]
+    if isinstance(node, dict):
+        return [s for key, value in node.items() for s in (*_scalars(key), *_scalars(value))]
+    if isinstance(node, list):
+        return [s for item in node for s in _scalars(item)]
+    return []
 
 
 def _steps(job: object) -> list[dict]:
@@ -193,6 +221,74 @@ class ActionPinningTests(unittest.TestCase):
                             "commit SHA, not a floating tag; Dependabot moves the "
                             "pin (ADR 0004)",
                         )
+
+
+class NoAutoMergeTests(unittest.TestCase):
+    """No workflow merges a pull request without a human (ADR 0020)."""
+
+    def test_no_workflow_enables_auto_merge(self) -> None:
+        # ADR 0020 removed the Dependabot auto-merge rail. The decision only
+        # holds if a future workflow cannot quietly restore it, so match the
+        # ways a workflow can reach auto-merge: the gh CLI flag, the GraphQL
+        # mutation, and the community actions that wrap them.
+        for path in _workflows():
+            body = "\n".join(_scalars(_load(path))).lower()
+            for marker in _AUTO_MERGE_MARKERS:
+                with self.subTest(workflow=path.name, marker=marker):
+                    self.assertNotIn(
+                        marker,
+                        body,
+                        f"{path.name} reintroduces auto-merge via {marker!r}. A "
+                        "human merges every pull request; re-adopting auto-merge "
+                        "needs an ADR superseding 0020, not a workflow edit.",
+                    )
+
+    def test_no_workflow_merges_a_pull_request(self) -> None:
+        # `gh pr merge` without `--auto` is not auto-merge, but it is still a
+        # workflow merging a PR unattended, which ADR 0020 equally forbids.
+        for path in _workflows():
+            body = "\n".join(_scalars(_load(path))).lower()
+            with self.subTest(workflow=path.name):
+                self.assertNotIn(
+                    "gh pr merge",
+                    body,
+                    f"{path.name} merges a pull request from CI; ADR 0020 puts "
+                    "every merge in a person's hands",
+                )
+
+    def test_the_guard_would_catch_the_removed_workflow(self) -> None:
+        # Guards the guard. Both halves matter: the markers must still match a
+        # real auto-merge step, and _scalars must still reach a `run:` body --
+        # if either broke, the two tests above would pass vacuously.
+        removed = yaml.safe_load(
+            "jobs:\n"
+            "  auto-merge:\n"
+            "    steps:\n"
+            "      - name: Enable auto-merge for eligible bumps\n"
+            '        run: gh pr merge --auto --squash "$PR_URL"\n'
+        )
+        body = "\n".join(_scalars(removed)).lower()
+        self.assertTrue(
+            any(marker in body for marker in _AUTO_MERGE_MARKERS),
+            "the auto-merge markers no longer match a real auto-merge step",
+        )
+        self.assertIn("gh pr merge", body)
+
+    def test_the_guard_ignores_prose_about_auto_merge(self) -> None:
+        # A comment explaining why a workflow does NOT auto-merge must not trip
+        # the guard; sync-main-to-dev.yml carries exactly that comment.
+        commented = yaml.safe_load(
+            "# why it opens a pr instead of auto-merging: a bot-opened pr does\n"
+            "# not trigger dev's required checks, so auto-merge would stall.\n"
+            "jobs:\n"
+            "  backmerge:\n"
+            "    steps:\n"
+            "      - run: gh pr create --base dev\n"
+        )
+        body = "\n".join(_scalars(commented)).lower()
+        for marker in _AUTO_MERGE_MARKERS:
+            with self.subTest(marker=marker):
+                self.assertNotIn(marker, body)
 
 
 if __name__ == "__main__":

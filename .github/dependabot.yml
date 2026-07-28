@@ -1,8 +1,8 @@
 version: 2
 updates:
   # Keep SHA-pinned GitHub Actions patched (ADR 0006 supply-chain). CI-only, so
-  # `chore` (no release). Batched into a single PR and auto-merged on a green
-  # `verify` gate (ADR 0016).
+  # `chore` (no release). Batched into a single PR that a human merges once the
+  # `verify` gate is green — nothing auto-merges (ADR 0020).
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
@@ -29,10 +29,10 @@ updates:
   # `--require-hashes`. tests/test_dependency_pinning.py enforces that agreement.
   #
   # requirements/runtime.txt is the resolved closure of pyproject's own
-  # dependencies, so an aces-sdl bump can appear here. The auto-merge workflow
-  # excludes any PR naming aces-sdl, keeping ADR 0011's human review intact, and
-  # a lock that drifts from pyproject fails the contract test rather than
-  # silently installing a different version than the package declares.
+  # dependencies, so an raes bump can appear here. Every bump PR is merged by
+  # a person (ADR 0020), so ADR 0011's human review of the pin is intact by
+  # default, and a lock that drifts from pyproject fails the contract test rather
+  # than silently installing a different version than the package declares.
   - package-ecosystem: pip
     directory: "/requirements"
     schedule:
@@ -49,12 +49,12 @@ updates:
         patterns:
           - "*"
 
-  # Runtime Python dependencies (PyYAML, aces-sdl). They ship inside the
+  # Runtime Python dependencies (PyYAML, raes). They ship inside the
   # installed package, so a bump is `fix(deps)` — it cuts a patch release
-  # (ADR 0016) so consumers actually receive the new floor. aces-sdl is left as
-  # its own (ungrouped) PR and is NOT auto-merged: advancing the pinned ACES
-  # dependency stays a human-reviewed decision (ADR 0011). Its CI compatibility
-  # gate still runs automatically on the Dependabot PR.
+  # (ADR 0016) so consumers actually receive the new floor. raes is left as
+  # its own (ungrouped) PR so advancing the pinned RAES dependency is reviewed in
+  # isolation (ADR 0011) rather than buried in a batch. Its CI compatibility gate
+  # still runs automatically on the Dependabot PR.
   - package-ecosystem: pip
     directory: "/"
     schedule:

@@ -1,10 +1,10 @@
-"""Guard: pack vocabularies defer governed concepts to ACES concept-authority.
+"""Guard: pack vocabularies defer governed concepts to RAES concept-authority.
 
-Issue #87 (ADR 0009 / ADR 0014): ACES core governs the concept vocabularies —
+Issue #87 and ADR 0021: RAES core governs the concept vocabularies —
 ATT&CK and ATLAS offensive-behavior tactics, UCO concept families, and the
 controlled vocabularies — under ``contracts/concept-authority/``. Those
-classifications have one semantic home: ACES SDL behavior specifications,
-validated by the pinned ``aces_sdl.parse_sdl``. This repository consumes them and
+classifications have one semantic home: RAES SDL behavior specifications,
+validated by the pinned ``raes.parse_sdl``. This repository consumes them and
 never restates them as pack vocabulary.
 
 These tests lock the acceptance invariants of issue #87 so a regression cannot
@@ -13,12 +13,12 @@ silently reintroduce a governed vocabulary as a pack-side field:
 1. The canonical challenge contract carries no ``challenges[].category``; the
    shared validator rejects it at that exact structured path.
 2. The pack-domain provenance ledger carries no ``sources[].kind``.
-3. No packaged schema restates an ACES-governed ATT&CK/ATLAS tactic vocabulary
+3. No packaged schema restates an RAES-governed ATT&CK/ATLAS tactic vocabulary
    (tactic id or tactic shortname) as its own ``enum`` / ``const``.
-4. The provenance schema, layout contract, docs, and ADR 0014 reference the ACES
+4. The provenance schema, layout contract, docs, and ADR 0021 reference the RAES
    concept-authority as the authority for the governed concepts.
 
-Mirrors ``test_provenance_aces_alignment.py`` (issue #82): naming an ACES concept
+Mirrors ``test_provenance_raes_alignment.py`` (issue #82): naming an RAES concept
 in prose to defer to it — or listing one to *forbid* restating it — is
 legitimate; declaring it as pack vocabulary is not.
 """
@@ -34,25 +34,31 @@ from pathlib import Path
 
 import yaml
 
-from aces_scenario_packs import validate_pack
+from raes_env_packs import validate_pack
 
 _HERE = Path(__file__).resolve().parent
 _REPO = _HERE.parent
-_PKG = _REPO / "src" / "aces_scenario_packs"
+_PKG = _REPO / "src" / "raes_env_packs"
 _SCHEMAS_DIR = _PKG / "resources" / "schemas"
 _TEMPLATE_DIR = _PKG / "resources" / "template"
 _PROVENANCE_SCHEMA = _SCHEMAS_DIR / "provenance.schema.yaml"
 _CHALLENGES_TEMPLATE = _TEMPLATE_DIR / "challenges" / "challenges.yaml"
 _CONTRACT = _PKG / "resources" / "contract" / "pack-layout.md"
-_DOCS = _REPO / "docs" / "scenario-packs.md"
-_ADR = _REPO / "docs" / "decisions" / "adrs" / "0014-consume-aces-concept-authority.md"
+_DOCS = _REPO / "docs" / "environment-packs.md"
+_ADR = (
+    _REPO
+    / "docs"
+    / "decisions"
+    / "adrs"
+    / "0021-adopt-raes-environment-pack-identity.md"
+)
 
-# Substring establishing a document references the governed ACES corpus.
+# Substring establishing a document references the governed RAES corpus.
 CONCEPT_AUTHORITY_MARKER = "concept-authority"
 
-# ACES concept-authority vocabulary ids for the ATT&CK / ATLAS offensive-behaviour
-# tactic classifications. The governed terms are read LIVE from the pinned ACES
-# distribution (the ADR 0014 seam) rather than snapshotted here, so a term added
+# RAES concept-authority vocabulary ids for the ATT&CK / ATLAS offensive-behaviour
+# tactic classifications. The governed terms are read LIVE from the pinned RAES
+# distribution (the ADR 0021 seam) rather than snapshotted here, so a term added
 # by a future pinned release is enforced automatically and no local catalog can
 # drift out of step with the authority.
 _TACTIC_VOCABULARY_IDS = (
@@ -64,14 +70,14 @@ _TACTIC_ID_RE = re.compile(r"^(?:AML\.)?TA\d{4}$")
 
 
 def _governed_tactic_terms() -> frozenset[str]:
-    """Governed ATT&CK/ATLAS tactic shortnames from the pinned ACES corpus.
+    """Governed ATT&CK/ATLAS tactic shortnames from the pinned RAES corpus.
 
-    Read through the public ``aces_contracts.controlled_vocabularies`` API of the
-    exactly pinned ``aces-sdl`` distribution, which ships the concept-authority
-    corpus — the ADR 0014 extensibility seam. Deriving the set instead of
+    Read through the public ``raes_contracts.controlled_vocabularies`` API of the
+    exactly pinned ``raes`` distribution, which ships the concept-authority
+    corpus — the ADR 0021 extensibility seam. Deriving the set instead of
     snapshotting it means the guard tracks the authority automatically.
     """
-    from aces_contracts.controlled_vocabularies import (
+    from raes_contracts.controlled_vocabularies import (
         load_controlled_vocabulary_catalog,
     )
 
@@ -133,7 +139,7 @@ class ProvenanceSourceKindRemovedTests(unittest.TestCase):
         self.assertNotIn(
             "kind", props,
             "provenance sources[] must not carry a local `kind` classification; "
-            "governed concept vocabulary lives in ACES concept-authority (ADR 0014)")
+            "governed concept vocabulary lives in RAES concept-authority (ADR 0021)")
 
     def test_source_kind_is_not_required(self) -> None:
         required = self._source_item_schema().get("required") or []
@@ -152,7 +158,7 @@ class ConceptAuthorityRestatementTests(unittest.TestCase):
         """Acceptance: governed ATT&CK/ATLAS tactics are not pack vocabulary."""
         governed = _governed_tactic_terms()
         self.assertTrue(
-            governed, "expected governed tactic terms from the pinned ACES corpus")
+            governed, "expected governed tactic terms from the pinned RAES corpus")
         for path in _packaged_schemas():
             schema = yaml.safe_load(_read(path))
             values = set(_iter_schema_enum_const(schema))
@@ -160,12 +166,12 @@ class ConceptAuthorityRestatementTests(unittest.TestCase):
             restated = values & governed
             self.assertEqual(
                 tactic_ids, set(),
-                f"{path.name} restates ACES tactic id(s) as pack vocabulary: "
-                f"{sorted(tactic_ids)}; defer to ACES SDL / concept-authority")
+                f"{path.name} restates RAES tactic id(s) as pack vocabulary: "
+                f"{sorted(tactic_ids)}; defer to RAES SDL / concept-authority")
             self.assertEqual(
                 restated, set(),
-                f"{path.name} restates ACES-governed tactic term(s) as pack "
-                f"vocabulary: {sorted(restated)}; defer to ACES SDL")
+                f"{path.name} restates RAES-governed tactic term(s) as pack "
+                f"vocabulary: {sorted(restated)}; defer to RAES SDL")
 
     def test_authority_is_referenced_in_schema_contract_and_docs(self) -> None:
         """Acceptance: the governed authority is named where it applies."""
@@ -173,7 +179,7 @@ class ConceptAuthorityRestatementTests(unittest.TestCase):
             self.assertTrue(path.is_file(), f"missing file: {path}")
             self.assertIn(
                 CONCEPT_AUTHORITY_MARKER, _read(path).lower(),
-                f"{path.name} must reference the ACES concept-authority")
+                f"{path.name} must reference the RAES concept-authority")
 
 
 class ChallengeCategoryTemplateTests(unittest.TestCase):

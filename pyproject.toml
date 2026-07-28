@@ -3,46 +3,46 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aces-scenario-packs"
+name = "raes-env-packs"
 # Static version, bumped by release-please on release (ADR 0008).
 version = "2.0.2"
-description = "ACES scenario-pack definition, schemas, template, and authoring/validation tooling."
+description = "RAES environment-pack definition, schemas, template, and authoring/validation tooling."
 readme = "README.md"
-# Floor follows the pinned aces-sdl runtime dependency, which requires >=3.11
-# (ADR 0011). SDL validation flows entirely through ACES, so this package tracks
-# the ACES Python floor rather than restating one.
+# Floor follows the pinned raes runtime dependency, which requires >=3.11
+# (ADR 0011). SDL validation flows entirely through RAES, so this package tracks
+# the RAES Python floor rather than restating one.
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Brad Edwards" }]
-keywords = ["aces", "scenario-pack", "cyber-range", "security"]
+keywords = ["raes", "environment-pack", "cyber-range", "security"]
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Topic :: Security",
 ]
-# aces-sdl is a hard, exactly-pinned dependency (ADR 0011): SDL is validated
-# *through ACES* (aces_sdl.parse_sdl_file), never a local restatement, and the
-# gate is fail-closed, so ACES cannot be optional. The exact pin is deliberate
-# while ACES SDL contracts are `stability: draft`; advancing it requires
+# raes is a hard, exactly-pinned dependency (ADR 0011): SDL is validated
+# *through RAES* (raes.parse_sdl_file), never a local restatement, and the
+# gate is fail-closed, so RAES cannot be optional. The exact pin is deliberate
+# while RAES SDL contracts are `stability: draft`; advancing it requires
 # compatibility tests against this package's validator and template.
-dependencies = ["PyYAML>=6", "aces-sdl==0.23.1"]
+dependencies = ["PyYAML>=6", "raes==1.1.0"]
 
 [project.urls]
 Homepage = "https://github.com/RAESystem/env-packs"
 Repository = "https://github.com/RAESystem/env-packs"
 
 [project.scripts]
-aces-pack-validate = "aces_scenario_packs.content_ci:main"
-aces-pack-release = "aces_scenario_packs.release:main"
-aces-new-pack = "aces_scenario_packs.new_pack:main"
-aces-pack-issue-skeleton = "aces_scenario_packs.issue_skeleton:main"
+raes-pack-validate = "raes_env_packs.content_ci:main"
+raes-pack-release = "raes_env_packs.release:main"
+raes-new-pack = "raes_env_packs.new_pack:main"
+raes-pack-issue-skeleton = "raes_env_packs.issue_skeleton:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/aces_scenario_packs"]
+packages = ["src/raes_env_packs"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/src/aces_scenario_packs",
+    "/src/raes_env_packs",
     "/docs",
     "/tests",
     "/README.md",

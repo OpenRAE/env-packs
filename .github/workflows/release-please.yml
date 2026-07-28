@@ -258,7 +258,7 @@ jobs:
           mkdir -p sbom
           cyclonedx-py environment \
             --output-format JSON \
-            --output-file sbom/aces-scenario-packs.cdx.json
+            --output-file sbom/raes-env-packs.cdx.json
 
       # Release notes come from the Release Please-owned CHANGELOG.md section for
       # this version, passed to gh by file (never interpolated into a command).
@@ -294,4 +294,4 @@ jobs:
       - name: Attach dist + SBOM to the GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${TAG}" dist/* sbom/aces-scenario-packs.cdx.json --clobber
+        run: gh release upload "${TAG}" dist/* sbom/raes-env-packs.cdx.json --clobber

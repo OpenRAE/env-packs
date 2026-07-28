@@ -1,0 +1,21 @@
+# Pack identity + provenance metadata. Descriptive only — not a runtime
+# contract. See ../README.md#pack-metadata-packyaml.
+
+name: <name>                     # pack id; matches the directory name
+title: "Human-readable title"
+version: 0.1.0                   # pack version; bump when content changes
+status: draft                   # draft | built | golden
+description: "One line: what the scenario is and what the player does."
+authors:
+  - Name <email>
+license: "© 2026 Example Org. All rights reserved."
+requirement: null               # optional upstream tracking id, or null
+contents:                       # which optional layers ship; required ones are implicit
+  flag_layer: false             # flags/ + challenges/ + ctfd/
+  reference_triangle: false     # build/ + tests/ + docs/walkthroughs/
+  profile_bundles: false        # profiles/ delivery/audience bundles
+compatibility_manifest: pack.compatibility.yaml
+provenance_ledger: docs/provenance-ledger.yaml   # REQUIRED: source/licensing/safety/publication contract (see ../README.md#provenance-ledger)
+# Optional RAES associated-artifact manifest for consumer-verifiable identity.
+# Create and populate the JSON before uncommenting (ADR 0012).
+# associated_artifact_manifest: associated-artifacts.json

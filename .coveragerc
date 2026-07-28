@@ -1,4 +1,4 @@
-# Coverage configuration for the scenario-pack tooling.
+# Coverage configuration for the environment-pack tooling.
 #
 # Measures the authoring/validation tooling and emits relative file paths so
 # SonarCloud can map coverage.xml onto sonar.sources (see sonar-project.properties
@@ -6,7 +6,7 @@
 # apply.
 [run]
 source =
-    src/aces_scenario_packs
+    src/raes_env_packs
 relative_files = True
 
 [report]
