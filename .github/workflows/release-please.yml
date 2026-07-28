@@ -344,3 +344,19 @@ jobs:
           set -euo pipefail
           gh pr edit "${PR}" --add-label "autorelease: tagged"
           gh pr edit "${PR}" --remove-label "autorelease: pending" 2>/dev/null || true
+
+  resume-release-please:
+    name: Resume release PR maintenance
+    needs: [publish]
+    if: github.event_name == 'workflow_dispatch' && needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Run release-please after recovery
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

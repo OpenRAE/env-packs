@@ -40,10 +40,17 @@ uploaded with replacement semantics. The release PR is relabeled
 then, the pending label deliberately blocks later release PRs and authorizes
 another recovery attempt.
 
+After a successful recovery, the same workflow invokes Release Please again in
+PR-only mode. Clearing the interrupted release therefore immediately resumes
+maintenance of the next release PR without requiring another push to `main` or
+a second manual workflow run.
+
 ## Consequences
 
 - An interrupted release can be resumed without forging labels, changing a
   version, deleting a tag, force-pushing, or weakening signer identity.
+- A successful recovery creates or updates the next eligible Release Please PR
+  as part of the same workflow run.
 - A manually dispatched run cannot publish an arbitrary branch or commit.
 - A permanently invalid signature, mismatched tag target, malformed version,
   non-main PR, or missing Release Please authorization still fails closed.

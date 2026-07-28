@@ -144,6 +144,21 @@ class LeastPrivilegeTests(unittest.TestCase):
             "release-please must not run during explicit recovery",
         )
 
+    def test_successful_recovery_resumes_release_pr_maintenance(self) -> None:
+        job = _job(self.data, "resume-release-please")
+        needs = job.get("needs", [])
+        needs = [needs] if isinstance(needs, str) else needs
+        self.assertIn("publish", needs)
+        condition = str(job.get("if", ""))
+        self.assertIn("github.event_name == 'workflow_dispatch'", condition)
+        self.assertIn("needs.publish.result == 'success'", condition)
+        perms = job.get("permissions", {})
+        self.assertEqual(perms.get("contents"), "write")
+        self.assertEqual(perms.get("pull-requests"), "write")
+        self.assertNotIn("id-token", perms)
+        self.assertNotIn("attestations", perms)
+        self.assertIn("googleapis/release-please-action@", _step_text(job))
+
     def test_detect_release_job_is_read_only(self) -> None:
         job = _job(self.data, "detect-release")
         perms = job.get("permissions", {})
