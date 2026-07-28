@@ -26,6 +26,9 @@ _CONFIG = _ROOT / "release-please-config.json"
 _ATTEST_ACTION = "actions/attest-build-provenance@"
 _PYPI_ACTION = "pypa/gh-action-pypi-publish@"
 _CHECKOUT_ACTION = "actions/checkout@"
+_UPLOAD_ARTIFACT_ACTION = (
+    "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+)
 
 # Must track the repository's CURRENT path. The OIDC workflow ref is issued for
 # wherever the repo lives now, and GitHub's transferred-repo redirect does not
@@ -342,6 +345,54 @@ class TagSigningContractTests(unittest.TestCase):
         verify_after_sign = run.index("verify_tag", sign)
         self.assertLess(sign, verify_after_sign, "must verify after signing")
         self.assertLess(verify_after_sign, push, "must verify before pushing the tag")
+
+    def test_verified_tag_is_exported_when_only_its_push_fails(self) -> None:
+        steps = self.publish["steps"]
+        tag_step = next(
+            step for step in steps
+            if "git tag -s" in str(step.get("run", ""))
+        )
+        self.assertEqual(tag_step.get("id"), "signed-tag")
+
+        export = next(
+            step for step in steps
+            if "git cat-file tag" in str(step.get("run", ""))
+        )
+        condition = (
+            "${{ failure() && steps.signed-tag.outcome == 'failure' "
+            "&& steps.signed-tag.outputs.verified == 'true' }}"
+        )
+        self.assertEqual(export.get("if"), condition)
+        self.assertIn(
+            'verified=true',
+            str(tag_step.get("run", "")),
+            "the failed step must prove verification completed before export",
+        )
+        export_run = str(export.get("run", ""))
+        self.assertIn('git cat-file -e "${TAG}^{tag}"', export_run)
+        self.assertIn('git cat-file tag "${TAG}"', export_run)
+        self.assertIn('git rev-parse "${TAG}^{tag}"', export_run)
+        self.assertIn('git rev-list -n 1 "${TAG}"', export_run)
+        self.assertIn("${RUNNER_TEMP}/signed-release-tag", export_run)
+
+        upload = next(
+            step for step in steps
+            if str(step.get("uses", "")).startswith("actions/upload-artifact@")
+        )
+        self.assertEqual(upload["uses"], _UPLOAD_ARTIFACT_ACTION)
+        self.assertEqual(upload.get("if"), condition)
+        self.assertEqual(
+            upload.get("with", {}).get("name"),
+            "verified-signed-tag-${{ needs.detect-release.outputs.tag }}",
+        )
+        self.assertEqual(
+            upload.get("with", {}).get("path"),
+            "${{ runner.temp }}/signed-release-tag",
+        )
+        self.assertEqual(upload.get("with", {}).get("retention-days"), 1)
+        self.assertEqual(upload.get("with", {}).get("if-no-files-found"), "error")
+        self.assertLess(steps.index(tag_step), steps.index(export))
+        self.assertLess(steps.index(export), steps.index(upload))
 
     def test_never_deletes_or_force_updates_tags(self) -> None:
         for forbidden in ("git tag -d", "git tag --delete", "git tag -f",
