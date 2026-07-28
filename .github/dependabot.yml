@@ -48,6 +48,31 @@ updates:
       ci-toolchain:
         patterns:
           - "*"
+    ignore:
+      # z3-solver and pydantic-core are not policy choices this repository can
+      # make. Both appear in requirements/runtime.txt only as transitive entries
+      # (`# via raes`, `# via pydantic`) whose versions their parents fix with an
+      # exact `==`. Dependabot's pip updater treats every locked line as an
+      # independently requested pin, so it proposes versions the closure cannot
+      # resolve and the `--require-hashes` installs die on ResolutionImpossible
+      # before a single test runs (#166, #170).
+      #
+      # z3-solver is additionally pinned by a governed contract upstream: the
+      # raes-z3-finite-domain/v1 profile fixes package_version 4.16.0.0 /
+      # engine_version 4.16.0 in SolverConfigurationModel, in the published
+      # scenario-satisfiability-evidence-v1 schema, and in its fixtures, so
+      # formal satisfiability evidence stays reproducible. RAESystem/rae ignores
+      # it for that reason after automated bumps broke it twice (rae#856,
+      # rae#872); re-pinning the profile is a deliberate change with evidence to
+      # regenerate, not Dependabot's call.
+      #
+      # Neither is stranded. Each moves when its parent moves — a raes bump
+      # (ADR 0011, reviewed in isolation) or a pydantic release — and that bump
+      # regenerates this closure with the new transitive version. A published
+      # vulnerability in either is likewise fixed by advancing the parent, which
+      # is the only install that resolves at all.
+      - dependency-name: "z3-solver"
+      - dependency-name: "pydantic-core"
 
   # Runtime Python dependencies (PyYAML, raes). They ship inside the
   # installed package, so a bump is `fix(deps)` — it cuts a patch release
@@ -66,3 +91,11 @@ updates:
     commit-message:
       prefix: fix
       include: scope
+    ignore:
+      # Same parent-pinned transitives as the /requirements entry above, and the
+      # same reasoning — this entry reaches requirements/runtime.txt too, which
+      # is how the unresolvable z3-solver bump in #166 was raised here rather
+      # than there. Both directories have to decline it or the PR just returns
+      # under the other one.
+      - dependency-name: "z3-solver"
+      - dependency-name: "pydantic-core"
