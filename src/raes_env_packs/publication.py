@@ -32,6 +32,7 @@ from raes.artifact_requirements import (
     ArtifactIdentity,
     ArtifactMechanismProfile,
     ArtifactRequirement,
+    ArtifactSatisfactionRoute,
     Source,
 )
 from raes_contracts.addressing import (
@@ -726,7 +727,9 @@ def _capability_applies(
         PublicationViolation(CODE_CAPABILITY_INAPPLICABLE, path)]
 
 
-def _permitted_routes_for(mechanism: object, requirement: ArtifactRequirement) -> list:
+def _permitted_routes_for(
+    mechanism: object, requirement: ArtifactRequirement
+) -> list[ArtifactSatisfactionRoute]:
     """Return the authored routes whose mechanism profile equals ``mechanism``."""
 
     profile = mechanism if isinstance(mechanism, Mapping) else {}

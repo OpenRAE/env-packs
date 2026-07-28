@@ -947,25 +947,9 @@ def _release_views(supply: dict[str, object]) -> list[dict[str, object]]:
     empty; per-view set identity is bound during the build once the view's exact
     bytes are staged.
     """
-    by_view: dict[str, list[object]] = {view: [] for view in sorted(set(BOUNDARY_TIERS.values()))}
-    claims_by_view: dict[str, list[object]] = {view: [] for view in by_view}
-    # An authored row naming an unknown view is a defect in the supply, not a
-    # row to drop: silently filtering it here would let the build succeed while
-    # omitting a publication the author declared. Route it to a real view so the
-    # schema-backed validation that follows can reject it by name.
-    fallback = PARTICIPANT_TIER
-    for row in supply["publications"]:
-        if isinstance(row, dict):
-            view = row.get("view")
-            by_view[view if view in by_view else fallback].append(
-                {k: v for k, v in row.items() if k != "view"}
-                if view in by_view else dict(row))
-    for claim in supply["capability_claims"]:
-        if isinstance(claim, dict):
-            view = claim.get("view")
-            claims_by_view[view if view in claims_by_view else fallback].append(
-                {k: v for k, v in claim.items() if k != "view"}
-                if view in claims_by_view else dict(claim))
+    views = sorted(set(BOUNDARY_TIERS.values()))
+    by_view = _group_by_view(supply["publications"], views)
+    claims_by_view = _group_by_view(supply["capability_claims"], views)
     return [
         {
             "view": view,
@@ -973,8 +957,29 @@ def _release_views(supply: dict[str, object]) -> list[dict[str, object]]:
             "publications": by_view[view],
             "capability_claims": claims_by_view[view],
         }
-        for view in sorted(by_view)
+        for view in views
     ]
+
+
+def _group_by_view(rows: object, views: list[str]) -> dict[str, list[object]]:
+    """Group authored supply rows by their declared publication view.
+
+    A row naming an unknown view is a defect in the supply, not a row to drop:
+    filtering it here would let the build succeed while silently omitting a
+    publication the author declared. Such a row is routed to a real view with
+    its bogus ``view`` key intact, so the schema-backed validation that follows
+    rejects it by name.
+    """
+    grouped: dict[str, list[object]] = {view: [] for view in views}
+    for row in rows or ():
+        if not isinstance(row, dict):
+            continue
+        view = row.get("view")
+        if view in grouped:
+            grouped[view].append({k: v for k, v in row.items() if k != "view"})
+        else:
+            grouped[PARTICIPANT_TIER].append(dict(row))
+    return grouped
 
 
 # --------------------------------------------------------------------------
