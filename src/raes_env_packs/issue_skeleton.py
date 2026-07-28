@@ -70,10 +70,10 @@ COMMON_ANCHORS = """\
   environment-pack convention and milestone structure.
 - The bundled template (copied by `raes-new-pack`): build doctrine - offensive by default, one full scenario per
   pack, no stubs or hand-waved services, and `golden` only after participant-equivalent proof.
-- `docs/public/environment-packs.md`: pack metadata, provenance ledger, compatibility manifest, RAES participant behavior,
-  profile bundles, and release boundaries.
-- `docs/public/golden-readiness.md`: isolated golden infrastructure, automated rehearsal, final manual participant walkthrough,
-  and teardown proof.
+- `docs/public/environment-packs.md`: pack metadata, provenance ledger, compatibility manifest, RAES
+  participant behavior, profile bundles, and release boundaries.
+- `docs/public/golden-readiness.md`: isolated golden infrastructure, automated rehearsal, final manual
+  participant walkthrough, and teardown proof.
 """
 
 
