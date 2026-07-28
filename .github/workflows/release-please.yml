@@ -189,6 +189,32 @@ jobs:
         with:
           python-version: "3.12"
 
+      # The signed release source and the trusted release tooling have separate
+      # identities during historical recovery. Normal targets consume their own
+      # committed locks. The sole pre-lock target is bound to its exact tag and
+      # commit, then consumes the combined hash lock reviewed on the current
+      # workflow commit (ADR 0026). Any other missing-lock target fails closed.
+      - name: Materialize hash-locked release tooling
+        run: |
+          set -euo pipefail
+          legacy_target="45f39a930625c9de4c44017e8966d00b82f65052"
+          mkdir -p requirements
+          if git cat-file -e "${TARGET_SHA}:requirements/build.txt" \
+            && git cat-file -e "${TARGET_SHA}:requirements/runtime.txt" \
+            && git cat-file -e "${TARGET_SHA}:requirements/sbom.txt"; then
+            git show "${TARGET_SHA}:requirements/build.txt" > requirements/build.txt
+            git show "${TARGET_SHA}:requirements/runtime.txt" > requirements/runtime.txt
+            git show "${TARGET_SHA}:requirements/sbom.txt" > requirements/sbom.txt
+          else
+            if [ "${TAG}" != "v2.0.2" ] || [ "${TARGET_SHA}" != "${legacy_target}" ]; then
+              echo "Release target ${TARGET_SHA} has no approved tooling-lock recovery." >&2
+              exit 1
+            fi
+            git show "${GITHUB_SHA}:requirements/recovery-v2.0.2.txt" > requirements/build.txt
+            git show "${GITHUB_SHA}:requirements/recovery-v2.0.2.txt" > requirements/runtime.txt
+            git show "${GITHUB_SHA}:requirements/recovery-v2.0.2.txt" > requirements/sbom.txt
+          fi
+
       # ADR 0024: install the last patched pre-regression gitsign release
       # directly from its upstream release asset and verify the published
       # SHA-256 before it can sign or verify anything.

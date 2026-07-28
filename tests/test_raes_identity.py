@@ -36,6 +36,8 @@ _HISTORICAL_ALLOWLIST = {
     "docs/decisions/adrs/README.md",
     "docs/decisions/adrs/0021-adopt-raes-environment-pack-identity.md",
     "docs/raes-migration.md",
+    "requirements/recovery-v2.0.2.in",
+    "requirements/recovery-v2.0.2.txt",
 }
 _IMMUTABLE_ADR_ALLOWLIST = {
     f"docs/decisions/adrs/{name}"
