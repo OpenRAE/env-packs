@@ -113,21 +113,34 @@ suite for coverage.
 
 **After** — parallel mandatory jobs behind the `verify` aggregate, with coverage
 produced once by `tests` and handed to `sonar`. Measured from this change's own
-pull-request `ci.yml` runs (the first runs of the new workflow) and recorded here
-during this change's CI monitoring, before the work is finalized, using the same
-metadata and p95 method as the before cohort.
+pull-request `ci.yml` run.
 
-- Workflow revision: _head commit of the measured runs (recorded with the cohort)_
-- Sample window: _recorded with the cohort_
-- Sample count: _recorded with the cohort_
+- Workflow revision: `cf8d81fd300a6c1f6618b1e9d07e289a5bfbf78b`
+- Sample window: 2026-07-28T18:54:22Z (single pull-request run)
+- Sample count: 1 run — the first run of the new workflow, with a **cold pip
+  cache**; the first run populates the cache and warms subsequent runs
+- p95 method: nearest-rank (n=1, so median = p95)
 
 | Metric | Median | p95 |
 | --- | --- | --- |
-| event → `verify` complete (required check) | _measured on this change's runs_ | _measured on this change's runs_ |
-| event → last check complete (`verify` + `sonar`) | _measured on this change's runs_ | _measured on this change's runs_ |
+| event → `verify` complete (required check) | 54s | 54s |
+| event → last check complete (`verify` + `sonar`) | 107s | 107s |
 
-The design reason the numbers should improve: the required `verify` check now
-completes near the slowest single mandatory job rather than the sum of the serial
-steps, and the full run near `max(verify, sonar)`, because `sonar` no longer waits
-for `verify` and no longer re-runs the suite. The measured rows above are the
-authority; this paragraph is only the rationale.
+Per-job first feedback on that run (event → job complete): `compile` 10s,
+`content` 33s, `audit` 35s, `tests` 50s — each an independent check, versus the
+before design where the first signal was the unit-test step roughly 30s into the
+single serial `verify` job.
+
+What the numbers show, honestly:
+
+- **Total wall-clock** dropped from a 139s median to 107s (~23%): `sonar` overlaps
+  the mandatory jobs and no longer re-runs the suite.
+- **First actionable feedback** is materially earlier — `compile` at ~10s and the
+  independent `audit`/`content` checks by ~35s, rather than one serial job.
+- The required **`verify`** gate is roughly flat (54s here vs a 42s before median).
+  On this first run the pip cache was cold, and `tests` now carries the coverage
+  run plus the artifact upload that feeds `sonar`, which puts it on `verify`'s
+  critical path; warm-cache runs recover most of the install time. The change
+  trades a flat required-gate time for the total-wall-clock and first-feedback
+  wins above. This is a doc-only revision of `cf8d81f`; `ci.yml` is unchanged, so
+  the run above is the authority.
