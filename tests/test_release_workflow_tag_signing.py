@@ -332,8 +332,34 @@ class TagSigningContractTests(unittest.TestCase):
         for step in self.publish["steps"]:
             if str(step.get("uses", "")).startswith(_PYPI_ACTION):
                 self.assertIs(step.get("with", {}).get("skip-existing"), True)
+                self.assertEqual(
+                    step.get("if"),
+                    "steps.pypi-policy.outputs.publish == 'true'",
+                    "PyPI must consume the parsed distribution-name policy",
+                )
                 return
         self.fail("no PyPI publication step")
+
+    def test_pypi_policy_allows_only_the_active_distribution(self) -> None:
+        policy = next(
+            step for step in self.publish["steps"]
+            if step.get("id") == "pypi-policy"
+        )
+        run = str(policy.get("run", ""))
+        self.assertIn("tomllib", run)
+        self.assertIn('distribution}" = "raes-env-packs"', run)
+        self.assertIn('"${TAG}" = "v2.0.2"', run)
+        self.assertIn(f'legacy_target="{_LEGACY_2_0_2_TARGET}"', run)
+        self.assertIn('"${TARGET_SHA}" = "${legacy_target}"', run)
+        self.assertIn("publish=true", run)
+        self.assertIn("publish=false", run)
+        self.assertIn("exit 1", run)
+
+        policy_index = self.publish["steps"].index(policy)
+        release_index = _index(self.publish, "gh release create")
+        pypi_index = _index(self.publish, _PYPI_ACTION)
+        self.assertLess(policy_index, release_index)
+        self.assertLess(policy_index, pypi_index)
 
     def test_sign_then_verify_then_push_within_tag_step(self) -> None:
         # Enforcing predicate for the fail-closed ordering: within the single
