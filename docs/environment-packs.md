@@ -335,11 +335,53 @@ Packaging and release verification is the repo-wide, static/read-only gate
 `raes-pack-release`, run in/behind the environment-pack-content gate. It lints
 profile-support consistency (a `supported` delivery bundle must actually ship
 its content, or the build fails fast), builds a boundary-split release tree
-(`participant/`, `operator/`, `oracle/`, `commercial/`) with the participant
+(`participant/`, `operator/`, `restricted/`, `commercial/`) with the participant
 tier leak-scanned, smoke-tests that delivery-bundle selection changes
-participant exposure, and emits a versioned `release.yaml` (pack version, the
-environment-pack contract version + digest from the bundled contract, supported
-profiles, and a bounded provenance summary). A pack is releasable once it ships
-a `pack.compatibility.yaml` with `artifact_boundaries`. Run
-`raes-pack-release check --all` locally; see the bundled layout contract
-(`contract/pack-layout.md`) for the full build/release section.
+participant exposure, and emits a validated `release.yaml` publication profile.
+A pack is releasable once it ships a `pack.compatibility.yaml` with
+`artifact_boundaries`. Run `raes-pack-release check --all` locally; see the
+bundled layout contract (`contract/pack-layout.md`) for the full build/release
+section.
+
+## Publication Profile
+
+`release.yaml` is a schema-backed `environment-pack-publication/v1` document — a
+consumer contract, validated before promotion, not an informational summary. It
+separates three concerns structurally:
+
+- **`release`** — the immutable identity: pack id/version, the RAES semantic
+  parent, the validated associated-artifact set, and the release views.
+- **`summary`** — descriptive facts: the environment-pack contract version and
+  digest, supported delivery and runtime profiles, and a bounded provenance
+  summary (counts and review-gate statuses only).
+- **`distribution`** — the mutable provider/location availability and channel
+  records, deliberately *outside* identity so distribution can evolve without an
+  unchanged release acquiring a new identity. Channels resolve to the complete
+  immutable identity; they are not part of pack identity.
+
+A published release is immutable: rebuilding the same version with different
+bound identities is refused, and only an identity-equivalent rebuild is
+idempotent.
+
+**RAES is the authority for artifact satisfaction.** The profile consumes the
+RAES artifact-requirement contract (`artifact-requirement-v1`, RAES ADR-098) and
+restates none of it — mechanism vocabulary, acquisition, timing, permitted
+routes, and trust references are read from the exactly pinned `raes` release, and
+published mechanism profiles and artifact identities are validated by
+constructing the upstream models, so this package cannot drift from the governed
+vocabulary. Publication is a *claim about release assets*, never an override of
+author intent: an exact artifact stays exact and is never relabeled a substitute,
+a constrained requirement may advertise its declared candidates without that set
+becoming exhaustive, an open requirement may lean on a declared backend
+capability with no fabricated image or recipe, and a requirement may be published
+with nothing at all.
+
+A pack declares what a release supplies with an optional `pack.yaml` pointer,
+`publication_supply:`; the release tool derives everything else. Any publication
+or capability claim requires the pack to have opted into content identity, since
+a claim is only meaningful against bound, verifiable bytes.
+
+Redistribution rights, origin access, and runtime exposure stay independent axes,
+and credentials, tokens, signed-URL values, and entitlement are not publication
+content. See
+[ADR 0028](decisions/adrs/0028-project-raes-artifact-satisfaction-into-publication.md).
