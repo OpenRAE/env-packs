@@ -160,7 +160,7 @@ class PackContractIdentityTests(unittest.TestCase):
         layout = (
             _NEW_PACKAGE / "resources" / "contract" / "pack-layout.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("Environment-pack contract version:** `4`", layout)
+        self.assertIn("Environment-pack contract version:** `5`", layout)
 
         digest = (_NEW_PACKAGE / "digest.py").read_text(encoding="utf-8")
         self.assertIn('_PACK_URI_SCHEME = "raes-environment-pack"', digest)

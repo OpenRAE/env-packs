@@ -43,6 +43,7 @@ validation. Run locally exactly as CI does:
 from __future__ import annotations
 
 import os
+import pathlib
 import re
 import signal
 import subprocess
@@ -1355,22 +1356,33 @@ def _forbidden_manifest_keys(manifest: object) -> list[str]:
     return sorted(key for key in manifest if key in FORBIDDEN_MANIFEST_LAYERS)
 
 
+def packaged_schema_paths() -> list[pathlib.Path]:
+    """Every schema this package ships, sorted.
+
+    The guard below reads this rather than a hard-coded filename so a newly
+    added schema is covered the day it lands instead of the day someone
+    remembers to extend the check.
+    """
+    return sorted(pathlib.Path(_SCHEMAS_DIR).glob("*.schema.yaml"))
+
+
 def _check_schema_no_extension_layers(failures: list[str]) -> None:
-    """The packaged compatibility schema must declare no forbidden layer.
+    """No packaged schema may declare a forbidden RAES-semantic layer.
 
     Structural check: a forbidden concept is a *declared property* of the schema,
-    not a word in its description. This is the durable enforcement that the schema
-    itself cannot silently reintroduce a removed RAES-semantic layer.
+    not a word in its description. This is the durable enforcement that a schema
+    cannot silently reintroduce a removed RAES-semantic layer.
     """
-    schema = _load_yaml(compatibility_schema_path(), failures, "compatibility schema")
-    if not isinstance(schema, dict):
-        return
-    for key in sorted(k for k in _schema_properties(schema)
-                      if k in FORBIDDEN_MANIFEST_LAYERS):
-        failures.append(
-            f"ANTI-EXTENSION: {COMPATIBILITY_SCHEMA_FILE} declares forbidden "
-            f"RAES-semantic layer {key!r} as a manifest property; scoring/"
-            "validation_oracle/telemetry/lifecycle are RAES concerns (ADR 0009)")
+    for path in packaged_schema_paths():
+        schema = _load_yaml(str(path), failures, f"{path.name} schema")
+        if not isinstance(schema, dict):
+            continue
+        for key in sorted(k for k in _schema_properties(schema)
+                          if k in FORBIDDEN_MANIFEST_LAYERS):
+            failures.append(
+                f"ANTI-EXTENSION: {path.name} declares forbidden "
+                f"RAES-semantic layer {key!r} as a manifest property; scoring/"
+                "validation_oracle/telemetry/lifecycle are RAES concerns (ADR 0009)")
 
 
 def _check_packaged_manifest_no_extension_layers(failures: list[str]) -> None:

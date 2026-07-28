@@ -52,35 +52,51 @@ import sys
 import tempfile
 
 import yaml
+from raes_contracts.associated_artifacts import associated_artifact_set_digest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 # content_ci is a sibling module, imported after the sys.path insert above.
 import content_ci as cc
-from raes_env_packs import validation
+from raes_env_packs import _pack_fs
+from raes_env_packs import digest as digest_module
+from raes_env_packs import publication, validation
 
 REPO = cc._REPO
 PACKS_ROOT = cc.PACKS_ROOT
 METADATA_SCHEMA_VERSION = 1
 
-# Boundary group -> release tier directory. This mapping is the single
+# Boundary group -> release tier / publication view. This mapping is the single
 # parameter over the boundary vocabulary (extensibility seam); the tool never
 # guesses a tier from an ad hoc directory name. The runtime-visibility tier is
 # the *group*; the per-row ``export`` distribution class is recorded as metadata,
 # not used to pick the tier.
+#
+# The authored compatibility label ``oracle_only`` maps to the ``restricted``
+# publication view (ADR 0028). The view is a release-boundary exposure class and
+# gains no scenario or validation-oracle meaning from the label that fed it.
 BOUNDARY_TIERS = {
     "participant_visible": "participant",
     "operator_only": "operator",
-    "oracle_only": "oracle",
+    "oracle_only": "restricted",
     "commercial": "commercial",
 }
 PARTICIPANT_TIER = "participant"
+
+# Generated release views use a fixed safe mode instead of inheriting the source
+# file's ownership, ACLs, extended attributes, or set-id bits. ``shutil.copy2``
+# would carry a set-user-id or world-writable bit straight into a distributed
+# artifact; a derived view is new content, not a copy of the author's filesystem
+# metadata (ADR 0028).
+STAGED_FILE_MODE = 0o644
+_STAGE_CHUNK = 64 * 1024
 
 # The contract version line lives in the packaged contract source as a single,
 # machine-detectable marker so consumers detect contract drift without parsing
 # prose.
 _CONTRACT_VERSION_RE = re.compile(r"Environment-pack contract version:\**\s*`([^`]+)`")
+_CANONICAL_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _CONTRACT_SOURCE = os.path.join(cc._RES, "contract", "pack-layout.md")
 CONTRACT_SOURCE_LABEL = "contract/pack-layout.md"
 
@@ -140,6 +156,7 @@ class PackContracts(object):
         self.name = self.pack_yaml.get("name") or os.path.basename(self.pack_root)
         self.compatibility = self._read_pointer(self.pack_yaml.get("compatibility_manifest"))
         self.provenance = self._read_pointer(self.pack_yaml.get("provenance_ledger"))
+        self.publication = self._read_pointer(self.pack_yaml.get("publication_supply"))
         self.bundles = self._read(os.path.join("profiles", "bundles.yaml"))
 
     def _read(self, rel: str) -> object:
@@ -295,50 +312,81 @@ def _safe_pack_path(pack_root: str, rel: str) -> tuple[bool, str]:
     return (True, "") if within else (False, "resolves outside pack root (symlink escape)")
 
 
-def _safe_member(path: str, root_real: str) -> bool:
-    """A copyable member: not a symlink and resolving inside the pack root."""
-    return not os.path.islink(path) and _within(root_real, path)
+def _stage(root_fd: int, pack_root: str, rel: str, dst: str,
+           staged: list[str] | None = None) -> tuple[int, list[str]]:
+    """Stage one boundary row (file or directory) to ``dst``.
 
-
-def _stage(src: str, dst: str, pack_root: str) -> tuple[int, list[str]]:
-    """Copy a file or directory tree to ``dst``; return ``(file_count, errors)``.
-
-    Every copied member is re-validated against ``pack_root``: ``_safe_pack_path``
-    only vets the declared boundary row, but a directory row can contain a
-    symlinked descendant pointing outside the pack (or at an operator/oracle
-    source), and ``shutil.copy2`` follows file symlinks by default. ``os.walk``
-    does not descend into symlinked directories (``followlinks=False``), and any
-    symlinked file or otherwise-escaping member is rejected rather than copied, so
-    a pack cannot smuggle out-of-boundary content into a release artifact.
+    Returns ``(file_count, errors)``. Enumeration finds candidate names; the
+    authoritative read is always a root-anchored, no-follow descriptor open, so
+    the safety decision and the copy are the *same* file object. Validating a
+    pathname and then re-opening it leaves a window in which a component can be
+    swapped for a symlink between the check and the copy, which is exactly how
+    out-of-boundary content would reach a release artifact.
     """
-    root_real = os.path.realpath(pack_root)
-    if not _safe_member(src, root_real):
-        return 0, [f"member {os.path.relpath(src, pack_root)} is a symlink or escapes pack root"]
-    if not os.path.isdir(src):
+    src = os.path.join(pack_root, os.path.normpath(rel))
+    if os.path.isdir(src) and not os.path.islink(src):
+        return _stage_tree(root_fd, pack_root, rel, dst, staged)
+    return _stage_member(root_fd, rel, dst, staged)
+
+
+def _stage_member(root_fd: int, rel: str, dst: str,
+                  staged: list[str] | None = None) -> tuple[int, list[str]]:
+    """Copy one member's bytes through a root-anchored descriptor.
+
+    ``_pack_fs.open_member`` walks every path component with ``O_NOFOLLOW`` from
+    the pack root and rejects anything that is not a singly-linked regular file,
+    so symlinks, hardlinks, special files, and escaping paths fail closed here
+    rather than being copied.
+    """
+    try:
+        fd = _pack_fs.open_member(root_fd, rel)
+    except _pack_fs.PackFilesystemError:
+        return 0, [f"member {rel} is a symlink or escapes pack root"]
+    try:
         os.makedirs(os.path.dirname(dst), exist_ok=True)
-        shutil.copy2(src, dst)
-        return 1, []
-    return _stage_tree(src, dst, pack_root, root_real)
+        # Content only, then a fixed safe mode: `shutil.copy2` would preserve the
+        # source's set-user-id, set-group-id, or world-writable bits and hand
+        # them to everyone who unpacks the release. A generated view is derived
+        # content; its permissions are ours to set, not the author's to
+        # propagate.
+        with open(dst, "wb") as out:
+            while chunk := os.read(fd, _STAGE_CHUNK):
+                out.write(chunk)
+        os.chmod(dst, STAGED_FILE_MODE)
+    except OSError:
+        return 0, [f"member {rel} could not be staged"]
+    finally:
+        os.close(fd)
+    if staged is not None:
+        staged.append(rel)
+    return 1, []
 
 
-def _stage_tree(src: str, dst: str, pack_root: str,
-                root_real: str) -> tuple[int, list[str]]:
-    """Stage tree."""
+def _pack_relpath(path: str, pack_root: str) -> str:
+    """Pack-relative, forward-slash path for one staged member."""
+    return os.path.relpath(path, pack_root).replace(os.sep, "/")
+
+
+def _stage_tree(root_fd: int, pack_root: str, rel: str, dst: str,
+                staged: list[str] | None = None) -> tuple[int, list[str]]:
+    """Stage every member beneath one boundary directory row."""
     count = 0
     errors: list[str] = []
-    for dirpath, _dirs, files in os.walk(src):
-        rel = os.path.relpath(dirpath, src)
-        target = dst if rel == "." else os.path.join(dst, rel)
+    src = os.path.join(pack_root, os.path.normpath(rel))
+    base = rel.replace(os.sep, "/").rstrip("/")
+    for dirpath, _dirs, files in os.walk(src):  # followlinks=False
+        suffix = os.path.relpath(dirpath, src)
+        target = dst if suffix == "." else os.path.join(dst, suffix)
         os.makedirs(target, exist_ok=True)
-        for fname in files:
-            fsrc = os.path.join(dirpath, fname)
-            if not _safe_member(fsrc, root_real):
-                errors.append(
-                    f"member {os.path.relpath(fsrc, pack_root)} is a symlink or "
-                    "escapes pack root")
+        for fname in sorted(files):
+            member = _pack_relpath(os.path.join(dirpath, fname), pack_root)
+            if not member.startswith(f"{base}/"):
+                errors.append(f"member {member} escapes boundary row {base}")
                 continue
-            shutil.copy2(fsrc, os.path.join(target, fname))
-            count += 1
+            copied, member_errors = _stage_member(
+                root_fd, member, os.path.join(target, fname), staged)
+            count += copied
+            errors += member_errors
     return count, errors
 
 
@@ -363,7 +411,9 @@ def _resolve_release_paths(pc: "PackContracts", out_dir: str,
 
 def _stage_boundary_row(pc: "PackContracts", pack_root: str, group: str, tier: str,
                         row: object, staging: str,
-                        tier_stats: dict[str, dict[str, object]]) -> list[str]:
+                        tier_stats: dict[str, dict[str, object]],
+                        staged_by_view: dict[str, list[str]] | None = None,
+                        root_fd: int | None = None) -> list[str]:
     """Stage boundary row."""
     rel = row.get("path") if isinstance(row, dict) else None
     if not isinstance(rel, str):
@@ -379,8 +429,10 @@ def _stage_boundary_row(pc: "PackContracts", pack_root: str, group: str, tier: s
     if problem:
         return [f"{pc.name}: boundary {group} path {rel} {problem}"]
     export = row.get("export")
+    staged = staged_by_view.setdefault(tier, []) if staged_by_view is not None else None
     copied, stage_errors = _stage(
-        src, os.path.join(staging, tier, os.path.normpath(rel)), pack_root)
+        root_fd, pack_root, rel,
+        os.path.join(staging, tier, os.path.normpath(rel)), staged)
     tier_stats[tier]["file_count"] += copied
     if isinstance(export, str):
         tier_stats[tier]["exports"][export] = (
@@ -389,15 +441,24 @@ def _stage_boundary_row(pc: "PackContracts", pack_root: str, group: str, tier: s
 
 
 def _stage_boundaries(pc: "PackContracts", pack_root: str, boundaries: object,
-                      staging: str, tier_stats: dict[str, dict[str, object]]) -> list[str]:
-    """Stage boundaries."""
+                      staging: str, tier_stats: dict[str, dict[str, object]],
+                      staged_by_view: dict[str, list[str]] | None = None) -> list[str]:
+    """Stage every boundary row through one root-anchored descriptor."""
     if not isinstance(boundaries, dict):
         return []
     failures: list[str] = []
-    for group, tier in BOUNDARY_TIERS.items():
-        for row in (boundaries.get(group) or []):
-            failures += _stage_boundary_row(
-                pc, pack_root, group, tier, row, staging, tier_stats)
+    try:
+        _root_real, root_fd = _pack_fs.open_root(pack_root)
+    except _pack_fs.PackFilesystemError:
+        return [f"{pc.name}: pack root is not a safe directory to stage from"]
+    try:
+        for group, tier in BOUNDARY_TIERS.items():
+            for row in (boundaries.get(group) or []):
+                failures += _stage_boundary_row(
+                    pc, pack_root, group, tier, row, staging, tier_stats,
+                    staged_by_view, root_fd)
+    finally:
+        os.close(root_fd)
     return failures
 
 
@@ -420,8 +481,7 @@ def build_release(pack_root: str, out_dir: str, *,
         tier: {"file_count": 0, "exports": {}} for tier in sorted(set(BOUNDARY_TIERS.values()))
     }
     metadata = release_metadata(pack_root, include_build_provenance=include_build_provenance)
-    metadata["artifact_tiers"] = tier_stats
-
+    staged_by_view: dict[str, list[str]] = {}
     release_root, staging, failures = _resolve_release_paths(pc, out_dir, version)
     if failures:
         return metadata, failures
@@ -444,7 +504,8 @@ def build_release(pack_root: str, out_dir: str, *,
                 "operator/oracle/private root; refusing to stage a participant export"
                 for field in overlap_fields]
         else:
-            failures += _stage_boundaries(pc, pack_root, boundaries, staging, tier_stats)
+            failures += _stage_boundaries(
+                pc, pack_root, boundaries, staging, tier_stats, staged_by_view)
             # The participant tier is the one surface that must never carry an
             # operator token; re-run the redacted leak scan over the *staged*
             # artifact.
@@ -453,12 +514,28 @@ def build_release(pack_root: str, out_dir: str, *,
                 f"{PARTICIPANT_TIER}/{locator} (match redacted)"
                 for label, locator in scan_tier_for_leaks(
                     os.path.join(staging, PARTICIPANT_TIER))]
+        # The release carrier is a consumer contract, so it is validated before
+        # it is written: shape against the packaged schema, and every supply
+        # claim joined back to the RAES-authored requirement. An unverifiable
+        # claim fails the build rather than shipping inside a release artifact.
+        # Staged-byte facts belong to the view they describe, and are copied only
+        # after staging has actually counted them -- reading the counters earlier
+        # would freeze every view at zero files.
+        for view in metadata["release"]["views"]:
+            view.update(tier_stats.get(view["view"], {"file_count": 0, "exports": {}}))
+        bind_failures, view_members = _bind_view_sets(
+            pack_root, metadata, staged_by_view, staging)
+        failures += bind_failures
+        failures += _publication_failures(pc, pack_root, metadata, view_members)
+        failures += _immutability_failures(pc, release_root, metadata)
         if failures:
             return metadata, failures
 
         with open(os.path.join(staging, "release.yaml"), "w", encoding="utf-8") as fh:
             yaml.safe_dump(metadata, fh, sort_keys=False)
-        # Atomic promote: replace any prior build so stale files never linger.
+        # Atomic promote. Replacing is safe only because the immutability check
+        # above proved any already-published release binds the same identities;
+        # an identity-equivalent rebuild is idempotent, a divergent one refused.
         if os.path.exists(release_root):
             shutil.rmtree(release_root)
         os.replace(staging, release_root)
@@ -536,32 +613,303 @@ def _runtime_profile_ids(compat: dict[str, object]) -> list[str]:
         and rp.get("profile_id"))
 
 
+def _immutability_failures(pc: "PackContracts", release_root: str,
+                           metadata: dict[str, object]) -> list[str]:
+    """Refuse to overwrite an already-published release with other identities.
+
+    Reusing a pack id and version for a different semantic parent or byte set is
+    a new release, not a replacement. Only an identity-equivalent rebuild may be
+    idempotent, so a divergent build is refused before anything is promoted and
+    the published artifact is left untouched.
+    """
+    published_path = os.path.join(release_root, "release.yaml")
+    if not os.path.isfile(published_path):
+        return []
+    try:
+        with open(published_path, "r", encoding="utf-8") as fh:
+            published = yaml.safe_load(fh)
+    except (OSError, yaml.YAMLError):
+        return [f"{pc.name}: published release.yaml is unreadable; refusing to "
+                "overwrite an immutable release"]
+    if publication.release_identity(published) == publication.release_identity(metadata):
+        return []
+    return [f"{pc.name}: release {metadata['release']['pack']['version']} is already "
+            "published with different bound identities; an immutable release is "
+            "not replaced (publish a new version instead)"]
+
+
+def _staged_descriptor(descriptor: object, staged_path: str) -> object:
+    """Rebind one authored descriptor to the bytes actually staged.
+
+    Deriving from the pack root would describe whatever the source tree holds at
+    derivation time, which is not necessarily what was copied moments earlier.
+    Hashing the staged file instead binds the advertised set to the bytes that
+    are about to be promoted.
+    """
+    sha = hashlib.sha256()
+    size = 0
+    fd = os.open(staged_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        while chunk := os.read(fd, 65536):
+            sha.update(chunk)
+            size += len(chunk)
+    finally:
+        os.close(fd)
+    checksum = descriptor.checksum.model_copy(update={"value": sha.hexdigest()})
+    return descriptor.model_copy(update={"checksum": checksum, "size_bytes": size})
+
+
+def _bind_view_sets(pack_root: str, metadata: dict[str, object],
+                    staged_by_view: dict[str, list[str]],
+                    staging: str | None = None
+                    ) -> tuple[list[str], dict[str, set[str]]]:
+    """Give every non-empty view its own RAES associated-artifact set identity.
+
+    Set identity does not inherit: a filtered view is a different payload set
+    than the source pack, so reusing the pack's set digest would misidentify it.
+    The view manifest is the pack's own authored manifest *restricted* to the
+    files staged into that view, which keeps derivation reproducible -- RAES
+    descriptors carry a ``created_at`` that is not recoverable from bytes, so
+    minting fresh descriptors would make an unchanged release re-identify itself
+    on every rebuild.
+    """
+    members: dict[str, set[str]] = {}
+    if not staged_by_view:
+        return [], members
+    try:
+        manifest = digest_module.derive_pack_content_manifest(pack_root)
+        by_path = {
+            rel: artifact_id
+            for artifact_id, rel in digest_module._artifact_paths(
+                manifest, _manifest_pointer(pack_root)).items()
+        }
+    except (digest_module.PackDigestError, OSError, ValueError):
+        return [], members
+
+    pack = metadata["release"]["pack"]
+    failures: list[str] = []
+    for view in metadata["release"]["views"]:
+        name = view["view"]
+        rels = sorted(set(staged_by_view.get(name, ())))
+        artifacts = {}
+        for rel in rels:
+            artifact_id = by_path.get(rel)
+            if artifact_id is None:
+                continue
+            try:
+                artifacts[artifact_id] = _staged_descriptor(
+                    manifest.artifacts[artifact_id],
+                    os.path.join(staging, name, os.path.normpath(rel)),
+                ) if staging else manifest.artifacts[artifact_id]
+            except OSError:
+                failures.append(
+                    f"{pack['name']}: staged {name} member could not be read for "
+                    "view identity derivation")
+        if not artifacts:
+            # An empty view stays empty; RAES manifests require a non-empty
+            # payload set, and inventing a placeholder artifact would be a lie.
+            continue
+        view_manifest = manifest.model_copy(update={
+            "manifest_id": f"{pack['name']}-{name}-associated-artifacts",
+            "manifest_version": pack["version"],
+            "artifacts": artifacts,
+            "set_digest": "sha256:" + "0" * 64,
+        })
+        view_manifest = view_manifest.model_copy(update={
+            "set_digest": associated_artifact_set_digest(view_manifest)})
+        view["set"] = {
+            "manifest_id": view_manifest.manifest_id,
+            "set_digest": view_manifest.set_digest,
+        }
+        # Membership index: the governed digests a publication row in this view
+        # may claim to supply. Without it a row could advertise a trusted
+        # artifact while the view actually exposes unrelated bytes.
+        members[name] = {
+            f"{descriptor.checksum.algorithm}:{descriptor.checksum.value}"
+            for descriptor in artifacts.values()
+        }
+        if staging:
+            # The manifest is written beside the view, never inside it: a set
+            # cannot contain the document that describes it. Without emitting it
+            # a consumer holds a set digest but no descriptors to verify against.
+            with open(os.path.join(staging, f"{name}-associated-artifacts.json"),
+                      "w", encoding="utf-8") as fh:
+                fh.write(view_manifest.model_dump_json(indent=2) + "\n")
+    return failures, members
+
+
+def _manifest_pointer(pack_root: str) -> str:
+    """The pack-relative associated-artifact manifest carrier, if declared."""
+    pointer = PackContracts(pack_root).pack_yaml.get("associated_artifact_manifest")
+    return pointer if isinstance(pointer, str) else ""
+
+
+def _authored_requirements(pack_root: str) -> tuple[dict[str, object], list[str]]:
+    """Index this pack's authored requirements, and report the author-static result.
+
+    The release gate does not assume another command already validated the pack:
+    it runs the same shared author-static authority. Invoking that gate and then
+    ignoring its verdict would leave the ADR 0028 precondition unestablished --
+    an invalid pack could pass publication validation, and claims could be judged
+    against a partial scenario set. The bounded failures are returned so the
+    caller can refuse promotion.
+    """
+    try:
+        result, scenarios = validation._validate_pack_for_author_ci(pack_root)
+    except (OSError, ValueError):
+        return {}, ["pack could not be validated for publication"]
+    errors = [] if result.ok else list(result.errors)
+    return publication.authored_artifact_requirements(scenarios), errors
+
+
+def _publication_failures(pc: "PackContracts", pack_root: str,
+                          metadata: dict[str, object],
+                          view_members: dict[str, set[str]] | None = None) -> list[str]:
+    """Validate the emitted publication profile, as release-gate failures.
+
+    Diagnostics stay bounded: a stable code and a field path, never artifact
+    bytes, locator values, or credentials.
+    """
+    requirements, invalid = _authored_requirements(pack_root)
+    # ADR 0028: a publication cannot be emitted for a pack that does not pass the
+    # shared author-static contract. Refuse rather than publish against a
+    # partially parsed pack.
+    failures = [f"{pc.name}: pack is not publishable: {code}" for code in invalid]
+    failures += [
+        f"{pc.name}: publication profile {violation.code} at {violation.path}"
+        for violation in publication.validate_publication_document(
+            metadata, requirements=requirements, view_members=view_members)
+    ]
+    return failures
+
+
+def _semantic_binding(pack_root: str) -> tuple[dict[str, object], dict[str, object]] | None:
+    """Return ``(semantic_parent, source_set)`` for a content-identified pack.
+
+    Both come from the RAES associated-artifact manifest the pack declares, so
+    this repository binds to RAES's own parent reference and set digest rather
+    than deriving a second release identity. ``None`` means the pack declares no
+    content identity, and no publication can be emitted for it (ADR 0028).
+    """
+    try:
+        manifest = digest_module.derive_pack_content_manifest(pack_root)
+    except (digest_module.PackDigestError, OSError, ValueError):
+        return None
+    # RAES names these ``ref_id`` / ``ref_digest`` on its parent reference model.
+    parent = manifest.parent_ref
+    parent_ref = getattr(parent, "ref_id", None)
+    if not isinstance(parent_ref, str) or not parent_ref:
+        return None
+    semantic_parent: dict[str, object] = {"parent_ref": parent_ref}
+    # The parent digest is optional upstream: a scenario parent may be
+    # referenced by id alone. Carry it only when RAES actually supplied one,
+    # rather than inventing a placeholder digest that would look like evidence.
+    parent_digest = getattr(parent, "ref_digest", None)
+    if isinstance(parent_digest, str) and _CANONICAL_DIGEST_RE.fullmatch(parent_digest):
+        semantic_parent["digest"] = parent_digest
+    return (
+        semantic_parent,
+        {"manifest_id": manifest.manifest_id, "set_digest": manifest.set_digest},
+    )
+
+
+def _authored_supply(pc: "PackContracts") -> dict[str, object]:
+    """Read the pack's optional declaration of what this release supplies.
+
+    Derivation cannot invent which permitted assets an author chose to ship, so
+    the supply rows are authored. They are validated against RAES author
+    authority before emission; absence simply means the release publishes
+    nothing, which is a valid release and implies nothing about satisfiability.
+    """
+    declared = pc.publication if isinstance(pc.publication, dict) else {}
+    return {
+        "publications": declared.get("publications") or [],
+        "capability_claims": declared.get("capability_claims") or [],
+        "availability": declared.get("availability") or [],
+        "channels": declared.get("channels") or [],
+    }
+
+
 def release_metadata(pack_root: str, *, include_build_provenance: bool = False,
                      repo_root: str = REPO) -> dict[str, object]:
-    """Release metadata."""
+    """Emit the immutable publication profile for one pack release (ADR 0028)."""
     pc = PackContracts(pack_root)
     compat = pc.compatibility or {}
     version, digest = load_contract_version()
+    supply = _authored_supply(pc)
 
-    supported = _supported_bundle_ids(compat)
-    runtime = _runtime_profile_ids(compat)
-
-    metadata: dict[str, object] = {
-        "metadata_schema_version": METADATA_SCHEMA_VERSION,
-        "pack": {
-            "name": pc.name,
-            "title": pc.pack_yaml.get("title"),
-            "version": str(pc.pack_yaml.get("version") or "0.0.0"),
-            "status": pc.pack_yaml.get("status"),
-        },
+    summary: dict[str, object] = {
         "contract": {"version": version, "source": CONTRACT_SOURCE_LABEL, "digest": digest},
-        "supported_profiles": supported,
-        "runtime_profiles": runtime,
+        "supported_profiles": _supported_bundle_ids(compat),
+        "runtime_profiles": _runtime_profile_ids(compat),
         "provenance_summary": _provenance_summary(pc.provenance),
     }
     if include_build_provenance:
-        metadata["build_provenance"] = {"git_commit": _git_commit(repo_root)}
-    return metadata
+        summary["build_provenance"] = {"git_commit": _git_commit(repo_root)}
+
+    release: dict[str, object] = {
+        "pack": {
+            "name": pc.name,
+            "version": str(pc.pack_yaml.get("version") or "0.0.0"),
+        },
+        "views": _release_views(supply),
+    }
+    # A pack that has not opted into content identity (ADR 0012) carries no
+    # binding blocks at all rather than empty ones. Such a release may still be
+    # built; it simply cannot make a publication or capability claim, which the
+    # profile validator enforces.
+    binding = _semantic_binding(pack_root)
+    if binding is not None:
+        release["semantic_parent"], release["source_set"] = binding
+
+    profile: dict[str, object] = {
+        "schema_version": publication.PUBLICATION_SCHEMA_VERSION,
+        "summary": summary,
+        "release": release,
+        "distribution": {
+            "availability": supply["availability"],
+            "channels": supply["channels"],
+        },
+    }
+    return profile
+
+
+def _release_views(supply: dict[str, object]) -> list[dict[str, object]]:
+    """Build one publication view per stable release view.
+
+    Views are derived from the ``BOUNDARY_TIERS`` seam, so a new authored
+    boundary group becomes a view through that one mapping. Each view starts
+    empty; per-view set identity is bound during the build once the view's exact
+    bytes are staged.
+    """
+    by_view: dict[str, list[object]] = {view: [] for view in sorted(set(BOUNDARY_TIERS.values()))}
+    claims_by_view: dict[str, list[object]] = {view: [] for view in by_view}
+    # An authored row naming an unknown view is a defect in the supply, not a
+    # row to drop: silently filtering it here would let the build succeed while
+    # omitting a publication the author declared. Route it to a real view so the
+    # schema-backed validation that follows can reject it by name.
+    fallback = PARTICIPANT_TIER
+    for row in supply["publications"]:
+        if isinstance(row, dict):
+            view = row.get("view")
+            by_view[view if view in by_view else fallback].append(
+                {k: v for k, v in row.items() if k != "view"}
+                if view in by_view else dict(row))
+    for claim in supply["capability_claims"]:
+        if isinstance(claim, dict):
+            view = claim.get("view")
+            claims_by_view[view if view in claims_by_view else fallback].append(
+                {k: v for k, v in claim.items() if k != "view"}
+                if view in claims_by_view else dict(claim))
+    return [
+        {
+            "view": view,
+            "completeness": "non-exhaustive",
+            "publications": by_view[view],
+            "capability_claims": claims_by_view[view],
+        }
+        for view in sorted(by_view)
+    ]
 
 
 # --------------------------------------------------------------------------
