@@ -35,6 +35,12 @@ env:
   CERT_IDENTITY: https://github.com/RAESystem/env-packs/.github/workflows/release-please.yml@refs/heads/main
   CERT_OIDC_ISSUER: https://token.actions.githubusercontent.com
   GITSIGN_VERSION_FLOOR: "0.15.0"
+  # gitsign 0.16.1 cannot verify the Rekor entry it embeds in a newly signed
+  # annotated tag (ADR 0024). Pin the last patched pre-regression release by
+  # both version and published artifact digest until an upstream release passes
+  # this repository's end-to-end tag-signing path.
+  GITSIGN_VERSION_PIN: "0.15.1"
+  GITSIGN_SHA256: 8712be2e5fe89c9728c50beed20f1d37340b9f2dc3306cfb8830ef975549e170
 
 # Least privilege (#142): read-only workflow token. Every write this pipeline
 # needs -- the release PR, the signed tag, the Release, OIDC, attestations -- is
@@ -183,11 +189,21 @@ jobs:
         with:
           python-version: "3.12"
 
-      # SHA-pinned like every third-party action (Dependabot keeps it fresh);
-      # this pin installs gitsign 0.16.1 with a verified checksum and configures
-      # git for x509/Sigstore tag signing.
-      - name: Install and configure gitsign
-        uses: chainguard-dev/actions/setup-gitsign@b2555de0cf9724fb9b49d050ff18bd1f49562ba7 # v1.6.29
+      # ADR 0024: install the last patched pre-regression gitsign release
+      # directly from its upstream release asset and verify the published
+      # SHA-256 before it can sign or verify anything.
+      - name: Install digest-verified gitsign
+        run: |
+          set -euo pipefail
+          binary="${RUNNER_TEMP}/gitsign"
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 --retry 3 \
+            --output "${binary}" \
+            "https://github.com/sigstore/gitsign/releases/download/v${GITSIGN_VERSION_PIN}/gitsign_${GITSIGN_VERSION_PIN}_linux_amd64"
+          printf '%s  %s\n' "${GITSIGN_SHA256}" "${binary}" \
+            | sha256sum --check --strict
+          chmod 0755 "${binary}"
+          printf 'GITSIGN_BIN=%s\n' "${binary}" >> "${GITHUB_ENV}"
 
       # Defence in depth against CVE-2026-44310 (a verify-bypass fixed in 0.15.0):
       # fail closed if the installed gitsign is below the floor, regardless of how
@@ -195,7 +211,7 @@ jobs:
       - name: Enforce gitsign version floor
         run: |
           set -euo pipefail
-          installed="$(gitsign version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)"
+          installed="$("${GITSIGN_BIN}" version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)"
           if [ -z "${installed}" ]; then
             echo "Could not determine the installed gitsign version." >&2
             exit 1
@@ -222,12 +238,12 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config gpg.x509.program gitsign
+          git config gpg.x509.program "${GITSIGN_BIN}"
           git config gpg.format x509
 
           verify_tag() {
             for attempt in 1 2 3 4 5; do
-              if gitsign verify-tag \
+              if "${GITSIGN_BIN}" verify-tag \
                 --certificate-identity="${CERT_IDENTITY}" \
                 --certificate-oidc-issuer="${CERT_OIDC_ISSUER}" \
                 "${TAG}"; then
