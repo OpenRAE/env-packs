@@ -17,6 +17,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release_pr:
+        description: "Merged release PR to recover (for example, 135)"
+        required: true
+        type: string
 
 # The canonical signer trust policy, declared once (ADR 0017). Referenced by the
 # verification step; the ADR and SECURITY.md document the same values.
@@ -44,6 +50,7 @@ concurrency:
 jobs:
   release-please:
     name: Maintain release PR
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     # PR-writing privilege only; no OIDC or attestation (ADR 0017 least-privilege).
     permissions:
@@ -69,6 +76,7 @@ jobs:
       tag: ${{ steps.gate.outputs.tag }}
       version: ${{ steps.gate.outputs.version }}
       pr: ${{ steps.pr.outputs.number }}
+      target: ${{ steps.pr.outputs.after }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -81,25 +89,55 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Resolve the pull request whose merge produced this push. Only Release
-      # Please applies "autorelease: pending" to its own release PRs, so the
-      # merged PR's labels are the authenticated release signal the gate requires
-      # (ADR 0017). github.sha is read by jq from the environment (env.GITHUB_SHA),
-      # never interpolated into the jq program or a shell command.
+      # A normal push resolves the PR whose merge produced the push. An explicit
+      # recovery names a previously merged main release PR whose publish run was
+      # interrupted. Both paths feed the same authenticated label + version gate;
+      # workflow_dispatch cannot select an arbitrary commit for publication.
       - name: Resolve the merged pull request
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUSH_AFTER: ${{ github.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          RECOVERY_PR: ${{ inputs.release_pr || '' }}
         run: |
           set -euo pipefail
-          api="repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls"
-          gh api "${api}" \
-            --jq '[.[] | select(.merge_commit_sha == env.GITHUB_SHA) | .labels[].name] | .[]' \
-            > pr-labels.txt || true
-          number="$(gh api "${api}" \
-            --jq 'map(select(.merge_commit_sha == env.GITHUB_SHA)) | (.[0].number // "" | tostring)' \
-            || true)"
-          echo "number=${number}" >> "${GITHUB_OUTPUT}"
+          if [ -n "${RECOVERY_PR}" ]; then
+            case "${RECOVERY_PR}" in
+              *[!0-9]*)
+                echo "release_pr must be a positive integer." >&2
+                exit 1
+                ;;
+            esac
+            api="repos/${GITHUB_REPOSITORY}/pulls/${RECOVERY_PR}"
+            state="$(gh api "${api}" --jq '.state')"
+            merged_at="$(gh api "${api}" --jq '.merged_at // ""')"
+            base_ref="$(gh api "${api}" --jq '.base.ref')"
+            if [ "${state}" != "closed" ] || [ -z "${merged_at}" ] || [ "${base_ref}" != "main" ]; then
+              echo "Recovery requires a merged pull request into main." >&2
+              exit 1
+            fi
+            after="$(gh api "${api}" --jq '.merge_commit_sha // ""')"
+            git cat-file -e "${after}^{commit}"
+            before="$(git rev-parse "${after}^")"
+            gh api "${api}" --jq '.labels[].name' > pr-labels.txt
+            number="${RECOVERY_PR}"
+          else
+            api="repos/${GITHUB_REPOSITORY}/commits/${PUSH_AFTER}/pulls"
+            gh api "${api}" \
+              --jq '[.[] | select(.merge_commit_sha == env.PUSH_AFTER) | .labels[].name] | .[]' \
+              > pr-labels.txt || true
+            number="$(gh api "${api}" \
+              --jq 'map(select(.merge_commit_sha == env.PUSH_AFTER)) | (.[0].number // "" | tostring)' \
+              || true)"
+            before="${PUSH_BEFORE}"
+            after="${PUSH_AFTER}"
+          fi
+          {
+            echo "number=${number}"
+            echo "before=${before}"
+            echo "after=${after}"
+          } >> "${GITHUB_OUTPUT}"
 
       # The gate authorizes on the release-PR label first, then parses
       # pyproject.toml + the manifest with real parsers as a consistency check,
@@ -108,8 +146,8 @@ jobs:
       - name: Detect authorized release
         id: gate
         env:
-          BEFORE_SHA: ${{ github.event.before }}
-          AFTER_SHA: ${{ github.sha }}
+          BEFORE_SHA: ${{ steps.pr.outputs.before }}
+          AFTER_SHA: ${{ steps.pr.outputs.after }}
         run: |
           python tools/release_tag_gate.py check \
             --before "${BEFORE_SHA}" \
@@ -131,12 +169,14 @@ jobs:
     env:
       TAG: ${{ needs.detect-release.outputs.tag }}
       VERSION: ${{ needs.detect-release.outputs.version }}
+      TARGET_SHA: ${{ needs.detect-release.outputs.target }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+          ref: ${{ needs.detect-release.outputs.target }}
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -186,45 +226,39 @@ jobs:
           git config gpg.format x509
 
           verify_tag() {
-            gitsign verify-tag \
-              --certificate-identity="${CERT_IDENTITY}" \
-              --certificate-oidc-issuer="${CERT_OIDC_ISSUER}" \
-              "${TAG}"
+            for attempt in 1 2 3 4 5; do
+              if gitsign verify-tag \
+                --certificate-identity="${CERT_IDENTITY}" \
+                --certificate-oidc-issuer="${CERT_OIDC_ISSUER}" \
+                "${TAG}"; then
+                return 0
+              fi
+              if [ "${attempt}" -eq 5 ]; then
+                echo "Signed tag verification failed after ${attempt} attempts." >&2
+                return 1
+              fi
+              delay="$((attempt * 5))"
+              echo "Transparency-log verification not ready; retrying in ${delay}s." >&2
+              sleep "${delay}"
+            done
           }
 
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "Tag ${TAG} already exists on origin; validating for rerun."
             git fetch --no-tags origin "refs/tags/${TAG}:refs/tags/${TAG}"
             target="$(git rev-list -n 1 "${TAG}")"
-            if [ "${target}" != "${GITHUB_SHA}" ]; then
-              echo "Existing tag ${TAG} points at ${target}, not ${GITHUB_SHA}; refusing." >&2
+            if [ "${target}" != "${TARGET_SHA}" ]; then
+              echo "Existing tag ${TAG} points at ${target}, not ${TARGET_SHA}; refusing." >&2
               exit 1
             fi
             verify_tag
             echo "Reusing existing verified tag ${TAG}."
           else
-            git tag -s "${TAG}" "${GITHUB_SHA}" -m "Release ${TAG}"
+            git tag -s "${TAG}" "${TARGET_SHA}" -m "Release ${TAG}"
             verify_tag
             gh auth setup-git
             git push origin "refs/tags/${TAG}"
           fi
-
-      # Complete Release Please's state machine. With skip-github-release it does
-      # not tag, so it leaves the merged release PR labeled "autorelease: pending"
-      # and aborts the next run (googleapis/release-please#1561). Now that the
-      # signed tag exists, flip it to "autorelease: tagged". Done here — after the
-      # tag exists but before PyPI publication — so a failure is recoverable by
-      # rerun rather than stranding a published-but-untagged state. Idempotent:
-      # adding an existing label is a no-op, and removing an absent one is tolerated.
-      - name: Mark the release PR tagged
-        if: needs.detect-release.outputs.pr != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ needs.detect-release.outputs.pr }}
-        run: |
-          set -euo pipefail
-          gh pr edit "${PR}" --add-label "autorelease: tagged"
-          gh pr edit "${PR}" --remove-label "autorelease: pending" 2>/dev/null || true
 
       - name: Build sdist + wheel
         run: |
@@ -256,9 +290,10 @@ jobs:
             -r requirements/runtime.txt -r requirements/sbom.txt
           python -m pip install --no-deps dist/*.whl
           mkdir -p sbom
+          distribution="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["name"])')"
           cyclonedx-py environment \
             --output-format JSON \
-            --output-file sbom/raes-env-packs.cdx.json
+            --output-file "sbom/${distribution}.cdx.json"
 
       # Release notes come from the Release Please-owned CHANGELOG.md section for
       # this version, passed to gh by file (never interpolated into a command).
@@ -290,8 +325,22 @@ jobs:
         uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
         with:
           packages-dir: dist
+          skip-existing: true
 
       - name: Attach dist + SBOM to the GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${TAG}" dist/* sbom/raes-env-packs.cdx.json --clobber
+        run: gh release upload "${TAG}" dist/* sbom/*.cdx.json --clobber
+
+      # Complete Release Please's state machine only after every publication
+      # destination succeeds. Until then the pending label deliberately keeps
+      # later release PRs blocked and workflow_dispatch can retry this exact PR.
+      - name: Mark the release PR tagged
+        if: needs.detect-release.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ needs.detect-release.outputs.pr }}
+        run: |
+          set -euo pipefail
+          gh pr edit "${PR}" --add-label "autorelease: tagged"
+          gh pr edit "${PR}" --remove-label "autorelease: pending" 2>/dev/null || true

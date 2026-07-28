@@ -94,11 +94,14 @@ class WorkflowShapeTests(unittest.TestCase):
     def setUp(self) -> None:
         self.data = _load_workflow()
 
-    def test_triggers_on_main_push_only(self) -> None:
+    def test_triggers_on_main_push_and_explicit_recovery(self) -> None:
         # YAML 1.1 parses the bare key ``on`` as boolean True.
         on = self.data.get("on", self.data.get(True))
-        self.assertEqual(list(on), ["push"])
+        self.assertEqual(set(on), {"push", "workflow_dispatch"})
         self.assertEqual(on["push"]["branches"], ["main"])
+        recovery = on["workflow_dispatch"]["inputs"]["release_pr"]
+        self.assertIs(recovery["required"], True)
+        self.assertEqual(recovery["type"], "string")
 
     def test_releases_are_serialized(self) -> None:
         concurrency = self.data["concurrency"]
@@ -129,11 +132,17 @@ class LeastPrivilegeTests(unittest.TestCase):
         self.data = _load_workflow()
 
     def test_release_please_job_has_no_signing_privilege(self) -> None:
-        perms = _job(self.data, "release-please").get("permissions", {})
+        job = _job(self.data, "release-please")
+        perms = job.get("permissions", {})
         self.assertEqual(perms.get("contents"), "write")
         self.assertEqual(perms.get("pull-requests"), "write")
         self.assertNotIn("id-token", perms, "PR job must not hold OIDC")
         self.assertNotIn("attestations", perms, "PR job must not hold attestations")
+        self.assertIn(
+            "github.event_name == 'push'",
+            str(job.get("if", "")),
+            "release-please must not run during explicit recovery",
+        )
 
     def test_detect_release_job_is_read_only(self) -> None:
         job = _job(self.data, "detect-release")
@@ -156,8 +165,18 @@ class LeastPrivilegeTests(unittest.TestCase):
         # Enforcing predicate: the PR query is scoped to the exact push commit, so
         # labels from an unrelated PR touching the same commit cannot authorize a
         # release. Dropping this filter is the weakening this pins.
-        self.assertIn("merge_commit_sha == env.GITHUB_SHA", text,
+        self.assertIn("merge_commit_sha == env.PUSH_AFTER", text,
                       "the PR-label query must be scoped to this push's merge commit")
+
+    def test_recovery_is_bound_to_a_merged_main_release_pr(self) -> None:
+        text = _step_text(_job(self.data, "detect-release"))
+        self.assertIn("RECOVERY_PR", text)
+        self.assertIn('repos/${GITHUB_REPOSITORY}/pulls/${RECOVERY_PR}', text)
+        self.assertIn('base_ref="$(gh api', text)
+        self.assertIn('"main"', text)
+        self.assertIn('merged_at="$(gh api', text)
+        self.assertIn("pr-labels.txt", text)
+        self.assertIn("--merged-pr-labels-file", text)
 
     def test_publish_job_permissions(self) -> None:
         job = _job(self.data, "publish")
@@ -211,10 +230,18 @@ class TagSigningContractTests(unittest.TestCase):
 
     def test_signed_annotated_tag_at_exact_commit(self) -> None:
         self.assertIn("git tag -s", self.text, "tag must be signed (git tag -s)")
-        # Enforcing predicate: the signed tag targets the exact github.sha commit,
-        # not an implicit HEAD that a later edit could decouple.
-        self.assertIn('git tag -s "${TAG}" "${GITHUB_SHA}"', self.text,
-                      "the signed tag must be created at the exact github.sha commit")
+        # Enforcing predicate: the signed tag targets the gate-validated release
+        # commit, not an implicit HEAD or the workflow-dispatch branch head.
+        self.assertIn('git tag -s "${TAG}" "${TARGET_SHA}"', self.text)
+        self.assertEqual(
+            self.publish["env"]["TARGET_SHA"],
+            "${{ needs.detect-release.outputs.target }}",
+        )
+        checkout = next(
+            step for step in self.publish["steps"]
+            if str(step.get("uses", "")).startswith(_CHECKOUT_ACTION)
+        )
+        self.assertEqual(checkout["with"]["ref"], "${{ needs.detect-release.outputs.target }}")
 
     def test_verify_tag_is_identity_bound(self) -> None:
         self.assertIn("gitsign verify-tag", self.text,
@@ -227,6 +254,12 @@ class TagSigningContractTests(unittest.TestCase):
         # (ADR 0017 anti-pattern "no wildcard certificate identities").
         self.assertNotIn("--certificate-identity-regexp", self.text)
         self.assertNotIn("--certificate-oidc-issuer-regexp", self.text)
+
+    def test_transparency_log_verification_has_bounded_retry(self) -> None:
+        run = _step_run(self.publish, "gitsign verify-tag")
+        self.assertIn("for attempt in 1 2 3 4 5", run)
+        self.assertIn("sleep", run)
+        self.assertIn("return 1", run)
 
     def test_release_created_from_preexisting_tag_with_file_notes(self) -> None:
         self.assertIn("gh release create", self.text)
@@ -258,6 +291,18 @@ class TagSigningContractTests(unittest.TestCase):
         # label AND clear the pending one — or the state machine stays stuck.
         self.assertIn('--add-label "autorelease: tagged"', self.text)
         self.assertIn('--remove-label "autorelease: pending"', self.text)
+        mark = _index(self.publish, '--add-label "autorelease: tagged"')
+        pypi = _index(self.publish, _PYPI_ACTION)
+        upload = _index(self.publish, "gh release upload")
+        self.assertGreater(mark, pypi)
+        self.assertGreater(mark, upload)
+
+    def test_pypi_publication_is_rerun_safe(self) -> None:
+        for step in self.publish["steps"]:
+            if str(step.get("uses", "")).startswith(_PYPI_ACTION):
+                self.assertIs(step.get("with", {}).get("skip-existing"), True)
+                return
+        self.fail("no PyPI publication step")
 
     def test_sign_then_verify_then_push_within_tag_step(self) -> None:
         # Enforcing predicate for the fail-closed ordering: within the single

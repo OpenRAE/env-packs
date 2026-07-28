@@ -4,7 +4,7 @@ Every schema this repository ships is subordinate to RAES (ADR 0009/0010) and
 must follow RAES's governed schema-authoring conventions, not a placeholder:
 
   * ``$schema`` is JSON Schema draft 2020-12 (the RAES corpus draft).
-  * ``$id`` lives under the governed ``https://aces.dev/schemas/`` namespace as
+  * ``$id`` lives under the governed ``https://raes.dev/schemas/`` namespace as
     ``<name>-v<n>.json`` -- never an ``example.com`` placeholder.
   * ``schema_version`` is the RAES string form
     ``{type: string, const: "<name>/v<n>"}``, with ``<name>``/``<n>`` derived
@@ -32,7 +32,7 @@ _SCHEMAS_DIR = (
 )
 _DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
 _ID_RE = re.compile(
-    r"^https://aces\.dev/schemas/"
+    r"^https://raes\.dev/schemas/"
     r"(?P<name>[a-z0-9]+(?:-[a-z0-9]+)*)-v(?P<version>\d+)\.json$"
 )
 
@@ -48,7 +48,7 @@ class SchemaConventionTests(unittest.TestCase):
             _packaged_schemas(), f"no packaged schemas under {_SCHEMAS_DIR}"
         )
 
-    def test_every_schema_follows_aces_conventions(self) -> None:
+    def test_every_schema_follows_raes_conventions(self) -> None:
         for path in _packaged_schemas():
             with self.subTest(schema=path.name):
                 schema = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -62,7 +62,7 @@ class SchemaConventionTests(unittest.TestCase):
                 match = _ID_RE.fullmatch(schema_id)
                 self.assertIsNotNone(
                     match,
-                    f"$id {schema_id!r} is not a governed aces.dev schema id",
+                    f"$id {schema_id!r} is not a governed raes.dev schema id",
                 )
 
                 expected_version = f"{match.group('name')}/v{match.group('version')}"
