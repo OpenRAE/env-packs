@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve the ACES scenario-pack definition and tooling! Please
+Thanks for helping improve the RAES environment-pack definition and tooling! Please
 open a GitHub issue to discuss a change before moving pack contracts, schemas,
 templates, examples, or tools into this repository.
 
@@ -8,7 +8,7 @@ When you work on a change:
 
 - Keep it scoped to the linked issue.
 - Preserve the repository boundary described in `README.md` and
-  `docs/scenario-packs.md` — this repo defines and validates the pack format; it
+  `docs/environment-packs.md` — this repo defines and validates the pack format; it
   does not host packs.
 - Run the verification commands in `AGENTS.md` before opening a PR.
 - **Never edit `CHANGELOG.md`** — release-please owns it.

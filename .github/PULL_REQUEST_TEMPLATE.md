@@ -4,7 +4,7 @@
 
 ## Boundary Check
 
-- [ ] This keeps ACES core semantics in ACES.
+- [ ] This keeps RAES core semantics in RAES.
 - [ ] This does not move capture workflow assets without an ownership issue.
 - [ ] This avoids downstream catalog vocabulary in canonical docs.
 

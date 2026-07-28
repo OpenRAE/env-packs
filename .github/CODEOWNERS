@@ -31,8 +31,8 @@
 /tools/                         @Brad-Edwards
 
 # The untrusted-input boundary and the fuzz harness that guards it (ADR 0013).
-/src/aces_scenario_packs/validation.py  @Brad-Edwards
-/src/aces_scenario_packs/_pack_fs.py    @Brad-Edwards
+/src/raes_env_packs/validation.py  @Brad-Edwards
+/src/raes_env_packs/_pack_fs.py    @Brad-Edwards
 /fuzz/                                  @Brad-Edwards
 
 # Architecture decisions.

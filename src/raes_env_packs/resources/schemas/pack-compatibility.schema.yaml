@@ -1,0 +1,278 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://aces.dev/schemas/environment-pack-compatibility-v2.json"
+title: RAES environment pack compatibility manifest
+description: >
+  Product-facing compatibility projection for an environment pack. pack.yaml stays
+  the identity/provenance entrypoint; pack.compatibility.yaml indexes the
+  runtime, delivery, visibility, and validation surfaces a consumer can rely on.
+  It defines ZERO extensions to RAES semantics: scoring, validation-oracle,
+  telemetry, and lifecycle (reset/rebuild/teardown) are RAES/runtime concerns and
+  are deliberately not part of this projection (ADR 0009; the anti-extension gate
+  in content_ci.py enforces their absence).
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - pack
+  - artifact_boundaries
+  - runtime_profiles
+  - delivery_bundles
+  - platform_features
+  - assets
+  - operator_surfaces
+  - validation
+properties:
+  schema_version:
+    type: string
+    const: "environment-pack-compatibility/v2"
+  pack:
+    type: object
+    additionalProperties: false
+    required: [name, title, version, status, source]
+    properties:
+      name:
+        type: string
+        pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+      title:
+        type: string
+      version:
+        type: string
+      status:
+        type: string
+        enum: [draft, built, golden]
+      # Optional pointer to the canonical provenance ledger
+      # (docs/provenance-ledger.yaml). The ledger is the authoritative
+      # source/licensing record; `source.upstream_references` below is a
+      # convenience projection only (issue #48).
+      provenance_ledger:
+        type: string
+      source:
+        type: object
+        additionalProperties: false
+        required: [requirement, issues, upstream_references]
+        properties:
+          requirement:
+            type: [string, "null"]
+          issues:
+            type: array
+            items:
+              type: integer
+          upstream_references:
+            type: array
+            items:
+              type: string
+  artifact_boundaries:
+    type: object
+    additionalProperties: false
+    required: [participant_visible, operator_only, oracle_only, commercial]
+    properties:
+      participant_visible:
+        type: array
+        items:
+          $ref: "#/$defs/boundary_entry"
+      operator_only:
+        type: array
+        items:
+          $ref: "#/$defs/boundary_entry"
+      oracle_only:
+        description: >
+          Compatibility label for a restricted non-participant release
+          boundary. It does not define an oracle or any scenario semantics.
+        type: array
+        items:
+          $ref: "#/$defs/boundary_entry"
+      commercial:
+        type: array
+        items:
+          $ref: "#/$defs/boundary_entry"
+  runtime_profiles:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [profile_id, status, description]
+      properties:
+        profile_id:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9_-]*[a-z0-9]$"
+        status:
+          type: string
+          enum: [supported, planned, required, not_shipped]
+        description:
+          type: string
+        provider:
+          type: [string, "null"]
+        build:
+          type: array
+          items:
+            $ref: "#/$defs/path_ref"
+        tests:
+          type: array
+          items:
+            $ref: "#/$defs/path_ref"
+        walkthroughs:
+          type: array
+          items:
+            $ref: "#/$defs/path_ref"
+  delivery_bundles:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [bundle_id, status, audience]
+      properties:
+        bundle_id:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        status:
+          type: string
+          enum: [supported, planned, not_shipped]
+        audience:
+          type: string
+          enum:
+            - guided
+            - unguided
+            - purple-team
+            - agent-benchmark
+            - demo
+            - participant
+            - facilitator
+            - defender
+            - benchmark_runner
+            - presenter
+            - custom
+        manifest:
+          $ref: "#/$defs/path_ref"
+        participant_paths:
+          type: array
+          items:
+            $ref: "#/$defs/path_ref"
+        operator_paths:
+          type: array
+          items:
+            $ref: "#/$defs/path_ref"
+        validation:
+          type: array
+          items:
+            $ref: "#/$defs/path_ref"
+  platform_features:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [feature_id, status, description]
+      properties:
+        feature_id:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        status:
+          type: string
+          enum: [required, planned, optional, not_shipped]
+        description:
+          type: string
+        runtime_profiles:
+          type: array
+          items:
+            type: string
+  assets:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [asset_id, path, visibility, status]
+      properties:
+        asset_id:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        path:
+          type: string
+        visibility:
+          type: string
+          enum: [participant, public, operator, oracle, private, commercial]
+        status:
+          type: string
+          enum: [shipped, planned, not_shipped]
+        description:
+          type: string
+  operator_surfaces:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [surface_id, path, role, visibility, status]
+      properties:
+        surface_id:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        path:
+          type: string
+        role:
+          type: string
+        visibility:
+          type: string
+          enum: [operator, oracle, commercial]
+        status:
+          type: string
+          enum: [shipped, planned, not_shipped]
+        description:
+          type: string
+  validation:
+    type: object
+    additionalProperties: false
+    required: [commands, gates]
+    properties:
+      commands:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [id, command, validates]
+          properties:
+            id:
+              type: string
+              pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+            command:
+              type: string
+            validates:
+              type: array
+              items:
+                type: string
+      gates:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [id, kind, paths]
+          properties:
+            id:
+              type: string
+              pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+            kind:
+              type: string
+              enum: [schema, leak-scan, unit-test, rehearsal, manual-walkthrough]
+            paths:
+              type: array
+              items:
+                $ref: "#/$defs/path_ref"
+$defs:
+  path_ref:
+    type: object
+    additionalProperties: false
+    required: [path]
+    properties:
+      path:
+        type: string
+      description:
+        type: string
+  boundary_entry:
+    type: object
+    additionalProperties: false
+    required: [path, export]
+    properties:
+      path:
+        type: string
+      export:
+        type: string
+        enum: [public, commercial, private, operator, oracle]
+      description:
+        type: string

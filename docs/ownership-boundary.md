@@ -24,8 +24,8 @@ RAES owns portable scenario, workflow, capture, evidence, and inventory
 *meaning*: the SDL and its objectives, conditions, evidence requirements, and
 participant/attacker behaviour, together with the controlled vocabularies,
 semantic compilation, and planner diagnostics. This repository consumes those
-from the exactly pinned `aces-sdl` package and defines zero extensions to them
-([ADR 0009](decisions/adrs/0009-scenario-packs-subordinate-to-aces.md)). Where
+from the exactly pinned `raes` package and defines zero extensions to them
+([ADR 0021](decisions/adrs/0021-adopt-raes-environment-pack-identity.md)). Where
 a scenario needs expressivity RAES lacks, that gap is fixed upstream in RAES,
 never worked around in the pack format.
 
@@ -38,7 +38,7 @@ experiment or scenario: no pack content, no experiment design, no chosen
 participants, targets, or execution. This repository ships the shape a pack
 takes and the gates that prove a pack fits that shape; packs themselves live in
 their own catalog repositories
-([ADR 0009](decisions/adrs/0009-scenario-packs-subordinate-to-aces.md), which
+([ADR 0021](decisions/adrs/0021-adopt-raes-environment-pack-identity.md), which
 carries forward the charter of
 [ADR 0001](decisions/adrs/0001-repository-purpose-and-boundary.md)).
 
@@ -81,6 +81,6 @@ one-way is what lets the same pack run against more than one backend.
 - APTL's ownership record for this boundary:
   [Brad-Edwards/aptl#589](https://github.com/Brad-Edwards/aptl/issues/589) and
   the note it produced,
-  [scenario-pack capture ownership](https://github.com/Brad-Edwards/aptl/blob/main/docs/architecture/issue-589-scenario-pack-capture-ownership-preflight.md).
+  [environment-pack capture ownership](https://github.com/Brad-Edwards/aptl/blob/main/docs/architecture/issue-589-environment-pack-capture-ownership-preflight.md).
 - [ADR 0001 — repository purpose and boundary](decisions/adrs/0001-repository-purpose-and-boundary.md)
-- [ADR 0009 — scenario packs are strictly subordinate to ACES](decisions/adrs/0009-scenario-packs-subordinate-to-aces.md)
+- [ADR 0021 — RAES environment-pack identity and boundary](decisions/adrs/0021-adopt-raes-environment-pack-identity.md)

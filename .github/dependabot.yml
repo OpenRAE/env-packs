@@ -29,7 +29,7 @@ updates:
   # `--require-hashes`. tests/test_dependency_pinning.py enforces that agreement.
   #
   # requirements/runtime.txt is the resolved closure of pyproject's own
-  # dependencies, so an aces-sdl bump can appear here. Every bump PR is merged by
+  # dependencies, so an raes bump can appear here. Every bump PR is merged by
   # a person (ADR 0020), so ADR 0011's human review of the pin is intact by
   # default, and a lock that drifts from pyproject fails the contract test rather
   # than silently installing a different version than the package declares.
@@ -49,10 +49,10 @@ updates:
         patterns:
           - "*"
 
-  # Runtime Python dependencies (PyYAML, aces-sdl). They ship inside the
+  # Runtime Python dependencies (PyYAML, raes). They ship inside the
   # installed package, so a bump is `fix(deps)` — it cuts a patch release
-  # (ADR 0016) so consumers actually receive the new floor. aces-sdl is left as
-  # its own (ungrouped) PR so advancing the pinned ACES dependency is reviewed in
+  # (ADR 0016) so consumers actually receive the new floor. raes is left as
+  # its own (ungrouped) PR so advancing the pinned RAES dependency is reviewed in
   # isolation (ADR 0011) rather than buried in a batch. Its CI compatibility gate
   # still runs automatically on the Dependabot PR.
   - package-ecosystem: pip

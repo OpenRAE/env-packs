@@ -1,4 +1,4 @@
-"""Tests for the scenario-pack issue skeleton helper."""
+"""Tests for the environment-pack issue skeleton helper."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_SCRIPT = os.path.join(os.path.dirname(_HERE), "src", "aces_scenario_packs",
+_SCRIPT = os.path.join(os.path.dirname(_HERE), "src", "raes_env_packs",
                        "issue_skeleton.py")
 
 
@@ -59,7 +59,7 @@ class SkeletonTemplateTests(unittest.TestCase):
 
         body = template.renderer(self.plan())
 
-        self.assertIn("ACES participant behavior", body)
+        self.assertIn("RAES participant behavior", body)
         self.assertIn("behavior_specifications", body)
         self.assertIn("action_contracts", body)
         self.assertNotIn("Pack-local oracle", body)
@@ -85,7 +85,7 @@ class SkeletonTemplateTests(unittest.TestCase):
                          "example-pack: create scenario contract and pack skeleton")
         self.assertIn("scenario:example-pack", creates[0].labels)
         self.assertIn("documentation", creates[0].labels)
-        self.assertNotIn("tier:aces", creates[0].labels)
+        self.assertNotIn("tier:raes", creates[0].labels)
 
     def test_existing_templates_are_skipped_by_default(self):
         plan = self.plan()
@@ -110,7 +110,7 @@ class SkeletonTemplateTests(unittest.TestCase):
         operations = SKELETON.build_operations(plan, existing_issues=existing)
         behavior = next(
             operation for operation in operations
-            if operation.title.endswith("specify participant attacker behavior in ACES")
+            if operation.title.endswith("specify participant attacker behavior in RAES")
         )
 
         self.assertEqual(behavior.action, "skip_issue")
@@ -135,7 +135,7 @@ class SkeletonTemplateTests(unittest.TestCase):
             focus=plan.focus,
             sources=plan.sources,
             labels=plan.labels,
-            milestone_title="Scenario pack: Example Pack",
+            milestone_title="Environment pack: Example Pack",
         )
         ops = SKELETON.build_operations(plan, [], milestone_exists=False)
         self.assertEqual(ops[0].action, "create_milestone")

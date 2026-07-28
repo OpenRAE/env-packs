@@ -1,6 +1,6 @@
 ---
 name: Migration task
-about: Track movement or adaptation of scenario-pack material into this repository
+about: Track movement or adaptation of environment-pack material into this repository
 title: ""
 labels: migration
 assignees: ""
@@ -22,13 +22,13 @@ category:
 - [ ] Downstream catalog names, product names, and internal branding removed or replaced.
 - [ ] Private repository paths and internal directory layouts removed or replaced.
 - [ ] Private labels, milestones, and status vocabulary removed or replaced.
-- [ ] Private or unrelated issue/PR references removed (public ACES-family planning links only).
+- [ ] Private or unrelated issue/PR references removed (public RAES-family planning links only).
 - [ ] Branch rules and private workflow conventions removed.
 - [ ] Product assumptions and customer-specific behavior removed or generalized.
 - [ ] Private deployment details (hostnames, IPs, environment names, infra identifiers) removed.
 - [ ] Source-specific denylist kept private (not pasted into this issue or canonical docs).
 - [ ] Ran the leak/scrub scanner against that private denylist and resolved findings.
 
-## ACES Or APTL Follow-Ups
+## RAES Or APTL Follow-Ups
 
 ## Acceptance Criteria

@@ -86,7 +86,7 @@ class ReadTheDocsConfigTests(unittest.TestCase):
 
     def test_package_itself_is_not_installed_for_docs(self) -> None:
         # Deliberate: the pages are narrative markdown with no autodoc, so
-        # installing would pull the whole pinned aces-sdl runtime closure just to
+        # installing would pull the whole pinned raes runtime closure just to
         # render text. docs/conf.py reads the version from pyproject.toml.
         install = self.data.get("python", {}).get("install", [])
         self.assertNotIn(

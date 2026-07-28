@@ -16,7 +16,7 @@ workflow:
   # anything. Prefer a local .venv when one exists, and fall back to `python3`
   # otherwise, which is the CI case where the package is already installed.
   test_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); "$PY" -m unittest discover -s tests'
-  completion_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); "$PY" -m unittest discover -s tests && PYTHONPATH=src "$PY" -m aces_scenario_packs.content_ci --repo . && PYTHONPATH=src "$PY" -m aces_scenario_packs.release check --all'
+  completion_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); "$PY" -m unittest discover -s tests && PYTHONPATH=src "$PY" -m raes_env_packs.content_ci --repo . && PYTHONPATH=src "$PY" -m raes_env_packs.release check --all'
   # This repository has no separate policy tool -- no bin/policy, no rule engine.
   # Its repository policy is written as contract tests that assert the governance
   # invariants the ADRs commit to: supply-chain pinning (ADR 0004), least-privilege
@@ -59,9 +59,9 @@ workflow:
       enabled: false
 docs:
   adr_dir: docs/decisions/adrs/
-  workflow_reference: docs/scenario-packs.md
+  workflow_reference: docs/environment-packs.md
 example_paths:
-  source: src/aces_scenario_packs/
+  source: src/raes_env_packs/
   test: tests/
 requirements:
   uid_examples:
@@ -73,13 +73,13 @@ sonarcloud:
 architecture:
   vocabulary:
     patterns:
-      - name: ACES-subordinate pack tooling
-        applies_to: scenario-pack layout and authoring/validation/release tooling
-        example_path: docs/scenario-packs.md
+      - name: RAES-subordinate pack tooling
+        applies_to: environment-pack layout and authoring/validation/release tooling
+        example_path: docs/environment-packs.md
     boundary_contract:
-      description: This repository is subordinate to ACES core (aces-sdl). ACES owns all scenario semantics (the SDL and its objectives, conditions, evidence, and participant/attacker behaviour); this repository owns only the scenario-pack layout and the authoring/validation/release tooling, and defines zero extensions to ACES semantics. It does not host actual scenario packs. See ADR 0009.
+      description: This repository is subordinate to RAES core (raes). RAES owns all scenario semantics (the SDL and its objectives, conditions, evidence, and participant/attacker behaviour); this repository owns only the environment-pack layout and the authoring/validation/release tooling, and defines zero extensions to RAES semantics. It does not host actual environment packs. See ADR 0009.
     binding_adrs: []
     anti_recommendations:
-      - Do not host actual scenario packs here; this repo is the layout and tooling only.
-      - Do not define or extend ACES semantics here (SDL, objectives, conditions, evidence, scoring, telemetry, oracle/validation models); consume them from ACES. See ADR 0009.
+      - Do not host actual environment packs here; this repo is the layout and tooling only.
+      - Do not define or extend RAES semantics here (SDL, objectives, conditions, evidence, scoring, telemetry, oracle/validation models); consume them from RAES. See ADR 0009.
       - Do not encode downstream catalog vocabulary into canonical pack terminology.

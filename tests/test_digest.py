@@ -1,4 +1,4 @@
-"""ACES-associated scenario-pack content identity (issue #95, ADR 0012)."""
+"""RAES-associated environment-pack content identity (issue #95, ADR 0012)."""
 
 from __future__ import annotations
 
@@ -12,21 +12,21 @@ from pathlib import Path
 from unittest import mock
 from urllib.parse import quote
 
-from aces_contracts.associated_artifacts import (
+from raes_contracts.associated_artifacts import (
     AssociatedArtifactValidationLimits,
     associated_artifact_set_digest,
 )
-from aces_contracts.contracts import AssociatedArtifactManifestModel
-from aces_sdl import canonical_sdl_digest, parse_sdl_file
+from raes_contracts.contracts import AssociatedArtifactManifestModel
+from raes import canonical_sdl_digest, parse_sdl_file
 
-from aces_scenario_packs import (
+from raes_env_packs import (
     PackDigestError,
     derive_pack_content_manifest,
     pack_content_digest,
     validate_pack_content_manifest,
     verify_pack_content_digest,
 )
-from aces_scenario_packs import digest
+from raes_env_packs import digest
 
 
 _VALID_SDL = "\n".join(
@@ -51,11 +51,11 @@ def _artifact(artifact_id: str, rel: str, body: bytes) -> dict[str, object]:
         "artifact_id": artifact_id,
         "role": "other",
         "media_type": "application/octet-stream",
-        "uri": f"aces-scenario-pack:/{quote(rel, safe='/-._~')}",
+        "uri": f"raes-environment-pack:/{quote(rel, safe='/-._~')}",
         "checksum": {"algorithm": "sha256", "value": hashlib.sha256(body).hexdigest()},
         "size_bytes": len(body),
         "created_at": "2026-07-12T00:00:00Z",
-        "source": "scenario-pack-author",
+        "source": "environment-pack-author",
         "sensitivity": "internal",
     }
 
@@ -165,21 +165,21 @@ class InventoryTests(PackFixture):
 
     def test_noncanonical_pack_uri_is_rejected(self):
         payload = json.loads((self.root / "associated-artifacts.json").read_text())
-        payload["artifacts"]["artifact-2"]["uri"] = "aces-scenario-pack:/docs/%67uide.md"
+        payload["artifacts"]["artifact-2"]["uri"] = "raes-environment-pack:/docs/%67uide.md"
         (self.root / "associated-artifacts.json").write_text(json.dumps(payload))
         with self.assertRaises(PackDigestError):
             derive_pack_content_manifest(self.root)
 
     def test_non_utf8_pack_uri_is_rejected(self):
         payload = json.loads((self.root / "associated-artifacts.json").read_text())
-        payload["artifacts"]["artifact-2"]["uri"] = "aces-scenario-pack:/docs/%FF.md"
+        payload["artifacts"]["artifact-2"]["uri"] = "raes-environment-pack:/docs/%FF.md"
         (self.root / "associated-artifacts.json").write_text(json.dumps(payload))
         with self.assertRaises(PackDigestError):
             derive_pack_content_manifest(self.root)
 
     def test_escaping_pack_uri_is_rejected(self):
         payload = json.loads((self.root / "associated-artifacts.json").read_text())
-        payload["artifacts"]["artifact-2"]["uri"] = "aces-scenario-pack:/../outside"
+        payload["artifacts"]["artifact-2"]["uri"] = "raes-environment-pack:/../outside"
         (self.root / "associated-artifacts.json").write_text(json.dumps(payload))
         with self.assertRaises(PackDigestError):
             derive_pack_content_manifest(self.root)

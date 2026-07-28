@@ -19,8 +19,10 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
-PKG = ROOT / "src" / "aces_scenario_packs"
+PKG = ROOT / "src" / "raes_env_packs"
 
 
 def _load(modname: str, filename: str):
@@ -81,7 +83,18 @@ class IssueSkeletonRenderTests(unittest.TestCase):
                     for i, op in enumerate(ops) if op.action == "create_issue"]
         refreshed = ISK.build_operations(plan, existing, refresh_existing=True,
                                          milestone_exists=True)
-        self.assertIsInstance(refreshed, list)
+        expected = [
+            ("update_issue", operation.title, index)
+            for index, operation in enumerate(ops)
+            if operation.action == "create_issue"
+        ]
+        self.assertEqual(
+            [
+                (operation.action, operation.title, operation.issue_number)
+                for operation in refreshed
+            ],
+            expected,
+        )
 
     def test_resolve_milestone_number(self):
         num, exists = ISK.resolve_milestone_number(
@@ -172,15 +185,23 @@ class PrepareApplyTests(unittest.TestCase):
             ISK.require_milestone_number(None, "create")
 
     def test_main_dry_run_and_apply(self):
-        with mock.patch.object(ISK, "GhClient", return_value=_StubClient()):
+        client = _StubClient()
+        with mock.patch.object(ISK, "GhClient", return_value=client):
             with redirect_stdout(io.StringIO()):
                 ISK.main(["--pack-id", "cov-pack", "--milestone-number", "1"])
+            self.assertEqual(client.created, [])
+            with redirect_stdout(io.StringIO()):
                 ISK.main(["--pack-id", "cov-pack", "--milestone-number", "1", "--apply"])
+        self.assertEqual(len(client.created), len(ISK.ISSUE_TEMPLATES))
+        self.assertTrue(
+            all(action == "create" for action, _title in client.created),
+            client.created,
+        )
 
 
 def _scaffold(tmp: str) -> str:
-    """Scaffold a pack from the packaged template into tmp/scenarios and return it."""
-    os.makedirs(os.path.join(tmp, "scenarios"), exist_ok=True)
+    """Scaffold a pack from the packaged template into tmp/environments and return it."""
+    os.makedirs(os.path.join(tmp, "environments"), exist_ok=True)
     target = NP.scaffold_pack(tmp, "cov-pack", "Cov Pack", "one line", None, None)
     return target
 
@@ -196,13 +217,28 @@ class NewPackTests(unittest.TestCase):
 
     def test_scaffold_with_requirement_and_issue(self):
         with tempfile.TemporaryDirectory() as tmp:
-            os.makedirs(os.path.join(tmp, "scenarios"))
-            NP.scaffold_pack(tmp, "cov-pack", "Cov", "desc", "ASP-0001", 42)
+            os.makedirs(os.path.join(tmp, "environments"))
+            target = Path(
+                NP.scaffold_pack(
+                    tmp, "cov-pack", "Cov", "desc", "ASP-0001", 42
+                )
+            )
+            pack = yaml.safe_load((target / "pack.yaml").read_text(encoding="utf-8"))
+            compatibility = yaml.safe_load(
+                (target / "pack.compatibility.yaml").read_text(encoding="utf-8")
+            )
+            readme = (target / "README.md").read_text(encoding="utf-8")
+            self.assertEqual(pack["requirement"], "ASP-0001")
+            self.assertEqual(
+                compatibility["pack"]["source"]["requirement"],
+                "ASP-0001",
+            )
+            self.assertIn("Created from GitHub issue #42.", readme)
 
     def test_main(self):
         with tempfile.TemporaryDirectory() as tmp:
             os.makedirs(os.path.join(tmp, ".git"))
-            os.makedirs(os.path.join(tmp, "scenarios"))
+            os.makedirs(os.path.join(tmp, "environments"))
             with redirect_stdout(io.StringIO()):
                 rc = NP.main(["cov-pack", "--repo", tmp])
             self.assertEqual(rc, 0)
@@ -210,8 +246,15 @@ class NewPackTests(unittest.TestCase):
 
 def _add_pack_gates(pack: str) -> None:
     """Add a validator (pass + fail) and a passing test suite to a scaffolded pack."""
+    provenance = Path(pack) / "docs" / "provenance-ledger.yaml"
+    provenance.write_text(
+        provenance.read_text(encoding="utf-8").replace("<name>", "cov-pack"),
+        encoding="utf-8",
+    )
     sdl = os.path.join(pack, "sdl")
     os.makedirs(os.path.join(sdl, "tests"), exist_ok=True)
+    with open(os.path.join(sdl, "example.sdl.yaml"), "w", encoding="utf-8") as fh:
+        fh.write("name: cov-pack\nnodes:\n  target:\n    type: vm\n")
     with open(os.path.join(sdl, "validate_ok.py"), "w", encoding="utf-8") as fh:
         fh.write("import sys\nif __name__ == '__main__':\n    sys.exit(0)\n")
     with open(os.path.join(sdl, "validate_bad.py"), "w", encoding="utf-8") as fh:
@@ -226,27 +269,34 @@ class ContentCiWalkTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             pack = _scaffold(tmp)
             _add_pack_gates(pack)
-            orig = CI.SCEN, CI._REPO
-            CI.SCEN, CI._REPO = os.path.join(tmp, "scenarios"), tmp
+            orig = CI.PACKS_ROOT, CI._REPO
+            CI.PACKS_ROOT, CI._REPO = os.path.join(tmp, "environments"), tmp
             try:
-                with redirect_stdout(io.StringIO()):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
                     rc = CI.main(["--pack", pack])
-                self.assertIn(rc, (0, 1))
+                self.assertEqual(rc, 1)
+                self.assertIn("validate_bad.py", stdout.getvalue())
             finally:
-                CI.SCEN, CI._REPO = orig
+                CI.PACKS_ROOT, CI._REPO = orig
 
 
 class ReleaseTests(unittest.TestCase):
     def test_pack_flows(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as out:
             pack = _scaffold(tmp)
-            self.assertIsInstance(REL.lint_pack(pack), list)
-            self.assertIsInstance(REL.smoke_pack(pack), list)
+            self.assertEqual(REL.lint_pack(pack), [])
+            self.assertEqual(REL.smoke_pack(pack), [])
             meta, failures = REL.build_release(pack, out)
-            self.assertIsInstance(failures, list)
-            self.assertIsInstance(REL.release_metadata(pack), dict)
+            self.assertEqual(failures, [])
+            self.assertEqual(meta["pack"]["name"], "cov-pack")
+            self.assertEqual(
+                REL.release_metadata(pack)["pack"]["name"],
+                "cov-pack",
+            )
             version, digest = REL.load_contract_version()
-            self.assertTrue(digest.startswith("sha256:"))
+            self.assertEqual(version, "4")
+            self.assertRegex(digest, r"\Asha256:[0-9a-f]{64}\Z")
 
     def test_main_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:

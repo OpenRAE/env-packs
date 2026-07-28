@@ -32,7 +32,7 @@ Structure new scenario milestones so the final proof is planned:
 
 - [ ] Scenario contract and pack skeleton.
 - [ ] Topology, assets, and reference-triangle design.
-- [ ] Attacker behavior is specified in ACES participant semantics.
+- [ ] Attacker behavior is specified in RAES participant semantics.
 - [ ] Flag, challenge, and reference CTFd layer, when the scenario has flags.
 - [ ] Delivery profile bundles, when the scenario has multiple audiences.
 - [ ] Golden build implementation in the declared live infrastructure.
@@ -46,7 +46,7 @@ passing tests or a successful Terraform apply.
 ## Definition Of Done
 
 Every pack carries this checklist at
-`scenarios/<name>/docs/golden-readiness-checklist.md`.
+`environments/<name>/docs/golden-readiness-checklist.md`.
 
 - [ ] The range applies from a clean checkout using committed pack content.
 - [ ] No hidden repo-root `.env`, external file fetch, or undocumented manual
@@ -58,14 +58,14 @@ Every pack carries this checklist at
 - [ ] Operator channels such as SSM, Terraform, cloud consoles, generated
       passwords, root/SYSTEM shells, and database consoles are used only for
       provisioning, diagnostics, reset, observation, or teardown.
-- [ ] Every required ACES objective, flag, and success condition is reached
+- [ ] Every required RAES objective, flag, and success condition is reached
       from the intended participant privilege context.
 - [ ] Negative gates prove objectives/flags are not trivially reachable before
       the required action or privilege.
 - [ ] Reset, persistence, survival, or cleanup behavior works where claimed.
 - [ ] Automated rehearsal passes against the same golden build profile.
 - [ ] The human walkthrough and automated rehearsal exercise the same declared
-      ACES behavior and objectives.
+      RAES behavior and objectives.
 - [ ] Durable evidence is committed as a rehearsal report.
 - [ ] Teardown is run and verified; no live range resources remain.
 - [ ] `pack.yaml.status: golden` is set only after the above proof exists.

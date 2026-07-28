@@ -13,8 +13,8 @@ from unittest import mock
 
 import yaml
 
-from aces_scenario_packs import PackValidationLimits, ValidationResult, validate_pack
-from aces_scenario_packs import validation as _validation
+from raes_env_packs import PackValidationLimits, ValidationResult, validate_pack
+from raes_env_packs import validation as _validation
 
 
 _VALID_SDL = "\n".join(
@@ -34,7 +34,7 @@ class PackValidationFixture(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         template = (
             Path(__file__).parents[1]
-            / "src" / "aces_scenario_packs" / "resources" / "template"
+            / "src" / "raes_env_packs" / "resources" / "template"
         )
         self.root = self.tmp / "example-pack"
         shutil.copytree(template, self.root)

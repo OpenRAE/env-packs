@@ -1,23 +1,23 @@
 # Agent Instructions
 
-This repository is the canonical home for the ACES scenario-pack definition,
+This repository is the canonical home for the RAES environment-pack definition,
 schemas, template, and authoring/validation tooling. It does not host actual
-scenario packs — those live in their own catalog repositories and consume this
+environment packs — those live in their own catalog repositories and consume this
 package.
 
 ## Repository Boundaries
 
-This repository is **subordinate to ACES core** (`aces-sdl` /
-`Brad-Edwards/aces`) and exists to make authoring and shipping ACES scenarios
-easier. It defines **zero extensions** to ACES semantics
-(see [ADR 0009](docs/decisions/adrs/0009-scenario-packs-subordinate-to-aces.md)).
+This repository is **subordinate to RAES core** (`raes` /
+`RAESystem/rae`) and exists to make authoring and shipping RAES scenarios
+easier. It defines **zero extensions** to RAES semantics
+(see [ADR 0021](docs/decisions/adrs/0021-adopt-raes-environment-pack-identity.md)).
 
-- ACES core owns all scenario semantics — the SDL and its objectives,
-  conditions, evidence, and participant/attacker behaviour. Where ACES owns a
-  concept, consume it from ACES; never redefine or extend it here.
-- This repository owns only the scenario-pack layout and the
+- RAES core owns all scenario semantics — the SDL and its objectives,
+  conditions, evidence, and participant/attacker behaviour. Where RAES owns a
+  concept, consume it from RAES; never redefine or extend it here.
+- This repository owns only the environment-pack layout and the
   authoring/validation/release tooling.
-- Actual scenario packs live in their own catalog repos, not here.
+- Actual environment packs live in their own catalog repos, not here.
 - Don't import downstream catalog names, paths, branch rules, labels, product
   assumptions, or private deployment vocabulary into the canonical docs.
 
@@ -27,8 +27,8 @@ Before declaring repository work complete, run (in a venv with `pip install -e .
 
 ```sh
 python -m unittest discover -s tests
-aces-pack-validate --repo .
-aces-pack-release check --all
+raes-pack-validate --repo .
+raes-pack-release check --all
 python3 -m compileall src tests
 ```
 

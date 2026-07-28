@@ -21,12 +21,12 @@ import unittest
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _DOC = _ROOT / "docs" / "ownership-boundary.md"
-_PACKS_DOC = _ROOT / "docs" / "scenario-packs.md"
+_PACKS_DOC = _ROOT / "docs" / "environment-packs.md"
 
 # The APTL-side record this guidance agrees with. Both halves are load-bearing:
 # the issue is the decision, the note is its durable statement.
 _APTL_ISSUE = "https://github.com/Brad-Edwards/aptl/issues/589"
-_APTL_NOTE = "issue-589-scenario-pack-capture-ownership-preflight.md"
+_APTL_NOTE = "issue-589-environment-pack-capture-ownership-preflight.md"
 
 # One responsibility phrase per owner. Each must survive independently; losing
 # one is how a four-way boundary quietly becomes a three-way one.
@@ -124,7 +124,7 @@ class OwnershipBoundaryDocTests(unittest.TestCase):
         self.assertIn(
             "ownership-boundary.md",
             _flat(_PACKS_DOC),
-            "docs/scenario-packs.md must cross-reference the ownership boundary",
+            "docs/environment-packs.md must cross-reference the ownership boundary",
         )
 
 

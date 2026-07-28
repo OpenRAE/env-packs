@@ -52,11 +52,11 @@ import atheris
 # Instrumented so libFuzzer can steer on the validator's real branches; without
 # this the run degrades to blind random input.
 with atheris.instrument_imports():
-    from aces_scenario_packs import PackValidationLimits, validate_pack
+    from raes_env_packs import PackValidationLimits, validate_pack
 
 _TEMPLATE = (
     pathlib.Path(__file__).resolve().parents[1]
-    / "src" / "aces_scenario_packs" / "resources" / "template"
+    / "src" / "raes_env_packs" / "resources" / "template"
 )
 
 # The pack directory name is load-bearing: validate_pack cross-checks it against
