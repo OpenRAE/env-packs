@@ -26,7 +26,9 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0018](0018-openssf-scorecard-posture.md) | OpenSSF Scorecard posture | Accepted |
 | [0019](0019-preserve-history-in-dev-main-promotions.md) | Preserve history in dev-to-main promotions | Accepted |
 | [0020](0020-no-auto-merge.md) | No auto-merge; a human merges every pull request | Accepted |
-| [0021](0021-adopt-raes-environment-pack-identity.md) | Adopt the RAES environment-pack identity as a hard cut | Accepted |
+| [0021](0021-adopt-raes-environment-pack-identity.md) | Adopt the RAES environment-pack identity as a hard cut | Upstream pin/spellings superseded by 0022 |
+| [0022](0022-adopt-raes-2-upstream-contract.md) | Adopt the RAES 2 upstream contract | Accepted |
+| [0023](0023-recover-interrupted-signed-releases.md) | Recover interrupted signed releases | Accepted |
 
 ```{toctree}
 :hidden:

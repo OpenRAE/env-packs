@@ -1,5 +1,5 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
-$id: "https://aces.dev/schemas/environment-pack-provenance-v3.json"
+$id: "https://raes.dev/schemas/environment-pack-provenance-v3.json"
 title: RAES environment pack provenance ledger (pack-domain; trust deferred to RAES)
 description: >
   Machine-readable pack-domain ledger for an environment pack's content ORIGIN &
@@ -13,14 +13,14 @@ description: >
   RAES core is the authority for pack TRUST. An environment pack is a `reusable_scenario`
   asset in the RAES reusable-asset-trust-policy (schema_version
   `reusable-asset-trust-policy/v1`, $id
-  https://aces.dev/schemas/reusable-asset-trust-policy-v1.json; RAES ADR-071),
+  https://raes.dev/schemas/reusable-asset-trust-policy-v1.json; RAES ADR-071),
   which owns the integrity_digest, authenticity_signature, provenance_lock_record,
   governance_source, and artifact_checksum evidence classes and their enforcement
   levels. Per ADR 0009/ADR 0010 this repository is subordinate to RAES: this ledger
   neither carries nor re-defines any of those RAES-owned trust concepts — a pack's
   cryptographic integrity/authenticity and its composed-module (SDL) dependency
   provenance are established by RAES mechanisms (scenario-snapshot digest binding,
-  aces.lock.json digest pins, RegistryTrustPolicy signatures), not here.
+  raes.lock.json digest pins, RegistryTrustPolicy signatures), not here.
 
   RAES schemas are currently stability:draft, so this ledger REFERENCES that policy
   as the authority now and does not vendor, fork, or pin it; the explicit upstream
@@ -52,7 +52,7 @@ $comment: >
   • pack / schema_version — pack-domain: ledger identity & version.
   • sources[] — pack-domain: content-origin licensing/attribution of external,
     non-RAES material. Distinct from the RAES provenance_lock_record evidence
-    class (aces.lock.json digest-pinning of composed RAES modules), which stays
+    class (raes.lock.json digest-pinning of composed RAES modules), which stays
     with RAES; this ledger does not attest module-dependency provenance. Carries
     NO concept vocabulary: the removed `kind` classification is not restated —
     governed ATT&CK/ATLAS/UCO concepts live in RAES concept-authority and RAES

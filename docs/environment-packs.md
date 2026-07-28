@@ -101,7 +101,7 @@ The exactly pinned RAES release does not expose a resolver-policy seam for
 file-backed SDL parsing. The consumer API therefore parses supplied SDL content
 without a file context; an SDL document containing imports fails with
 `sdl.imports-denied` instead of performing network I/O or writing
-`sdl/.aces/module-cache`. The author CLI keeps file-backed parsing under its
+`sdl/.raes/module-cache`. The author CLI keeps file-backed parsing under its
 separately controlled environment. Catalog discovery, pack validators/tests,
 leak scanning, flag-placement joins, release readiness, and content-manifest
 verification are outside this consumer API.
@@ -198,7 +198,7 @@ licensing/attribution (`sources[]`), distribution class (`artifacts[]`),
 content-safety attestations (`content_safety{}`), publication review (`review{}`),
 and customer-overlay containment (`overlays[]`) — and re-defines none of the
 RAES-owned trust concepts; those are established by RAES mechanisms
-(scenario-snapshot digest, `aces.lock.json`, RegistryTrustPolicy signatures). RAES
+(scenario-snapshot digest, `raes.lock.json`, RegistryTrustPolicy signatures). RAES
 schemas are `stability: draft`, so the ledger references the policy now and the
 explicit upstream pin lands once RAES marks it stable. The bundled
 [layout contract](https://github.com/RAESystem/env-packs/blob/main/src/raes_env_packs/resources/contract/pack-layout.md)
@@ -237,7 +237,7 @@ Each artifact keeps its opaque manifest-local id and uses a pack-local locator
 such as `raes-environment-pack:/docs/operator-guide.md`. The URI is not integrity
 evidence; this package resolves it inside the opened pack root and supplies the
 concrete bytes to RAES. The manifest carrier and
-`sdl/.aces/module-cache/` are excluded, while every other regular file must be
+`sdl/.raes/module-cache/` are excluded, while every other regular file must be
 declared. Missing, extra, unsafe, or changed members fail closed.
 
 The public, in-process API separates authoring derivation from consumer
