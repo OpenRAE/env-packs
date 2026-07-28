@@ -334,6 +334,12 @@ class LockFileIntegrityTests(unittest.TestCase):
                     # _PIN_RE already required; guard against ranges sneaking in.
                     self.assertNotIn(",", version, f"{name} must be a single == pin")
 
+    def test_legacy_release_lock_matches_the_2_0_2_runtime(self) -> None:
+        pins = _parse_lock(_REQ_DIR / "recovery-v2.0.2.txt")
+        self.assertEqual(pins.get("a" + "ces-sdl"), "0.23.1")
+        self.assertEqual(pins.get("cyclonedx-bom"), "7.3.0")
+        self.assertIn("pyyaml", pins)
+
     def test_co_installed_locks_agree_on_shared_packages(self) -> None:
         # A workflow job is one Python environment: every lock installed by any
         # step of that job lands in the same site-packages. If two of them

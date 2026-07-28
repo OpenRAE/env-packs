@@ -1,0 +1,6 @@
+# Historical runtime closure for the final aces-scenario-packs release.
+# This is recovery-only input for the signed v2.0.2 target in ADR 0026.
+-r build.in
+PyYAML>=6
+aces-sdl==0.23.1
+cyclonedx-bom==7.3.0
