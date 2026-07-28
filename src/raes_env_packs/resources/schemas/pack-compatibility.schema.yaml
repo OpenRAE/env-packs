@@ -1,5 +1,5 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
-$id: "https://aces.dev/schemas/environment-pack-compatibility-v2.json"
+$id: "https://raes.dev/schemas/environment-pack-compatibility-v2.json"
 title: RAES environment pack compatibility manifest
 description: >
   Product-facing compatibility projection for an environment pack. pack.yaml stays

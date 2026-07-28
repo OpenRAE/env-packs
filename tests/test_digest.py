@@ -143,11 +143,11 @@ class DerivationTests(PackFixture):
         self.assertEqual(pack_content_digest(self.root), validate_pack_content_manifest(self.root).set_digest)
 
     def test_module_cache_is_not_part_of_inventory(self):
-        _write(self.root, "sdl/.aces/module-cache/fetched.yaml", b"mutable")
+        _write(self.root, "sdl/.raes/module-cache/fetched.yaml", b"mutable")
         self.assertEqual(pack_content_digest(self.root), validate_pack_content_manifest(self.root).set_digest)
 
     def test_same_named_cache_elsewhere_is_not_excluded(self):
-        _write(self.root, "docs/.aces/module-cache/note.txt", b"content")
+        _write(self.root, "docs/.raes/module-cache/note.txt", b"content")
         with self.assertRaises(PackDigestError):
             derive_pack_content_manifest(self.root)
 

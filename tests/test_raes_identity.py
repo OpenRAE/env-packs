@@ -10,6 +10,7 @@ import tomllib
 import unittest
 
 import yaml
+from raes.module_registry import LOCKFILE_NAME
 
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -139,7 +140,7 @@ class PackContractIdentityTests(unittest.TestCase):
         )
         self.assertEqual(
             compatibility["$id"],
-            "https://aces.dev/schemas/environment-pack-compatibility-v2.json",
+            "https://raes.dev/schemas/environment-pack-compatibility-v2.json",
         )
         self.assertEqual(
             compatibility["properties"]["schema_version"]["const"],
@@ -147,7 +148,7 @@ class PackContractIdentityTests(unittest.TestCase):
         )
         self.assertEqual(
             provenance["$id"],
-            "https://aces.dev/schemas/environment-pack-provenance-v3.json",
+            "https://raes.dev/schemas/environment-pack-provenance-v3.json",
         )
         self.assertEqual(
             provenance["properties"]["schema_version"]["const"],
@@ -161,6 +162,20 @@ class PackContractIdentityTests(unittest.TestCase):
 
         digest = (_NEW_PACKAGE / "digest.py").read_text(encoding="utf-8")
         self.assertIn('_PACK_URI_SCHEME = "raes-environment-pack"', digest)
+
+    def test_current_surfaces_use_the_raes_lockfile_name(self) -> None:
+        self.assertEqual(LOCKFILE_NAME, "raes.lock.json")
+        current_surfaces = (
+            _ROOT / "docs" / "environment-packs.md",
+            _ROOT / "docs" / "raes-migration.md",
+            _NEW_PACKAGE / "resources" / "contract" / "pack-layout.md",
+            _NEW_PACKAGE / "resources" / "schemas" / "provenance.schema.yaml",
+        )
+        for path in current_surfaces:
+            with self.subTest(path=path.relative_to(_ROOT)):
+                text = path.read_text(encoding="utf-8")
+                self.assertIn(LOCKFILE_NAME, text)
+                self.assertNotIn("aces.lock.json", text)
 
     def test_release_please_tracks_the_new_distribution(self) -> None:
         config = json.loads(

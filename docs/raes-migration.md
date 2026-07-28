@@ -24,8 +24,10 @@ Pack-owned identifiers also make a hard cut: compatibility
 accepted through aliases.
 
 SDL still describes a RAES `Scenario`, so `sdl/`, `*.sdl.yaml`,
-`reusable_scenario`, and the identifiers published by the exact `raes==1.1.0`
-contract corpus keep their upstream spellings.
+`reusable_scenario`, and the identifiers published by the exact `raes==2.0.0`
+contract corpus keep their upstream spellings. RAES 2 uses the
+`https://raes.dev/schemas/` namespace, `raes.lock.json`, and
+`sdl/.raes/module-cache`.
 
 The retired distribution receives one final metadata-only notice directing
 users here and is then frozen. It does not depend on the new distribution or

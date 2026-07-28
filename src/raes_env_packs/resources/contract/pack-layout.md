@@ -195,7 +195,7 @@ publication-review gate, and pack exports carry it rather than bypassing it.
 An environment pack is a `reusable_scenario` asset in RAES's own trust vocabulary.
 **RAES core is the authority for pack integrity and authenticity**, via the
 reusable-asset trust policy (`reusable-asset-trust-policy/v1`, `$id`
-`https://aces.dev/schemas/reusable-asset-trust-policy-v1.json`; RAES ADR-071).
+`https://raes.dev/schemas/reusable-asset-trust-policy-v1.json`; RAES ADR-071).
 That policy owns the `integrity_digest`, `authenticity_signature`,
 `provenance_lock_record`, `governance_source`, and `artifact_checksum` evidence
 classes and their enforcement levels. Per
@@ -203,7 +203,7 @@ classes and their enforcement levels. Per
 this ledger **consumes** that policy as the authority and **re-defines none of
 it**: a pack's cryptographic integrity/authenticity and its composed-module
 (SDL) dependency provenance are established by RAES mechanisms
-(scenario-snapshot digest binding, `aces.lock.json` digest pins, RegistryTrustPolicy
+(scenario-snapshot digest binding, `raes.lock.json` digest pins, RegistryTrustPolicy
 signatures), not here. RAES schemas are `stability: draft` today, so the ledger
 references the policy now and the explicit upstream version pin (dependency +
 compatibility tests) lands once RAES marks it stable.
@@ -214,7 +214,7 @@ has one documented status:
 | Ledger field | Status |
 |---|---|
 | `pack`, `schema_version` | Pack-domain: ledger identity and version. |
-| `sources[]` (`license` / `usage` / `attribution` / `used` / `excluded`) | Pack-domain: content-origin licensing and attribution of external, non-RAES material. Distinct from the RAES `provenance_lock_record` evidence class (digest-pinning of composed RAES modules via `aces.lock.json`), which stays with RAES. |
+| `sources[]` (`license` / `usage` / `attribution` / `used` / `excluded`) | Pack-domain: content-origin licensing and attribution of external, non-RAES material. Distinct from the RAES `provenance_lock_record` evidence class (digest-pinning of composed RAES modules via `raes.lock.json`), which stays with RAES. |
 | `artifacts[].classification` (`open` … `customer-specific`) | Pack-domain: distribution / redistribution rights — **not** an RAES trust enforcement level. |
 | `content_safety{}` | Pack-domain: content-safety exclusion attestations; RAES defines no content-safety evidence class. |
 | `review{}` | Pack-domain: publication-clearance gates; not RAES `governance_source`. |
@@ -653,7 +653,7 @@ version. Its artifact ids are opaque RAES ids. Each payload locator uses
 `raes-environment-pack:/<percent-encoded-root-relative-path>`, which is resolved only
 inside the opened pack root and never fetched as a network URI.
 
-The manifest carrier and exact `sdl/.aces/module-cache/` resolver cache are not
+The manifest carrier and exact `sdl/.raes/module-cache/` resolver cache are not
 payloads. Every other regular file must be represented by at least one locator,
 and every locator must resolve to an inventoried file. Scenario-pack payload
 checksums use SHA-256. RAES derives the canonical set digest and validates the

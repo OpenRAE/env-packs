@@ -372,7 +372,7 @@ class BoundaryOverlapUnitTests(unittest.TestCase):
 
 
 class SdlValidationTests(PackValidationFixture):
-    def test_every_direct_sdl_document_is_parsed_through_aces(self) -> None:
+    def test_every_direct_sdl_document_is_parsed_through_raes(self) -> None:
         (self.root / "sdl" / "broken.sdl.yaml").write_text(
             "name: example-pack\nnodes:\n  target: {}\n", encoding="utf-8"
         )
@@ -395,7 +395,7 @@ class SdlValidationTests(PackValidationFixture):
             result = self.validate()
         self.assertIn("sdl.imports-denied: sdl/example.sdl.yaml", result.errors)
         urlopen.assert_not_called()
-        self.assertFalse((self.root / "sdl" / ".aces").exists())
+        self.assertFalse((self.root / "sdl" / ".raes").exists())
 
 
 class ValidationBoundaryTests(PackValidationFixture):
