@@ -60,11 +60,11 @@ jobs:
       - name: Unit tests
         run: python -m unittest discover -s tests
 
-      - name: Scenario-content gate
-        run: aces-pack-validate --repo .
+      - name: Environment-pack-content gate
+        run: raes-pack-validate --repo .
 
       - name: Pack release gate
-        run: aces-pack-release check --all
+        run: raes-pack-release check --all
 
   sonar:
     runs-on: ubuntu-latest

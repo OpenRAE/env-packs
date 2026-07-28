@@ -4,7 +4,7 @@
   "packages": {
     ".": {
       "release-type": "python",
-      "package-name": "aces-scenario-packs",
+      "package-name": "raes-env-packs",
       "skip-github-release": true
     }
   }

@@ -12,11 +12,11 @@ changes participant exposure. The gate must:
   * never leak operator tokens into a packaged participant artifact (the leak
     scan is re-run over the staged participant tier);
   * emit versioned release metadata carrying the pack version, the
-    scenario-pack contract version + digest, the supported profiles, and a
+    environment-pack contract version + digest, the supported profiles, and a
     *bounded* provenance summary (counts/statuses only — no restricted operator vocabulary,
     flags, secrets, or customer-specific prose).
 
-All cases use synthetic temp packs so no real scenario pack has to be committed
+All cases use synthetic temp packs so no real environment pack has to be committed
 to this definition/tools repo.
 """
 
@@ -32,7 +32,7 @@ import yaml
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_HERE)  # tests/ sits at the repo root
-_PR_PATH = os.path.join(_REPO, "src", "aces_scenario_packs", "release.py")
+_PR_PATH = os.path.join(_REPO, "src", "raes_env_packs", "release.py")
 
 
 def _load_module():
@@ -57,7 +57,7 @@ def _make_pack(root: str, *, delivery_bundles, profile_bundles=False,
     """Scaffold a minimal pack the release tool can read.
 
     Only the fields ``pack_release`` consumes are written; full schema
-    validation is ``scenario_content_ci.py``'s job, not this gate's.
+    validation is ``environment_pack_content_ci.py``'s job, not this gate's.
     """
     pack_yaml = {
         "name": "synthpack",
@@ -76,7 +76,7 @@ def _make_pack(root: str, *, delivery_bundles, profile_bundles=False,
     _write(os.path.join(root, "pack.yaml"), yaml.safe_dump(pack_yaml))
 
     compat = {
-        "schema_version": "scenario-pack-compatibility/v1",
+        "schema_version": "environment-pack-compatibility/v2",
         "pack": {"name": "synthpack", "version": "0.1.0", "status": "draft"},
         "artifact_boundaries": boundaries if boundaries is not None else {
             "participant_visible": [{"path": "assets/briefing/", "export": "public"}],
@@ -92,7 +92,7 @@ def _make_pack(root: str, *, delivery_bundles, profile_bundles=False,
     _write(os.path.join(root, "assets", "briefing", "brief.md"), "# Mission brief\n")
 
     prov = {
-        "schema_version": "scenario-pack-provenance/v2",
+        "schema_version": "environment-pack-provenance/v3",
         "pack": {"name": "synthpack"},
         "sources": [{"source_id": "orig"}],
         "artifacts": [{"artifact_id": "a1", "path": "assets/", "classification": "open"}],
@@ -126,7 +126,7 @@ def _make_pack(root: str, *, delivery_bundles, profile_bundles=False,
 class ContractVersionTests(unittest.TestCase):
     def test_reads_version_and_digest_from_readme(self):
         version, digest = PR.load_contract_version()
-        self.assertEqual(version, "3")
+        self.assertEqual(version, "4")
         self.assertTrue(digest.startswith("sha256:"))
         self.assertEqual(len(digest), len("sha256:") + 64)
 

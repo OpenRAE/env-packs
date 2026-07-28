@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Propose scenario-pack contract, guidance, template, schema, or tooling work
+about: Propose environment-pack contract, guidance, template, schema, or tooling work
 title: ""
 labels: enhancement
 assignees: ""
@@ -12,6 +12,6 @@ assignees: ""
 
 ## Non-Goals
 
-## ACES Boundary
+## RAES Boundary
 
 ## Validation Or Acceptance Criteria

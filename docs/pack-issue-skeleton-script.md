@@ -1,17 +1,17 @@
 # Pack Issue Skeleton Script
 
-`aces-pack-issue-skeleton` creates the standard top-level GitHub issues for a new
-scenario-pack effort, so you start from a consistent set to edit, refine, and
+`raes-pack-issue-skeleton` creates the standard top-level GitHub issues for a new
+environment-pack effort, so you start from a consistent set to edit, refine, and
 split into child issues. It is a GitHub issue helper only — it does not scaffold
-files; use `aces-new-pack` for the pack source skeleton.
+files; use `raes-new-pack` for the pack source skeleton.
 
 It defaults to dry-run, so you can review the plan before anything is created:
 
 ```sh
-aces-pack-issue-skeleton \
+raes-pack-issue-skeleton \
   --pack-id example-pack \
   --title "Example Pack" \
-  --milestone-title "Scenario pack: Example Pack" \
+  --milestone-title "Environment pack: Example Pack" \
   --source "Source label: https://example.invalid/source" \
   --focus "One sentence describing what the participant does."
 ```
@@ -20,10 +20,10 @@ Add `--apply` (and `--create-milestone` for a new milestone) once the dry-run
 output looks right:
 
 ```sh
-aces-pack-issue-skeleton \
+raes-pack-issue-skeleton \
   --pack-id example-pack \
   --title "Example Pack" \
-  --milestone-title "Scenario pack: Example Pack" \
+  --milestone-title "Environment pack: Example Pack" \
   --create-milestone \
   --source "Source label: https://example.invalid/source" \
   --focus "One sentence describing what the participant does." \
@@ -33,7 +33,7 @@ aces-pack-issue-skeleton \
 If the milestone already exists, pass its number instead:
 
 ```sh
-aces-pack-issue-skeleton \
+raes-pack-issue-skeleton \
   --pack-id example-pack \
   --title "Example Pack" \
   --milestone-number 42 \
@@ -44,7 +44,7 @@ The skeleton issues are:
 
 - scenario contract and pack skeleton
 - topology, assets, and reference-triangle design
-- ACES participant/attacker behavior specification and reference proof
+- RAES participant/attacker behavior specification and reference proof
 - flag, challenge, and reference CTFd layer
 - delivery profile bundles
 - golden live-infrastructure build
@@ -59,7 +59,7 @@ template body to existing skeleton issues.
 Extra labels are applied only if they already exist in the repository:
 
 ```sh
-aces-pack-issue-skeleton \
+raes-pack-issue-skeleton \
   --pack-id example-pack \
   --milestone-number 42 \
   --label scenario:example-pack

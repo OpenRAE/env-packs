@@ -6,8 +6,8 @@
 # must never do that, so the default goal is pinned rather than left to file
 # order (ADR 0019).
 #
-# The local verification loop -- unittest, aces-pack-validate,
-# aces-pack-release, compileall -- is intentionally NOT restated here. AGENTS.md,
+# The local verification loop -- unittest, raes-pack-validate,
+# raes-pack-release, compileall -- is intentionally NOT restated here. AGENTS.md,
 # .ground-control.yaml, and .github/workflows/ci.yml already each hold that list;
 # a fourth copy would drift out of step with them.
 

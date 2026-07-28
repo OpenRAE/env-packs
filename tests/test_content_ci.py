@@ -1,6 +1,6 @@
-"""Gate-infrastructure tests for the repo-wide scenario-content CI helper.
+"""Gate-infrastructure tests for the repo-wide environment-pack-content CI helper.
 
-These exercise the helper itself (not scenario packs), so the CI workflow runs
+These exercise the helper itself (not environment packs), so the CI workflow runs
 them alongside the pack gate. The load-bearing invariant under test: a
 visibility-leak failure must report the operator-token *class* and a
 token-independent locator (file path + line number), and must NOT emit the raw
@@ -28,13 +28,13 @@ from unittest import mock
 import yaml
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_PKG = os.path.join(os.path.dirname(_HERE), "src", "aces_scenario_packs")
+_PKG = os.path.join(os.path.dirname(_HERE), "src", "raes_env_packs")
 _CI_PATH = os.path.join(_PKG, "content_ci.py")
 _SCAFFOLD_PATH = os.path.join(_PKG, "new_pack.py")
 
 
 def _load_module():
-    spec = importlib.util.spec_from_file_location("scenario_content_ci_undertest", _CI_PATH)
+    spec = importlib.util.spec_from_file_location("environment_pack_content_ci_undertest", _CI_PATH)
     mod = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
     spec.loader.exec_module(mod)
@@ -46,7 +46,7 @@ CI = _load_module()
 
 def _load_scaffold_module():
     spec = importlib.util.spec_from_file_location(
-        "new_scenario_pack_undertest", _SCAFFOLD_PATH)
+        "new_environment_pack_undertest", _SCAFFOLD_PATH)
     mod = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
     spec.loader.exec_module(mod)
@@ -103,7 +103,7 @@ class VisibilityScanRedactionTest(unittest.TestCase):
     def test_failure_message_emits_no_token_derived_content(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         content = os.path.join(scen, "fakepack", "assets", "content")
         os.makedirs(content)
         with open(os.path.join(scen, "fakepack", "pack.yaml"), "w",
@@ -112,13 +112,13 @@ class VisibilityScanRedactionTest(unittest.TestCase):
         with open(os.path.join(content, "leak.md"), "w", encoding="utf-8") as fh:
             fh.write(f"oops the answer is {TECH_TOKEN}\n")
 
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_visibility(failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         blob = "\n".join(failures)
         self.assertTrue(any("VISIBILITY LEAK" in f for f in failures), blob)
@@ -131,7 +131,7 @@ class VisibilityScanRedactionTest(unittest.TestCase):
     def test_challenge_text_is_participant_visible(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         challenges = os.path.join(scen, "fakepack", "challenges")
         os.makedirs(challenges)
         with open(os.path.join(scen, "fakepack", "pack.yaml"), "w",
@@ -141,13 +141,13 @@ class VisibilityScanRedactionTest(unittest.TestCase):
                   encoding="utf-8") as fh:
             fh.write(f"challenge copy leaked {TECH_TOKEN}\n")
 
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_visibility(failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         blob = "\n".join(failures)
         self.assertIn("VISIBILITY LEAK", blob)
@@ -159,7 +159,7 @@ class VisibilityScanRedactionTest(unittest.TestCase):
 class AntiExtensionGuardTest(unittest.TestCase):
     """The zero-extensions guard (issue #83 / ADR 0009).
 
-    The guard is structural: a removed ACES-semantic concept is forbidden as a
+    The guard is structural: a removed RAES-semantic concept is forbidden as a
     *declared* schema property or manifest key and as an ``sdl/`` semantic ledger,
     never as a word in prose. These tests lock that the shipped format is clean
     and that a reintroduced layer or ledger is caught wherever it can slip in.
@@ -200,7 +200,7 @@ class AntiExtensionGuardTest(unittest.TestCase):
     def test_pack_manifest_reintroducing_layer_is_flagged(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         pack = os.path.join(scen, "example-pack")
         os.makedirs(pack)
         with open(os.path.join(pack, "pack.yaml"), "w", encoding="utf-8") as fh:
@@ -208,13 +208,13 @@ class AntiExtensionGuardTest(unittest.TestCase):
         with open(os.path.join(pack, "pack.compatibility.yaml"), "w",
                   encoding="utf-8") as fh:
             fh.write("schema_version: 1\nscoring:\n  status: not_shipped\n")
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI._check_pack_no_extension_layers("example-pack", failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
         blob = "\n".join(failures)
         self.assertIn("ANTI-EXTENSION", blob)
         self.assertIn("scoring", blob)
@@ -222,37 +222,37 @@ class AntiExtensionGuardTest(unittest.TestCase):
     def test_pack_sdl_semantic_ledger_is_flagged(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         sdl = os.path.join(scen, "example-pack", "sdl")
         os.makedirs(sdl)
         open(os.path.join(sdl, "scoring.yaml"), "w").close()
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI._check_pack_no_extension_layers("example-pack", failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
         self.assertIn("sdl/scoring.yaml", "\n".join(failures))
 
     def test_clean_pack_passes(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         sdl = os.path.join(scen, "example-pack", "sdl")
         os.makedirs(sdl)
-        # A legitimate ACES SDL document is not a forbidden ledger.
+        # A legitimate RAES SDL document is not a forbidden ledger.
         open(os.path.join(sdl, "example.sdl.yaml"), "w").close()
         with open(os.path.join(scen, "example-pack", "pack.yaml"), "w",
                   encoding="utf-8") as fh:
             fh.write("name: example-pack\n")
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI._check_pack_no_extension_layers("example-pack", failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
         self.assertEqual(failures, [])
 
 
@@ -263,7 +263,7 @@ class AntiExtensionAggregatorTest(unittest.TestCase):
     ``AntiExtensionGuardTest`` exercises the leaf checks directly, so the
     aggregator's own wiring (the per-pack loop and the packaged template/example
     branch) would be untested through the public entry point: against the real
-    repo there is no ``scenarios/`` tree, so the loop body never runs and the
+    repo there is no ``environments/`` tree, so the loop body never runs and the
     packaged-manifest failure branch never fires. A refactor that dropped either
     call from ``check_anti_extension`` would keep the suite green while the guard
     silently stopped enforcing the charter in production (issue #83 / ADR 0009).
@@ -273,7 +273,7 @@ class AntiExtensionAggregatorTest(unittest.TestCase):
     def test_aggregator_flags_pack_reintroducing_layer(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         pack = os.path.join(scen, "example-pack")
         os.makedirs(pack)
         with open(os.path.join(pack, "pack.yaml"), "w", encoding="utf-8") as fh:
@@ -281,13 +281,13 @@ class AntiExtensionAggregatorTest(unittest.TestCase):
         with open(os.path.join(pack, "pack.compatibility.yaml"), "w",
                   encoding="utf-8") as fh:
             fh.write("schema_version: 1\nscoring:\n  status: not_shipped\n")
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_anti_extension(failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
         self.assertTrue(
             any("ANTI-EXTENSION" in f and "scoring" in f for f in failures),
             "\n".join(failures))
@@ -300,15 +300,15 @@ class AntiExtensionAggregatorTest(unittest.TestCase):
         with open(os.path.join(tmp, CI.COMPATIBILITY_MANIFEST_FILE), "w",
                   encoding="utf-8") as fh:
             fh.write("schema_version: 1\ntelemetry:\n  status: not_shipped\n")
-        empty_scen = os.path.join(tmp, "scenarios")
+        empty_scen = os.path.join(tmp, "environments")
         os.makedirs(empty_scen)
-        orig_tmpl, orig_scen, orig_repo = CI._TEMPLATE_DIR, CI.SCEN, CI._REPO
-        CI._TEMPLATE_DIR, CI.SCEN, CI._REPO = tmp, empty_scen, tmp
+        orig_tmpl, orig_scen, orig_repo = CI._TEMPLATE_DIR, CI.PACKS_ROOT, CI._REPO
+        CI._TEMPLATE_DIR, CI.PACKS_ROOT, CI._REPO = tmp, empty_scen, tmp
         try:
             failures: list[str] = []
             CI.check_anti_extension(failures)
         finally:
-            CI._TEMPLATE_DIR, CI.SCEN, CI._REPO = orig_tmpl, orig_scen, orig_repo
+            CI._TEMPLATE_DIR, CI.PACKS_ROOT, CI._REPO = orig_tmpl, orig_scen, orig_repo
         blob = "\n".join(failures)
         self.assertTrue(any("ANTI-EXTENSION" in f for f in failures), blob)
         self.assertIn("telemetry", blob)
@@ -318,7 +318,7 @@ class PackDiscoveryTest(unittest.TestCase):
     def _with_temp_catalog(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         os.makedirs(scen, exist_ok=True)
         return tmp, scen
 
@@ -485,7 +485,7 @@ class NewScenarioPackScaffoldTest(unittest.TestCase):
     def test_repo_root_accepts_gitfile_worktree_checkout(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        os.makedirs(os.path.join(tmp, "scenarios"), exist_ok=True)
+        os.makedirs(os.path.join(tmp, "environments"), exist_ok=True)
         with open(os.path.join(tmp, ".git"), "w", encoding="utf-8") as fh:
             fh.write("gitdir: /tmp/example.git/worktrees/example\n")
 
@@ -496,7 +496,7 @@ class GoldenChecklistGateTest(unittest.TestCase):
     def _with_pack(self, checklist_body: str | None):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         docs = os.path.join(scen, "fakepack", "docs")
         os.makedirs(docs, exist_ok=True)
         with open(os.path.join(scen, "fakepack", "pack.yaml"), "w",
@@ -510,25 +510,25 @@ class GoldenChecklistGateTest(unittest.TestCase):
 
     def test_missing_checklist_is_flagged(self):
         tmp, scen = self._with_pack(None)
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_golden_checklist(failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         self.assertTrue(any("golden checklist MISSING" in f for f in failures))
 
     def test_checklist_must_have_manual_protocol_and_tick_boxes(self):
         tmp, scen = self._with_pack("# Golden\n\nNo checklist here.\n")
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_golden_checklist(failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         blob = "\n".join(failures)
         self.assertIn("golden checklist INCOMPLETE", blob)
@@ -544,13 +544,13 @@ class GoldenChecklistGateTest(unittest.TestCase):
             "- [ ] enter through participant surface",
         ])
         tmp, scen = self._with_pack(body)
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_golden_checklist(failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         self.assertEqual(failures, [])
 
@@ -559,7 +559,7 @@ class CompatibilityManifestGateTest(unittest.TestCase):
     def _with_manifest_pack(self, manifest_body: str, pack_body: str | None = None):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         pack = os.path.join(scen, "example-pack")
         os.makedirs(pack, exist_ok=True)
         os.makedirs(os.path.join(scen, "_template"), exist_ok=True)
@@ -573,9 +573,9 @@ class CompatibilityManifestGateTest(unittest.TestCase):
                 'title: "Example Pack"',
                 "version: 0.1.0",
                 "status: draft",
-                'description: "An example scenario pack."',
+                'description: "An example environment pack."',
                 "authors:",
-                "  - ACES <noreply@example.com>",
+                "  - RAES <noreply@example.com>",
                 'license: "© 2026 Example Org. All rights reserved."',
                 "requirement: null",
                 "contents:",
@@ -593,7 +593,7 @@ class CompatibilityManifestGateTest(unittest.TestCase):
 
     def _valid_manifest(self) -> str:
         return "\n".join([
-            "schema_version: scenario-pack-compatibility/v1",
+            "schema_version: environment-pack-compatibility/v2",
             "pack:",
             "  name: example-pack",
             '  title: "Example Pack"',
@@ -618,33 +618,33 @@ class CompatibilityManifestGateTest(unittest.TestCase):
             "validation:",
             "  commands:",
             "    - id: manifest",
-            "      command: python3 scripts/ci/scenario_content_ci.py",
+            "      command: python3 scripts/ci/environment_pack_content_ci.py",
             "      validates: [manifest]",
             "  gates: []",
         ])
 
     def test_valid_compatibility_manifest_is_clean(self):
         tmp, scen = self._with_manifest_pack(self._valid_manifest())
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_manifest(failures, packs=("example-pack",))
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         self.assertEqual(failures, [])
 
     def test_compatibility_manifest_rejects_pack_name_mismatch(self):
         body = self._valid_manifest().replace("name: example-pack", "name: other-pack")
         tmp, scen = self._with_manifest_pack(body)
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_manifest(failures, packs=("example-pack",))
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         self.assertIn("pack name mismatch", "\n".join(failures))
 
@@ -662,26 +662,26 @@ class CompatibilityManifestGateTest(unittest.TestCase):
             ]),
         )
         tmp, scen = self._with_manifest_pack(body)
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_manifest(failures, packs=("example-pack",))
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         self.assertIn("duplicate feature_id", "\n".join(failures))
 
     def test_compatibility_manifest_rejects_path_escape(self):
         body = self._valid_manifest().replace("path: README.md", "path: ../secret.txt")
         tmp, scen = self._with_manifest_pack(body)
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_manifest(failures, packs=("example-pack",))
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         self.assertIn("path escapes pack root", "\n".join(failures))
 
@@ -699,13 +699,13 @@ class CompatibilityManifestGateTest(unittest.TestCase):
             ]),
         )
         tmp, scen = self._with_manifest_pack(body)
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_manifest(failures, packs=("example-pack",))
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         self.assertIn("compatibility.boundary-overlap", "\n".join(failures))
 
@@ -743,10 +743,10 @@ class NewScenarioPackScriptTest(unittest.TestCase):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
         os.makedirs(os.path.join(tmp, ".git"))
-        template = os.path.join(tmp, "scenarios", "_template")
+        template = os.path.join(tmp, "environments", "_template")
         os.makedirs(os.path.join(template, "docs"), exist_ok=True)
         with open(os.path.join(template, "README.md"), "w", encoding="utf-8") as fh:
-            fh.write("# `<name>` -- scenario pack\n")
+            fh.write("# `<name>` -- environment pack\n")
         with open(os.path.join(template, "pack.yaml"), "w", encoding="utf-8") as fh:
             fh.write("\n".join([
                 "name: <name>",
@@ -803,7 +803,7 @@ class NewScenarioPackScriptTest(unittest.TestCase):
 def _valid_ledger(name: str = "testpack") -> dict:
     """A minimal ledger that satisfies the provenance schema + gate."""
     return {
-        "schema_version": "scenario-pack-provenance/v2",
+        "schema_version": "environment-pack-provenance/v3",
         "pack": {"name": name},
         "sources": [
             {"source_id": "original-design",
@@ -833,11 +833,11 @@ class ProvenanceLedgerGateTest(unittest.TestCase):
 
     def _build(self, ledger, *, write_pointer=True,
                pointer="docs/provenance-ledger.yaml", extra_dirs=()):
-        # Copy the real schema before SCEN is repointed at the temp tree.
+        # Copy the real schema before PACKS_ROOT is repointed at the temp tree.
         real_schema = CI.provenance_schema_path()
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         os.makedirs(scen)
         shutil.copy(real_schema, os.path.join(scen, CI.PROVENANCE_SCHEMA_FILE))
         pack_root = os.path.join(scen, self.PACK)
@@ -857,13 +857,13 @@ class ProvenanceLedgerGateTest(unittest.TestCase):
 
     def _run(self, ledger, **kw):
         tmp, scen, pack_yaml = self._build(ledger, **kw)
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI._validate_provenance_ledger(self.PACK, pack_yaml, failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
         return failures
 
     def test_valid_ledger_passes(self):
@@ -966,13 +966,13 @@ class ProvenanceLedgerGateTest(unittest.TestCase):
         # The overlay artifact file must exist for the path-existence check.
         open(os.path.join(scen, self.PACK, "overlays", "acme", "branding.md"),
              "w").close()
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI._validate_provenance_ledger(self.PACK, pack_yaml, failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
         self.assertEqual(failures, [])
 
 
@@ -990,7 +990,7 @@ class ProvenanceWrapperGateTest(unittest.TestCase):
         real_example = CI.provenance_example_path()
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         os.makedirs(scen)
         shutil.copy(real_schema, os.path.join(scen, CI.PROVENANCE_SCHEMA_FILE))
         # check_provenance_schema_example reads the _template example.
@@ -1013,13 +1013,13 @@ class ProvenanceWrapperGateTest(unittest.TestCase):
 
     def _run(self, **kw):
         tmp, scen = self._build_tree(**kw)
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             CI.check_provenance(failures)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
         return failures
 
     def test_wrapper_passes_on_valid_tree(self):
@@ -1047,8 +1047,8 @@ _VALID_SDL = "\n".join([
     "    type: vm",
     "",
 ])
-# `nodes.<id>` with no `type` is rejected by ACES semantic validation — a
-# genuinely invalid SDL document, validated *through ACES* (no local schema).
+# `nodes.<id>` with no `type` is rejected by RAES semantic validation — a
+# genuinely invalid SDL document, validated *through RAES* (no local schema).
 _INVALID_SDL = "\n".join([
     "name: example-pack",
     "nodes:",
@@ -1058,17 +1058,17 @@ _INVALID_SDL = "\n".join([
 
 
 class SdlValidationGateTest(unittest.TestCase):
-    """SDL-through-ACES gate + flag-placement cross-check (issue #84, ADR 0011).
+    """SDL-through-RAES gate + flag-placement cross-check (issue #84, ADR 0011).
 
-    SDL is validated through the real ACES parser (a hard, pinned dependency),
+    SDL is validated through the real RAES parser (a hard, pinned dependency),
     never a local schema. These drive the gate over temp catalogs using the same
-    ``CI.SCEN``/``CI._REPO`` repointing pattern as the other gate-infra tests.
+    ``CI.PACKS_ROOT``/``CI._REPO`` repointing pattern as the other gate-infra tests.
     """
 
     def _pack(self, *, sdl: dict[str, str] | None, placement: str | None = None):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         pack = os.path.join(scen, "example-pack")
         sdl_dir = os.path.join(pack, "sdl")
         os.makedirs(sdl_dir, exist_ok=True)
@@ -1096,14 +1096,14 @@ class SdlValidationGateTest(unittest.TestCase):
         return tmp, scen
 
     def _run(self, tmp, scen):
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             views = CI.check_static_contract(failures)
             CI.check_sdl(failures, views)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
         return failures
 
     def test_valid_sdl_with_resolved_placement_is_clean(self):
@@ -1158,8 +1158,8 @@ class SdlValidationGateTest(unittest.TestCase):
 
     def test_author_adapters_share_one_static_validation_snapshot(self):
         tmp, scen = self._pack(sdl={"example.sdl.yaml": _VALID_SDL})
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         CI._AUTHOR_STATIC_CACHE.clear()
         try:
             failures: list[str] = []
@@ -1176,7 +1176,7 @@ class SdlValidationGateTest(unittest.TestCase):
             self.assertEqual(failures, [])
             self.assertTrue(views["example-pack"].scenarios)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
     def test_node_id_extraction_reads_scenario_nodes(self):
         class _FakeScenario:
@@ -1186,7 +1186,7 @@ class SdlValidationGateTest(unittest.TestCase):
 
     def test_symlinked_sdl_escaping_pack_root_is_rejected(self):
         # A symlinked sdl/*.sdl.yaml whose real target lives outside the pack
-        # root must be rejected by the real-path guard, without ACES ever
+        # root must be rejected by the real-path guard, without RAES ever
         # following the link into a parse (ADR 0011 containment discipline).
         tmp, scen = self._pack(sdl={"example.sdl.yaml": _VALID_SDL})
         outside = os.path.join(tmp, "outside.sdl.yaml")
@@ -1198,19 +1198,19 @@ class SdlValidationGateTest(unittest.TestCase):
         blob = "\n".join(self._run(tmp, scen))
         self.assertIn("PACK STATIC INVALID", blob)
 
-    def test_missing_aces_sdl_dependency_fails_closed(self):
+    def test_missing_raes_dependency_fails_closed(self):
         # A broken environment where the pinned dep is unimportable is a
         # fail-closed gate failure, never a silent skip (ADR 0011).
         def _boom():
-            raise ImportError("no module named 'aces_sdl'")
+            raise ImportError("no module named 'raes'")
 
-        orig = CI._load_aces_sdl
-        CI._load_aces_sdl = _boom
+        orig = CI._load_raes
+        CI._load_raes = _boom
         try:
             failures: list[str] = []
             CI.check_sdl(failures)
         finally:
-            CI._load_aces_sdl = orig
+            CI._load_raes = orig
         self.assertIn("SDL VALIDATION UNAVAILABLE", "\n".join(failures))
 
 
@@ -1267,7 +1267,7 @@ class _ExecPackHarness(unittest.TestCase):
     def _pack(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        scen = os.path.join(tmp, "scenarios")
+        scen = os.path.join(tmp, "environments")
         pack = os.path.join(scen, "example-pack")
         os.makedirs(pack)
         with open(os.path.join(pack, "pack.yaml"), "w", encoding="utf-8") as fh:
@@ -1276,8 +1276,8 @@ class _ExecPackHarness(unittest.TestCase):
 
     def _run(self, check, tmp, scen):
         """Mirror main(): one shared eligibility pass, run one phase, close fds."""
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             with redirect_stdout(io.StringIO()):
@@ -1288,7 +1288,7 @@ class _ExecPackHarness(unittest.TestCase):
                     CI.close_executables(eligible)
             return failures
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
 
 class ValidatorDiscoveryExecutionTest(_ExecPackHarness):
@@ -1420,8 +1420,8 @@ class SharedEligibilityAndBudgetTest(_ExecPackHarness):
             fh.write("x\n")
         os.symlink(outside, os.path.join(pack, "link.txt"))
 
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             with redirect_stdout(io.StringIO()):
@@ -1433,7 +1433,7 @@ class SharedEligibilityAndBudgetTest(_ExecPackHarness):
                 finally:
                     CI.close_executables(eligible)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         unsafe = [f for f in failures if "UNSAFE" in f and "example-pack" in f]
         self.assertEqual(len(unsafe), 1, "\n".join(failures))
@@ -1511,8 +1511,8 @@ class SharedEligibilityAndBudgetTest(_ExecPackHarness):
                 "os.replace(replacement, target)\n"
             )
 
-        orig_scen, orig_repo = CI.SCEN, CI._REPO
-        CI.SCEN, CI._REPO = scen, tmp
+        orig_scen, orig_repo = CI.PACKS_ROOT, CI._REPO
+        CI.PACKS_ROOT, CI._REPO = scen, tmp
         try:
             failures: list[str] = []
             with redirect_stdout(io.StringIO()):
@@ -1523,7 +1523,7 @@ class SharedEligibilityAndBudgetTest(_ExecPackHarness):
                 finally:
                     CI.close_executables(eligible)
         finally:
-            CI.SCEN, CI._REPO = orig_scen, orig_repo
+            CI.PACKS_ROOT, CI._REPO = orig_scen, orig_repo
 
         self.assertIn("filesystem identity changed", "\n".join(failures))
         self.assertFalse(os.path.exists(marker), "mutated test suite executed")

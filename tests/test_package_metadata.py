@@ -1,4 +1,4 @@
-"""Package metadata and the reviewed ACES dependency seam.
+"""Package metadata and the reviewed RAES dependency seam.
 
 The project version is owned by release-please in ``pyproject.toml``; the
 package derives ``__version__`` from installed metadata (ADR 0008).
@@ -12,23 +12,23 @@ import re
 import tomllib
 import unittest
 
-import aces_scenario_packs
+import raes_env_packs
 
 
 class VersionTests(unittest.TestCase):
     def test_version_is_a_semver_string(self):
-        self.assertIsInstance(aces_scenario_packs.__version__, str)
-        self.assertRegex(aces_scenario_packs.__version__, r"^\d+\.\d+\.\d+$")
+        self.assertIsInstance(raes_env_packs.__version__, str)
+        self.assertRegex(raes_env_packs.__version__, r"^\d+\.\d+\.\d+$")
 
 
-class AcesDependencyTests(unittest.TestCase):
-    def test_aces_sdl_is_exactly_pinned(self):
-        """ADR 0011: aces-sdl is a single, exactly (``==``) pinned runtime dep.
+class RaesDependencyTests(unittest.TestCase):
+    def test_raes_is_exactly_pinned(self):
+        """ADR 0011: raes is a single, exactly (``==``) pinned runtime dep.
 
         The concrete version is deliberately NOT asserted here. A Dependabot
         bump edits only ``pyproject.toml``; asserting the literal version would
         turn every bump into a manual test edit (ADR 0016).
-        This guards the *invariant* — exactly one ``aces-sdl`` requirement,
+        This guards the *invariant* — exactly one ``raes`` requirement,
         pinned with ``==`` — while the version itself advances through the
         reviewed pin (ADR 0011) and the CI compatibility gate.
         """
@@ -36,29 +36,29 @@ class AcesDependencyTests(unittest.TestCase):
         with (root / "pyproject.toml").open("rb") as handle:
             dependencies = tomllib.load(handle)["project"]["dependencies"]
 
-        aces_specs = [dep for dep in dependencies
-                      if re.match(r"aces-sdl(?![\w-])", dep.strip())]
+        raes_specs = [dep for dep in dependencies
+                      if re.match(r"raes(?![\w-])", dep.strip())]
         self.assertEqual(
-            len(aces_specs), 1,
-            f"expected exactly one aces-sdl requirement, got {aces_specs}")
+            len(raes_specs), 1,
+            f"expected exactly one raes requirement, got {raes_specs}")
 
-        spec = aces_specs[0].replace(" ", "")
+        spec = raes_specs[0].replace(" ", "")
         self.assertTrue(
-            spec.startswith("aces-sdl=="),
-            f"aces-sdl must be exactly (==) pinned per ADR 0011, got {spec!r}")
+            spec.startswith("raes=="),
+            f"raes must be exactly (==) pinned per ADR 0011, got {spec!r}")
         self.assertNotRegex(
             spec, r"[<>~!,]",
-            f"aces-sdl must be a single exact pin, no ranges (ADR 0011), got {spec!r}")
+            f"raes must be a single exact pin, no ranges (ADR 0011), got {spec!r}")
         self.assertRegex(
-            spec[len("aces-sdl=="):], r"^\d+(\.\d+)+",
-            f"aces-sdl pin must carry a concrete version, got {spec!r}")
+            spec[len("raes=="):], r"^\d+(\.\d+)+",
+            f"raes pin must carry a concrete version, got {spec!r}")
 
     def test_bespoke_oracle_package_surface_is_absent(self):
-        package_root = pathlib.Path(aces_scenario_packs.__file__).resolve().parent
+        package_root = pathlib.Path(raes_env_packs.__file__).resolve().parent
 
         self.assertFalse((package_root / "oracle_model.py").exists())
         self.assertFalse((package_root / "resources" / "oracle").exists())
-        self.assertIsNone(importlib.util.find_spec("aces_scenario_packs.oracle_model"))
+        self.assertIsNone(importlib.util.find_spec("raes_env_packs.oracle_model"))
 
 
 if __name__ == "__main__":

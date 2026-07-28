@@ -1,19 +1,19 @@
 # Migration Scrub Policy
 
 Use this policy when adapting material from another source into this canonical
-scenario-pack definition and tooling repository.
+environment-pack definition and tooling repository.
 
-This repository is subordinate to ACES core and must remain free of
+This repository is subordinate to RAES core and must remain free of
 downstream-catalog vocabulary, private operational details, and source-specific
 product assumptions. Preserve only material that is needed for the shared
-scenario-pack layout, schemas, templates, or authoring and validation tools.
+environment-pack layout, schemas, templates, or authoring and validation tools.
 
 ## Before opening a migration task
 
 - Keep source-specific terms in a private, caller-supplied scanner denylist;
   do not paste that denylist into an issue or a canonical document.
-- Identify material that belongs to ACES core semantics and consume it from
-  ACES instead of redefining it here.
+- Identify material that belongs to RAES core semantics and consume it from
+  RAES instead of redefining it here.
 
 ## Review the proposed material
 

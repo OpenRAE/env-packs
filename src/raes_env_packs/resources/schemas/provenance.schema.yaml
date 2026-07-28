@@ -1,0 +1,260 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://aces.dev/schemas/environment-pack-provenance-v3.json"
+title: RAES environment pack provenance ledger (pack-domain; trust deferred to RAES)
+description: >
+  Machine-readable pack-domain ledger for an environment pack's content ORIGIN &
+  LICENSING, DISTRIBUTION classification, CONTENT-SAFETY exclusion attestations,
+  and PUBLICATION review — plus customer-overlay containment. pack.yaml stays the
+  catalog identity entrypoint and references this ledger; docs/lineage.md stays
+  human prose and cites it. It is the source of truth for WHERE content came from,
+  WHAT may be done with it (distribution class), whether it is SAFE to ship, and
+  whether it has been CLEARED to publish.
+
+  RAES core is the authority for pack TRUST. An environment pack is a `reusable_scenario`
+  asset in the RAES reusable-asset-trust-policy (schema_version
+  `reusable-asset-trust-policy/v1`, $id
+  https://aces.dev/schemas/reusable-asset-trust-policy-v1.json; RAES ADR-071),
+  which owns the integrity_digest, authenticity_signature, provenance_lock_record,
+  governance_source, and artifact_checksum evidence classes and their enforcement
+  levels. Per ADR 0009/ADR 0010 this repository is subordinate to RAES: this ledger
+  neither carries nor re-defines any of those RAES-owned trust concepts — a pack's
+  cryptographic integrity/authenticity and its composed-module (SDL) dependency
+  provenance are established by RAES mechanisms (scenario-snapshot digest binding,
+  aces.lock.json digest pins, RegistryTrustPolicy signatures), not here.
+
+  RAES schemas are currently stability:draft, so this ledger REFERENCES that policy
+  as the authority now and does not vendor, fork, or pin it; the explicit upstream
+  version pin (dependency + compatibility tests, consumed from the raes corpus)
+  lands once RAES marks the policy stable (ADR 0010).
+
+  Distribution classes (open/redistributable/internal-only/commercial-only/
+  generated/customer-specific) are pack-domain PUBLISHING classes, NOT RAES trust
+  enforcement levels. They are also deliberately SEPARATE from
+  pack.compatibility.yaml's runtime-visibility export values
+  (public/operator/oracle/private/commercial): one axis answers "what may we
+  publish, sell, or hand a customer", the other answers "who sees it at runtime".
+  The legacy `oracle` visibility value is only a restricted-release label; it
+  defines no scenario semantics.
+
+  RAES concept-authority (contracts/concept-authority/ — controlled vocabularies,
+  ATT&CK/ATLAS tactic sources, UCO alignment) is the authority for governed
+  concept vocabulary. A source row records only pack-domain content-origin,
+  licensing, attribution, and usage facts; it does NOT classify a source with a
+  governed concept taxonomy. A behaviour's use of an RAES-governed tactic is
+  expressed in RAES SDL behaviour specifications and validated by RAES, never
+  restated here (ADR 0009/ADR 0014).
+$comment: >
+  RAES-alignment field disposition (issues #82, #87; see contract/pack-layout.md
+  and docs/environment-packs.md for the full mapping). Every retained field is either
+  mapped to an RAES trust concept or documented as pack-domain absent upstream —
+  and NONE re-defines an RAES-owned evidence class or a governed concept
+  vocabulary:
+  • pack / schema_version — pack-domain: ledger identity & version.
+  • sources[] — pack-domain: content-origin licensing/attribution of external,
+    non-RAES material. Distinct from the RAES provenance_lock_record evidence
+    class (aces.lock.json digest-pinning of composed RAES modules), which stays
+    with RAES; this ledger does not attest module-dependency provenance. Carries
+    NO concept vocabulary: the removed `kind` classification is not restated —
+    governed ATT&CK/ATLAS/UCO concepts live in RAES concept-authority and RAES
+    SDL (ADR 0014).
+  • artifacts[].classification — pack-domain: distribution/redistribution rights;
+    not an RAES trust enforcement level.
+  • content_safety — pack-domain: exclusion attestations; RAES defines no
+    content-safety evidence class.
+  • review — pack-domain: publication clearance gates; not RAES governance_source.
+  • overlays[] — pack-domain: customer-overlay distribution containment.
+  RAES-OWNED, deferred (never declared here): integrity_digest,
+  authenticity_signature, provenance_lock_record, governance_source,
+  artifact_checksum.
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - pack
+  - sources
+  - artifacts
+  - content_safety
+  - review
+properties:
+  schema_version:
+    type: string
+    const: "environment-pack-provenance/v3"
+  pack:
+    type: object
+    additionalProperties: false
+    required: [name]
+    properties:
+      name:
+        type: string
+        pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+      title:
+        type: string
+      version:
+        type: string
+  # Upstream and origin ledger. Every external corpus, framework, tool, dataset,
+  # research report, original design, generated material, and customer overlay
+  # that influenced the pack is a first-class row with a stable id.
+  sources:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      # No `kind` classification: a source row records only content-origin,
+      # licensing, attribution, and usage. Governed concept vocabulary (ATT&CK/
+      # ATLAS tactics, UCO alignment) is owned by RAES concept-authority and
+      # expressed in RAES SDL, not restated here (ADR 0014).
+      required: [source_id, name, license, usage, attribution_required]
+      properties:
+        source_id:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9_-]*[a-z0-9]$"
+        name:
+          type: string
+        url:
+          type: string
+        # Version / tag / commit pin for reproducibility.
+        ref:
+          type: string
+        # SPDX identifier where one applies, or a terms label such as
+        # "proprietary", "MITRE ATT&CK Terms of Use", "internal", or "n-a".
+        license:
+          type: string
+        usage:
+          type: string
+          enum:
+            - derived            # structure/technique-selection derived from it
+            - adapted            # adapted with changes
+            - referenced         # cited, not reproduced
+            - reused             # reused as-is (e.g. shared fiction)
+            - reimplemented      # behaviour reimplemented from scratch
+            - generated-from     # generated using it as a seed/source
+            - excluded           # documented but deliberately NOT reused
+        attribution_required:
+          type: boolean
+        # Required attribution / notice text when attribution_required is true.
+        attribution:
+          type: string
+        # What was used from the source.
+        used:
+          type: string
+        # What was deliberately NOT reused (the safety / licensing boundary).
+        excluded:
+          type: string
+        # When the source was captured/pinned (ISO date).
+        captured:
+          type: string
+  # Distribution classification of pack-relative artifact roots. Roots may be
+  # directories or individual files; the class is the default for content under
+  # the root. At least one row is required — a pack with no classified artifact
+  # roots has not declared its distribution boundary, which is the whole point.
+  artifacts:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [artifact_id, path, classification]
+      properties:
+        artifact_id:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9_-]*[a-z0-9]$"
+        path:
+          type: string
+        classification:
+          type: string
+          enum:
+            - open              # publishable / open-source eligible
+            - redistributable   # may be redistributed under its source license
+            - internal-only     # internal use only; never published
+            - commercial-only   # commercial catalog only; not open
+            - generated         # generated output; needs a seed/source note
+            - customer-specific # customer overlay material; never in base export
+        # Cross-references into sources[].source_id.
+        sources:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+  # Mandatory safety attestations. The CI gate requires every flag to be true:
+  # the policy is EXCLUSION of real sensitive content, not a weaker class.
+  content_safety:
+    type: object
+    additionalProperties: false
+    required:
+      - no_real_malware
+      - no_real_third_party_targets
+      - no_real_credentials
+      - no_sensitive_data
+      - offensive_tooling_boundary
+    properties:
+      no_real_malware:
+        type: boolean
+      no_real_third_party_targets:
+        type: boolean
+      no_real_credentials:
+        type: boolean
+      no_sensitive_data:
+        type: boolean
+      # Technique emulation and safe stand-ins only; no vendored real offensive
+      # tooling, exploit kits, or live C2.
+      offensive_tooling_boundary:
+        type: boolean
+      notes:
+        type: string
+  # Publication review modelled as data, not a free-prose comment. The CI gate
+  # requires the licensing, attribution, sensitive-data, and offensive-tooling
+  # gates to be present.
+  review:
+    type: object
+    additionalProperties: false
+    required: [status, gates]
+    properties:
+      status:
+        type: string
+        enum: [pending, approved, blocked]
+      gates:
+        type: array
+        minItems: 4
+        items:
+          type: object
+          additionalProperties: false
+          required: [gate_id, status]
+          properties:
+            gate_id:
+              type: string
+              enum:
+                - licensing
+                - attribution
+                - sensitive-data
+                - offensive-tooling
+                - customer-overlay
+            status:
+              type: string
+              enum: [pending, approved, blocked, not-applicable]
+            notes:
+              type: string
+      reviewer:
+        type: string
+      date:
+        type: string
+  # Customer-overlay slots. Overlays are path-contained and never mutate base
+  # artifact rows; customer-specific content lives only under a declared root.
+  overlays:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [overlay_id, root, classification]
+      properties:
+        overlay_id:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9_-]*[a-z0-9]$"
+        root:
+          type: string
+        classification:
+          type: string
+          enum: [customer-specific, commercial-only]
+        description:
+          type: string

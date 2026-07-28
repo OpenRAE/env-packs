@@ -35,7 +35,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aces-scenario-packs"
+name = "raes-env-packs"
 version = "{version}"
 dependencies = ["PyYAML>=6"]
 """
@@ -62,7 +62,7 @@ _CHANGELOG = """\
 
 ### Bug Fixes
 
-* **deps:** bump aces-sdl ([#123](https://example.com/issues/123))
+* **deps:** bump raes ([#123](https://example.com/issues/123))
 """
 
 
@@ -180,7 +180,7 @@ class ExtractReleaseNotesTests(unittest.TestCase):
         self.assertIn("sign release tags with keyless Sigstore", notes)
         self.assertIn("handle empty input", notes)
         # Must not bleed into the previous version's section.
-        self.assertNotIn("bump aces-sdl", notes)
+        self.assertNotIn("bump raes", notes)
         # The version heading itself is not part of the body notes.
         self.assertNotIn("## [2.1.0]", notes)
 
@@ -278,7 +278,7 @@ class CliNotesTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             body = out.read_text(encoding="utf-8")
             self.assertIn("keyless Sigstore", body)
-            self.assertNotIn("bump aces-sdl", body)
+            self.assertNotIn("bump raes", body)
 
     def test_missing_version_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

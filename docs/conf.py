@@ -7,7 +7,7 @@ working, so publishing to Read the Docs needs no rewriting of the source files.
 
 The package is deliberately **not** installed for the docs build. These pages are
 narrative -- there is no autodoc -- and installing would drag in the whole pinned
-``aces-sdl`` runtime closure (FastAPI, uvicorn, cryptography, ...) to render
+``raes`` runtime closure (FastAPI, uvicorn, cryptography, ...) to render
 markdown. The version below is read straight from ``pyproject.toml`` instead,
 which keeps the build fast, hermetic, and independent of the runtime stack.
 """
@@ -22,7 +22,7 @@ _PYPROJECT = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"
 
 # -- Project information -----------------------------------------------------
 
-project = "ACES Scenario Packs"
+project = "RAES Environment Packs"
 author = _PYPROJECT["project"]["authors"][0]["name"]
 copyright = f"{author}, MIT licensed"  # noqa: A001 - Sphinx requires this name.
 

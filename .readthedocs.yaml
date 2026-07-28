@@ -8,7 +8,7 @@
 # install in this repository, so a Read the Docs build resolves the same
 # artifacts as a local one (ADR 0004, #142). The package itself is NOT installed:
 # these pages are narrative markdown with no autodoc, and installing would pull
-# the entire pinned aces-sdl runtime closure just to render text. docs/conf.py
+# the entire pinned raes runtime closure just to render text. docs/conf.py
 # reads the version from pyproject.toml instead.
 
 version: 2
