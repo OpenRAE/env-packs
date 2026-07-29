@@ -17,7 +17,7 @@ import argparse
 import json
 import os
 import sys
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from .validation import Diagnostic, ValidationResult, validate_pack
 
@@ -70,18 +70,24 @@ class Presentation(object):
 
 
 def _pack(explanation: str, reason: str, suggestion: str) -> Presentation:
+    """Build a pack-domain, env-packs-owned presentation."""
+
     return Presentation(
         _SEVERITY_ERROR, "pack", _OWNER_ENV_PACKS, explanation, reason, suggestion
     )
 
 
 def _trust(explanation: str, reason: str, suggestion: str) -> Presentation:
+    """Build a trust/provenance-domain, env-packs-owned presentation."""
+
     return Presentation(
         _SEVERITY_ERROR, "trust", _OWNER_ENV_PACKS, explanation, reason, suggestion
     )
 
 
 def _compat(explanation: str, reason: str, suggestion: str) -> Presentation:
+    """Build a compatibility-domain, env-packs-owned presentation."""
+
     return Presentation(
         _SEVERITY_ERROR,
         "compatibility",
@@ -93,6 +99,8 @@ def _compat(explanation: str, reason: str, suggestion: str) -> Presentation:
 
 
 def _sdl(explanation: str, reason: str, suggestion: str) -> Presentation:
+    """Build an SDL-domain, RAES-owned presentation."""
+
     return Presentation(
         _SEVERITY_ERROR, "sdl", _OWNER_RAES, explanation, reason, suggestion
     )
@@ -347,7 +355,14 @@ def _enrich_schema(code: str, base: Presentation) -> Presentation:
     hint = _SCHEMA_SUBCODE_HINT.get(subcode)
     if hint is None:
         return base
-    return replace(base, suggestion=f"{base.suggestion} {hint}")
+    return Presentation(
+        severity=base.severity,
+        domain=base.domain,
+        owner=base.owner,
+        explanation=base.explanation,
+        reason=base.reason,
+        suggestion=f"{base.suggestion} {hint}",
+    )
 
 
 def _location(diagnostic: Diagnostic) -> str | None:
@@ -397,6 +412,8 @@ def build_report(result: ValidationResult, pack_name: str) -> Report:
 
 
 def _summary(diagnostics: tuple[dict[str, object], ...]) -> dict[str, object]:
+    """Count diagnostics in total and by domain for the JSON envelope."""
+
     by_domain: dict[str, int] = {}
     for diagnostic in diagnostics:
         domain = str(diagnostic["domain"])
@@ -464,6 +481,8 @@ def render_human(report: Report) -> str:
 
 
 def _parser() -> argparse.ArgumentParser:
+    """Build the argument parser for the ``raes-pack-check`` command."""
+
     parser = argparse.ArgumentParser(
         prog="raes-pack-check",
         description=(
@@ -490,19 +509,20 @@ def main(argv: list[str] | None = None) -> int:
     """Command-line entry point. Returns the process exit status."""
 
     parser = _parser()
-    args = parser.parse_args(argv)  # invalid invocation -> SystemExit(2)
+    # An invalid invocation exits with status 2 via argparse.
+    args = parser.parse_args(argv)
 
     if not os.path.isdir(args.pack_root):
         # Escape the echoed argument: it may be an attacker-supplied directory
-        # name carrying terminal control sequences.
-        parser.error(f"not a directory: {_terminal_safe(args.pack_root)}")  # -> SystemExit(2)
+        # name carrying terminal control sequences. This exits with status 2.
+        parser.error(f"not a directory: {_terminal_safe(args.pack_root)}")
 
     try:
         result = validate_pack(args.pack_root)
-    except Exception as exc:  # noqa: BLE001 - bounded, payload-free tool-failure path
-        # An unexpected package/RAES defect is a checker failure, never
-        # mislabeled as invalid pack content (ADR 0031). Report only the
-        # exception type so no path, body, or value leaks.
+    except Exception as exc:
+        # A broad catch is deliberate: an unexpected package/RAES defect is a
+        # checker failure, never mislabeled as invalid pack content (ADR 0031).
+        # Report only the exception type so no path, body, or value leaks.
         print(
             f"raes-pack-check: internal error ({type(exc).__name__})",
             file=sys.stderr,

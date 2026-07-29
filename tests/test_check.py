@@ -154,9 +154,10 @@ class CliContractTests(CheckFixture):
         self.assertEqual(caught.exception.code, _check.EXIT_USAGE)
 
     def test_nonexistent_pack_root_is_a_usage_error(self) -> None:
+        target = str(self.tmp / "nope")
         with redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit) as caught:
-                _check.main([str(self.tmp / "nope")])
+                _check.main([target])
         self.assertEqual(caught.exception.code, _check.EXIT_USAGE)
 
     def test_unexpected_defect_is_a_bounded_tool_failure(self) -> None:

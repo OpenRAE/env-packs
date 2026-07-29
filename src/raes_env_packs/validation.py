@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -133,14 +134,14 @@ class ValidationResult(object):
 
     def __init__(
         self,
-        diagnostics: object = (),
+        diagnostics: Iterable[object] = (),
         *,
-        errors: object = None,
+        errors: Iterable[str] | None = None,
     ) -> None:
-        source = errors if errors is not None else diagnostics
+        source: Iterable[object] = errors if errors is not None else diagnostics
         self._diagnostics: tuple[Diagnostic, ...] = tuple(
             item if isinstance(item, Diagnostic) else _diagnostic_from_message(str(item))
-            for item in source  # type: ignore[union-attr]
+            for item in source
         )
 
     @property
