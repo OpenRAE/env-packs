@@ -11,6 +11,24 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.1.0](https://github.com/RAESystem/env-packs/compare/v3.0.0...v3.1.0) (2026-07-29)
+
+
+### Features
+
+* **cli:** add beginner-safe static pack check with actionable diagnostics ([#193](https://github.com/RAESystem/env-packs/issues/193)) ([2d8b29f](https://github.com/RAESystem/env-packs/commit/2d8b29ff2af6f3d20f3dbe0378856cf60cce7f9d))
+* define the environment-pack publication profile for artifact satisfaction ([#184](https://github.com/RAESystem/env-packs/issues/184)) ([9af729d](https://github.com/RAESystem/env-packs/commit/9af729dc05b07d9aa39577231deb906db3b2e07c))
+
+
+### Bug Fixes
+
+* **issue-skeleton:** stop defaulting pack issues to env-packs ([#195](https://github.com/RAESystem/env-packs/issues/195)) ([91f0ca6](https://github.com/RAESystem/env-packs/commit/91f0ca642e915f00d946da7330f13508bfaf3cd6))
+
+
+### Documentation
+
+* rewrite documentation for users, splitting public from developer docs ([#186](https://github.com/RAESystem/env-packs/issues/186)) ([0d5f22c](https://github.com/RAESystem/env-packs/commit/0d5f22ce2213640e37fda88f0d0e0fbd882cba95))
+
 ## [3.0.0](https://github.com/RAESystem/env-packs/compare/v2.0.2...v3.0.0) (2026-07-28)
 
 
