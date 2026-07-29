@@ -17,6 +17,9 @@ bounded code with at most a pack-relative filename and a field path — for exam
 `provenance.name-mismatch: docs/provenance-ledger.yaml:pack.name`. Errors never
 contain file bodies or absolute paths, so you can log them safely.
 
+Prefer a command line? [`raes-pack-check`](checking.md) wraps this same call and
+explains each problem in plain language (or JSON), with documented exit codes.
+
 ## What it checks
 
 `validate_pack` reads the static contract for one pack:

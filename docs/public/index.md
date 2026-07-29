@@ -25,8 +25,9 @@ pip install raes-env-packs
 
 - **Author a pack** — scaffold one with the [pack tools](new-pack-script.md) and
   plan it against the [golden-readiness checklist](golden-readiness.md).
-- **Consume a pack** — validate a pack you received with the
-  [`validate_pack` API](validating.md), before you trust its bytes.
+- **Consume a pack** — [check a pack](checking.md) you received with
+  `raes-pack-check`, or call the [`validate_pack` API](validating.md), before you
+  trust its bytes.
 - **Understand the format** — read [what a pack is](concepts.md) and the
   [pack reference](environment-packs.md).
 - **Know the limits** — see [what this is and is not](limitations.md).
@@ -55,6 +56,7 @@ golden-readiness
 :hidden:
 :caption: Consume a pack
 
+checking
 validating
 ```
 

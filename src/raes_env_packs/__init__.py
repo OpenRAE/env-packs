@@ -15,7 +15,12 @@ from .digest import (
     validate_pack_content_manifest,
     verify_pack_content_digest,
 )
-from .validation import PackValidationLimits, ValidationResult, validate_pack
+from .validation import (
+    Diagnostic,
+    PackValidationLimits,
+    ValidationResult,
+    validate_pack,
+)
 
 # The version lives in pyproject.toml ([project].version), bumped by release-please
 # (ADR 0008); __version__ derives from the installed package metadata.
@@ -23,6 +28,7 @@ __version__ = version("raes-env-packs")
 
 __all__ = [
     "__version__",
+    "Diagnostic",
     "PackDigestError",
     "PackValidationLimits",
     "ValidationResult",
