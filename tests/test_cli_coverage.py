@@ -146,10 +146,26 @@ class GhClientTests(unittest.TestCase):
             self.client.create_issue(op, 1)
             self.client.update_issue(op, 1)
 
+    def test_resolve_canonical_repo(self):
+        with mock.patch.object(
+                ISK.subprocess, "run",
+                return_value=_StubProc(stdout='{"nameWithOwner": "Owner/Repo"}')):
+            self.assertEqual(self.client.resolve_canonical_repo(), "Owner/Repo")
+
+    def test_resolve_canonical_repo_missing_field_raises(self):
+        with mock.patch.object(ISK.subprocess, "run",
+                               return_value=_StubProc(stdout="{}")):
+            with self.assertRaises(SystemExit):
+                self.client.resolve_canonical_repo()
+
 
 class _StubClient:
-    def __init__(self):
+    def __init__(self, repo="example-org/example-packs"):
         self.created = []
+        self.repo = repo
+
+    def resolve_canonical_repo(self):
+        return self.repo
 
     def list_milestones(self):
         return [{"title": "Wave 1", "number": 1}]
@@ -186,12 +202,14 @@ class PrepareApplyTests(unittest.TestCase):
 
     def test_main_dry_run_and_apply(self):
         client = _StubClient()
+        base = ["--pack-id", "cov-pack", "--milestone-number", "1",
+                "--repo", "some-org/community-packs"]
         with mock.patch.object(ISK, "GhClient", return_value=client):
             with redirect_stdout(io.StringIO()):
-                ISK.main(["--pack-id", "cov-pack", "--milestone-number", "1"])
+                ISK.main(base)
             self.assertEqual(client.created, [])
             with redirect_stdout(io.StringIO()):
-                ISK.main(["--pack-id", "cov-pack", "--milestone-number", "1", "--apply"])
+                ISK.main(base + ["--apply"])
         self.assertEqual(len(client.created), len(ISK.ISSUE_TEMPLATES))
         self.assertTrue(
             all(action == "create" for action, _title in client.created),

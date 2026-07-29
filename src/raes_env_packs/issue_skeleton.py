@@ -17,7 +17,19 @@ import textwrap
 from dataclasses import dataclass
 from collections.abc import Callable
 
-DEFAULT_REPO = "RAESystem/env-packs"
+# This tooling repository owns the environment-pack format and release tooling,
+# not pack content, so it must never be a target for pack-implementation issues
+# (ADR 0001/0009). Packs live in their own catalog repositories; the caller
+# names the target explicitly. Canonical tooling stays catalog-neutral: it never
+# embeds a concrete downstream catalog identity, only this repository's own name
+# (to reject it) and an obvious placeholder used in help and error text.
+FORMAT_TOOLING_REPO = "RAESystem/env-packs"
+EXAMPLE_CATALOG = "example-org/example-packs"
+# Minimal structural safety check for an OWNER/REPOSITORY selector. It rejects
+# URLs, query/path suffixes, extra components, whitespace, and control chars;
+# gh owns canonical existence/access/case resolution, so this does not try to
+# reproduce GitHub's full repository-name schema.
+TARGET_REPO_RE = re.compile(r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
 PACK_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$")
 
 LABEL_DOCUMENTATION = "documentation"
@@ -96,6 +108,40 @@ def validate_pack_id(pack_id: str) -> None:
         raise SystemExit(
             "pack id must be lowercase kebab-case, start/end with a letter or "
             "digit, and contain only a-z, 0-9, and '-'")
+
+
+def ensure_not_tooling_repo(repo: str) -> None:
+    """Reject the format/tooling repository as a pack-issue target.
+
+    Compares case-insensitively so it catches both a raw selector and a
+    canonical name resolved by gh (case variants, redirected aliases).
+    """
+    if repo.lower() == FORMAT_TOOLING_REPO.lower():
+        raise SystemExit(
+            f"{repo} owns the environment-pack format and tooling, not pack "
+            "content, so it cannot host pack-implementation issues. Target the "
+            "catalog repository that will own the pack — your first-party, "
+            f"community, or private catalog (e.g. {EXAMPLE_CATALOG}).")
+
+
+def validate_target_selector(repo: str | None) -> str:
+    """Validate the --repo selector locally, without spawning gh.
+
+    Structurally requires an OWNER/REPOSITORY slug and rejects the tooling
+    repository outright. Canonical existence/access/redirect resolution is left
+    to gh (see GhClient.resolve_canonical_repo).
+    """
+    if not repo:
+        raise SystemExit(
+            "--repo OWNER/REPOSITORY is required: name the catalog repository "
+            "that will own the pack. This tooling repository does not host "
+            f"packs (e.g. {EXAMPLE_CATALOG}).")
+    if not TARGET_REPO_RE.fullmatch(repo):
+        raise SystemExit(
+            "--repo must be a GitHub OWNER/REPOSITORY slug using letters, "
+            f"digits, '.', '_', and '-'; got {repo!r}")
+    ensure_not_tooling_repo(repo)
+    return repo
 
 
 def bullets(lines: tuple[str, ...]) -> str:
@@ -601,6 +647,19 @@ class GhClient(object):
             return json.loads(proc.stdout)
         return None
 
+    def resolve_canonical_repo(self) -> str:
+        """Resolve the target to its canonical OWNER/REPOSITORY via gh.
+
+        gh follows renames/redirects and canonicalizes case, and fails when the
+        repository does not exist or the caller cannot access it. This closes
+        the gap where a redirected alias could otherwise reach a forbidden
+        target that a raw string comparison would miss.
+        """
+        row = self.run(["repo", "view", self.repo, "--json", "nameWithOwner"])
+        if not isinstance(row, dict) or not row.get("nameWithOwner"):
+            raise SystemExit(f"could not resolve repository: {self.repo}")
+        return str(row["nameWithOwner"])
+
     def list_labels(self) -> set[str]:
         """List labels."""
         proc = subprocess.run(
@@ -690,8 +749,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse args."""
     parser = argparse.ArgumentParser(
         description="Create standard skeleton GitHub issues for an environment pack.")
-    parser.add_argument("--repo", default=DEFAULT_REPO,
-                        help=f"GitHub repository, default: {DEFAULT_REPO}")
+    parser.add_argument(
+        "--repo",
+        help=("GitHub catalog repository (OWNER/REPOSITORY) that will own the "
+              f"pack, e.g. {EXAMPLE_CATALOG}; use your own first-party, "
+              "community, or private catalog. Required: this format/tooling "
+              "repository does not host packs and cannot be targeted."))
     parser.add_argument("--pack-id", help="lowercase kebab-case environment pack id")
     parser.add_argument("--title", help="human-readable scenario title")
     parser.add_argument("--focus", default="TBD by the pack-design agent.",
@@ -802,7 +865,16 @@ def apply_operations(client: GhClient, operations: list[Operation],
 def main(argv: list[str] | None = None) -> None:
     """Command-line entry point."""
     args = parse_args(argv or sys.argv[1:])
-    client = GhClient(args.repo)
+    # Validate and resolve the catalog target once, at ingress, before any
+    # milestone/issue/label read or mutation. Local checks reject missing,
+    # malformed, and obviously-forbidden targets with no subprocess; gh then
+    # resolves the canonical name so redirected aliases cannot bypass the
+    # tooling-repo prohibition.
+    selector = validate_target_selector(args.repo)
+    client = GhClient(selector)
+    canonical = client.resolve_canonical_repo()
+    ensure_not_tooling_repo(canonical)
+    client.repo = canonical
     operations, milestone_number = prepare_operations(args, client)
     if not args.apply:
         print("DRY RUN: no GitHub changes will be written. Pass --apply to write.")
