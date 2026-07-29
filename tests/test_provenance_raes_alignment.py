@@ -136,7 +136,7 @@ class ProvenanceAcesAlignmentTests(unittest.TestCase):
     def test_contract_and_docs_reference_aces_policy(self) -> None:
         """Acceptance #1: contract prose + docs reference the RAES trust policy."""
         contract = os.path.join(CI._RES, "contract", "pack-layout.md")
-        docs = os.path.join(_REPO, "docs", "environment-packs.md")
+        docs = os.path.join(_REPO, "docs", "public", "environment-packs.md")
         for path in (contract, docs):
             self.assertTrue(os.path.isfile(path), f"missing prose file: {path}")
             self.assertIn(RAES_POLICY_MARKER, _read(path).lower(),

@@ -34,4 +34,4 @@ See [ADR 0008](../docs/decisions/adrs/0008-adopt-release-please.md).
 
 - This repo **defines and validates** the environment-pack format; it does not host
   actual environment packs. Keep changes within that boundary (see
-  [`environment-packs.md`](../docs/environment-packs.md) and ADR 0001).
+  [`environment-packs.md`](../docs/public/environment-packs.md) and ADR 0001).

@@ -44,7 +44,7 @@ _TEMPLATE_DIR = _PKG / "resources" / "template"
 _PROVENANCE_SCHEMA = _SCHEMAS_DIR / "provenance.schema.yaml"
 _CHALLENGES_TEMPLATE = _TEMPLATE_DIR / "challenges" / "challenges.yaml"
 _CONTRACT = _PKG / "resources" / "contract" / "pack-layout.md"
-_DOCS = _REPO / "docs" / "environment-packs.md"
+_DOCS = _REPO / "docs" / "public" / "environment-packs.md"
 _ADR = (
     _REPO
     / "docs"

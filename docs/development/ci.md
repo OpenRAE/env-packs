@@ -3,7 +3,7 @@
 How this repository verifies a pull request, what blocks a merge, and how to
 reproduce each check locally. The workflow files under `.github/workflows/` are
 authoritative; this page explains their shape. The design rationale is
-[ADR 0029](decisions/adrs/0029-parallel-pr-feedback-with-a-complete-merge-gate.md).
+[ADR 0029](../decisions/adrs/0029-parallel-pr-feedback-with-a-complete-merge-gate.md).
 
 ## The check surface on a pull request
 
@@ -69,7 +69,7 @@ The unit suite is **not sharded**. It is a single job (`tests`) that runs one
 `unittest discover -s tests`, so every test executes exactly once per run. At 474
 tests in about 14 seconds locally, splitting the suite across runners would add
 more per-shard install and coverage fan-in overhead than it removes
-([ADR 0029](decisions/adrs/0029-parallel-pr-feedback-with-a-complete-merge-gate.md)).
+([ADR 0029](../decisions/adrs/0029-parallel-pr-feedback-with-a-complete-merge-gate.md)).
 If GitHub-hosted p95 evidence later justifies sharding, the scaling seam is a
 single canonical test inventory assigning every test to exactly one
 `(shard_index, shard_count)` pair whose manifests are proven disjoint with a

@@ -1,14 +1,20 @@
 ## Summary
 
-## Linked Issues Or Requirements
+<!-- What changed and why, in a sentence or two. -->
 
-## Boundary Check
+## Related issues
 
-- [ ] This keeps RAES core semantics in RAES.
-- [ ] This does not move capture workflow assets without an ownership issue.
-- [ ] This avoids downstream catalog vocabulary in canonical docs.
+<!-- e.g. Closes #123 -->
 
 ## Verification
 
-- [ ] `python3 -m unittest discover -s tests`
-- [ ] `python3 -m compileall tests`
+- [ ] `python -m unittest discover -s tests`
+- [ ] `raes-pack-validate --repo .`
+- [ ] `raes-pack-release check --all`
+- [ ] Docs changed: built `docs/public/` warning-free (`sphinx-build -W`).
+
+## Checklist
+
+- [ ] Keeps RAES semantics in RAES; adds no pack content or downstream vocabulary here.
+- [ ] PR title is a Conventional Commit (a required check enforces it).
+- [ ] Did not edit the version or `CHANGELOG.md` — release-please owns them.

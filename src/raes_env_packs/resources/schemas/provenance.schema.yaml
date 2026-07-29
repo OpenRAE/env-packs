@@ -45,7 +45,7 @@ description: >
   restated here (ADR 0009/ADR 0014).
 $comment: >
   RAES-alignment field disposition (issues #82, #87; see contract/pack-layout.md
-  and docs/environment-packs.md for the full mapping). Every retained field is either
+  and docs/public/environment-packs.md for the full mapping). Every retained field is either
   mapped to an RAES trust concept or documented as pack-domain absent upstream —
   and NONE re-defines an RAES-owned evidence class or a governed concept
   vocabulary:
