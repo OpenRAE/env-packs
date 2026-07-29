@@ -62,21 +62,26 @@ pack:
   name: example-pack
 ```
 
-## 4. Validate it
+## 4. Check it
 
-`validate_pack` is the check a consumer runs before trusting a pack. It reads the
-staged files and returns a result — nothing is printed, and no pack code runs.
+`raes-pack-check` is the check a consumer runs before trusting a pack. It reads
+the staged files and reports what it finds — no pack code runs and nothing
+reaches the network.
 
 ```sh
-python -c "from raes_env_packs import validate_pack; print(validate_pack('environments/example-pack').ok)"
+raes-pack-check environments/example-pack
 ```
 
 ```
-True
+pack: example-pack
+OK — no blocking problems found.
 ```
 
-`True` means the pack matches the contract: its identity, its provenance ledger,
-and its start state all check out.
+`OK` means the pack matches the contract: its identity, its provenance ledger,
+and its start state all check out. If something is wrong, each problem comes with
+where it is and how to fix it; see [check a pack](checking.md) for the exit codes
+and JSON output. The same check is available as the
+[`validate_pack` API](validating.md) when you want a result object instead.
 
 ## What you have not done
 

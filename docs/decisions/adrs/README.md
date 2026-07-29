@@ -36,6 +36,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0028](0028-project-raes-artifact-satisfaction-into-publication.md) | Project RAES artifact satisfaction into pack publication | Accepted |
 | [0029](0029-parallel-pr-feedback-with-a-complete-merge-gate.md) | Parallel PR feedback with a complete merge gate | Accepted |
 | [0030](0030-separate-public-and-developer-documentation.md) | Separate public and developer documentation | Accepted |
+| [0031](0031-compose-beginner-safe-pack-checks-from-existing-authorities.md) | Compose beginner-safe pack checks from existing authorities | Accepted |
 
 ```{toctree}
 :hidden:

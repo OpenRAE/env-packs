@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -79,17 +80,99 @@ class PackValidationLimits(object):
             raise ValueError("pack validation limits must be positive integers")
 
 
-@dataclass
-class ValidationResult(object):
-    """The deterministic outcome of validating one environment pack."""
+@dataclass(frozen=True)
+class Diagnostic(object):
+    """One canonical, bounded validation finding.
 
-    errors: list[str] = field(default_factory=list)
+    ``code`` is a stable dotted identifier; ``path`` is a canonical
+    pack-relative member and ``field_path`` a field pointer within it. Both are
+    optional and never carry an authored value or an absolute path. ``message``
+    is the bounded rendered string retained as the derived
+    :attr:`ValidationResult.errors` compatibility view (ADR 0013, ADR 0031).
+    """
+
+    code: str
+    path: str | None = None
+    field_path: str | None = None
+    message: str = ""
+
+
+def _diagnostic_from_message(message: str) -> Diagnostic:
+    """Parse a historical ``errors`` string back into a Diagnostic.
+
+    Supports the legacy ``ValidationResult(errors=[...])`` construction: the
+    string is ``code``, ``code: path``, or ``code: path:field``.
+    """
+
+    code, separator, rest = message.partition(": ")
+    if not separator:
+        return Diagnostic(code=message, message=message)
+    path, _, field_path = rest.partition(":")
+    return Diagnostic(
+        code=code,
+        path=path or None,
+        field_path=field_path or None,
+        message=message,
+    )
+
+
+class ValidationResult(object):
+    """The deterministic outcome of validating one environment pack.
+
+    ``diagnostics`` is the canonical, ordered, de-duplicated finding set. The
+    historical ``errors`` string list and ``ok`` are derived views over it, so
+    existing callers keep working while richer clients read structured records
+    (ADR 0031).
+
+    The exported constructor stays backward compatible: it accepts a tuple/list
+    of :class:`Diagnostic` (canonical) *or* the historical list of error
+    strings, positionally or as ``errors=``. Strings are normalized to
+    :class:`Diagnostic` records so ``errors`` and ``ok`` behave as before.
+    """
+
+    __slots__ = ("_diagnostics",)
+
+    def __init__(
+        self,
+        diagnostics: Iterable[object] = (),
+        *,
+        errors: Iterable[str] | None = None,
+    ) -> None:
+        source: Iterable[object] = errors if errors is not None else diagnostics
+        self._diagnostics: tuple[Diagnostic, ...] = tuple(
+            item if isinstance(item, Diagnostic) else _diagnostic_from_message(str(item))
+            for item in source
+        )
+
+    @property
+    def diagnostics(self) -> tuple[Diagnostic, ...]:
+        """The canonical, ordered finding set."""
+
+        return self._diagnostics
+
+    @property
+    def errors(self) -> list[str]:
+        """Bounded rendered strings — the historical compatibility view."""
+
+        return [diagnostic.message for diagnostic in self._diagnostics]
 
     @property
     def ok(self) -> bool:
         """Whether validation completed without a contract error."""
 
-        return not self.errors
+        return not self._diagnostics
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, ValidationResult)
+            and other._diagnostics == self._diagnostics
+        )
+
+    def __hash__(self) -> int:
+        return hash(self._diagnostics)
+
+    def __repr__(self) -> str:
+        return f"ValidationResult(diagnostics={self._diagnostics!r})"
 
 
 class _Errors(object):
@@ -97,23 +180,41 @@ class _Errors(object):
 
     def __init__(self, limits: PackValidationLimits) -> None:
         self._limits = limits
-        self._items: list[str] = []
+        self._items: list[Diagnostic] = []
 
     def add(
         self, code: str, path: str | None = None, field_path: str | None = None
     ) -> None:
         if len(self._items) >= self._limits.max_errors:
             return
+        # Bound every structured component, not just the rendered message: a
+        # schema-derived field path can embed an author-controlled key, and a
+        # pack member path is foreign input. The whole diagnostic stays within
+        # the configured char bound (ADR 0013).
+        limit = self._limits.max_error_chars
+        if path is not None:
+            path = path[:limit]
+        if field_path is not None:
+            field_path = field_path[:limit]
         message = code
         if path:
             message += f": {path}"
         if field_path:
             message += f":{field_path}"
-        message = message[:self._limits.max_error_chars]
-        self._items.append(message)
+        message = message[:limit]
+        self._items.append(
+            Diagnostic(
+                code=code, path=path, field_path=field_path, message=message
+            )
+        )
 
     def result(self) -> ValidationResult:
-        return ValidationResult(sorted(set(self._items)))
+        unique: dict[str, Diagnostic] = {}
+        for diagnostic in self._items:
+            unique.setdefault(diagnostic.message, diagnostic)
+        return ValidationResult(
+            tuple(unique[message] for message in sorted(unique))
+        )
 
 
 class _DuplicateKey(yaml.YAMLError):
@@ -845,4 +946,4 @@ def _validate_pack_for_author_ci(
     )
 
 
-__all__ = ["PackValidationLimits", "ValidationResult", "validate_pack"]
+__all__ = ["Diagnostic", "PackValidationLimits", "ValidationResult", "validate_pack"]
