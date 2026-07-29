@@ -6,6 +6,7 @@ import importlib.util
 import os
 import sys
 import unittest
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SCRIPT = os.path.join(os.path.dirname(_HERE), "src", "raes_env_packs",
@@ -140,3 +141,87 @@ class SkeletonTemplateTests(unittest.TestCase):
         ops = SKELETON.build_operations(plan, [], milestone_exists=False)
         self.assertEqual(ops[0].action, "create_milestone")
         self.assertEqual(len([op for op in ops if op.action == "create_issue"]), 9)
+
+
+class RepoTargetTests(unittest.TestCase):
+    """The catalog repository must be named explicitly (issue #194).
+
+    The skeleton creates pack-implementation issues, which belong in a catalog
+    repository. This tooling repo (``RAESystem/env-packs``) owns the pack
+    format, not pack content, so it must never be a silent or explicit target.
+    """
+
+    def test_repo_has_no_argparse_default(self):
+        args = SKELETON.parse_args(
+            ["--pack-id", "example-pack", "--milestone-number", "1"])
+        self.assertIsNone(args.repo)
+
+    def test_missing_repo_selector_is_rejected(self):
+        for missing in (None, ""):
+            with self.subTest(missing=missing):
+                with self.assertRaises(SystemExit):
+                    SKELETON.validate_target_selector(missing)
+
+    def test_malformed_repo_selectors_are_rejected(self):
+        for bad in ("notaslug", "https://github.com/o/r", "owner/repo/extra",
+                    "owner/repo?tab=issues", "owner /repo", "owner/re po",
+                    "owner/", "/repo", "owner/repo\n"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(SystemExit):
+                    SKELETON.validate_target_selector(bad)
+
+    def test_first_party_and_community_targets_pass(self):
+        # Arbitrary catalogs — first-party, community, private — share one route.
+        for target in ("example-org/first-party-packs", "some-org/community-packs",
+                       "acme-internal/private-packs"):
+            with self.subTest(target=target):
+                self.assertEqual(
+                    SKELETON.validate_target_selector(target), target)
+
+    def test_format_tooling_repo_is_rejected_case_insensitively(self):
+        for forbidden in ("RAESystem/env-packs", "raesystem/ENV-PACKS"):
+            with self.subTest(forbidden=forbidden):
+                with self.assertRaises(SystemExit):
+                    SKELETON.validate_target_selector(forbidden)
+
+    def test_ensure_not_tooling_repo_allows_catalogs(self):
+        SKELETON.ensure_not_tooling_repo("some-org/ok")
+        SKELETON.ensure_not_tooling_repo("example-org/first-party-packs")
+        with self.assertRaises(SystemExit):
+            SKELETON.ensure_not_tooling_repo("RAESystem/env-packs")
+
+    def test_example_catalog_is_a_neutral_placeholder(self):
+        # Canonical tooling must stay catalog-neutral (issue #194 codex class
+        # finding): the only GitHub identity it embeds is this repo's own name
+        # (to reject it). The catalog example fed to help and error text must be
+        # an obvious placeholder, never a concrete downstream/first-party
+        # catalog such as one under the RAESystem org.
+        self.assertRegex(SKELETON.EXAMPLE_CATALOG,
+                         r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
+        self.assertNotIn("raesystem", SKELETON.EXAMPLE_CATALOG.lower())
+
+    def test_main_rejects_locally_without_subprocess(self):
+        base = ["--pack-id", "example-pack", "--milestone-number", "1"]
+        with mock.patch.object(SKELETON.subprocess, "run") as run:
+            for argv in (
+                base,  # missing --repo
+                base + ["--repo", "RAESystem/env-packs"],  # forbidden tooling repo
+                base + ["--repo", "notaslug"],  # malformed
+            ):
+                with self.subTest(argv=argv):
+                    with self.assertRaises(SystemExit):
+                        SKELETON.main(argv)
+            run.assert_not_called()
+
+    def test_main_rejects_canonical_alias_to_tooling_repo(self):
+        # gh resolves a redirected/renamed slug back to the tooling repo.
+        resolved = mock.Mock(
+            returncode=0,
+            stdout='{"nameWithOwner": "RAESystem/env-packs"}',
+            stderr="",
+        )
+        with mock.patch.object(SKELETON.subprocess, "run", return_value=resolved):
+            with self.assertRaises(SystemExit):
+                SKELETON.main(["--pack-id", "example-pack",
+                               "--milestone-number", "1",
+                               "--repo", "RAESystem/old-packs-alias"])

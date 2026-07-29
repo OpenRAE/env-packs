@@ -59,7 +59,7 @@ workflow:
       enabled: false
 docs:
   adr_dir: docs/decisions/adrs/
-  workflow_reference: docs/environment-packs.md
+  workflow_reference: docs/public/environment-packs.md
 example_paths:
   source: src/raes_env_packs/
   test: tests/
@@ -75,7 +75,7 @@ architecture:
     patterns:
       - name: RAES-subordinate pack tooling
         applies_to: environment-pack layout and authoring/validation/release tooling
-        example_path: docs/environment-packs.md
+        example_path: docs/public/environment-packs.md
     boundary_contract:
       description: This repository is subordinate to RAES core (raes). RAES owns all scenario semantics (the SDL and its objectives, conditions, evidence, and participant/attacker behaviour); this repository owns only the environment-pack layout and the authoring/validation/release tooling, and defines zero extensions to RAES semantics. It does not host actual environment packs. See ADR 0009.
     binding_adrs: []

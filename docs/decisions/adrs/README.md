@@ -33,6 +33,10 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0025](0025-recover-historical-tags-with-verified-handoff.md) | Recover historical tags with a verified object handoff | Accepted |
 | [0026](0026-separate-historical-source-from-release-tooling.md) | Separate historical source from release tooling | Accepted |
 | [0027](0027-publish-only-the-active-pypi-distribution.md) | Publish only the active PyPI distribution | Accepted |
+| [0028](0028-project-raes-artifact-satisfaction-into-publication.md) | Project RAES artifact satisfaction into pack publication | Accepted |
+| [0029](0029-parallel-pr-feedback-with-a-complete-merge-gate.md) | Parallel PR feedback with a complete merge gate | Accepted |
+| [0030](0030-separate-public-and-developer-documentation.md) | Separate public and developer documentation | Accepted |
+| [0031](0031-compose-beginner-safe-pack-checks-from-existing-authorities.md) | Compose beginner-safe pack checks from existing authorities | Accepted |
 
 ```{toctree}
 :hidden:

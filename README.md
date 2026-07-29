@@ -1,16 +1,42 @@
 # RAES Environment Packs
 
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/RAESystem/env-packs/badge)](https://scorecard.dev/viewer/?uri=github.com/RAESystem/env-packs)
+[![PyPI](https://img.shields.io/pypi/v/raes-env-packs)](https://pypi.org/project/raes-env-packs/)
+[![Python](https://img.shields.io/pypi/pyversions/raes-env-packs)](https://pypi.org/project/raes-env-packs/)
 [![Documentation](https://app.readthedocs.org/projects/env-packs/badge/?version=latest)](https://env-packs.readthedocs.io/en/latest/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/RAESystem/env-packs/badge)](https://scorecard.dev/viewer/?uri=github.com/RAESystem/env-packs)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13833/badge)](https://www.bestpractices.dev/projects/13833)
 
-The canonical, shared home for the **RAES environment-pack definition** and the
-**authoring / validation tooling** that goes with it, published as an installable
-Python package so catalogs (and others) consume one version-matched artifact
-instead of vendoring the contract.
+RAES environment packs give a scenario a standard shape. This package defines that
+shape and gives you the tools to build, check, and ship a pack.
 
-This repository does **not** host environment packs. Packs live in their own catalog
-repositories and consume this contract.
+A pack holds the declarative content for one reference environment: the scenario
+start state, its assets, and a record of where the content came from. Authors
+build packs; consumers validate a pack before they trust it. The format and the
+tools ship together, so you validate a pack against the same version you built it
+against.
+
+This repository defines and validates the format. It does not host packs — those
+live in their own catalog repositories.
+
+## What a pack looks like
+
+```
+example-pack/
+├── pack.yaml                  # identity: name, title, version, status
+├── sdl/example.sdl.yaml       # the scenario start state (RAES SDL)
+└── docs/
+    └── provenance-ledger.yaml # where the content came from
+```
+
+The start state is small to begin with:
+
+```yaml
+name: example-pack
+nodes:
+  target:
+    type: vm
+```
 
 ## Install
 
@@ -18,102 +44,74 @@ repositories and consume this contract.
 pip install raes-env-packs
 ```
 
-This provides the console tools plus the version-matched schemas and template:
+That installs four command-line tools and the importable library:
 
-- `raes-pack-validate` — validate pack content against the contract.
-- `raes-pack-release` — boundary-split build, lint, release, and profile-smoke gate.
 - `raes-new-pack` — scaffold a new pack from the bundled template.
-- `raes-pack-issue-skeleton` — generate a pack work-issue skeleton.
+- `raes-pack-validate` — the author-CI check for a catalog checkout.
+- `raes-pack-release` — build, lint, and release-gate a pack.
+- `raes-pack-issue-skeleton` — generate a pack's starter GitHub issues.
 
-Validate one pack by pointing the tools at its directory:
+## Validate your first pack
 
-```sh
-raes-pack-validate --pack ./environments/example-pack
-raes-pack-release check --pack ./environments/example-pack
-```
-
-As a convenience, a directory containing only pack directories can be checked
-in one command. Every direct child directory is treated as a pack candidate:
+Scaffold a pack in your catalog repository, add a start state, and check it:
 
 ```sh
-raes-pack-validate --packs-root ./environments
-raes-pack-release check --packs-root ./environments
+raes-new-pack example-pack --title "Example Pack" \
+  --description "A tiny example environment pack." --issue 1
+# add sdl/example.sdl.yaml (above) and set the pack name in
+# docs/provenance-ledger.yaml, then:
+python -c "from raes_env_packs import validate_pack; print(validate_pack('environments/example-pack').ok)"
 ```
 
-Consumers can validate one immutably staged pack in-process, without Git,
-subprocesses, or pack-local code:
-
-```python
-from raes_env_packs import validate_pack
-
-result = validate_pack(pack_root)
-if not result.ok:
-    reject(result.errors)
+```
+True
 ```
 
-This checks the static ingest contract: pack identity, required provenance and
-safety/review policy, an optional referenced compatibility manifest, and direct
-SDL documents through RAES. Diagnostics contain bounded error codes and relative
-locations, never source bodies or absolute paths. See
-[Single-Pack Consumer Validation](docs/environment-packs.md#single-pack-consumer-validation).
+`validate_pack` is the check a consumer runs before trusting a pack: it reads the
+staged files, returns a result, prints nothing, and never runs the pack's code.
+The [quickstart](https://env-packs.readthedocs.io/en/latest/quickstart.html) walks
+through it step by step.
 
-## What's here
+## Choose your route
 
-- **Definition**
-  - [`docs/environment-packs.md`](docs/environment-packs.md) — what an environment pack is.
-  - [Migration from the retired package identity](docs/raes-migration.md).
-  - Layout contract + schemas + template ship as package data under
-    [`src/raes_env_packs/resources/`](src/raes_env_packs/resources/)
-    (`contract/pack-layout.md`, `schemas/`, `template/`).
-  - [Architecture Decision Records](docs/decisions/adrs/) — purpose, packaging,
-    build/release, SBOM.
-- **Tools** — the package modules under
-  [`src/raes_env_packs/`](src/raes_env_packs/), exposed as the console
-  entry points above.
+- **Author a pack** — start with the [quickstart](https://env-packs.readthedocs.io/en/latest/quickstart.html)
+  and the [pack reference](https://env-packs.readthedocs.io/en/latest/environment-packs.html).
+- **Consume a pack** — see [validating a pack](https://env-packs.readthedocs.io/en/latest/validating.html).
+- **Contribute** — read [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Boundary
+Full documentation is on [Read the Docs](https://env-packs.readthedocs.io/en/latest/).
 
-This repository is **subordinate to RAES core** (`raes`): it exists to make
-authoring and shipping RAES scenarios easier, and defines **no extensions** to
-RAES semantics
-([ADR 0021](docs/decisions/adrs/0021-adopt-raes-environment-pack-identity.md)).
+## What this is and is not
 
-- **RAES core** owns the Scenario Definition Language (SDL) and all scenario
-  semantics. Where RAES owns a concept, packs consume it from RAES.
-- **This repository** owns how an environment pack is structured, authored,
-  validated, and released — the layout and the tools that enforce it.
-- **Downstream catalogs** hold the actual packs and any private runtime,
-  delivery, or product integrations.
+This project defines the pack format and the tools that check it. It does **not**
+host packs, run a scenario, or define scenario meaning — the RAES scenario
+language and its semantics belong to [RAES](https://github.com/RAESystem/rae), and
+this project consumes them from an exactly pinned `raes` release. It is a
+single-maintainer project with no support SLA. See the
+[limitations](https://env-packs.readthedocs.io/en/latest/limitations.html) for the
+full picture.
 
-## Development
+## Contributing
 
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -e .
-
 python -m unittest discover -s tests
 ```
 
-Releases are managed by **release-please** — merge-driven, nothing hand-run
-(see [ADR 0008](docs/decisions/adrs/0008-adopt-release-please.md)). The version
-lives in `pyproject.toml` (`[project].version`) and is bumped by release-please;
-`__version__` derives from it. The **Conventional Commit PR title** decides the
-bump:
+[CONTRIBUTING.md](CONTRIBUTING.md) has the full setup, test, and submission path.
+Maintainer records — decision records, CI, and release mechanics — are indexed in
+[docs/README.md](docs/README.md).
 
-| PR title | Bump |
-| --- | --- |
-| `feat!:` / `BREAKING CHANGE:` | major (pre-1.0: minor) |
-| `feat:` | minor |
-| `fix:` / `perf:` | patch |
-| `docs:` `chore:` `refactor:` `test:` `ci:` `build:` | no release |
+## Releases
 
-You never edit `CHANGELOG.md` — release-please owns it. As feature PRs land on
-`main` (via `dev`), release-please keeps a `chore(main): release X.Y.Z` PR up to
-date with the version bump + changelog. **Merge that PR to release:** it tags
-`vX.Y.Z`, builds the sdist + wheel, generates a CycloneDX SBOM, publishes to PyPI
-via OIDC, and cuts the GitHub Release. (The release PR is opened by the CI token,
-so its checks don't auto-run — admin-merge it.) A CI check enforces conventional
-PR titles and bans agent-branding prefixes.
+Releases are managed by [release-please](https://github.com/googleapis/release-please):
+merge-driven, nothing hand-run. Your **Conventional Commit PR title** is the
+release decision — `feat:` is a minor bump, `fix:` a patch, `docs:`/`chore:` no
+release. You never edit the version or `CHANGELOG.md`; release-please owns both.
+See [CONTRIBUTING.md](CONTRIBUTING.md#releases) for the details.
 
-Licensed under the MIT License (see [`LICENSE`](LICENSE)).
+## License
+
+MIT — see [LICENSE](LICENSE).

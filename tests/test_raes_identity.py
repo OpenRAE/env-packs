@@ -35,7 +35,7 @@ _HISTORICAL_ALLOWLIST = {
     "SECURITY.md",
     "docs/decisions/adrs/README.md",
     "docs/decisions/adrs/0021-adopt-raes-environment-pack-identity.md",
-    "docs/raes-migration.md",
+    "docs/public/raes-migration.md",
     "requirements/recovery-v2.0.2.in",
     "requirements/recovery-v2.0.2.txt",
 }
@@ -62,6 +62,9 @@ _IMMUTABLE_ADR_ALLOWLIST = {
         "0018-openssf-scorecard-posture.md",
         "0019-preserve-history-in-dev-main-promotions.md",
         "0020-no-auto-merge.md",
+        # 0021-0030 reference no retired-named ADR. 0031 Extends the immutably
+        # named ADR 0011 by filename, exactly like 0012-0016 do.
+        "0031-compose-beginner-safe-pack-checks-from-existing-authorities.md",
     )
 }
 _BOUND_IDENTITY_LINES = {
@@ -104,6 +107,7 @@ class PackageIdentityTests(unittest.TestCase):
         self.assertEqual(
             project["scripts"],
             {
+                "raes-pack-check": "raes_env_packs.check:main",
                 "raes-pack-validate": "raes_env_packs.content_ci:main",
                 "raes-pack-release": "raes_env_packs.release:main",
                 "raes-new-pack": "raes_env_packs.new_pack:main",
@@ -160,7 +164,7 @@ class PackContractIdentityTests(unittest.TestCase):
         layout = (
             _NEW_PACKAGE / "resources" / "contract" / "pack-layout.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("Environment-pack contract version:** `4`", layout)
+        self.assertIn("Environment-pack contract version:** `5`", layout)
 
         digest = (_NEW_PACKAGE / "digest.py").read_text(encoding="utf-8")
         self.assertIn('_PACK_URI_SCHEME = "raes-environment-pack"', digest)
@@ -168,8 +172,8 @@ class PackContractIdentityTests(unittest.TestCase):
     def test_current_surfaces_use_the_raes_lockfile_name(self) -> None:
         self.assertEqual(LOCKFILE_NAME, "raes.lock.json")
         current_surfaces = (
-            _ROOT / "docs" / "environment-packs.md",
-            _ROOT / "docs" / "raes-migration.md",
+            _ROOT / "docs" / "public" / "environment-packs.md",
+            _ROOT / "docs" / "public" / "raes-migration.md",
             _NEW_PACKAGE / "resources" / "contract" / "pack-layout.md",
             _NEW_PACKAGE / "resources" / "schemas" / "provenance.schema.yaml",
         )
@@ -227,7 +231,7 @@ class RepositoryIdentityTests(unittest.TestCase):
         self.assertEqual(ground_control["short_code"], "ASP")
         self.assertEqual(
             ground_control["docs"]["workflow_reference"],
-            "docs/environment-packs.md",
+            "docs/public/environment-packs.md",
         )
         self.assertEqual(
             ground_control["example_paths"]["source"],

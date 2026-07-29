@@ -75,9 +75,64 @@ class PublicValidationTests(PackValidationFixture):
         self.assertEqual(stdout.getvalue(), "")
         self.assertEqual(stderr.getvalue(), "")
 
-    def test_result_ok_is_derived_from_errors(self) -> None:
-        self.assertTrue(ValidationResult([]).ok)
-        self.assertFalse(ValidationResult(["pack.missing: pack.yaml"]).ok)
+    def test_errors_and_ok_are_derived_from_diagnostics(self) -> None:
+        self.assertTrue(ValidationResult().ok)
+        self.assertEqual(ValidationResult().errors, [])
+        one = ValidationResult(
+            (
+                _validation.Diagnostic(
+                    code="pack.missing",
+                    path="pack.yaml",
+                    field_path=None,
+                    message="pack.missing: pack.yaml",
+                ),
+            )
+        )
+        self.assertFalse(one.ok)
+        self.assertEqual(one.errors, ["pack.missing: pack.yaml"])
+
+    def test_legacy_errors_construction_stays_supported(self) -> None:
+        # Public back-compat (codex F1): the exported constructor still accepts
+        # the historical error-string list, positionally and as errors=.
+        self.assertTrue(ValidationResult(errors=[]).ok)
+        keyword = ValidationResult(errors=["pack.missing: pack.yaml"])
+        self.assertFalse(keyword.ok)
+        self.assertEqual(keyword.errors, ["pack.missing: pack.yaml"])
+        positional = ValidationResult(["provenance.type: docs/provenance-ledger.yaml:x"])
+        self.assertEqual(
+            positional.errors, ["provenance.type: docs/provenance-ledger.yaml:x"]
+        )
+        # A legacy string is parsed back into structured fields too.
+        self.assertEqual(positional.diagnostics[0].code, "provenance.type")
+        self.assertEqual(positional.diagnostics[0].path, "docs/provenance-ledger.yaml")
+
+    def test_structured_location_components_are_bounded(self) -> None:
+        # codex F2: path and field_path are bounded like the rendered message so
+        # foreign pack input cannot exceed the diagnostic char budget.
+        limits = PackValidationLimits(max_error_chars=16)
+        collector = _validation._Errors(limits)
+        collector.add("pack.type", path="a/" * 100, field_path="b" * 100)
+        diagnostic = collector.result().diagnostics[0]
+        self.assertLessEqual(len(diagnostic.path), 16)
+        self.assertLessEqual(len(diagnostic.field_path), 16)
+        self.assertLessEqual(len(diagnostic.message), 16)
+
+    def test_result_exposes_structured_diagnostics(self) -> None:
+        (self.root / "pack.yaml").unlink()
+        result = self.validate()
+        self.assertFalse(result.ok)
+        missing = next(
+            diagnostic
+            for diagnostic in result.diagnostics
+            if diagnostic.code == "pack.missing"
+        )
+        self.assertEqual(missing.path, "pack.yaml")
+        self.assertIsNone(missing.field_path)
+        self.assertEqual(missing.message, "pack.missing: pack.yaml")
+        # errors stays the derived, sorted string view of the same records.
+        self.assertEqual(
+            result.errors, [diagnostic.message for diagnostic in result.diagnostics]
+        )
 
     def test_missing_pack_manifest_and_identity_fields_are_reported(self) -> None:
         (self.root / "pack.yaml").unlink()

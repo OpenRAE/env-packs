@@ -14,7 +14,7 @@ assignees: ""
 
 ## Scrub Requirements
 
-Source-specific scrub checklist (see [scrub policy](../../docs/scrub-policy.md)).
+Source-specific scrub checklist (see [scrub policy](../../docs/development/scrub-policy.md)).
 Keep the source-specific terms in a private, caller-supplied scanner denylist —
 do not paste the terms into this issue or any canonical doc. Confirm each
 category:

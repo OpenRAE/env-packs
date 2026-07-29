@@ -1,0 +1,320 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://raes.dev/schemas/environment-pack-publication-v1.json"
+title: RAES environment pack publication profile
+description: >
+  Immutable publication profile for one environment-pack release. It records
+  which permitted assets or specifications are supplied with the release, under
+  which release view, and their non-secret availability. It defines ZERO
+  extensions to RAES semantics (ADR 0009, ADR 0028): author posture, mechanism
+  vocabulary, acquisition, timing, permitted routes, trust references, and
+  associated-artifact byte binding are RAES-owned and are consumed through the
+  exactly pinned `raes` release, never restated here.
+$comment: >
+  Field disposition. `release` is the immutable identity block: `pack` is
+  pack-domain identity; `semantic_parent` references the RAES scenario parent;
+  `source_set` and each view `set` reference RAES associated-artifact-manifest-v1
+  set identities (RAES owns canonicalization and the set digest -- this schema
+  defines no second release digest). `views` carry pack-domain
+  participant/operator/restricted/commercial exposure derived from the
+  compatibility manifest boundary split. `publications` join RAES-authored
+  requirement and local ids and carry RAES-shaped artifact identities and
+  mechanism profiles for upstream validation; no mechanism vocabulary is
+  enumerated here. `capability_claims` reference a versioned backend profile plus
+  a concrete RAES ArtifactMechanismCapability. `distribution` is the mutable
+  block -- provider/location availability and channel resolution records -- and
+  is deliberately outside release identity so distribution can evolve without
+  re-identifying an unchanged release. Credentials, tokens, signed-URL values,
+  secret-store coordinates, entitlement, and environment-variable names are not
+  publication content.
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - release
+  - summary
+  - distribution
+properties:
+  schema_version:
+    type: string
+    const: "environment-pack-publication/v1"
+  summary:
+    description: >
+      Bounded descriptive release facts carried alongside identity: the
+      environment-pack contract this release was built against, the supported
+      delivery and runtime profiles, and a counts-and-statuses projection of the
+      provenance ledger. This block references the compatibility and provenance
+      authorities; it restates neither. It is descriptive, not identity, and
+      never carries source/review prose or restricted operator vocabulary.
+    type: object
+    additionalProperties: false
+    required: [contract, supported_profiles, runtime_profiles, provenance_summary]
+    properties:
+      contract:
+        type: object
+        additionalProperties: false
+        required: [version, source, digest]
+        properties:
+          version:
+            type: [string, "null"]
+          source:
+            type: string
+          digest:
+            $ref: "#/$defs/digest"
+      supported_profiles:
+        type: array
+        items:
+          type: string
+      runtime_profiles:
+        type: array
+        items:
+          type: string
+      provenance_summary:
+        type: object
+      build_provenance:
+        description: >
+          Optional build metadata. Never part of immutable pack or view identity.
+        type: object
+  release:
+    description: >
+      Immutable release identity and its release views. Reusing a pack id and
+      version for different parent or set identities is an error, not a
+      replacement release.
+    type: object
+    additionalProperties: false
+    required: [pack, views]
+    properties:
+      pack:
+        $ref: "#/$defs/pack_identity"
+      semantic_parent:
+        $ref: "#/$defs/semantic_parent"
+      source_set:
+        $ref: "#/$defs/artifact_set"
+      views:
+        type: array
+        items:
+          $ref: "#/$defs/release_view"
+  distribution:
+    description: >
+      Mutable resolution records. Outside every release-view artifact set and
+      outside scenario, pack-release, and view identity. This repository
+      validates their shape only; it defines no storage, update, credential,
+      entitlement, discovery, or registry protocol.
+    type: object
+    additionalProperties: false
+    required: [availability, channels]
+    properties:
+      availability:
+        type: array
+        items:
+          $ref: "#/$defs/availability_record"
+      channels:
+        type: array
+        items:
+          $ref: "#/$defs/channel_record"
+$defs:
+  digest:
+    type: string
+    pattern: "^sha256:[0-9a-f]{64}$"
+  identifier:
+    type: string
+    pattern: "^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$"
+  pack_identity:
+    type: object
+    additionalProperties: false
+    required: [name, version]
+    properties:
+      name:
+        type: string
+        pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+      version:
+        type: string
+  semantic_parent:
+    description: >
+      Reference to the RAES scenario parent this release publishes. RAES owns the
+      parent model and its digest semantics.
+    type: object
+    additionalProperties: false
+    required: [parent_ref]
+    properties:
+      parent_ref:
+        $ref: "#/$defs/identifier"
+      digest:
+        description: >
+          Present only when RAES supplied a parent digest. A scenario parent may
+          be referenced by id alone; a placeholder digest would look like
+          evidence it is not.
+        $ref: "#/$defs/digest"
+  artifact_set:
+    description: >
+      A RAES associated-artifact-manifest-v1 set identity. Set identity does not
+      inherit from the source pack or another view, so every non-empty view
+      carries its own.
+    type: object
+    additionalProperties: false
+    required: [manifest_id, set_digest]
+    properties:
+      manifest_id:
+        $ref: "#/$defs/identifier"
+      set_digest:
+        $ref: "#/$defs/digest"
+  release_view:
+    description: >
+      One distributed release view. `oracle_only` compatibility input maps to the
+      `restricted` view and gains no scenario or validation-oracle meaning.
+    type: object
+    additionalProperties: false
+    required: [view, completeness, publications, capability_claims]
+    properties:
+      view:
+        type: string
+        enum: [participant, operator, restricted, commercial]
+      set:
+        $ref: "#/$defs/artifact_set"
+      file_count:
+        description: Number of files staged into this view.
+        type: integer
+      exports:
+        description: >
+          Counts of the per-row distribution `export` classes staged into this
+          view. The distribution class is provenance-ledger vocabulary recorded
+          as metadata; it does not select the view.
+        type: object
+      completeness:
+        description: >
+          A release view never claims an exhaustive alternative set. Absence of a
+          supplied artifact or specification is not an unsatisfied,
+          exhaustive-alternatives, or pull-at-runtime claim.
+        type: string
+        const: "non-exhaustive"
+      publications:
+        type: array
+        items:
+          $ref: "#/$defs/publication_row"
+      capability_claims:
+        type: array
+        items:
+          $ref: "#/$defs/capability_claim"
+  publication_row:
+    description: >
+      One supplied asset, joined to the RAES-authored requirement by compiled
+      address plus authored ids. At most one of candidate_id / locked_input_id /
+      specification_id may be present; absence means the requirement's own exact
+      artifact. This is a join to RAES authority, not a pack-defined role.
+    type: object
+    additionalProperties: false
+    required: [publication_id, requirement_id, requirement_address, mechanism]
+    properties:
+      publication_id:
+        $ref: "#/$defs/identifier"
+      requirement_id:
+        $ref: "#/$defs/identifier"
+      requirement_address:
+        description: >
+          Compiled RAES requirement address, rendered through
+          raes_contracts.addressing. The address grammar is RAES-owned.
+        type: string
+      candidate_id:
+        $ref: "#/$defs/identifier"
+      locked_input_id:
+        $ref: "#/$defs/identifier"
+      specification_id:
+        $ref: "#/$defs/identifier"
+      specification_digest:
+        $ref: "#/$defs/digest"
+      artifact:
+        $ref: "#/$defs/artifact_identity"
+      mechanism:
+        $ref: "#/$defs/mechanism_profile"
+  artifact_identity:
+    description: >
+      RAES ArtifactIdentity shape, validated by constructing the upstream model.
+    type: object
+    additionalProperties: false
+    required: [artifact_id, version, digest, media_type]
+    properties:
+      artifact_id:
+        $ref: "#/$defs/identifier"
+      version:
+        type: string
+      digest:
+        $ref: "#/$defs/digest"
+      media_type:
+        type: string
+  mechanism_profile:
+    description: >
+      RAES ArtifactMechanismProfile shape. Mechanism names are deliberately NOT
+      enumerated here; the upstream model is the authority for which mechanisms
+      and governed x-<authority>:<term> extensions are valid.
+    type: object
+    additionalProperties: false
+    required: [mechanism, profile, version, digest]
+    properties:
+      mechanism:
+        type: string
+      profile:
+        type: string
+      version:
+        type: string
+      digest:
+        $ref: "#/$defs/digest"
+  capability_claim:
+    description: >
+      Backend-native or dynamic satisfaction claimed by capability reference,
+      with no invented pack image or recipe. A bare backend-profile name is not
+      evidence of mechanism support; a concrete RAES ArtifactMechanismCapability
+      is required.
+    type: object
+    additionalProperties: false
+    required: [requirement_id, requirement_address, backend_profile]
+    properties:
+      requirement_id:
+        $ref: "#/$defs/identifier"
+      requirement_address:
+        type: string
+      backend_profile:
+        description: >
+          Reference to a versioned RAES backend profile. The profile id must
+          resolve in the trusted RAES profile corpus shipped by the exact pin;
+          an unresolvable name is rejected rather than published.
+        type: object
+        additionalProperties: false
+        required: [profile_id, version]
+        properties:
+          profile_id:
+            $ref: "#/$defs/identifier"
+          version:
+            type: string
+          digest:
+            $ref: "#/$defs/digest"
+      mechanism_capability:
+        type: object
+  availability_record:
+    description: >
+      Where a published artifact is currently obtainable. Data only: the release
+      tool never fetches a location, resolves a channel, or contacts a backend.
+      Public and authenticated/private origins use this same shape; access policy
+      is a non-secret reference, never a credential.
+    type: object
+    additionalProperties: false
+    required: [provider]
+    properties:
+      provider:
+        $ref: "#/$defs/identifier"
+      location:
+        type: string
+      publication_id:
+        $ref: "#/$defs/identifier"
+      access_policy_ref:
+        type: string
+  channel_record:
+    description: >
+      A mutable channel resolving to one complete immutable release identity.
+      Channels are not part of pack, release, or view identity.
+    type: object
+    additionalProperties: false
+    required: [channel, release_identity]
+    properties:
+      channel:
+        $ref: "#/$defs/identifier"
+      release_identity:
+        type: object

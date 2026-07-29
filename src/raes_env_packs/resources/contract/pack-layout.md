@@ -1,6 +1,6 @@
 # Environment pack convention
 
-**Environment-pack contract version:** `4`
+**Environment-pack contract version:** `5`
 
 This document is the authoritative layout convention every RAES environment pack
 follows. It ships inside the `raes-env-packs` package alongside the schemas,
@@ -608,25 +608,44 @@ skips, never a silent partial release.
   on disk. `planned` / `not_shipped` rows are honest metadata and need no shipped
   content; they are never packaged as supported.
 - **Build (boundary split).** Each `artifact_boundaries` group is staged into its
-  own release root — `participant/`, `operator/`, `oracle/`, `commercial/` — so
-  participant-visible, operator-only, and oracle-only material are physically
-  separated. Participant and restricted non-participant roots must pass the
-  disjointness rule above before any copy starts. Every path is
-  containment-checked (`..`, absolute, and symlink-escape paths are rejected),
-  and the operator-token leak scan is re-run over the staged participant tier so
+  own release root — `participant/`, `operator/`, `restricted/`, `commercial/` —
+  so participant-visible, operator-only, and restricted non-participant material
+  are physically separated. The authored `oracle_only` label maps to the
+  `restricted` release view through the single `BOUNDARY_TIERS` seam and gains no
+  scenario or validation-oracle meaning from that label. Participant and restricted non-participant roots must pass the
+  disjointness rule above before any copy starts. Every member is read through a
+  **root-anchored, no-follow descriptor**, so the safety decision and the copy are
+  the same file object and a path component cannot be swapped for a symlink
+  between them; `..`, absolute paths, symlinks, hardlinks, and special files all
+  fail closed. Staged files are written with a fixed safe mode rather than
+  inheriting the source's ownership, ACLs, extended attributes, or set-id bits.
+  The operator-token leak scan is re-run over the staged participant tier so
   no restricted operator vocabulary reaches a participant artifact.
 - **Profile smoke.** Delivery-bundle selection must change participant exposure:
   each supported bundle's participant view (`_shared/` includes + its
   `participant/` entrypoints) is assembled and the views are proven non-identical
   across bundles, with operator entrypoints never resolving under a participant
   root.
-- **Release metadata.** `build` emits a versioned `release.yaml` carrying
-  `metadata_schema_version`, the pack version (`pack.yaml.version` is the pack
-  release version — CI numbers, timestamps, and git SHAs are build provenance,
-  not semantic versions), the **Scenario-pack contract version** above plus a
-  `sha256` digest of this file, the supported delivery profiles, compatible
-  runtime profiles, and a bounded provenance summary (counts and review-gate
-  statuses only — never source/review prose or restricted operator vocabulary).
+- **Publication profile.** `build` emits `release.yaml` as a schema-backed
+  `environment-pack-publication/v1` document — a consumer contract, not an
+  informational summary — and validates it before promotion. Its `release` block
+  is the immutable identity: pack id/version, the RAES semantic parent, the
+  validated associated-artifact set, and the participant/operator/restricted/
+  commercial views. Its `summary` block carries the descriptive release facts
+  (the **environment-pack contract version** above plus a `sha256` digest of this
+  file, supported delivery profiles, compatible runtime profiles, and a bounded
+  provenance summary — counts and review-gate statuses only, never source/review
+  prose or restricted operator vocabulary). Its `distribution` block carries the
+  mutable provider/location availability and channel records and is deliberately
+  outside identity, so distribution can evolve without re-identifying an
+  unchanged release. `pack.yaml.version` is the pack release version — CI
+  numbers, timestamps, and git SHAs are build provenance, not semantic versions.
+
+  A published release is immutable: rebuilding the same version with different
+  bound identities is refused, and only an identity-equivalent rebuild is
+  idempotent.
+
+See the [publication profile](#publication-profile) section below.
 
 Run it locally exactly as CI does:
 
@@ -635,6 +654,55 @@ raes-pack-release check --all          # lint + smoke + build-to-tempdir
 raes-pack-release build --pack <pack> --out dist/
 raes-pack-release metadata --pack <pack>
 ```
+
+## Publication profile
+
+The publication profile turns one validated pack release into distributable,
+verifiable release views. It **consumes** the RAES artifact-requirement contract
+(RAES ADR-098, `artifact-requirement-v1`) and defines no RAES semantics: author
+posture, mechanism vocabulary, acquisition, timing, permitted routes, and trust
+references are RAES-owned and read from the exactly pinned `raes` release. See
+[ADR 0028](../../../docs/decisions/adrs/0028-project-raes-artifact-satisfaction-into-publication.md).
+
+Publication is a **claim about release assets**, never an override of author
+intent. The gate joins every claim back to the requirement RAES parsed from the
+pack's `sdl/`:
+
+- an **exact** requirement may reference only its exact immutable artifact. It is
+  never relabeled a candidate or locked input, and never published under another
+  digest;
+- a **constrained** requirement may advertise zero or more of its *declared*
+  candidates, locked inputs, or explicitly permitted materialization
+  specifications. The advertised set is never exhaustive;
+- an **open** requirement may reference an applicable backend capability with no
+  published artifact, candidate, or recipe; and
+- a requirement may be published with **nothing at all**. Absence is not an
+  unsatisfied, exhaustive-alternatives, or pull-at-runtime claim.
+
+A pack declares what a release supplies through an optional `pack.yaml` pointer:
+
+```yaml
+publication_supply: publication-supply.yaml
+```
+
+The file lists `publications`, `capability_claims`, `availability`, and
+`channels`. Derivation cannot invent which permitted assets an author chose to
+ship, so those rows are authored; everything else in the profile — view
+structure, identity binding, and contract facts — is derived by the release tool.
+Any publication or capability claim requires the pack to have opted into content
+identity (`associated_artifact_manifest`), because a claim is only meaningful
+against bound, verifiable bytes.
+
+Backend-native or dynamic satisfaction is claimed by capability reference. A bare
+backend-profile name is not evidence of mechanism support: a concrete, validated
+RAES `ArtifactMechanismCapability` is required.
+
+Redistribution rights, origin access, and runtime exposure remain three
+independent axes. Public and authenticated/private origins use the same
+availability record shape. Credentials, tokens, signed-URL values, secret-store
+coordinates, entitlement, and environment-variable names are **not** publication
+content and are rejected. The release tool never fetches an availability
+location, resolves a channel, contacts a backend, or executes a specification.
 
 ## Pack content identity
 

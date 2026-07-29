@@ -19,3 +19,8 @@ provenance_ledger: docs/provenance-ledger.yaml   # REQUIRED: source/licensing/sa
 # Optional RAES associated-artifact manifest for consumer-verifiable identity.
 # Create and populate the JSON before uncommenting (ADR 0012).
 # associated_artifact_manifest: associated-artifacts.json
+# Optional declaration of what this release supplies against RAES artifact
+# requirements (publications, capability claims, availability, channels).
+# Requires associated_artifact_manifest above, since a published claim is only
+# meaningful against bound, verifiable bytes (ADR 0028).
+# publication_supply: publication-supply.yaml

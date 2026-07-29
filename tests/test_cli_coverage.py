@@ -146,10 +146,26 @@ class GhClientTests(unittest.TestCase):
             self.client.create_issue(op, 1)
             self.client.update_issue(op, 1)
 
+    def test_resolve_canonical_repo(self):
+        with mock.patch.object(
+                ISK.subprocess, "run",
+                return_value=_StubProc(stdout='{"nameWithOwner": "Owner/Repo"}')):
+            self.assertEqual(self.client.resolve_canonical_repo(), "Owner/Repo")
+
+    def test_resolve_canonical_repo_missing_field_raises(self):
+        with mock.patch.object(ISK.subprocess, "run",
+                               return_value=_StubProc(stdout="{}")):
+            with self.assertRaises(SystemExit):
+                self.client.resolve_canonical_repo()
+
 
 class _StubClient:
-    def __init__(self):
+    def __init__(self, repo="example-org/example-packs"):
         self.created = []
+        self.repo = repo
+
+    def resolve_canonical_repo(self):
+        return self.repo
 
     def list_milestones(self):
         return [{"title": "Wave 1", "number": 1}]
@@ -186,12 +202,14 @@ class PrepareApplyTests(unittest.TestCase):
 
     def test_main_dry_run_and_apply(self):
         client = _StubClient()
+        base = ["--pack-id", "cov-pack", "--milestone-number", "1",
+                "--repo", "some-org/community-packs"]
         with mock.patch.object(ISK, "GhClient", return_value=client):
             with redirect_stdout(io.StringIO()):
-                ISK.main(["--pack-id", "cov-pack", "--milestone-number", "1"])
+                ISK.main(base)
             self.assertEqual(client.created, [])
             with redirect_stdout(io.StringIO()):
-                ISK.main(["--pack-id", "cov-pack", "--milestone-number", "1", "--apply"])
+                ISK.main(base + ["--apply"])
         self.assertEqual(len(client.created), len(ISK.ISSUE_TEMPLATES))
         self.assertTrue(
             all(action == "create" for action, _title in client.created),
@@ -281,21 +299,39 @@ class ContentCiWalkTests(unittest.TestCase):
                 CI.PACKS_ROOT, CI._REPO = orig
 
 
+def _complete_scaffold(pack: str) -> None:
+    """Fill in the parts a freshly scaffolded pack leaves for the author.
+
+    The template is a starting point, not a releasable pack: it ships no SDL
+    start-state document and a placeholder provenance pack name. A release now
+    requires the shared author-static contract to pass first (ADR 0028), so the
+    author's own fill-in step has to happen before a publication profile exists.
+    """
+    sdl = Path(pack) / "sdl" / "example.sdl.yaml"
+    sdl.parent.mkdir(parents=True, exist_ok=True)
+    sdl.write_text("name: cov-pack\nnodes:\n  target:\n    type: vm\n", encoding="utf-8")
+    ledger_path = Path(pack) / "docs" / "provenance-ledger.yaml"
+    ledger = yaml.safe_load(ledger_path.read_text(encoding="utf-8"))
+    ledger["pack"] = {"name": "cov-pack"}
+    ledger_path.write_text(yaml.safe_dump(ledger), encoding="utf-8")
+
+
 class ReleaseTests(unittest.TestCase):
     def test_pack_flows(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as out:
             pack = _scaffold(tmp)
+            _complete_scaffold(pack)
             self.assertEqual(REL.lint_pack(pack), [])
             self.assertEqual(REL.smoke_pack(pack), [])
             meta, failures = REL.build_release(pack, out)
             self.assertEqual(failures, [])
-            self.assertEqual(meta["pack"]["name"], "cov-pack")
+            self.assertEqual(meta["release"]["pack"]["name"], "cov-pack")
             self.assertEqual(
-                REL.release_metadata(pack)["pack"]["name"],
+                REL.release_metadata(pack)["release"]["pack"]["name"],
                 "cov-pack",
             )
             version, digest = REL.load_contract_version()
-            self.assertEqual(version, "4")
+            self.assertEqual(version, "5")
             self.assertRegex(digest, r"\Asha256:[0-9a-f]{64}\Z")
 
     def test_main_metadata(self):

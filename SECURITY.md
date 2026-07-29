@@ -1,8 +1,13 @@
 # Security
 
-Please report security issues through GitHub's private vulnerability reporting
-for this repository, or contact the maintainers directly. Don't open a public
-issue for a suspected vulnerability.
+Report a suspected vulnerability through GitHub's private vulnerability
+reporting: open the repository's **Security** tab and choose **Report a
+vulnerability**. If you cannot use that, email **security@autarchy.ai** with the
+subject `env-packs security report`. Do not open a public issue for a suspected
+vulnerability.
+
+This is a single-maintainer project, so there is no response-time SLA; reports
+are read and triaged privately.
 
 Environment packs can contain synthetic credentials, flags, service defaults, and
 participant-facing artifacts. Those are training content, not production secrets.
