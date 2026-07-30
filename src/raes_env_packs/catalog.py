@@ -132,14 +132,20 @@ class CatalogDocument(object):
 # Explicit state constructors (ADR 0032). `unknown` never carries a value.
 # --------------------------------------------------------------------------
 def _known_text(value: str) -> dict[str, object]:
+    """A known discovery fact carrying a single text value."""
+
     return {"state": "known", "value": value}
 
 
 def _unknown() -> dict[str, object]:
+    """An unknown discovery fact — never carries a value (ADR 0032)."""
+
     return {"state": "unknown"}
 
 
 def _known_list(values: list[str]) -> dict[str, object]:
+    """A known discovery fact carrying a list of text values."""
+
     return {"state": "known", "values": values}
 
 
@@ -308,15 +314,21 @@ def _project_release(
 
     if not publication_declared:
         return _unknown()
-    if not isinstance(publication_doc, dict):
-        # Declared but unreadable/not a mapping: present, not absent.
-        return {"state": "unverified"}
-    requirements = publication.authored_artifact_requirements(scenarios)
-    violations = publication.validate_publication_document(
-        publication_doc, requirements=requirements
-    )
-    if violations:
-        return {"state": "unverified"}
+    if isinstance(publication_doc, dict):
+        requirements = publication.authored_artifact_requirements(scenarios)
+        violations = publication.validate_publication_document(
+            publication_doc, requirements=requirements
+        )
+        if not violations:
+            return _known_release(publication_doc)
+    # Declared but unreadable, not a mapping, or failed validation: present but
+    # not established.
+    return {"state": "unverified"}
+
+
+def _known_release(publication_doc: dict[str, object]) -> dict[str, object]:
+    """Build the ``known`` release projection from a validated publication doc."""
+
     identity = publication.release_identity(publication_doc)
     pack = identity.get("pack") if isinstance(identity, dict) else None
     projected: dict[str, object] = {"state": "known"}
@@ -355,18 +367,27 @@ def _distribution_class(provenance: dict[str, object] | None, path: str) -> str 
         return None
     best_len = -1
     best_class: str | None = None
+    for root_parts, classification in _artifact_roots(provenance):
+        if root_parts == target[: len(root_parts)] and len(root_parts) > best_len:
+            best_len = len(root_parts)
+            best_class = classification
+    return best_class
+
+
+def _artifact_roots(
+    provenance: dict[str, object],
+) -> list[tuple[tuple[str, ...], str]]:
+    """Return ``(root_components, classification)`` for each valid artifact row."""
+
+    roots: list[tuple[tuple[str, ...], str]] = []
     for artifact in provenance.get("artifacts") or []:
         if not isinstance(artifact, dict):
             continue
         root = artifact.get("path")
         classification = artifact.get("classification")
-        if not isinstance(root, str) or not isinstance(classification, str):
-            continue
-        root_parts = _path_components(root)
-        if root_parts == target[: len(root_parts)] and len(root_parts) > best_len:
-            best_len = len(root_parts)
-            best_class = classification
-    return best_class
+        if isinstance(root, str) and isinstance(classification, str):
+            roots.append((_path_components(root), classification))
+    return roots
 
 
 def _project_media(
@@ -398,27 +419,41 @@ def _project_media(
     rows: list[dict[str, object]] = []
     excluded_not_distributable = False
     for asset in assets if isinstance(assets, list) else []:
-        if not isinstance(asset, dict):
+        candidate = _public_shipped_asset(asset, inventory)
+        if candidate is None:
             continue
-        path = asset.get("path")
-        visibility = asset.get("visibility")
-        if not (
-            isinstance(path, str)
-            and visibility in _PUBLIC_MEDIA_VISIBILITY
-            and asset.get("status") == "shipped"
-            and path in inventory
-        ):
-            continue
+        path, visibility = candidate
         if _distribution_class(provenance, path) not in _PUBLISHABLE_DISTRIBUTION:
             # Declared public and present, but not publicly distributable per
             # provenance — surfaced as a diagnostic, never as a media reference.
             excluded_not_distributable = True
             continue
-        row: dict[str, object] = {"reference": path, "eligible": True}
-        if isinstance(visibility, str):
-            row["role"] = visibility
-        rows.append(row)
+        rows.append({"reference": path, "eligible": True, "role": visibility})
     return sorted(rows, key=lambda row: str(row["reference"])), excluded_not_distributable
+
+
+def _public_shipped_asset(
+    asset: object, inventory: frozenset[str]
+) -> tuple[str, str] | None:
+    """Return ``(path, visibility)`` for a public/participant, shipped, present asset.
+
+    ``None`` when the row is not a public/participant-visible shipped asset whose
+    path exists in the descriptor-anchored inventory.
+    """
+
+    if not isinstance(asset, dict):
+        return None
+    path = asset.get("path")
+    visibility = asset.get("visibility")
+    if (
+        isinstance(path, str)
+        and isinstance(visibility, str)
+        and visibility in _PUBLIC_MEDIA_VISIBILITY
+        and asset.get("status") == "shipped"
+        and path in inventory
+    ):
+        return path, visibility
+    return None
 
 
 # Discovery facts a catalog consumer needs; a truthful `unknown` still earns a
@@ -546,31 +581,10 @@ def build_catalog(
     seen_keys: set[tuple[str, str, str]] = set()
 
     for source in sources:
-        if not _is_safe_source_id(source.id):
-            diagnostics.append(
-                CatalogDiagnostic("catalog.source.unsafe", True, source.id)
-            )
+        entry, source_diagnostics = _source_result(source, active)
+        diagnostics.extend(source_diagnostics)
+        if entry is None:
             continue
-        result, snapshot = validation._validate_pack_snapshot(
-            source.root, limits=active
-        )
-        if not result.ok:
-            # An invalid pack cannot be projected truthfully. Surface the
-            # underlying static-authority codes as blocking catalog diagnostics.
-            for diagnostic in result.diagnostics:
-                diagnostics.append(
-                    CatalogDiagnostic(
-                        f"catalog.pack.invalid:{diagnostic.code}",
-                        True,
-                        source.id,
-                        snapshot.manifest.get("name")
-                        if isinstance(snapshot.manifest, dict)
-                        else None,
-                        diagnostic.path,
-                    )
-                )
-            continue
-        entry = build_entry(source, snapshot)
         key = _entry_sort_key(entry)
         if key in seen_keys:
             diagnostics.append(
@@ -581,16 +595,7 @@ def build_catalog(
             continue
         seen_keys.add(key)
         entries.append(entry)
-        for note in entry["completeness"]:  # type: ignore[union-attr]
-            diagnostics.append(
-                CatalogDiagnostic(
-                    str(note["code"]),
-                    False,
-                    source.id,
-                    str(entry["name"]),
-                    note.get("field"),
-                )
-            )
+        diagnostics.extend(_completeness_diagnostics(source, entry))
 
     document = CatalogDocument(
         as_of=as_of,
@@ -598,6 +603,47 @@ def build_catalog(
         entries=tuple(sorted(entries, key=_entry_sort_key)),
     )
     return document, tuple(diagnostics)
+
+
+def _source_result(
+    source: Source, limits: validation.PackValidationLimits
+) -> tuple[dict[str, object] | None, list[CatalogDiagnostic]]:
+    """Validate one source and project it, or return its blocking diagnostics.
+
+    An unsafe source id or an invalid pack yields ``(None, diagnostics)`` — such
+    a source cannot be projected truthfully, so it contributes no entry.
+    """
+
+    if not _is_safe_source_id(source.id):
+        return None, [CatalogDiagnostic("catalog.source.unsafe", True, source.id)]
+    result, snapshot = validation._validate_pack_snapshot(source.root, limits=limits)
+    if not result.ok:
+        name = snapshot.manifest.get("name") if isinstance(snapshot.manifest, dict) else None
+        return None, [
+            CatalogDiagnostic(
+                f"catalog.pack.invalid:{diagnostic.code}",
+                True,
+                source.id,
+                name,
+                diagnostic.path,
+            )
+            for diagnostic in result.diagnostics
+        ]
+    return build_entry(source, snapshot), []
+
+
+def _completeness_diagnostics(
+    source: Source, entry: dict[str, object]
+) -> list[CatalogDiagnostic]:
+    """Non-blocking completeness diagnostics carried by one entry."""
+
+    notes = entry["completeness"]
+    return [
+        CatalogDiagnostic(
+            str(note["code"]), False, source.id, str(entry["name"]), note.get("field")
+        )
+        for note in (notes if isinstance(notes, list) else [])
+    ]
 
 
 # --------------------------------------------------------------------------
@@ -614,20 +660,39 @@ def _document_mapping(document: CatalogDocument) -> dict[str, object]:
     }
 
 
-# Discovery fields whose known/unknown state governs a single `value` string.
-_DISCOVERY_TEXT_FIELDS = (
-    "purpose",
-    "license",
-    "limitations",
-    "difficulty",
-    "setup_time",
-    "participant_time",
-)
-# Discovery fields whose known/unknown state governs a `values` list.
-_DISCOVERY_LIST_FIELDS = ("authors", "audiences")
+# The relational state/value contract JSON-Schema shape validation cannot
+# express (ADR 0032), as one declarative rule per field:
+# ``field: (positive_states, required_when_positive, forbidden_when_negative)``.
+# When ``state`` is in ``positive_states`` the required keys must be present;
+# otherwise the forbidden keys must be absent. This is what enforces "known
+# carries its value, unknown does not; a verified/stale observation carries its
+# evidence, unverified/unknown does not; a non-known release carries no unbound
+# identity claim."
+_KNOWN = frozenset({"known"})
+_EVIDENCE = frozenset({"verified", "stale"})
+_STATE_RULES: dict[str, tuple[frozenset[str], tuple[str, ...], tuple[str, ...]]] = {
+    "purpose": (_KNOWN, ("value",), ("value",)),
+    "license": (_KNOWN, ("value",), ("value",)),
+    "limitations": (_KNOWN, ("value",), ("value",)),
+    "difficulty": (_KNOWN, ("value",), ("value",)),
+    "setup_time": (_KNOWN, ("value",), ("value",)),
+    "participant_time": (_KNOWN, ("value",), ("value",)),
+    "authors": (_KNOWN, ("values",), ("values",)),
+    "audiences": (_KNOWN, ("values",), ("values",)),
+    "participant_activity": (_KNOWN, ("scenarios",), ("scenarios", "nodes")),
+    "resource_cost": (_KNOWN, ("value",), ("value", "profile", "basis")),
+    "fidelity": (_KNOWN, ("value",), ("value",)),
+    "safety": (_KNOWN, ("attestations_satisfied",), ("attestations_satisfied",)),
+    "provenance": (_KNOWN, ("sources",), ("sources", "artifacts", "review_status")),
+    "release": (_KNOWN, (), ("name", "version", "availability")),
+    "last_rehearsal": (_EVIDENCE, ("as_of", "profile"), ("as_of", "profile")),
+}
+_STATE_FIELDS = tuple(_STATE_RULES)
 
 
 def _stated(entry: dict[str, object], field: str) -> dict[str, object]:
+    """The stated-field mapping for ``field``, or an empty mapping."""
+
     value = entry.get(field)
     return value if isinstance(value, dict) else {}
 
@@ -635,71 +700,21 @@ def _stated(entry: dict[str, object], field: str) -> dict[str, object]:
 def _state_field_violations(
     entry: dict[str, object], field: str, path: str
 ) -> list[str]:
-    """Relational state/value checks for one field family.
-
-    Enforces the invariant JSON-Schema shape validation cannot express (ADR
-    0032): which evidence fields each state *requires* and which it *forbids*.
-    `known` must carry its value; `unknown` must not; an evidence state
-    (`verified`/`stale`) must carry its observation, while `unverified`/`unknown`
-    must not.
-    """
+    """Relational state/value violations for one field, per ``_STATE_RULES``."""
 
     stated = _stated(entry, field)
-    state = stated.get("state")
-    out: list[str] = []
-
-    def require(present: bool, keys: tuple[str, ...]) -> None:
-        for key in keys:
-            has = key in stated
-            if present and not has:
-                out.append(f"{path}.{field}.{key}: state-requires-field")
-            if not present and has:
-                out.append(f"{path}.{field}.{key}: state-forbids-field")
-
-    if field in _DISCOVERY_TEXT_FIELDS:
-        require(state == "known", ("value",))
-    elif field in _DISCOVERY_LIST_FIELDS:
-        require(state == "known", ("values",))
-    elif field == "participant_activity":
-        require(state == "known", ("scenarios",))
-        if state != "known":
-            require(False, ("nodes",))
-    elif field == "resource_cost":
-        require(state == "known", ("value",))
-        if state != "known":
-            require(False, ("profile", "basis"))
-    elif field == "fidelity":
-        require(state == "known", ("value",))
-    elif field == "safety":
-        require(state == "known", ("attestations_satisfied",))
-    elif field == "provenance":
-        require(state == "known", ("sources",))
-        if state != "known":
-            require(False, ("artifacts", "review_status"))
-    elif field == "release":
-        # Identity fields belong only to a `known` release; `unknown` and
-        # `unverified` must not carry an unbound identity claim.
-        if state != "known":
-            require(False, ("name", "version", "availability"))
-    elif field == "last_rehearsal":
-        evidence = state in ("verified", "stale")
-        require(evidence, ("as_of", "profile"))
-    return out
-
-
-_STATE_FIELDS = (
-    _DISCOVERY_TEXT_FIELDS
-    + _DISCOVERY_LIST_FIELDS
-    + (
-        "participant_activity",
-        "resource_cost",
-        "fidelity",
-        "safety",
-        "provenance",
-        "release",
-        "last_rehearsal",
-    )
-)
+    positive, required, forbidden = _STATE_RULES[field]
+    if stated.get("state") in positive:
+        return [
+            f"{path}.{field}.{key}: state-requires-field"
+            for key in required
+            if key not in stated
+        ]
+    return [
+        f"{path}.{field}.{key}: state-forbids-field"
+        for key in forbidden
+        if key in stated
+    ]
 
 
 def _state_invariant_violations(mapping: dict[str, object]) -> list[str]:
@@ -776,7 +791,9 @@ def render_preview(document: CatalogDocument) -> str:
     pack cannot spoof or drive the terminal.
     """
 
-    lines = [f"catalog: {len(document.entries)} entr{'y' if len(document.entries) == 1 else 'ies'} (as of {_terminal_safe(document.as_of)})"]
+    count = len(document.entries)
+    noun = "entry" if count == 1 else "entries"
+    lines = [f"catalog: {count} {noun} (as of {_terminal_safe(document.as_of)})"]
     for entry in document.entries:
         source = entry["source"]
         lines.append("")
@@ -790,7 +807,11 @@ def render_preview(document: CatalogDocument) -> str:
         lines.append(_render_field("audiences", entry["audiences"]))  # type: ignore[arg-type]
         lines.append(_render_field("license", entry["license"]))  # type: ignore[arg-type]
         lines.append(_render_field("difficulty", entry["difficulty"]))  # type: ignore[arg-type]
-        supported = [r["profile_id"] for r in entry["runtimes"] if r["support"] == "supported"]  # type: ignore[union-attr,index]
+        supported = [
+            r["profile_id"]
+            for r in entry["runtimes"]  # type: ignore[union-attr]
+            if r["support"] == "supported"
+        ]
         runtimes = ", ".join(_terminal_safe(str(p)) for p in supported) or "(none declared)"
         lines.append(f"  runtimes: {runtimes}")
         lines.append(f"  trust: {entry['trust']['state']} (authority: {_TRUST_AUTHORITY})")  # type: ignore[index]
@@ -825,9 +846,17 @@ def _read_sources_manifest(path: str) -> list[Source]:
     The manifest is a caller-controlled selector file (not pack content): its
     ``root`` paths are staged local directories. Raises ``ValueError`` for a
     malformed manifest so the CLI can report a usage error.
+
+    The CLI path is canonicalized with ``realpath`` and confirmed to be a
+    regular file before the read sink, so an argument built from external input
+    is validated before ``open`` rather than reaching it raw (Sonar
+    pythonsecurity:S8707), matching ``release.py``'s path discipline.
     """
 
-    with open(path, "r", encoding="utf-8") as handle:
+    resolved = os.path.realpath(path)
+    if not os.path.isfile(resolved):
+        raise ValueError("sources manifest is not a readable file")
+    with open(resolved, "r", encoding="utf-8") as handle:
         raw = yaml.safe_load(handle)
     if not isinstance(raw, list):
         raise ValueError("sources manifest must be a list of {id, revision, root}")
@@ -928,6 +957,12 @@ def main(argv: list[str] | None = None) -> int:
         if not os.path.isdir(source.root):
             parser.error(f"not a directory: {_terminal_safe(source.root)}")
 
+    return _generate_and_emit(sources, args)
+
+
+def _generate_and_emit(sources: list[Source], args: argparse.Namespace) -> int:
+    """Build, validate, and emit the catalog; return the process exit status."""
+
     try:
         document, diagnostics = build_catalog(
             sources,
@@ -940,7 +975,6 @@ def main(argv: list[str] | None = None) -> int:
         # invalid pack content. Report only the exception type (ADR 0031).
         print(f"raes-pack-catalog: internal error ({type(exc).__name__})", file=sys.stderr)
         return EXIT_TOOL_FAILURE
-
     if schema_errors:
         # A generated document that fails its own schema is a defect in this
         # tool, not in the pack.
@@ -949,6 +983,16 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return EXIT_TOOL_FAILURE
+    return _emit(document, diagnostics, preview=args.preview)
+
+
+def _emit(
+    document: CatalogDocument,
+    diagnostics: tuple[CatalogDiagnostic, ...],
+    *,
+    preview: bool,
+) -> int:
+    """Render the outcome to stdout/stderr and return the process exit status."""
 
     blocking = tuple(d for d in diagnostics if d.blocking)
     if blocking:
@@ -956,13 +1000,9 @@ def main(argv: list[str] | None = None) -> int:
         # would be misleading), report the blocking problems on stderr.
         sys.stderr.write(_render_diagnostics(blocking))
         return EXIT_BLOCKING
-
-    if args.preview:
-        sys.stdout.write(render_preview(document))
-    else:
-        # JSON mode writes only the JSON document to stdout; per-entry
-        # completeness notes travel inside it.
-        sys.stdout.write(render_json(document))
+    # JSON mode writes only the JSON document to stdout; per-entry completeness
+    # notes travel inside it.
+    sys.stdout.write(render_preview(document) if preview else render_json(document))
     return EXIT_OK
 
 

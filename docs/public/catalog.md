@@ -17,9 +17,10 @@ Git or the environment.
 raes-pack-catalog environments/example-pack --source-id my-catalog --source-revision 1
 ```
 
-The output is a catalog document with a single entry — the pack's "card":
+The output is a catalog document with a single entry — the pack's "card"
+(abbreviated):
 
-```json
+```text
 {
   "schema_version": "environment-pack-catalog/v1",
   "as_of": "",
