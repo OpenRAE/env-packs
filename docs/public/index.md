@@ -28,6 +28,9 @@ pip install raes-env-packs
 - **Consume a pack** — [check a pack](checking.md) you received with
   `raes-pack-check`, or call the [`validate_pack` API](validating.md), before you
   trust its bytes.
+- **Publish a catalog** — render a machine-readable
+  [catalog projection](catalog.md) with `raes-pack-catalog` so a static catalog,
+  browser, or Hub can list your packs.
 - **Understand the format** — read [what a pack is](concepts.md) and the
   [pack reference](environment-packs.md).
 - **Know the limits** — see [what this is and is not](limitations.md).
@@ -58,6 +61,7 @@ golden-readiness
 
 checking
 validating
+catalog
 ```
 
 ```{toctree}

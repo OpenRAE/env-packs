@@ -108,6 +108,7 @@ class PackageIdentityTests(unittest.TestCase):
             project["scripts"],
             {
                 "raes-pack-check": "raes_env_packs.check:main",
+                "raes-pack-catalog": "raes_env_packs.catalog:main",
                 "raes-pack-validate": "raes_env_packs.content_ci:main",
                 "raes-pack-release": "raes_env_packs.release:main",
                 "raes-new-pack": "raes_env_packs.new_pack:main",

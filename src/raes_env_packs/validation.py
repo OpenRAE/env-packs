@@ -547,8 +547,14 @@ def _validate_provenance(
     pack: dict[str, object],
     limits: PackValidationLimits,
     errors: _Errors,
-) -> None:
-    """Validate the canonical referenced provenance ledger."""
+) -> dict[str, object] | None:
+    """Validate the canonical referenced provenance ledger.
+
+    Returns the parsed ledger when it loaded as a mapping so the shared static
+    pass can retain it in the snapshot, or ``None`` when it is absent or
+    unreadable. Returning the parsed document never widens the diagnostic
+    surface; it only avoids a second read of the same bytes downstream.
+    """
 
     rel = _pointer(
         pack,
@@ -560,12 +566,12 @@ def _validate_provenance(
         expected_path="docs/provenance-ledger.yaml",
     )
     if rel is None:
-        return
+        return None
     ledger = _load_yaml_member(root_fd, rel, limits, errors)
     if not isinstance(ledger, dict):
         if ledger is not None:
             errors.add("provenance.type", rel)
-        return
+        return None
     _add_schema_violations(
         errors, "provenance", rel, ledger, _trusted_schema(_PROVENANCE_SCHEMA)
     )
@@ -575,6 +581,7 @@ def _validate_provenance(
         errors.add("provenance.name-mismatch", rel, "pack.name")
     _validate_provenance_safety(ledger, rel, errors)
     _validate_provenance_review(ledger, rel, errors)
+    return ledger
 
 
 # Visibility-boundary overlap is a relational ingest invariant JSON Schema cannot
@@ -690,24 +697,62 @@ def _validate_compatibility(
     pack: dict[str, object],
     limits: PackValidationLimits,
     errors: _Errors,
-) -> None:
-    """Validate an optional referenced compatibility manifest."""
+) -> dict[str, object] | None:
+    """Validate an optional referenced compatibility manifest.
+
+    Returns the parsed manifest when it loaded as a mapping so the shared static
+    pass can retain it in the snapshot, or ``None`` when it is absent or
+    unreadable.
+    """
 
     rel = _pointer(
         pack, "compatibility_manifest", "compatibility", inventory, errors, required=False
     )
     if rel is None:
-        return
+        return None
     manifest = _load_yaml_member(root_fd, rel, limits, errors)
     if not isinstance(manifest, dict):
         if manifest is not None:
             errors.add("compatibility.type", rel)
-        return
+        return None
     _add_schema_violations(
         errors, "compatibility", rel, manifest, _trusted_schema(_COMPATIBILITY_SCHEMA)
     )
     for field_path in _boundary_overlaps(manifest.get("artifact_boundaries")):
         errors.add("compatibility.boundary-overlap", rel, field_path)
+    _validate_shipped_assets_exist(manifest, rel, inventory, errors)
+    return manifest
+
+
+def _validate_shipped_assets_exist(
+    manifest: dict[str, object],
+    rel: str,
+    inventory: frozenset[str],
+    errors: _Errors,
+) -> None:
+    """Referenced-member existence for declared-shipped compatibility assets.
+
+    A ``shipped`` asset row that names a member absent from the descriptor-
+    anchored inventory is a cross-authority defect (ADR 0032): the compatibility
+    manifest asserts content the pack does not contain. This join lives in the
+    shared static authority so ``validate_pack`` and any downstream projection
+    agree — a projection must never silently drop such a declaration. ``planned``
+    and ``not_shipped`` assets legitimately need not exist yet.
+    """
+
+    assets = manifest.get("assets")
+    for index, asset in enumerate(assets if isinstance(assets, list) else []):
+        if not isinstance(asset, dict) or asset.get("status") != "shipped":
+            continue
+        path = asset.get("path")
+        if not isinstance(path, str):
+            continue
+        try:
+            member = _pack_fs.normalize_relpath(path)
+        except _pack_fs.PackFilesystemError:
+            member = None
+        if member is None or member not in inventory:
+            errors.add("compatibility.asset.missing", rel, f"assets[{index}].path")
 
 
 def _validate_challenges(
@@ -882,27 +927,145 @@ def _validate_sdl_documents(
     return tuple(parsed)
 
 
+def _load_optional_publication(
+    root_fd: int,
+    inventory: frozenset[str],
+    pack: dict[str, object],
+    limits: PackValidationLimits,
+) -> dict[str, object] | None:
+    """Read an optional publication-supply document for the snapshot.
+
+    Publication clearance is validated by ``publication.validate_publication_document``
+    against the parsed profile, so the shared pass only captures the bytes here
+    (through the same descriptor-anchored, bounded reader every other member
+    uses) rather than reopening the tree later. Any load problem yields ``None``;
+    it never widens ``validate_pack``'s diagnostic surface.
+    """
+
+    value = pack.get("publication_supply")
+    if not isinstance(value, str):
+        return None
+    rel = _safe_relpath(value)
+    if rel is None or rel not in inventory:
+        return None
+    loaded = _load_yaml_member(root_fd, rel, limits, _Errors(limits))
+    return loaded if isinstance(loaded, dict) else None
+
+
+def _safe_relpath(value: str) -> str | None:
+    """Normalize a pack-relative pointer, or ``None`` when it is unsafe."""
+
+    try:
+        return _pack_fs.normalize_relpath(value)
+    except _pack_fs.PackFilesystemError:
+        return None
+
+
+def _validate_publication_identity(
+    publication: dict[str, object] | None,
+    pack: dict[str, object],
+    rel: str,
+    errors: _Errors,
+) -> None:
+    """Identity agreement between the publication profile and the manifest.
+
+    A publication profile whose declared release identity names a *different*
+    pack lets one pack's release identity and availability be attached to
+    another's card. This relational join lives in the shared static authority
+    (ADR 0032) so a mismatch fails ``validate_pack`` rather than being quietly
+    downgraded in a projection. Absent identity fields are a publication-schema
+    concern, not a mismatch, so only a present-and-differing value is flagged.
+    """
+
+    if not isinstance(publication, dict):
+        return
+    release = publication.get("release")
+    release_pack = release.get("pack") if isinstance(release, dict) else None
+    if not isinstance(release_pack, dict):
+        return
+    name = release_pack.get("name")
+    version = release_pack.get("version")
+    if (name is not None and name != pack.get("name")) or (
+        version is not None and version != pack.get("version")
+    ):
+        errors.add("publication.identity-mismatch", rel, "release.pack")
+
+
+@dataclass(frozen=True)
+class _PackSnapshot(object):
+    """The parsed, bounded result of one shared static-validation pass.
+
+    Internal only: an extension of :func:`_validate_pack_core`, not a public
+    pack model. It retains exactly the documents the pass already parsed so a
+    downstream projection (the catalog read model, ADR 0032) consumes one
+    validated snapshot instead of reopening an untrusted tree through a second
+    loader. Every document is a plain parsed value; no filesystem handle
+    escapes the pass.
+    """
+
+    root: str | None
+    inventory: frozenset[str]
+    manifest: dict[str, object] | None
+    provenance: dict[str, object] | None
+    compatibility: dict[str, object] | None
+    # ``publication_declared`` records whether pack.yaml declared a
+    # publication-supply pointer at all. It lets a projection distinguish an
+    # *absent* authority (no pointer) from a *present but unreadable* one
+    # (pointer declared, but the document failed to load) — two states a bare
+    # ``publication is None`` would otherwise collapse (ADR 0032).
+    publication_declared: bool
+    publication: dict[str, object] | None
+    scenarios: tuple[object, ...]
+
+
 def _validate_pack_core(
     pack_root: str | os.PathLike[str],
     active: PackValidationLimits,
     *,
     author_sdl: bool,
-) -> tuple[ValidationResult, tuple[object, ...]]:
-    """Run shared static validation and optionally retain parsed scenarios."""
+) -> tuple[ValidationResult, _PackSnapshot]:
+    """Run shared static validation and retain the parsed snapshot."""
 
     errors = _Errors(active)
     scenarios: tuple[object, ...] = ()
+    root_out: str | None = None
+    inventory_out: frozenset[str] = frozenset()
+    manifest: dict[str, object] | None = None
+    provenance: dict[str, object] | None = None
+    compatibility: dict[str, object] | None = None
+    publication_declared = False
+    publication: dict[str, object] | None = None
     opened = _open_validation_root(pack_root, errors)
     if opened is not None:
         root, root_fd = opened
+        root_out = root
         try:
             inventory = _safe_inventory(root_fd, active, errors)
             if inventory is not None:
+                inventory_out = inventory
                 _validate_challenges(root_fd, inventory, active, errors)
                 pack = _load_pack_manifest(root_fd, inventory, root, active, errors)
                 if pack is not None:
-                    _validate_provenance(root_fd, inventory, pack, active, errors)
-                    _validate_compatibility(root_fd, inventory, pack, active, errors)
+                    manifest = pack
+                    provenance = _validate_provenance(
+                        root_fd, inventory, pack, active, errors
+                    )
+                    compatibility = _validate_compatibility(
+                        root_fd, inventory, pack, active, errors
+                    )
+                    publication_pointer = pack.get("publication_supply")
+                    publication_declared = isinstance(publication_pointer, str)
+                    publication = _load_optional_publication(
+                        root_fd, inventory, pack, active
+                    )
+                    _validate_publication_identity(
+                        publication,
+                        pack,
+                        publication_pointer
+                        if isinstance(publication_pointer, str)
+                        else _PACK_MANIFEST,
+                        errors,
+                    )
                     scenarios = _validate_sdl_documents(
                         root_fd,
                         root,
@@ -913,7 +1076,17 @@ def _validate_pack_core(
                     )
         finally:
             os.close(root_fd)
-    return errors.result(), scenarios
+    snapshot = _PackSnapshot(
+        root=root_out,
+        inventory=inventory_out,
+        manifest=manifest,
+        provenance=provenance,
+        compatibility=compatibility,
+        publication_declared=publication_declared,
+        publication=publication,
+        scenarios=scenarios,
+    )
+    return errors.result(), snapshot
 
 
 def validate_pack(
@@ -928,7 +1101,7 @@ def validate_pack(
     failures.
     """
 
-    result, _scenarios = _validate_pack_core(
+    result, _snapshot = _validate_pack_core(
         pack_root, limits or PackValidationLimits(), author_sdl=False
     )
     return result
@@ -941,8 +1114,28 @@ def _validate_pack_for_author_ci(
 ) -> tuple[ValidationResult, tuple[object, ...]]:
     """Run the shared static authority with author-controlled import resolution."""
 
-    return _validate_pack_core(
+    result, snapshot = _validate_pack_core(
         pack_root, limits or PackValidationLimits(), author_sdl=True
+    )
+    return result, snapshot.scenarios
+
+
+def _validate_pack_snapshot(
+    pack_root: str | os.PathLike[str],
+    *,
+    limits: PackValidationLimits | None = None,
+    author_sdl: bool = False,
+) -> tuple[ValidationResult, _PackSnapshot]:
+    """Run the shared static authority and return its parsed snapshot.
+
+    The catalog read model (ADR 0032) consumes this so it never reopens an
+    untrusted tree after validation. ``author_sdl`` stays ``False`` for the
+    untrusted-ingest default: SDL imports remain denied exactly as in
+    :func:`validate_pack`.
+    """
+
+    return _validate_pack_core(
+        pack_root, limits or PackValidationLimits(), author_sdl=author_sdl
     )
 
 

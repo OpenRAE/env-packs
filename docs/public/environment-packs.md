@@ -123,6 +123,13 @@ builds a boundary-split release tree, leak-scans the participant tier, and emits
 validated publication profile. Run `raes-pack-release check --all` in a catalog
 you control.
 
+## Catalog projection
+
+`raes-pack-catalog` renders a versioned, machine-readable
+[catalog projection](catalog.md) of a pack — its "card" — and aggregates cards
+from many repositories into one static index. It is a generated read model over
+the facts above; it adds no new pack fields and no scenario semantics.
+
 ## The boundary
 
 Owning the format is not owning a scenario authored in it, and not realizing that

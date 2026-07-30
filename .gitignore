@@ -13,3 +13,6 @@ _build/
 # Ground Control operational artifacts (not workflow state)
 .gc/sonar/
 .gc/telemetry/
+
+# Codex agent scratch directory (local tooling, not repository content)
+.codex/
