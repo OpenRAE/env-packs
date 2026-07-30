@@ -840,6 +840,22 @@ def _render_diagnostics(diagnostics: tuple[CatalogDiagnostic, ...]) -> str:
 # --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
+def _within_working_dir(path: str) -> str:
+    """Resolve ``path`` and confirm it stays inside the working directory.
+
+    Returns the realpath-resolved, containment-validated path to hand to the
+    read sink; raises ``ValueError`` for an absolute, ``..``, or symlink-escaping
+    argument (Sonar pythonsecurity:S8707), mirroring ``release.py``'s
+    ``_resolved_within`` discipline.
+    """
+
+    base = os.path.realpath(os.getcwd())
+    resolved = os.path.realpath(os.path.join(base, path))
+    if resolved != base and os.path.commonpath([base, resolved]) != base:
+        raise ValueError("sources manifest must be inside the working directory")
+    return resolved
+
+
 def _read_sources_manifest(path: str) -> list[Source]:
     """Read a ``[{id, revision, root}]`` sources manifest as staged descriptors.
 
@@ -847,13 +863,14 @@ def _read_sources_manifest(path: str) -> list[Source]:
     ``root`` paths are staged local directories. Raises ``ValueError`` for a
     malformed manifest so the CLI can report a usage error.
 
-    The CLI path is canonicalized with ``realpath`` and confirmed to be a
-    regular file before the read sink, so an argument built from external input
-    is validated before ``open`` rather than reaching it raw (Sonar
+    The path is resolved and confined to the working directory before the read
+    sink — realpath-canonicalized, then containment-checked with
+    ``os.path.commonpath`` — so an argument built from external input is
+    validated before ``open`` rather than reaching it raw (Sonar
     pythonsecurity:S8707), matching ``release.py``'s path discipline.
     """
 
-    resolved = os.path.realpath(path)
+    resolved = _within_working_dir(path)
     if not os.path.isfile(resolved):
         raise ValueError("sources manifest is not a readable file")
     with open(resolved, "r", encoding="utf-8") as handle:

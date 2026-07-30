@@ -593,27 +593,43 @@ class UsageContractTests(CatalogFixture):
 
 
 class SourcesManifestTests(CatalogFixture):
+    def _chdir_tmp(self) -> None:
+        # The sources manifest must live within the working directory (S8707
+        # containment), so run these from the temp workspace.
+        old = os.getcwd()
+        os.chdir(self.tmp)
+        self.addCleanup(os.chdir, old)
+
     def test_sources_manifest_aggregates_many_packs(self) -> None:
         a = _security_pack(self.tmp)
         b = _simulator_pack(self.tmp)
-        manifest = self.tmp / "sources.yaml"
+        self._chdir_tmp()
         _dump(
-            manifest,
+            self.tmp / "sources.yaml",
             [
                 {"id": "repo-a", "revision": "1", "root": str(a)},
                 {"id": "repo-b", "revision": "2", "root": str(b)},
             ],
         )
-        code, out, err = _run("--sources", str(manifest), "--as-of", "2026-07-30")
+        code, out, err = _run("--sources", "sources.yaml", "--as-of", "2026-07-30")
         self.assertEqual(code, catalog.EXIT_OK, err)
         document = json.loads(out)
         names = {e["name"] for e in document["entries"]}
         self.assertEqual(names, {"security-pack", "simulator-backed-pack"})
 
+    def test_manifest_outside_working_dir_is_usage_error(self) -> None:
+        a = _security_pack(self.tmp)
+        outside = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, outside, ignore_errors=True)
+        self._chdir_tmp()
+        _dump(outside / "sources.yaml", [{"id": "x", "revision": "1", "root": str(a)}])
+        code, _out, _err = _run("--sources", str(outside / "sources.yaml"))
+        self.assertEqual(code, catalog.EXIT_USAGE)
+
     def test_malformed_sources_manifest_is_usage_error(self) -> None:
-        manifest = self.tmp / "bad.yaml"
-        manifest.write_text("just a string\n", encoding="utf-8")
-        code, _out, _err = _run("--sources", str(manifest))
+        self._chdir_tmp()
+        (self.tmp / "bad.yaml").write_text("just a string\n", encoding="utf-8")
+        code, _out, _err = _run("--sources", "bad.yaml")
         self.assertEqual(code, catalog.EXIT_USAGE)
 
 

@@ -47,6 +47,8 @@ deterministic index:
 raes-pack-catalog --sources sources.yaml --as-of 2026-07-30
 ```
 
+Run the command from your catalog workspace: the sources manifest must live
+inside the working directory (the path is confined there before it is read).
 Each source carries a stable, non-secret `id` and an immutable `revision` you
 supply — never a Git remote, branch, or `HEAD`. Records key on the composite
 `(source id, pack name, pack version)`; a duplicate or conflicting identity fails

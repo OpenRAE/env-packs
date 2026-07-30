@@ -945,14 +945,20 @@ def _load_optional_publication(
     value = pack.get("publication_supply")
     if not isinstance(value, str):
         return None
-    try:
-        rel = _pack_fs.normalize_relpath(value)
-    except _pack_fs.PackFilesystemError:
-        return None
-    if rel not in inventory:
+    rel = _safe_relpath(value)
+    if rel is None or rel not in inventory:
         return None
     loaded = _load_yaml_member(root_fd, rel, limits, _Errors(limits))
     return loaded if isinstance(loaded, dict) else None
+
+
+def _safe_relpath(value: str) -> str | None:
+    """Normalize a pack-relative pointer, or ``None`` when it is unsafe."""
+
+    try:
+        return _pack_fs.normalize_relpath(value)
+    except _pack_fs.PackFilesystemError:
+        return None
 
 
 def _validate_publication_identity(
