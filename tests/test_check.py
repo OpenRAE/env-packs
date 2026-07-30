@@ -62,6 +62,8 @@ _KNOWN_CODES = (
     "compatibility.missing",
     "compatibility.type",
     "compatibility.boundary-overlap",
+    "compatibility.asset.missing",
+    "publication.identity-mismatch",
     "sdl.missing",
     "sdl.invalid",
     "sdl.invalid-utf8",

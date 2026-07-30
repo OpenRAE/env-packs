@@ -275,10 +275,26 @@ _CATALOG: dict[str, Presentation] = {
         "Hidden-tier content must never be reachable from a participant export.",
         "Move the participant path so it is disjoint from every restricted root.",
     ),
+    "compatibility.asset.missing": _compat(
+        "A compatibility asset marked 'shipped' names a file the pack does not contain.",
+        "A shipped asset declaration must reference a real member so consumers and catalogs can rely on it.",
+        "Add the missing asset file, correct its path, or set the asset's status to planned/not_shipped.",
+    ),
     "compatibility.schema": _compat(
         "The compatibility manifest does not match its packaged schema.",
         "The manifest must match pack-compatibility.schema.yaml so tools can read it.",
         "Correct the field at the reported location to match the schema.",
+    ),
+    # -- publication (release/distribution clearance; trust-domain) -------------
+    "publication": _trust(
+        "The publication-supply document does not meet the pack contract.",
+        "The publication profile declares what a release supplies; it must describe this pack.",
+        "Correct publication-supply.yaml, or remove the pointer if the pack makes no publication claim.",
+    ),
+    "publication.identity-mismatch": _trust(
+        "The publication profile's release identity names a different pack.",
+        "A release identity must describe this pack, not attach another pack's identity to this card.",
+        "Set the publication profile's release.pack name and version to match pack.yaml.",
     ),
     # -- SDL (RAES-owned) -------------------------------------------------------
     "sdl": _sdl(

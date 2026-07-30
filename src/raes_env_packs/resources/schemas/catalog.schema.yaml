@@ -1,0 +1,351 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://raes.dev/schemas/environment-pack-catalog-v1.json"
+title: RAES environment-pack catalog projection (pack-domain read model)
+description: >
+  Closed, versioned read model for a static environment-pack catalog (ADR 0032).
+  It is a GENERATED projection of facts that already have authorities — it is not
+  an authoring surface, a runtime contract, a trust decision, or a scenario
+  semantic model, and it defines zero extensions to RAES semantics (ADR 0009).
+
+  One normalized entry is the only data model for both outputs: the JSON index
+  serializes the entry, and the human "card" renders that same entry. A one-pack
+  invocation produces this same document with a single entry, so there is no
+  separate card schema and no independently authored card.yaml / catalog.yaml.
+
+  Each field keeps its authority: pack.yaml (identity, maturity, purpose,
+  authors, license, pack-level limitations); the compatibility manifest
+  (runtimes, launch modes, resource/cost — scoped to a named profile); parsed
+  RAES scenarios (participant activity, fidelity — summarized, never inferred
+  from prose or CTF categories); the provenance ledger (source licensing,
+  distribution, safety, review); the validated publication profile and RAES
+  associated-artifact identities (release identity, availability, media); and
+  the RAES reusable-asset trust contracts (integrity/authenticity — never
+  upgraded from a digest, golden status, or rehearsal success).
+
+  State is explicit and typed. `known`/`unknown` describes whether a discovery
+  fact is available; `supported`/`unsupported` describes a declared capability
+  for a named profile; `verified`/`unverified`/`stale` describes an
+  evidence-backed observation. `null`, an empty string, omission, and a failed
+  lookup are NOT substitutes for these states. A state that carries a value and
+  a state that forbids one are enforced RELATIONALLY by the catalog validator;
+  JSON-Schema shape validation alone is not treated as sufficient.
+
+  Determinism: freshness uses a caller-supplied `as_of` and rehearsal-age
+  policy; the generator never reads the wall clock, Git dates, or filesystem
+  mtimes. The catalog schema version is independent of the package, pack,
+  layout-contract, publication-profile, and RAES contract versions; any change
+  to field shape, requiredness, enum meaning, state semantics, identity, or
+  canonical ordering mints a new catalog schema version.
+$comment: >
+  This schema carries NO forbidden RAES-semantic layer: it declares no
+  `scoring`, `validation_oracle`, `telemetry`, or `lifecycle` property, and the
+  content_ci anti-extension guard (ADR 0009) scans it automatically because it
+  ships under resources/schemas/. Difficulty, participant/setup time, and
+  resource/cost are pack-domain ESTIMATES with explicit state — never averaged
+  from challenge difficulty, RAES simulation clocks, node counts, or cloud
+  prices. Trust stays `unverified` and last-rehearsal stays `unknown` until
+  structured, identity-bound RAES evidence exists.
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - as_of
+  - freshness
+  - entries
+properties:
+  schema_version:
+    type: string
+    const: "environment-pack-catalog/v1"
+  # Caller-supplied point in time the freshness verdicts are computed against.
+  # The generator never reads the current clock, so identical inputs (including
+  # this value) produce byte-identical output.
+  as_of:
+    type: string
+  # The freshness policy echoed for reproducibility and audit.
+  freshness:
+    type: object
+    additionalProperties: false
+    required: [rehearsal_max_age_days]
+    properties:
+      rehearsal_max_age_days:
+        type: integer
+  # Catalog entries, sorted by the documented composite key
+  # (source.id, pack name, pack version).
+  entries:
+    type: array
+    items:
+      $ref: "#/$defs/entry"
+$defs:
+  # A discovery fact carrying a single text value when known.
+  discovery_text:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties:
+      state:
+        type: string
+        enum: [known, unknown]
+      value:
+        type: string
+  # A discovery fact carrying a list of text values when known.
+  discovery_list:
+    type: object
+    additionalProperties: false
+    required: [state]
+    properties:
+      state:
+        type: string
+        enum: [known, unknown]
+      values:
+        type: array
+        items:
+          type: string
+  entry:
+    type: object
+    additionalProperties: false
+    required:
+      - source
+      - name
+      - title
+      - version
+      - maturity
+      - purpose
+      - authors
+      - license
+      - limitations
+      - audiences
+      - participant_activity
+      - difficulty
+      - setup_time
+      - participant_time
+      - runtimes
+      - launch_modes
+      - resource_cost
+      - fidelity
+      - safety
+      - provenance
+      - release
+      - trust
+      - last_rehearsal
+      - media
+      - completeness
+    properties:
+      # Cross-repository source identity supplied by the caller. Never a Git
+      # remote with credentials, ambient branch, current HEAD, mtime, or
+      # repository basename.
+      source:
+        type: object
+        additionalProperties: false
+        required: [id, revision]
+        properties:
+          id:
+            type: string
+            pattern: "^[a-z0-9][a-z0-9_.-]*[a-z0-9]$"
+          revision:
+            type: string
+      # Identity + maturity from pack.yaml. A valid pack always declares these,
+      # so they are plain required strings rather than discovery facts.
+      name:
+        type: string
+      title:
+        type: string
+      version:
+        type: string
+      maturity:
+        type: string
+        enum: [draft, built, golden, unknown]
+      purpose:
+        $ref: "#/$defs/discovery_text"
+      authors:
+        $ref: "#/$defs/discovery_list"
+      license:
+        $ref: "#/$defs/discovery_text"
+      limitations:
+        $ref: "#/$defs/discovery_text"
+      # Intended audiences from delivery-bundle declarations.
+      audiences:
+        $ref: "#/$defs/discovery_list"
+      # Summarized governed RAES fields only (counts), never inferred activity.
+      participant_activity:
+        type: object
+        additionalProperties: false
+        required: [state]
+        properties:
+          state:
+            type: string
+            enum: [known, unknown]
+          scenarios:
+            type: integer
+          nodes:
+            type: integer
+      # Explicit pack-domain estimates. Never averaged from challenge difficulty
+      # or derived from RAES simulation clocks.
+      difficulty:
+        $ref: "#/$defs/discovery_text"
+      setup_time:
+        $ref: "#/$defs/discovery_text"
+      participant_time:
+        $ref: "#/$defs/discovery_text"
+      # Declared runtime/adapter capability per named profile. `support` is a
+      # DECLARED capability, never a probe of a live backend.
+      runtimes:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [profile_id, support]
+          properties:
+            profile_id:
+              type: string
+            support:
+              type: string
+              enum: [supported, unsupported]
+            provider:
+              type: string
+      # Declared delivery/launch modes per bundle.
+      launch_modes:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [bundle_id, support]
+          properties:
+            bundle_id:
+              type: string
+            support:
+              type: string
+              enum: [supported, unsupported]
+            audience:
+              type: string
+      # Resource/cost expectation scoped to a named profile, with its basis.
+      # Never inferred from node counts or current cloud prices.
+      resource_cost:
+        type: object
+        additionalProperties: false
+        required: [state]
+        properties:
+          state:
+            type: string
+            enum: [known, unknown]
+          profile:
+            type: string
+          value:
+            type: string
+          basis:
+            type: string
+      # Fidelity summarized from RAES action-contract / realization claims. The
+      # catalog mints no overall fidelity score.
+      fidelity:
+        type: object
+        additionalProperties: false
+        required: [state]
+        properties:
+          state:
+            type: string
+            enum: [known, unknown]
+          value:
+            type: string
+      # Content-safety attestations from the provenance ledger (all-or-nothing).
+      safety:
+        type: object
+        additionalProperties: false
+        required: [state]
+        properties:
+          state:
+            type: string
+            enum: [known, unknown]
+          attestations_satisfied:
+            type: boolean
+      # Leak-safe provenance projection: counts and review-gate statuses only,
+      # never source/review prose, artifact paths, or restricted vocabulary.
+      provenance:
+        type: object
+        additionalProperties: false
+        required: [state]
+        properties:
+          state:
+            type: string
+            enum: [known, unknown]
+          sources:
+            type: integer
+          artifacts:
+            type: integer
+          review_status:
+            type: string
+      # Release identity + availability from the validated publication profile.
+      # `unverified` means a publication document is present but did not validate.
+      release:
+        type: object
+        additionalProperties: false
+        required: [state]
+        properties:
+          state:
+            type: string
+            enum: [known, unknown, unverified]
+          name:
+            type: string
+          version:
+            type: string
+          availability:
+            type: array
+            items:
+              type: string
+      # Integrity / authenticity / trust is RAES-owned and deferred (ADR 0010).
+      # A digest, provenance approval, golden status, or rehearsal success is
+      # never upgraded into RAES trust evidence, so this stays `unverified`.
+      trust:
+        type: object
+        additionalProperties: false
+        required: [state]
+        properties:
+          state:
+            type: string
+            enum: [verified, unverified]
+          authority:
+            type: string
+      # A structured, identity-bound observation. No checklist, path named
+      # "rehearsal", Git date, mtime, or test command is proof; until such
+      # evidence exists the state is `unknown`.
+      last_rehearsal:
+        type: object
+        additionalProperties: false
+        required: [state]
+        properties:
+          state:
+            type: string
+            enum: [verified, unverified, stale, unknown]
+          as_of:
+            type: string
+          profile:
+            type: string
+      # References to public-boundary-eligible associated artifacts. Presentation
+      # only: recorded as a safe reference, never parsed, fetched, or trusted as
+      # scenario meaning.
+      media:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [reference, eligible]
+          properties:
+            reference:
+              type: string
+            role:
+              type: string
+            eligible:
+              type: boolean
+      # Non-blocking catalog completeness diagnostics for this entry. A truthful
+      # `unknown`/`unverified` projection is still catalogued; a missing required
+      # discovery or trust declaration is reported here without making the pack
+      # invalid (ADR 0032).
+      completeness:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [code]
+          properties:
+            code:
+              type: string
+            field:
+              type: string
