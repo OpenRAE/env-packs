@@ -25,7 +25,7 @@ classifiers = [
 # gate is fail-closed, so RAES cannot be optional. The exact pin is deliberate
 # while RAES SDL contracts are `stability: draft`; advancing it requires
 # compatibility tests against this package's validator and template.
-dependencies = ["PyYAML>=6", "raes==2.0.0"]
+dependencies = ["PyYAML>=6", "raes==3.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/RAESystem/env-packs"
