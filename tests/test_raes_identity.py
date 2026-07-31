@@ -62,9 +62,10 @@ _IMMUTABLE_ADR_ALLOWLIST = {
         "0018-openssf-scorecard-posture.md",
         "0019-preserve-history-in-dev-main-promotions.md",
         "0020-no-auto-merge.md",
-        # 0021-0030 reference no retired-named ADR. 0031 Extends the immutably
-        # named ADR 0011 by filename, exactly like 0012-0016 do.
+        # 0021-0030 reference no retired-named ADR. 0031 and 0034 Extend the
+        # immutably named ADR 0011 by filename, exactly like 0012-0016 do.
         "0031-compose-beginner-safe-pack-checks-from-existing-authorities.md",
+        "0034-compose-progressive-scaffolding-from-pack-and-raes-authorities.md",
     )
 }
 _BOUND_IDENTITY_LINES = {
@@ -111,7 +112,8 @@ class PackageIdentityTests(unittest.TestCase):
                 "raes-pack-catalog": "raes_env_packs.catalog:main",
                 "raes-pack-validate": "raes_env_packs.content_ci:main",
                 "raes-pack-release": "raes_env_packs.release:main",
-                "raes-new-pack": "raes_env_packs.new_pack:main",
+                "raes-pack-new": "raes_env_packs.wizard:main",
+                "raes-new-pack": "raes_env_packs.wizard:main",
                 "raes-pack-issue-skeleton": "raes_env_packs.issue_skeleton:main",
             },
         )

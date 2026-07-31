@@ -1,13 +1,13 @@
-# Quickstart: validate your first pack
+# Quickstart: scaffold and validate your first pack
 
-Scaffold an environment pack, add a scenario start state, and validate it. This
-takes about five minutes and creates nothing outside a directory you choose.
+Scaffold an environment pack with the wizard and validate it. This takes about
+two minutes and creates nothing outside a directory you choose.
 
 ## Before you start
 
 - Python 3.11 or newer.
 - A catalog repository: a Git repository with an `environments/` directory,
-  where your packs live. The scaffolder writes into it.
+  where your packs live. The wizard writes into it.
 
 Install the package:
 
@@ -17,52 +17,25 @@ pip install raes-env-packs
 
 ## 1. Scaffold a pack
 
-From the root of your catalog repository:
+From the root of your catalog repository, run the wizard and pick the `minimal`
+route:
 
 ```sh
-raes-new-pack example-pack \
-  --title "Example Pack" \
-  --description "A tiny example environment pack." \
-  --issue 154
+raes-pack-new example-pack --route minimal --yes
 ```
 
 ```
 created environments/example-pack
-next steps:
-  - edit environments/example-pack/pack.yaml
-  - replace environments/example-pack/README.md with scenario-specific prose
-  - fill environments/example-pack/sdl/ and environments/example-pack/docs/
-  - use environments/example-pack/docs/golden-readiness-checklist.md for milestone planning
+validated with the static pack check (minimal route)
 ```
 
-The scaffold is intentionally incomplete. It gives you the layout and the
-required files, but you supply the two things only you know: the scenario, and
-where its content came from.
+The wizard generates a **valid** minimal pack — identity, a RAES start state,
+and the docs to understand it — and checks it for you before it lands. Preview
+any route first with `--preview` (it writes nothing), or drop `--yes` to answer
+the questions interactively. See [scaffold a pack](new-pack-script.md) for the
+routes and optional layers.
 
-## 2. Add a scenario start state
-
-A pack describes its environment in [RAES SDL](environment-packs.md#the-scenario-start-state).
-Write the smallest valid start state to `sdl/example.sdl.yaml`:
-
-```yaml
-name: example-pack
-nodes:
-  target:
-    type: vm
-```
-
-## 3. Name the pack in its provenance ledger
-
-Every pack ships a provenance ledger — the record of its sources, licensing, and
-safety attestations. Open `environments/example-pack/docs/provenance-ledger.yaml`
-and set the pack name to match the directory:
-
-```yaml
-pack:
-  name: example-pack
-```
-
-## 4. Check it
+## 2. Check it
 
 `raes-pack-check` is the check a consumer runs before trusting a pack. It reads
 the staged files and reports what it finds — no pack code runs and nothing

@@ -46,20 +46,19 @@ pip install raes-env-packs
 
 That installs four command-line tools and the importable library:
 
-- `raes-new-pack` — scaffold a new pack from the bundled template.
+- `raes-pack-new` — scaffold a new pack with a progressive wizard.
 - `raes-pack-validate` — the author-CI check for a catalog checkout.
 - `raes-pack-release` — build, lint, and release-gate a pack.
 - `raes-pack-issue-skeleton` — generate a pack's starter GitHub issues.
 
 ## Validate your first pack
 
-Scaffold a pack in your catalog repository, add a start state, and check it:
+Scaffold a valid minimal pack in your catalog repository and check it. The
+wizard generates only the files the pack needs, formats the scenario identity
+through RAES, and validates the result before it lands:
 
 ```sh
-raes-new-pack example-pack --title "Example Pack" \
-  --description "A tiny example environment pack." --issue 1
-# add sdl/example.sdl.yaml (above) and set the pack name in
-# docs/provenance-ledger.yaml, then:
+raes-pack-new example-pack --route minimal --yes
 python -c "from raes_env_packs import validate_pack; print(validate_pack('environments/example-pack').ok)"
 ```
 
