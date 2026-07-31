@@ -33,6 +33,7 @@ import tempfile
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TextIO
 
 import yaml
 
@@ -52,6 +53,11 @@ _MISSING = object()
 
 _RESOURCES = Path(__file__).with_name("resources")
 _TEMPLATE = _RESOURCES / "template"
+
+# Canonical pack-relative pointers the generated manifest references.
+_PROVENANCE_LEDGER_REL = "docs/provenance-ledger.yaml"
+_COMPATIBILITY_REL = "pack.compatibility.yaml"
+_GOLDEN_CHECKLIST_REL = "docs/golden-readiness-checklist.md"
 
 # Exit statuses (mirrors the raes-pack-check process contract).
 EXIT_OK = 0
@@ -240,7 +246,7 @@ def _pack_manifest(
             "reference_triangle": contents.get("reference_triangle", False),
             "profile_bundles": contents.get("profile_bundles", False),
         },
-        "provenance_ledger": "docs/provenance-ledger.yaml",
+        "provenance_ledger": _PROVENANCE_LEDGER_REL,
     }
     for key, value in pointers.items():
         manifest[key] = value
@@ -248,6 +254,8 @@ def _pack_manifest(
 
 
 def _concepts_doc(context: _Context) -> str:
+    """Neutral starter body for docs/concepts.md."""
+
     return (
         f"# {context.title} — concepts\n\n"
         f"{context.description}\n\n"
@@ -258,6 +266,8 @@ def _concepts_doc(context: _Context) -> str:
 
 
 def _attack_path_doc(context: _Context) -> str:
+    """Neutral starter body for docs/attack-path.md."""
+
     return (
         f"# {context.title} — path model\n\n"
         "Describe the intended route a participant takes through the environment,\n"
@@ -267,6 +277,8 @@ def _attack_path_doc(context: _Context) -> str:
 
 
 def _golden_checklist() -> str:
+    """Neutral golden-readiness checklist body."""
+
     return (
         "# Golden-readiness checklist\n\n"
         "Copy this into a rehearsal report and check what you actually proved.\n\n"
@@ -281,6 +293,8 @@ def _golden_checklist() -> str:
 
 
 def _participant_readme(context: _Context) -> str:
+    """Neutral participant-safe README body."""
+
     return (
         f"# {context.title}\n\n"
         f"{context.description}\n\n"
@@ -292,17 +306,20 @@ def _participant_readme(context: _Context) -> str:
 def _required_files(context: _Context) -> dict[str, str]:
     """The minimum-complete required tier every generated pack ships."""
 
+    # pack.yaml is filled by build_proposal once the selected pointers are known.
     return {
-        "pack.yaml": "",  # filled by build_proposal once pointers are known
+        "pack.yaml": "",
         f"sdl/{context.pack_id}.sdl.yaml": _build_sdl(context),
         "docs/concepts.md": _concepts_doc(context),
         "docs/attack-path.md": _attack_path_doc(context),
-        "docs/provenance-ledger.yaml": _template_text(
-            "docs/provenance-ledger.yaml", {"<name>": context.pack_id}),
+        _PROVENANCE_LEDGER_REL: _template_text(
+            _PROVENANCE_LEDGER_REL, {"<name>": context.pack_id}),
     }
 
 
 def _gen_flag_layer(context: _Context) -> dict[str, str]:
+    """Flag/challenge layer: flags, challenges, and a reference CTFd loader."""
+
     return {
         "flags/placement.yaml": _template_text("flags/placement.yaml", {}),
         "challenges/challenges.yaml": _template_text(
@@ -312,26 +329,32 @@ def _gen_flag_layer(context: _Context) -> dict[str, str]:
 
 
 def _gen_reference_triangle(context: _Context) -> dict[str, str]:
+    """Reference triangle: golden build, tests, and matching walkthrough."""
+
     return {
         "build/README.md": _template_text("build/README.md", {}),
         "tests/README.md": _template_text("tests/README.md", {}),
         "docs/walkthroughs/README.md": _template_text(
             "docs/walkthroughs/README.md", {}),
-        "docs/golden-readiness-checklist.md": _golden_checklist(),
+        _GOLDEN_CHECKLIST_REL: _golden_checklist(),
     }
 
 
 def _gen_compatibility(context: _Context) -> dict[str, str]:
+    """Compatibility projection plus the participant README and checklist it references."""
+
     return {
-        "pack.compatibility.yaml": _template_text(
-            "pack.compatibility.yaml",
+        _COMPATIBILITY_REL: _template_text(
+            _COMPATIBILITY_REL,
             {"<name>": context.pack_id, "Human-readable title": context.title}),
         "README.md": _participant_readme(context),
-        "docs/golden-readiness-checklist.md": _golden_checklist(),
+        _GOLDEN_CHECKLIST_REL: _golden_checklist(),
     }
 
 
 def _gen_profile_bundles(context: _Context) -> dict[str, str]:
+    """Delivery/audience profile-bundle layer (manifest + shared content)."""
+
     bundles = yaml.safe_dump(
         {"schema_version": "environment-pack-profile-bundles/v1", "bundles": []},
         sort_keys=False)
@@ -352,7 +375,7 @@ CAPABILITIES: dict[str, Capability] = {
         "reference_triangle", None, _gen_reference_triangle),
     "compatibility": Capability(
         "compatibility", "Product/backend compatibility projection",
-        None, ("compatibility_manifest", "pack.compatibility.yaml"),
+        None, ("compatibility_manifest", _COMPATIBILITY_REL),
         _gen_compatibility),
     "profile_bundles": Capability(
         "profile_bundles", "Delivery/audience profile bundles",
@@ -416,38 +439,56 @@ class WizardInputs(object):
     answers: tuple[tuple[str, str], ...]
 
 
-def normalize_inputs(raw: Mapping[str, object]) -> WizardInputs:
-    """Validate an untrusted wizard-input document; fail closed on anything odd."""
+# title/description are question answers, so they belong in `answers`, not at
+# the top level; a top-level one is rejected rather than silently ignored.
+_ALLOWED_INPUT_KEYS = frozenset(
+    {"version", "pack_id", "route", "answers", "capabilities"})
+_DEFAULT_DESCRIPTION = "One line describing the scenario and what a participant does."
 
-    if not isinstance(raw, Mapping):
-        raise WizardError("wizard input must be a mapping")
-    version = raw.get("version")
-    if version != WIZARD_INPUT_VERSION:
-        raise WizardError(f"unsupported wizard input version: {version!r}")
 
-    # title/description are question answers, so they belong in `answers`, not
-    # at the top level; a top-level one is rejected rather than silently ignored.
-    allowed_keys = {"version", "pack_id", "route", "answers", "capabilities"}
-    unknown = {key for key in raw if key not in allowed_keys}
+def _require_envelope(raw: Mapping[str, object]) -> None:
+    """Reject a wizard-input document with a bad version or unknown keys."""
+
+    if raw.get("version") != WIZARD_INPUT_VERSION:
+        raise WizardError(
+            f"unsupported wizard input version: {raw.get('version')!r}")
+    unknown = {key for key in raw if key not in _ALLOWED_INPUT_KEYS}
     if unknown:
         raise WizardError(f"unknown wizard input keys: {sorted(unknown)}")
+
+
+def _require_pack_id(raw: Mapping[str, object]) -> str:
+    """Return a validated pack id or fail with the bounded contract."""
 
     pack_id = raw.get("pack_id")
     if not isinstance(pack_id, str) or not _PACK_ID_RE.fullmatch(pack_id):
         raise WizardError(
             "pack_id must be a lowercase kebab-case string (a-z, 0-9, '-')")
+    return pack_id
+
+
+def _require_route(raw: Mapping[str, object]) -> str:
+    """Return a validated route id or fail closed on anything else."""
 
     route = raw.get("route", "minimal")
     if not isinstance(route, str) or route not in ROUTES:
         raise WizardError(f"unknown route: {route!r}")
+    return route
 
+
+def normalize_inputs(raw: Mapping[str, object]) -> WizardInputs:
+    """Validate an untrusted wizard-input document; fail closed on anything odd."""
+
+    if not isinstance(raw, Mapping):
+        raise WizardError("wizard input must be a mapping")
+    _require_envelope(raw)
+    pack_id = _require_pack_id(raw)
+    route = _require_route(raw)
     answers = _normalize_answers(route, raw.get("answers", {}))
     capabilities = _normalize_capabilities(raw.get("capabilities", ()))
 
     title = _answer_or(answers, "title", "") or title_from_pack_id(pack_id)
-    description = _answer_or(
-        answers, "description", "") or (
-        "One line describing the scenario and what a participant does.")
+    description = _answer_or(answers, "description", "") or _DEFAULT_DESCRIPTION
 
     return WizardInputs(
         pack_id=pack_id,
@@ -460,11 +501,15 @@ def normalize_inputs(raw: Mapping[str, object]) -> WizardInputs:
 
 
 def _answer_or(answers: Mapping[str, str], key: str, fallback: str) -> str:
+    """Return the answer for ``key``, treating not-sure as absent."""
+
     value = answers.get(key, fallback)
     return fallback if value == NOT_SURE else value
 
 
 def _normalize_answers(route: str, raw: object) -> dict[str, str]:
+    """Validate the answers map against the route's questions; fail closed."""
+
     if not isinstance(raw, Mapping):
         raise WizardError("answers must be a mapping")
     questions = {q.key: q for q in route_questions(route)}
@@ -486,6 +531,8 @@ def _normalize_answers(route: str, raw: object) -> dict[str, str]:
 
 
 def _normalize_capabilities(raw: object) -> tuple[str, ...]:
+    """Validate and de-duplicate the selected optional-layer ids; fail closed."""
+
     if not isinstance(raw, (list, tuple)):
         raise WizardError("capabilities must be a list")
     result: list[str] = []
@@ -601,12 +648,14 @@ def _unresolved_reason(question: Question, value: object) -> str | None:
     """
 
     if value == NOT_SURE:
-        return "not-sure"
-    if value is _MISSING:
-        return "unanswered" if question.required else None
-    if question.required_value is not None and value != question.required_value:
-        return f"requires '{question.required_value}'"
-    return None
+        reason: str | None = "not-sure"
+    elif value is _MISSING:
+        reason = "unanswered" if question.required else None
+    elif question.required_value is not None and value != question.required_value:
+        reason = f"requires '{question.required_value}'"
+    else:
+        reason = None
+    return reason
 
 
 # --------------------------------------------------------------------------- #
@@ -659,7 +708,8 @@ def machine_document(proposal: Proposal) -> dict[str, object]:
 def _write_member(pack_root: Path, rel: str, content: str) -> None:
     """Write one canonical regular member under a fresh private pack root."""
 
-    _pack_fs.normalize_relpath(rel)  # rejects escapes / non-canonical names
+    # normalize_relpath rejects escapes and non-canonical names.
+    _pack_fs.normalize_relpath(rel)
     destination = pack_root
     for part in rel.split("/"):
         destination = destination / part
@@ -667,8 +717,9 @@ def _write_member(pack_root: Path, rel: str, content: str) -> None:
     if resolved != pack_root.resolve() and pack_root.resolve() not in resolved.parents:
         raise WizardError(f"generated member escapes the pack root: {rel!r}")
     destination.parent.mkdir(parents=True, exist_ok=True)
+    # Regular file with default (umask) permissions; the content is non-sensitive
+    # generated pack material destined for the author's own catalog repo.
     destination.write_text(content, encoding="utf-8")
-    os.chmod(destination, 0o644)
 
 
 def write_proposal(proposal: Proposal, environments_root: str) -> str:
@@ -726,11 +777,10 @@ def _rename_noreplace(src: str, dst: str) -> None:
     """
 
     libc = ctypes.CDLL(None, use_errno=True)
-    try:
-        renameat2 = libc.renameat2
-    except AttributeError as exc:  # pragma: no cover - modern Linux has it
+    renameat2 = getattr(libc, "renameat2", None)
+    if renameat2 is None:
         raise WizardError(
-            "atomic no-replace publication is unsupported on this platform") from exc
+            "atomic no-replace publication is unsupported on this platform")
     renameat2.argtypes = [
         ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p,
         ctypes.c_uint,
@@ -791,24 +841,24 @@ def ask_questions(
 
 
 def _terminal_ask(
-    stdin, stdout,
+    stdin: TextIO, out: TextIO,
 ) -> Callable[[Question], str | None]:
-    """Build a stdin/stdout ``ask`` that prints prompt + consequence."""
+    """Build a stdin/out ``ask`` that prints each prompt and its consequence."""
 
     def ask(question: Question) -> str | None:
-        print(question.prompt, file=stdout)
-        print(f"  why: {question.consequence}", file=stdout)
+        """Prompt for one question and return the raw answer or not-sure."""
+
+        print(question.prompt, file=out)
+        print(f"  why: {question.consequence}", file=out)
         if question.choices:
-            print(f"  choices: {', '.join(question.choices)}", file=stdout)
+            print(f"  choices: {', '.join(question.choices)}", file=out)
         if question.default:
-            print(f"  default: {question.default}", file=stdout)
+            print(f"  default: {question.default}", file=out)
         if question.allow_not_sure:
-            print("  (enter '?' if you are not sure)", file=stdout)
-        stdout.flush()
+            print("  (enter '?' if you are not sure)", file=out)
+        out.flush()
         raw = stdin.readline().strip()
-        if raw == "?" and question.allow_not_sure:
-            return NOT_SURE
-        return raw
+        return NOT_SURE if raw == "?" and question.allow_not_sure else raw
 
     return ask
 
@@ -817,6 +867,8 @@ def _terminal_ask(
 # CLI
 # --------------------------------------------------------------------------- #
 def _parser() -> argparse.ArgumentParser:
+    """Build the ``raes-pack-new`` argument parser."""
+
     parser = argparse.ArgumentParser(
         prog="raes-pack-new",
         description=(
@@ -841,27 +893,41 @@ def _parser() -> argparse.ArgumentParser:
                         help="show the proposed file set and assumptions; write nothing")
     parser.add_argument("--json", action="store_true",
                         help="emit the versioned machine document on stdout")
-    parser.add_argument("--replay", metavar="PATH",
-                        help="read a wizard-input document ('-' for stdin)")
+    parser.add_argument("--replay", metavar="-",
+                        help="read a wizard-input document from stdin (pass '-')")
     parser.add_argument("--yes", action="store_true",
                         help="non-interactive: accept defaults, no prompts")
     return parser
 
 
-def _load_replay(path: str, stdin) -> Mapping[str, object]:
-    text = stdin.read() if path == "-" else Path(path).read_text(encoding="utf-8")
+def _load_replay(path: str, stdin: TextIO) -> Mapping[str, object]:
+    """Read and parse the wizard-input document from stdin.
+
+    The replay document is read only from stdin (``--replay -``); the wizard
+    never opens a caller-named file path, so a faulty CLI argument cannot direct
+    it at an arbitrary filesystem location. Pipe a saved file in with a shell
+    redirect: ``--replay - < input.json``.
+    """
+
+    if path != "-":
+        raise WizardError(
+            "read the replay document from stdin: --replay - < input.json")
     try:
-        document = json.loads(text)
+        document = json.loads(stdin.read())
     except json.JSONDecodeError as exc:
         raise WizardError(f"replay input is not valid JSON: {exc}") from exc
     return document
 
 
-def _inputs_from_args(args: argparse.Namespace, stdin, prompt_out) -> WizardInputs:
-    if args.replay:
-        return normalize_inputs(_load_replay(args.replay, stdin))
-    if not args.pack_id:
-        raise WizardError("a pack id is required (or use --replay)")
+def _cli_answers(
+    args: argparse.Namespace, stdin: TextIO, prompt_out: TextIO,
+) -> dict[str, str]:
+    """Assemble answers from flags, ``--answer`` pairs, and interactive prompts.
+
+    Explicit flags stay authoritative; prompts (shown on ``prompt_out``/stderr so
+    a machine channel on stdout stays uncontaminated, ADR 0034) only fill answers
+    not already supplied.
+    """
 
     answers: dict[str, str] = {}
     if args.title:
@@ -873,32 +939,82 @@ def _inputs_from_args(args: argparse.Namespace, stdin, prompt_out) -> WizardInpu
         if not sep or not key:
             raise WizardError(f"--answer must be KEY=VALUE, got {pair!r}")
         answers[key] = value
-
-    # Prompts and progress go to prompt_out (stderr) so a machine channel on
-    # stdout stays uncontaminated (ADR 0034). Explicit flags stay authoritative;
-    # prompts only fill answers not already supplied.
     if not args.yes and stdin is not None and getattr(stdin, "isatty", bool)():
         asked = ask_questions(
             route_questions(args.route), _terminal_ask(stdin, prompt_out))
         for key, value in asked.items():
             answers.setdefault(key, value)
+    return answers
 
+
+def _inputs_from_args(
+    args: argparse.Namespace, stdin: TextIO, prompt_out: TextIO,
+) -> WizardInputs:
+    """Build validated inputs from replay stdin, or from CLI flags and prompts."""
+
+    if args.replay:
+        return normalize_inputs(_load_replay(args.replay, stdin))
+    if not args.pack_id:
+        raise WizardError("a pack id is required (or use --replay -)")
     raw = {
         "version": WIZARD_INPUT_VERSION,
         "pack_id": args.pack_id,
         "route": args.route,
-        "answers": answers,
+        "answers": _cli_answers(args, stdin, prompt_out),
         "capabilities": list(args.layers),
     }
     return normalize_inputs(raw)
 
 
+def _report_error(exc: WizardError, stderr: TextIO) -> None:
+    """Print one bounded error line to stderr."""
+
+    print(f"error: {exc}", file=stderr)
+
+
+def _emit_preview(proposal: Proposal, as_json: bool, stdout: TextIO) -> None:
+    """Render the side-effect-free preview (machine or human)."""
+
+    if as_json:
+        print(json.dumps(machine_document(proposal), indent=2, sort_keys=True),
+              file=stdout)
+    else:
+        print(render_human_preview(proposal), file=stdout, end="")
+
+
+def _create_and_report(
+    args: argparse.Namespace, proposal: Proposal, stdout: TextIO, stderr: TextIO,
+) -> int:
+    """Resolve the repo, write the pack, and report; returns the exit status."""
+
+    try:
+        repo = os.path.abspath(args.repo) if args.repo else repo_root()
+    except WizardError as exc:
+        _report_error(exc, stderr)
+        return EXIT_USAGE
+    try:
+        created = write_proposal(proposal, os.path.join(repo, "environments"))
+    except WizardError as exc:
+        _report_error(exc, stderr)
+        return EXIT_BLOCKING
+    relative = os.path.relpath(created, repo)
+    if args.json:
+        document = machine_document(proposal)
+        document["created"] = relative
+        print(json.dumps(document, indent=2, sort_keys=True), file=stdout)
+    else:
+        print(f"created {relative}", file=stdout)
+        print(f"validated with the static pack check ({proposal.route} route)",
+              file=stdout)
+    return EXIT_OK
+
+
 def main(
     argv: list[str] | None = None,
     *,
-    stdin=None,
-    stdout=None,
-    stderr=None,
+    stdin: TextIO | None = None,
+    stdout: TextIO | None = None,
+    stderr: TextIO | None = None,
 ) -> int:
     """Command-line entry point. Returns the process exit status."""
 
@@ -911,39 +1027,14 @@ def main(
         inputs = _inputs_from_args(args, stdin, stderr)
         proposal = build_proposal(inputs)
     except WizardError as exc:
-        print(f"error: {exc}", file=stderr)
+        _report_error(exc, stderr)
         return EXIT_USAGE
 
     if args.preview:
-        if args.json:
-            print(json.dumps(machine_document(proposal), indent=2, sort_keys=True),
-                  file=stdout)
-        else:
-            print(render_human_preview(proposal), file=stdout, end="")
+        _emit_preview(proposal, args.json, stdout)
         return EXIT_OK
-
-    try:
-        repo = os.path.abspath(args.repo) if args.repo else repo_root()
-    except WizardError as exc:
-        print(f"error: {exc}", file=stderr)
-        return EXIT_USAGE
-    environments = os.path.join(repo, "environments")
-    try:
-        created = write_proposal(proposal, environments)
-    except WizardError as exc:
-        print(f"error: {exc}", file=stderr)
-        return EXIT_BLOCKING
-
-    if args.json:
-        document = machine_document(proposal)
-        document["created"] = os.path.relpath(created, repo)
-        print(json.dumps(document, indent=2, sort_keys=True), file=stdout)
-    else:
-        print(f"created {os.path.relpath(created, repo)}", file=stdout)
-        print(f"validated with the static pack check ({proposal.route} route)",
-              file=stdout)
-    return EXIT_OK
+    return _create_and_report(args, proposal, stdout, stderr)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     raise SystemExit(main())

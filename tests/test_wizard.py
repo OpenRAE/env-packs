@@ -80,36 +80,46 @@ class ProposalTests(unittest.TestCase):
         self.assertEqual(one.files, two.files)
 
     def test_unknown_version_fails_closed(self) -> None:
+        payload = _inputs(version="raes-pack-wizard-input/v99")
         with self.assertRaises(wizard.WizardError):
-            wizard.normalize_inputs(_inputs(version="raes-pack-wizard-input/v99"))
+            wizard.normalize_inputs(payload)
 
     def test_unknown_route_fails_closed(self) -> None:
+        payload = _inputs(route="does-not-exist")
         with self.assertRaises(wizard.WizardError):
-            wizard.normalize_inputs(_inputs(route="does-not-exist"))
+            wizard.normalize_inputs(payload)
 
     def test_unknown_capability_fails_closed(self) -> None:
+        payload = _inputs(capabilities=["not-a-layer"])
         with self.assertRaises(wizard.WizardError):
-            wizard.normalize_inputs(_inputs(capabilities=["not-a-layer"]))
+            wizard.normalize_inputs(payload)
 
     def test_unknown_answer_key_fails_closed(self) -> None:
+        payload = _inputs(answers={"nonsense": "x"})
         with self.assertRaises(wizard.WizardError):
-            wizard.normalize_inputs(_inputs(answers={"nonsense": "x"}))
+            wizard.normalize_inputs(payload)
 
     def test_bad_pack_id_raises_bounded_wizard_error(self) -> None:
         # The DTO boundary must fail with the one bounded contract, not SystemExit.
         for bad in ("Bad_Id", "../evil", 123, None):
+            payload = _inputs(pack_id=bad)
             with self.assertRaises(wizard.WizardError):
-                wizard.normalize_inputs(_inputs(pack_id=bad))
+                wizard.normalize_inputs(payload)
 
-    def test_unhashable_route_and_capability_fail_closed(self) -> None:
+    def test_unhashable_route_fails_closed(self) -> None:
+        payload = _inputs(route=["not", "a", "route"])
         with self.assertRaises(wizard.WizardError):
-            wizard.normalize_inputs(_inputs(route=["not", "a", "route"]))
+            wizard.normalize_inputs(payload)
+
+    def test_unhashable_capability_fails_closed(self) -> None:
+        payload = _inputs(capabilities=[["unhashable"]])
         with self.assertRaises(wizard.WizardError):
-            wizard.normalize_inputs(_inputs(capabilities=[["unhashable"]]))
+            wizard.normalize_inputs(payload)
 
     def test_top_level_title_is_rejected_not_silently_ignored(self) -> None:
+        payload = _inputs(title="Top Level")
         with self.assertRaises(wizard.WizardError):
-            wizard.normalize_inputs(_inputs(title="Top Level"))
+            wizard.normalize_inputs(payload)
 
     def test_title_and_description_flow_through_answers(self) -> None:
         proposal = wizard.build_proposal(wizard.normalize_inputs(
@@ -431,16 +441,25 @@ class InteractiveCliTests(unittest.TestCase):
         self.assertEqual(json.loads(out.getvalue())["version"],
                          wizard.WIZARD_OUTPUT_VERSION)
 
-    def test_replay_from_file(self) -> None:
-        payload = self.tmp / "input.json"
-        payload.write_text(json.dumps(_inputs(pack_id="file-pack")),
-                           encoding="utf-8")
+    def test_replay_reads_stdin_via_shell_redirect(self) -> None:
+        # A saved file is replayed with a shell redirect (`--replay - < f`); the
+        # test drives the same path by feeding the document on stdin.
+        payload = json.dumps(_inputs(pack_id="file-pack"))
         rc = wizard.main(
-            ["--repo", str(self.tmp), "--replay", str(payload)],
-            stdout=io.StringIO(), stderr=io.StringIO())
+            ["--repo", str(self.tmp), "--replay", "-"],
+            stdin=io.StringIO(payload), stdout=io.StringIO(), stderr=io.StringIO())
         self.assertEqual(rc, 0)
         self.assertTrue(
             validate_pack(self.tmp / "environments" / "file-pack").ok)
+
+    def test_replay_rejects_a_file_path(self) -> None:
+        # The wizard never opens a caller-named path; it points at stdin instead.
+        stderr = io.StringIO()
+        rc = wizard.main(
+            ["--repo", str(self.tmp), "--replay", "some/file.json"],
+            stdin=io.StringIO(""), stdout=io.StringIO(), stderr=stderr)
+        self.assertEqual(rc, wizard.EXIT_USAGE)
+        self.assertIn("stdin", stderr.getvalue())
 
     def test_replay_invalid_json_is_usage_error(self) -> None:
         rc = wizard.main(
