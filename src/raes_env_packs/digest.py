@@ -640,7 +640,8 @@ def _project_artifact_identity(
             media_type=descriptor.media_type,
             digest=f"sha256:{descriptor.checksum.value}",
         )
-    except ValueError as exc:  # pydantic ValidationError is a ValueError
+    # pydantic ValidationError is a ValueError
+    except ValueError as exc:
         raise PackDigestError("resolved artifact identity is not canonical") from exc
 
 
