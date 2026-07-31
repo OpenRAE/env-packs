@@ -35,9 +35,12 @@ def _load(modname: str, filename: str):
 
 
 ISK = _load("isk_cov", "issue_skeleton.py")
-NP = _load("np_cov", "new_pack.py")
 CI = _load("ci_cov", "content_ci.py")
 REL = _load("rel_cov", "release.py")
+
+# The wizard uses package-relative imports, so it is consumed through the
+# installed package rather than the file-path _load() shim.
+from raes_env_packs import wizard as WIZ  # noqa: E402
 
 
 def _plan():
@@ -218,48 +221,22 @@ class PrepareApplyTests(unittest.TestCase):
 
 
 def _scaffold(tmp: str) -> str:
-    """Scaffold a pack from the packaged template into tmp/environments and return it."""
-    os.makedirs(os.path.join(tmp, "environments"), exist_ok=True)
-    target = NP.scaffold_pack(tmp, "cov-pack", "Cov Pack", "one line", None, None)
-    return target
+    """Scaffold a pack with the wizard into tmp/environments and return it.
 
-
-class NewPackTests(unittest.TestCase):
-    def test_scaffold_and_helpers(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            target = _scaffold(tmp)
-            self.assertTrue(os.path.isfile(os.path.join(target, "pack.yaml")))
-        self.assertEqual(NP.title_from_pack_id("x-y"), "X Y")
-        with self.assertRaises(SystemExit):
-            NP.validate_pack_id("../evil")
-
-    def test_scaffold_with_requirement_and_issue(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            os.makedirs(os.path.join(tmp, "environments"))
-            target = Path(
-                NP.scaffold_pack(
-                    tmp, "cov-pack", "Cov", "desc", "ASP-0001", 42
-                )
-            )
-            pack = yaml.safe_load((target / "pack.yaml").read_text(encoding="utf-8"))
-            compatibility = yaml.safe_load(
-                (target / "pack.compatibility.yaml").read_text(encoding="utf-8")
-            )
-            readme = (target / "README.md").read_text(encoding="utf-8")
-            self.assertEqual(pack["requirement"], "ASP-0001")
-            self.assertEqual(
-                compatibility["pack"]["source"]["requirement"],
-                "ASP-0001",
-            )
-            self.assertIn("Created from GitHub issue #42.", readme)
-
-    def test_main(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            os.makedirs(os.path.join(tmp, ".git"))
-            os.makedirs(os.path.join(tmp, "environments"))
-            with redirect_stdout(io.StringIO()):
-                rc = NP.main(["cov-pack", "--repo", tmp])
-            self.assertEqual(rc, 0)
+    Uses the ``product-integration`` route so the pack ships the compatibility
+    manifest the release gate needs, mirroring what the old whole-template
+    scaffold produced. The wizard's own behaviour is covered in test_wizard.py.
+    """
+    environments = os.path.join(tmp, "environments")
+    os.makedirs(environments, exist_ok=True)
+    inputs = WIZ.normalize_inputs({
+        "version": WIZ.WIZARD_INPUT_VERSION,
+        "pack_id": "cov-pack",
+        "route": "product-integration",
+        "answers": {"title": "Cov Pack", "description": "one line"},
+    })
+    proposal = WIZ.build_proposal(inputs)
+    return WIZ.write_proposal(proposal, environments)
 
 
 def _add_pack_gates(pack: str) -> None:
