@@ -90,3 +90,30 @@ from raes_env_packs import (
 RAES owns the identity model; this package resolves the pack's files and hands
 the bytes to RAES. See the [pack reference](environment-packs.md#content-identity)
 for how identity, trust, and scenario meaning stay separate claims.
+
+## Reading one artifact's bytes
+
+Once a pack validates, a consumer can turn a single associated-artifact id into
+its bytes plus a canonical identity — without re-implementing URI parsing,
+inventory, or checksums:
+
+```python
+from raes_env_packs import resolve_pack_artifact
+
+resolved = resolve_pack_artifact(pack_root, "artifact-2")
+resolved.data              # the artifact's immutable, digest-verified bytes
+resolved.identity          # canonical RAES ArtifactIdentity
+resolved.identity.digest   # "sha256:…", provably the identity of resolved.data
+```
+
+`resolve_pack_artifact` accepts either an opaque artifact id or the upstream
+associated-artifact descriptor (which must match its manifest entry — it cannot
+override the recorded uri, size, checksum, or media type). It opens the selected
+file once, binds its bytes against the validated manifest, and returns them with
+the identity `version` fixed to the pack version — so consumers never choose the
+version rule locally. It resolves nothing over the network and never falls back
+to an ambient path; failures raise `PackDigestError`.
+
+This is the post-validation byte-open step, not a replacement for it: keep
+running `validate_pack()` / `validate_pack_content_manifest()` first, and supply
+an immutably staged pack root.

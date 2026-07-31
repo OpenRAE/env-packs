@@ -38,6 +38,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0030](0030-separate-public-and-developer-documentation.md) | Separate public and developer documentation | Accepted |
 | [0031](0031-compose-beginner-safe-pack-checks-from-existing-authorities.md) | Compose beginner-safe pack checks from existing authorities | Accepted |
 | [0032](0032-derive-catalog-projection-from-existing-authorities.md) | Derive one catalog projection from existing authorities | Accepted |
+| [0033](0033-resolve-pack-artifacts-through-one-bounded-open.md) | Resolve pack artifacts through one bounded open | Accepted |
 
 ```{toctree}
 :hidden:
