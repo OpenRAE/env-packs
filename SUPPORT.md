@@ -1,6 +1,6 @@
 # Support
 
-Use [GitHub issues](https://github.com/RAESystem/env-packs/issues) for bug
+Use [GitHub issues](https://github.com/OpenRAE/env-packs/issues) for bug
 reports, feature requests, and questions about the pack format or tools. This is
 a single-maintainer project with no support SLA — issues are answered
 best-effort. There is no commercial support channel.

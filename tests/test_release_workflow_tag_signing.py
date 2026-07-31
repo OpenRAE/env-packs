@@ -34,10 +34,10 @@ _UPLOAD_ARTIFACT_ACTION = (
 # wherever the repo lives now, and GitHub's transferred-repo redirect does not
 # apply to certificate-identity matching -- a stale value fails verification
 # closed and blocks releases (#142). Tags signed before the move to
-# RAESystem/env-packs still verify against the previous identity; SECURITY.md
+# OpenRAE/env-packs still verify against the previous identity; SECURITY.md
 # documents both ranges.
 _CERT_IDENTITY = (
-    "https://github.com/RAESystem/env-packs/"
+    "https://github.com/OpenRAE/env-packs/"
     ".github/workflows/release-please.yml@refs/heads/main"
 )
 _OIDC_ISSUER = "https://token.actions.githubusercontent.com"

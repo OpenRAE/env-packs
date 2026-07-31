@@ -147,7 +147,7 @@ class RepoTargetTests(unittest.TestCase):
     """The catalog repository must be named explicitly (issue #194).
 
     The skeleton creates pack-implementation issues, which belong in a catalog
-    repository. This tooling repo (``RAESystem/env-packs``) owns the pack
+    repository. This tooling repo (``OpenRAE/env-packs``) owns the pack
     format, not pack content, so it must never be a silent or explicit target.
     """
 
@@ -179,7 +179,7 @@ class RepoTargetTests(unittest.TestCase):
                     SKELETON.validate_target_selector(target), target)
 
     def test_format_tooling_repo_is_rejected_case_insensitively(self):
-        for forbidden in ("RAESystem/env-packs", "raesystem/ENV-PACKS"):
+        for forbidden in ("OpenRAE/env-packs", "openrae/ENV-PACKS"):
             with self.subTest(forbidden=forbidden):
                 with self.assertRaises(SystemExit):
                     SKELETON.validate_target_selector(forbidden)
@@ -188,24 +188,24 @@ class RepoTargetTests(unittest.TestCase):
         SKELETON.ensure_not_tooling_repo("some-org/ok")
         SKELETON.ensure_not_tooling_repo("example-org/first-party-packs")
         with self.assertRaises(SystemExit):
-            SKELETON.ensure_not_tooling_repo("RAESystem/env-packs")
+            SKELETON.ensure_not_tooling_repo("OpenRAE/env-packs")
 
     def test_example_catalog_is_a_neutral_placeholder(self):
         # Canonical tooling must stay catalog-neutral (issue #194 codex class
         # finding): the only GitHub identity it embeds is this repo's own name
         # (to reject it). The catalog example fed to help and error text must be
         # an obvious placeholder, never a concrete downstream/first-party
-        # catalog such as one under the RAESystem org.
+        # catalog such as one under the OpenRAE org.
         self.assertRegex(SKELETON.EXAMPLE_CATALOG,
                          r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
-        self.assertNotIn("raesystem", SKELETON.EXAMPLE_CATALOG.lower())
+        self.assertNotIn("openrae", SKELETON.EXAMPLE_CATALOG.lower())
 
     def test_main_rejects_locally_without_subprocess(self):
         base = ["--pack-id", "example-pack", "--milestone-number", "1"]
         with mock.patch.object(SKELETON.subprocess, "run") as run:
             for argv in (
                 base,  # missing --repo
-                base + ["--repo", "RAESystem/env-packs"],  # forbidden tooling repo
+                base + ["--repo", "OpenRAE/env-packs"],  # forbidden tooling repo
                 base + ["--repo", "notaslug"],  # malformed
             ):
                 with self.subTest(argv=argv):
@@ -217,11 +217,11 @@ class RepoTargetTests(unittest.TestCase):
         # gh resolves a redirected/renamed slug back to the tooling repo.
         resolved = mock.Mock(
             returncode=0,
-            stdout='{"nameWithOwner": "RAESystem/env-packs"}',
+            stdout='{"nameWithOwner": "OpenRAE/env-packs"}',
             stderr="",
         )
         with mock.patch.object(SKELETON.subprocess, "run", return_value=resolved):
             with self.assertRaises(SystemExit):
                 SKELETON.main(["--pack-id", "example-pack",
                                "--milestone-number", "1",
-                               "--repo", "RAESystem/old-packs-alias"])
+                               "--repo", "OpenRAE/old-packs-alias"])

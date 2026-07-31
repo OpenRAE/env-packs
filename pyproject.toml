@@ -28,8 +28,8 @@ classifiers = [
 dependencies = ["PyYAML>=6", "raes==2.0.0"]
 
 [project.urls]
-Homepage = "https://github.com/RAESystem/env-packs"
-Repository = "https://github.com/RAESystem/env-packs"
+Homepage = "https://github.com/OpenRAE/env-packs"
+Repository = "https://github.com/OpenRAE/env-packs"
 
 [project.scripts]
 raes-pack-check = "raes_env_packs.check:main"

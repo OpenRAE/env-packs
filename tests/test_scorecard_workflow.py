@@ -45,9 +45,9 @@ _APPROVED_ACTIONS = (
 # Public repo identity the OpenSSF badge/viewer endpoints are keyed on. These
 # endpoints are keyed by slug and do not follow GitHub's redirect for a
 # transferred repository, so this must track the repo's current path: after the
-# move to RAESystem/env-packs the old slug still serves a frozen pre-transfer
+# move to OpenRAE/env-packs the old slug still serves a frozen pre-transfer
 # score while new runs publish under the new one (#142).
-_REPO_SLUG = "github.com/RAESystem/env-packs"
+_REPO_SLUG = "github.com/OpenRAE/env-packs"
 
 
 def _load() -> dict:

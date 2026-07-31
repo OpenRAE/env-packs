@@ -23,7 +23,7 @@ from collections.abc import Callable
 # names the target explicitly. Canonical tooling stays catalog-neutral: it never
 # embeds a concrete downstream catalog identity, only this repository's own name
 # (to reject it) and an obvious placeholder used in help and error text.
-FORMAT_TOOLING_REPO = "RAESystem/env-packs"
+FORMAT_TOOLING_REPO = "OpenRAE/env-packs"
 EXAMPLE_CATALOG = "example-org/example-packs"
 # Minimal structural safety check for an OWNER/REPOSITORY selector. It rejects
 # URLs, query/path suffixes, extra components, whitespace, and control chars;

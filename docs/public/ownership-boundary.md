@@ -13,7 +13,7 @@ are meant to agree and be read together.
 | Concern | Owner |
 | --- | --- |
 | Portable scenario, workflow, capture, evidence, and inventory semantics | RAES |
-| Environment-pack format, templates, schemas, validation, release tooling, and adoption guidance | `RAESystem/env-packs` (this repository) |
+| Environment-pack format, templates, schemas, validation, release tooling, and adoption guidance | `OpenRAE/env-packs` (this repository) |
 | A particular scenario's content, experiment design, and execution choices | The downstream scenario or experiment owner |
 | Admitted-plan realization, lab lifecycle, trusted source acquisition, backend observation, and local evidence persistence | APTL |
 
@@ -29,7 +29,7 @@ format.
 
 ### This repository owns the format, not a scenario
 
-`RAESystem/env-packs` owns the environment-pack format: the layout contract,
+`OpenRAE/env-packs` owns the environment-pack format: the layout contract,
 templates, schemas, validation, release tooling, and adoption guidance. That is
 its whole scope. It does not own — and must not encode — a particular experiment
 or scenario: no pack content, no experiment design, no chosen participants,
@@ -75,4 +75,4 @@ before any side effect — not a fallback, and not a pack-supplied override.
   note it produced,
   [environment-pack capture ownership](https://github.com/Brad-Edwards/aptl/blob/main/docs/architecture/issue-589-environment-pack-capture-ownership-preflight.md).
 - The decision records for this repository's purpose and boundary live in the
-  [developer decision log](https://github.com/RAESystem/env-packs/blob/main/docs/decisions/adrs/README.md).
+  [developer decision log](https://github.com/OpenRAE/env-packs/blob/main/docs/decisions/adrs/README.md).

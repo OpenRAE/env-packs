@@ -177,7 +177,7 @@ run under enforcement -- not a setting that makes the repository unworkable.
 Recorded in [ADR 0017](0017-sign-release-tags-with-keyless-sigstore.md) rather
 than here, but reached during this work: a repository transfer changes the OIDC
 certificate identity, GitHub's redirect does not apply to identity matching, and
-a stale value fails verification closed. The move to `RAESystem/env-packs` would
+a stale value fails verification closed. The move to `OpenRAE/env-packs` would
 have blocked every subsequent release.
 
 ### 6. Documentation is published from the same locked toolchain

@@ -30,9 +30,9 @@ env:
   # Must match the repository's CURRENT path: the OIDC token's workflow ref is
   # issued for wherever the repo lives now, and GitHub's redirect for a
   # transferred repo does not apply to certificate-identity matching. After the
-  # move to RAESystem/env-packs a stale value here fails `gitsign verify-tag`
+  # move to OpenRAE/env-packs a stale value here fails `gitsign verify-tag`
   # closed, blocking every release (#142).
-  CERT_IDENTITY: https://github.com/RAESystem/env-packs/.github/workflows/release-please.yml@refs/heads/main
+  CERT_IDENTITY: https://github.com/OpenRAE/env-packs/.github/workflows/release-please.yml@refs/heads/main
   CERT_OIDC_ISSUER: https://token.actions.githubusercontent.com
   GITSIGN_VERSION_FLOOR: "0.15.0"
   # gitsign 0.16.1 cannot verify the Rekor entry it embeds in a newly signed

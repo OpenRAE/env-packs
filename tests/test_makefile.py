@@ -231,7 +231,7 @@ class MakefileStaticTests(unittest.TestCase):
         # gh resolves the repository from the checkout (or the operator's GH_REPO).
         # A literal would break on a fork and went stale once already when this
         # repository was transferred.
-        self.assertNotIn("RAESystem/", self.text)
+        self.assertNotIn("OpenRAE/", self.text)
         self.assertNotIn("Brad-Edwards/", self.text)
 
 

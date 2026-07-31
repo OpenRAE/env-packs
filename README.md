@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/raes-env-packs)](https://pypi.org/project/raes-env-packs/)
 [![Documentation](https://app.readthedocs.org/projects/env-packs/badge/?version=latest)](https://env-packs.readthedocs.io/en/latest/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/RAESystem/env-packs/badge)](https://scorecard.dev/viewer/?uri=github.com/RAESystem/env-packs)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/OpenRAE/env-packs/badge)](https://scorecard.dev/viewer/?uri=github.com/OpenRAE/env-packs)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13833/badge)](https://www.bestpractices.dev/projects/13833)
 
 RAES environment packs give a scenario a standard shape. This package defines that
@@ -85,7 +85,7 @@ Full documentation is on [Read the Docs](https://env-packs.readthedocs.io/en/lat
 
 This project defines the pack format and the tools that check it. It does **not**
 host packs, run a scenario, or define scenario meaning — the RAES scenario
-language and its semantics belong to [RAES](https://github.com/RAESystem/rae), and
+language and its semantics belong to [RAES](https://github.com/OpenRAE/rae), and
 this project consumes them from an exactly pinned `raes` release. It is a
 single-maintainer project with no support SLA. See the
 [limitations](https://env-packs.readthedocs.io/en/latest/limitations.html) for the

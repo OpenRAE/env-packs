@@ -8,7 +8,7 @@
   [ADR 0013](0013-separate-consumer-static-validation-from-author-ci.md),
   [ADR 0028](0028-project-raes-artifact-satisfaction-into-publication.md), and
   [ADR 0031](0031-compose-beginner-safe-pack-checks-from-existing-authorities.md)
-- Coordination: RAESystem/env-packs issue 188 and RAESystem/hub issue 4
+- Coordination: OpenRAE/env-packs issue 188 and OpenRAE/hub issue 4
 
 ## Context
 

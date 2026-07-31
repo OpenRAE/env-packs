@@ -71,7 +71,7 @@ class OwnershipBoundaryDocTests(unittest.TestCase):
         self.assertTrue(_DOC.is_file(), "docs/public/ownership-boundary.md must exist (#138)")
 
     def test_names_four_distinct_owners(self) -> None:
-        for owner in ("RAES", "RAESystem/env-packs", "APTL"):
+        for owner in ("RAES", "OpenRAE/env-packs", "APTL"):
             with self.subTest(owner=owner):
                 self.assertIn(owner, self.text, f"the boundary must name {owner}")
         self.assertIn(

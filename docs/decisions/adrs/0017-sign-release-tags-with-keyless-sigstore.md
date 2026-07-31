@@ -106,7 +106,7 @@ signature and the signer policy before any GitHub Release creation, PyPI
 publication, or artifact upload. The accepted identity is:
 
 ```text
-certificate identity: https://github.com/RAESystem/env-packs/.github/workflows/release-please.yml@refs/heads/main
+certificate identity: https://github.com/OpenRAE/env-packs/.github/workflows/release-please.yml@refs/heads/main
 OIDC issuer:          https://token.actions.githubusercontent.com
 ```
 
@@ -114,7 +114,7 @@ The identity is bound to the repository's path at signing time. A repository
 transfer therefore changes it: the OIDC token's workflow ref is issued for the
 repository's current location, and GitHub's redirect for a moved repository does
 not extend to certificate-identity matching. When this repository moved to
-`RAESystem/env-packs`, a stale value would have failed `gitsign verify-tag`
+`OpenRAE/env-packs`, a stale value would have failed `gitsign verify-tag`
 closed and blocked every subsequent release (#142).
 
 Tags signed before that move remain valid under the previous identity:
@@ -189,7 +189,7 @@ run:
 ```sh
 git fetch --tags origin
 gitsign verify-tag \
-  --certificate-identity=https://github.com/RAESystem/env-packs/.github/workflows/release-please.yml@refs/heads/main \
+  --certificate-identity=https://github.com/OpenRAE/env-packs/.github/workflows/release-please.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
   vX.Y.Z
 ```
