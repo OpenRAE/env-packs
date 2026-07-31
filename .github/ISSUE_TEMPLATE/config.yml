@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability
-    url: https://github.com/RAESystem/env-packs/security/advisories/new
+    url: https://github.com/OpenRAE/env-packs/security/advisories/new
     about: Do not open a public issue for a vulnerability. Report it privately.
   - name: Question or support
-    url: https://github.com/RAESystem/env-packs/blob/main/SUPPORT.md
+    url: https://github.com/OpenRAE/env-packs/blob/main/SUPPORT.md
     about: How to ask a question or get help.

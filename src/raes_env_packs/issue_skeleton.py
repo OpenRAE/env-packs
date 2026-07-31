@@ -23,7 +23,7 @@ from collections.abc import Callable
 # names the target explicitly. Canonical tooling stays catalog-neutral: it never
 # embeds a concrete downstream catalog identity, only this repository's own name
 # (to reject it) and an obvious placeholder used in help and error text.
-FORMAT_TOOLING_REPO = "RAESystem/env-packs"
+FORMAT_TOOLING_REPO = "OpenRAE/env-packs"
 EXAMPLE_CATALOG = "example-org/example-packs"
 # Minimal structural safety check for an OWNER/REPOSITORY selector. It rejects
 # URLs, query/path suffixes, extra components, whitespace, and control chars;
@@ -80,8 +80,10 @@ COMMON_ANCHORS = """\
 ## Contract Anchors
 - The bundled layout contract (`contract/pack-layout.md` in the `raes-env-packs` package): authoritative
   environment-pack convention and milestone structure.
-- The bundled template (copied by `raes-new-pack`): build doctrine - offensive by default, one full scenario per
-  pack, no stubs or hand-waved services, and `golden` only after participant-equivalent proof.
+- The progressive scaffold wizard (`raes-pack-new`): generates only the files a pack's goal needs, previews them,
+  and validates with the same static check consumers run. Keep the scenario domain-neutral unless the chosen
+  starter route requires otherwise; one full scenario per pack, no stubs or hand-waved services, and `golden`
+  only after participant-equivalent proof.
 - `docs/public/environment-packs.md`: pack metadata, provenance ledger, compatibility manifest, RAES
   participant behavior, profile bundles, and release boundaries.
 - `docs/public/golden-readiness.md`: isolated golden infrastructure, automated rehearsal, final manual
@@ -186,7 +188,7 @@ def contract_body(plan: PackPlan) -> str:
     {COMMON_ANCHORS}
     ## Deliverables
     - Set `pack.yaml.requirement` to your upstream requirement id if you track one, or `null`; do not synthesize a UID.
-    - Scaffold `environments/{plan.pack_id}/` from the bundled template with `raes-new-pack`.
+    - Scaffold `environments/{plan.pack_id}/` with the progressive wizard `raes-pack-new` (pick a starter route).
     - Fill `pack.yaml`, `pack.compatibility.yaml`, and `docs/provenance-ledger.yaml` with truthful initial metadata.
     - Replace template prose in `README.md`, `docs/concepts.md`, `docs/attack-path.md`, and `docs/lineage.md`.
     - Record source adaptation decisions: what is used, excluded, changed, or locally designed.

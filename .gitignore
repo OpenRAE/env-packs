@@ -10,6 +10,14 @@ build/
 _build/
 .DS_Store
 
+# The environment-pack template ships a build/ reference directory as content,
+# not a build artifact, so keep it tracked despite the build/ rule above.
+!/src/raes_env_packs/resources/template/build/
+!/src/raes_env_packs/resources/template/build/**
+
 # Ground Control operational artifacts (not workflow state)
 .gc/sonar/
 .gc/telemetry/
+
+# Codex agent scratch directory (local tooling, not repository content)
+.codex/

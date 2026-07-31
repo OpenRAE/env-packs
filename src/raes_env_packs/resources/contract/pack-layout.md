@@ -61,9 +61,10 @@ environments/<name>/
   profiles/       # delivery/audience bundles (guided, unguided, purple, …)
 ```
 
-A scaffold of this layout, with annotated placeholders, ships in the package
-[`template/`](../template/); run `raes-new-pack <id>` to copy it into your
-catalog and start a new pack.
+The annotated reference layout ships in the package
+[`template/`](../template/). Run the progressive wizard `raes-pack-new <id>` to
+scaffold a new pack: it generates only the files your goal needs, previews them,
+and validates the result with the same static check consumers run.
 
 ### Pack metadata (`pack.yaml`)
 
@@ -772,4 +773,4 @@ runtime engines. `pack.yaml` records what the pack *is* for the catalog and for
 humans. `pack.compatibility.yaml` tells a consumer what the pack exposes and
 requires, but it still does not build, resolve, score, observe, or run the pack.
 
-[raes]: https://github.com/RAESystem/rae
+[raes]: https://github.com/OpenRAE/rae

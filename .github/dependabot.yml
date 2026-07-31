@@ -61,7 +61,7 @@ updates:
       # raes-z3-finite-domain/v1 profile fixes package_version 4.16.0.0 /
       # engine_version 4.16.0 in SolverConfigurationModel, in the published
       # scenario-satisfiability-evidence-v1 schema, and in its fixtures, so
-      # formal satisfiability evidence stays reproducible. RAESystem/rae ignores
+      # formal satisfiability evidence stays reproducible. OpenRAE/rae ignores
       # it for that reason after automated bumps broke it twice (rae#856,
       # rae#872); re-pinning the profile is a deliberate change with evidence to
       # regenerate, not Dependabot's call.

@@ -8,7 +8,7 @@ pack:
     requirement: EXR-0001
     issues: [44]
     upstream_references:
-      - https://github.com/RAESystem/env-packs/issues/44
+      - https://github.com/OpenRAE/env-packs/issues/44
 
 artifact_boundaries:
   participant_visible:

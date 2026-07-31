@@ -32,12 +32,12 @@ verification bypass) per the
 ```sh
 git fetch --tags origin
 gitsign verify-tag \
-  --certificate-identity=https://github.com/RAESystem/env-packs/.github/workflows/release-please.yml@refs/heads/main \
+  --certificate-identity=https://github.com/OpenRAE/env-packs/.github/workflows/release-please.yml@refs/heads/main \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
   vX.Y.Z
 ```
 
-**Tags signed before the repository moved to `RAESystem/env-packs`** carry the
+**Tags signed before the repository moved to `OpenRAE/env-packs`** carry the
 signer identity of its previous path. The signing certificate records the
 repository the workflow ran in at the time, and that is not rewritten by a
 transfer, so verifying an older tag needs the older identity:

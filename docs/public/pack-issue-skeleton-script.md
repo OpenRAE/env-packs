@@ -13,7 +13,7 @@ the pack lives — not in this repository, which owns the pack format and releas
 tooling, not pack content ([ownership boundary](ownership-boundary.md)).
 
 Point it at your own catalog — first-party, community, or private. They all use
-the same route, with no default and no privileged path, and `RAESystem/env-packs`
+the same route, with no default and no privileged path, and `OpenRAE/env-packs`
 (this tooling repository) is rejected as a target. The examples below use
 `example-org/example-packs` as a placeholder; substitute your catalog.
 

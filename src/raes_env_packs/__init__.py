@@ -10,8 +10,10 @@ from importlib.metadata import version
 
 from .digest import (
     PackDigestError,
+    ResolvedPackArtifact,
     derive_pack_content_manifest,
     pack_content_digest,
+    resolve_pack_artifact,
     validate_pack_content_manifest,
     verify_pack_content_digest,
 )
@@ -31,9 +33,11 @@ __all__ = [
     "Diagnostic",
     "PackDigestError",
     "PackValidationLimits",
+    "ResolvedPackArtifact",
     "ValidationResult",
     "derive_pack_content_manifest",
     "pack_content_digest",
+    "resolve_pack_artifact",
     "validate_pack_content_manifest",
     "validate_pack",
     "verify_pack_content_digest",

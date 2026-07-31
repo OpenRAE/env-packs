@@ -15,7 +15,7 @@ from unittest import mock
 import yaml
 
 from raes_env_packs import check as _check
-from raes_env_packs import new_pack as _new_pack
+from raes_env_packs import wizard as _wizard
 from raes_env_packs.validation import ValidationResult, validate_pack
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +62,8 @@ _KNOWN_CODES = (
     "compatibility.missing",
     "compatibility.type",
     "compatibility.boundary-overlap",
+    "compatibility.asset.missing",
+    "publication.identity-mismatch",
     "sdl.missing",
     "sdl.invalid",
     "sdl.invalid-utf8",
@@ -373,18 +375,14 @@ class QuickstartPackTests(unittest.TestCase):
     def _scaffold_quickstart(self, tmp: Path) -> Path:
         (tmp / "environments").mkdir()
         (tmp / ".git").mkdir()
-        target = Path(
-            _new_pack.scaffold_pack(
-                str(tmp), "example-pack", "Example Pack", "one line", None, None
-            )
-        )
-        # Fill the two things only the author knows, exactly as the quickstart does.
-        (target / "sdl" / "example.sdl.yaml").write_text(_VALID_SDL, encoding="utf-8")
-        ledger_path = target / "docs" / "provenance-ledger.yaml"
-        ledger = _load(ledger_path)
-        ledger["pack"] = {"name": "example-pack"}
-        _dump(ledger_path, ledger)
-        return target
+        # The wizard produces a valid minimal pack directly — no author fill-in.
+        inputs = _wizard.normalize_inputs({
+            "version": _wizard.WIZARD_INPUT_VERSION,
+            "pack_id": "example-pack",
+            "route": "minimal",
+        })
+        proposal = _wizard.build_proposal(inputs)
+        return Path(_wizard.write_proposal(proposal, str(tmp / "environments")))
 
     def test_scaffolded_quickstart_pack_passes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -395,7 +393,7 @@ class QuickstartPackTests(unittest.TestCase):
     def test_scaffolded_quickstart_pack_breaks_are_reported(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             target = self._scaffold_quickstart(Path(tmp))
-            (target / "sdl" / "example.sdl.yaml").unlink()
+            (target / "sdl" / "example-pack.sdl.yaml").unlink()
             code, _out, _err = _run(str(target), "--json")
             self.assertEqual(code, _check.EXIT_BLOCKING)
 

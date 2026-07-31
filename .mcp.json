@@ -7,7 +7,7 @@
       ],
       "env": {
         "GC_BASE_URL": "http://red-dragon:8000",
-        "GH_REPO": "RAESystem/env-packs"
+        "GH_REPO": "OpenRAE/env-packs"
       }
     }
   }

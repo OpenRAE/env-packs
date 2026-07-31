@@ -30,7 +30,6 @@ import yaml
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PKG = os.path.join(os.path.dirname(_HERE), "src", "raes_env_packs")
 _CI_PATH = os.path.join(_PKG, "content_ci.py")
-_SCAFFOLD_PATH = os.path.join(_PKG, "new_pack.py")
 
 
 def _load_module():
@@ -42,18 +41,6 @@ def _load_module():
 
 
 CI = _load_module()
-
-
-def _load_scaffold_module():
-    spec = importlib.util.spec_from_file_location(
-        "new_environment_pack_undertest", _SCAFFOLD_PATH)
-    mod = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(mod)
-    return mod
-
-
-SCAFFOLD = _load_scaffold_module()
 
 # Representative operator tokens that must never reach a participant surface.
 TOKEN_EXAMPLES = [
@@ -481,17 +468,6 @@ class AuthorCiDiscoveryFlowTest(unittest.TestCase):
         self.assertIn("PACK-ROOT DISCOVERY FAILED", output.getvalue())
 
 
-class NewScenarioPackScaffoldTest(unittest.TestCase):
-    def test_repo_root_accepts_gitfile_worktree_checkout(self):
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp)
-        os.makedirs(os.path.join(tmp, "environments"), exist_ok=True)
-        with open(os.path.join(tmp, ".git"), "w", encoding="utf-8") as fh:
-            fh.write("gitdir: /tmp/example.git/worktrees/example\n")
-
-        self.assertEqual(SCAFFOLD.repo_root(tmp), tmp)
-
-
 class GoldenChecklistGateTest(unittest.TestCase):
     def _with_pack(self, checklist_body: str | None):
         tmp = tempfile.mkdtemp()
@@ -736,68 +712,6 @@ class CompatibilityManifestGateTest(unittest.TestCase):
                 self.assertEqual(
                     row.get("validation", [{}])[0].get("path"),
                     "profiles/validate_profiles.py")
-
-
-class NewScenarioPackScriptTest(unittest.TestCase):
-    def _temp_repo(self):
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp)
-        os.makedirs(os.path.join(tmp, ".git"))
-        template = os.path.join(tmp, "environments", "_template")
-        os.makedirs(os.path.join(template, "docs"), exist_ok=True)
-        with open(os.path.join(template, "README.md"), "w", encoding="utf-8") as fh:
-            fh.write("# `<name>` -- environment pack\n")
-        with open(os.path.join(template, "pack.yaml"), "w", encoding="utf-8") as fh:
-            fh.write("\n".join([
-                "name: <name>",
-                'title: "Human-readable title"',
-                'description: "One line: what the scenario is and what the player does."',
-                "requirement: null",
-            ]))
-        with open(os.path.join(template, "pack.compatibility.yaml"), "w",
-                  encoding="utf-8") as fh:
-            fh.write("\n".join([
-                "pack:",
-                "  name: <name>",
-                '  title: "Human-readable title"',
-                "  source:",
-                "    requirement: null",
-            ]))
-        with open(os.path.join(template, "docs", "golden-readiness-checklist.md"),
-                  "w", encoding="utf-8") as fh:
-            fh.write("# Golden Readiness Checklist\n")
-        return tmp
-
-    def test_scaffold_rejects_non_kebab_pack_id(self):
-        with self.assertRaises(SystemExit):
-            SCAFFOLD.validate_pack_id("../bad")
-
-    def test_scaffold_copies_template_and_patches_identity(self):
-        repo = self._temp_repo()
-        target = SCAFFOLD.scaffold_pack(
-            repo,
-            "test-scenario",
-            "Test Scenario",
-            "A test scenario.",
-            "TST-0001",
-            123,
-        )
-
-        self.assertTrue(os.path.isdir(target))
-        with open(os.path.join(target, "pack.yaml"), encoding="utf-8") as fh:
-            pack = fh.read()
-        with open(os.path.join(target, "pack.compatibility.yaml"), encoding="utf-8") as fh:
-            compatibility = fh.read()
-        with open(os.path.join(target, "README.md"), encoding="utf-8") as fh:
-            readme = fh.read()
-        self.assertIn("name: test-scenario", pack)
-        self.assertIn('title: "Test Scenario"', pack)
-        self.assertIn("requirement: TST-0001", pack)
-        self.assertIn("name: test-scenario", compatibility)
-        self.assertIn("requirement: TST-0001", compatibility)
-        self.assertIn("Created from GitHub issue #123", readme)
-        self.assertTrue(os.path.isfile(os.path.join(
-            target, "docs", "golden-readiness-checklist.md")))
 
 
 def _valid_ledger(name: str = "testpack") -> dict:
