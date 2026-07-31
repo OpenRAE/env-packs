@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import io
 import os
 import re
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO, cast
 from urllib.parse import quote, unquote_to_bytes, urlsplit
@@ -27,11 +29,16 @@ from raes_contracts.associated_artifacts import (
     load_associated_artifact_manifest_json,
     validate_associated_artifact_manifest,
 )
-from raes_contracts.contracts import AssociatedArtifactManifestModel
+from raes_contracts.contracts import (
+    AssociatedArtifactManifestModel,
+    ExperimentArtifactRefModel,
+)
 from raes_contracts.diagnostics import Diagnostic
-from raes import SDLError, parse_sdl_file
+from raes import SDLError, parse_sdl, parse_sdl_file
+from raes.artifact_requirements import ArtifactIdentity
 
 from . import _pack_fs
+from .validation import PackValidationLimits
 
 _MANIFEST_POINTER = "associated_artifact_manifest"
 _PACK_MANIFEST = "pack.yaml"
@@ -111,12 +118,12 @@ def _is_cache_path(parts: tuple[str, ...]) -> bool:
     return parts[:len(_CACHE_PREFIX)] == _CACHE_PREFIX
 
 
-def _inventory(root_fd: int, excluded: str) -> tuple[str, ...]:
+def _inventory(root_fd: int, excluded: str, *, max_members: int | None = None) -> tuple[str, ...]:
     """Return the bounded exact payload inventory below an opened pack root."""
 
     return _pack_fs.inventory(
         root_fd,
-        max_members=_MAX_PACK_MEMBERS,
+        max_members=_MAX_PACK_MEMBERS if max_members is None else max_members,
         excluded_paths=frozenset({excluded}),
         excluded_prefixes=(_CACHE_PREFIX,),
         error_type=PackDigestError,
@@ -201,12 +208,16 @@ def _pack_uri_to_rel(uri: str, excluded: str) -> str:
     return rel
 
 
-def _load_pack_metadata(root_fd: int) -> tuple[str, str, str]:
+def _load_pack_metadata(root_fd: int, *, max_bytes: int | None = None) -> tuple[str, str, str]:
     """Load the pack identity and associated-artifact manifest pointer."""
 
     try:
         payload = yaml.safe_load(
-            _read_member_bytes(root_fd, _PACK_MANIFEST, max_bytes=_MAX_PACK_YAML_BYTES).decode("utf-8")
+            _read_member_bytes(
+                root_fd,
+                _PACK_MANIFEST,
+                max_bytes=_MAX_PACK_YAML_BYTES if max_bytes is None else max_bytes,
+            ).decode("utf-8")
         )
     except (UnicodeDecodeError, yaml.YAMLError) as exc:
         raise PackDigestError("pack.yaml is not valid UTF-8 YAML") from exc
@@ -222,12 +233,18 @@ def _load_pack_metadata(root_fd: int) -> tuple[str, str, str]:
     return name, str(version), _normalize_relpath(pointer)
 
 
-def _load_manifest(root_fd: int, manifest_rel: str) -> AssociatedArtifactManifestModel:
+def _load_manifest(
+    root_fd: int, manifest_rel: str, *, max_bytes: int | None = None
+) -> AssociatedArtifactManifestModel:
     """Load a bounded manifest through RAES's strict JSON parser."""
 
     try:
         return load_associated_artifact_manifest_json(
-            _read_member_bytes(root_fd, manifest_rel, max_bytes=_MAX_MANIFEST_BYTES)
+            _read_member_bytes(
+                root_fd,
+                manifest_rel,
+                max_bytes=_MAX_MANIFEST_BYTES if max_bytes is None else max_bytes,
+            )
         )
     except PackDigestError:
         raise
@@ -317,19 +334,34 @@ def _validate_with_parent_candidates(
 
 
 @contextmanager
-def _pack_context(pack_root: str | os.PathLike[str]) -> Iterator[_PackContext]:
-    """Open and validate pack-owned projection data for one identity operation."""
+def _pack_context(
+    pack_root: str | os.PathLike[str],
+    *,
+    limits: PackValidationLimits | None = None,
+    defer_parents: bool = False,
+) -> Iterator[_PackContext]:
+    """Open and validate pack-owned projection data for one identity operation.
 
+    When ``limits`` is ``None`` (the authoring callers) the historical module
+    constants govern pack metadata, member count, and SDL bounds unchanged; a
+    supplied ``PackValidationLimits`` overrides them for the consumer boundary.
+    ``defer_parents`` yields ``candidates=None`` and leaves direct-SDL-parent
+    parsing to the caller — the consumer boundary defers it so the selected
+    payload is materialized exactly once and reused when it is itself a parent.
+    """
+
+    metadata_kwargs = {} if limits is None else {"max_bytes": limits.max_metadata_bytes}
+    inventory_kwargs = {} if limits is None else {"max_members": limits.max_members}
     root, root_fd = _open_root(pack_root)
     try:
-        name, version, manifest_rel = _load_pack_metadata(root_fd)
+        name, version, manifest_rel = _load_pack_metadata(root_fd, **metadata_kwargs)
         manifest = _load_manifest(root_fd, manifest_rel)
         _validate_pack_manifest_identity(manifest, name, version)
-        inventory = _inventory(root_fd, manifest_rel)
+        inventory = _inventory(root_fd, manifest_rel, **inventory_kwargs)
         paths = _artifact_paths(manifest, manifest_rel)
         if set(paths.values()) != set(inventory):
             raise PackDigestError("associated artifact manifest does not cover the exact pack inventory")
-        candidates = _parse_parent_candidates(root, inventory)
+        candidates = None if defer_parents else _parse_parent_candidates(root, inventory)
         yield root_fd, manifest_rel, manifest, inventory, paths, candidates
     finally:
         os.close(root_fd)
@@ -417,10 +449,272 @@ def verify_pack_content_digest(pack_root: str | os.PathLike[str], expected_diges
     return hmac.compare_digest(pack_content_digest(pack_root), expected_digest)
 
 
+# --- Public consumer artifact resolver (issue #208, ADR 0033) ---
+
+# Upstream binding-presence codes are emitted when a manifest artifact has no
+# supplied reader. Parent selection runs with no readers on purpose, so these
+# are the expected, filtered-out noise for that pass.
+_PRESENCE_CODES = frozenset(
+    {
+        "associated-artifact.payload-binding-missing",
+        "associated-artifact.payload-binding-unexpected",
+    }
+)
+
+
+@dataclass(frozen=True)
+class ResolvedPackArtifact(object):
+    """One resolved pack artifact: verified immutable bytes plus RAES identity.
+
+    ``identity`` is the canonical upstream ``ArtifactIdentity``; ``data`` is the
+    artifact's payload, already byte-bound against the validated manifest, so its
+    ``sha256:`` identity digest is provably the identity of these exact bytes.
+    """
+
+    identity: ArtifactIdentity
+    data: bytes
+
+
+def _consumer_parent_candidates(
+    root_fd: int,
+    inventory: tuple[str, ...],
+    limits: PackValidationLimits,
+    *,
+    selected_rel: str | None = None,
+    selected_bytes: bytes | None = None,
+) -> tuple[object, ...]:
+    """Parse direct SDL parents from bounded descriptor bytes, imports denied.
+
+    The consumer boundary reads each ``sdl/*.sdl.yaml`` through the descriptor-
+    anchored, size-bounded member reader and parses it with the public RAES
+    ``parse_sdl`` (which denies file-backed imports), never the pathname-based
+    author parser. When the selected artifact is itself a parent document, its
+    already-materialized bytes are reused so the selected payload is opened
+    exactly once (ADR 0033).
+    """
+
+    sdl_docs = [
+        rel
+        for rel in inventory
+        if rel.startswith("sdl/") and rel.count("/") == 1 and rel.endswith(".sdl.yaml")
+    ]
+    if not sdl_docs:
+        raise PackDigestError("pack has no direct SDL parent document")
+    candidates: list[object] = []
+    for rel in sdl_docs:
+        if rel == selected_rel and selected_bytes is not None:
+            raw = selected_bytes
+        else:
+            raw = _read_member_bytes(root_fd, rel, max_bytes=limits.max_sdl_bytes)
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise PackDigestError("pack SDL parent is not valid UTF-8") from exc
+        try:
+            candidates.append(parse_sdl(text, limits=limits.sdl))
+        except SDLError as exc:
+            raise PackDigestError("pack SDL parent is invalid") from exc
+    return tuple(candidates)
+
+
+def _resolve_selector(
+    manifest: AssociatedArtifactManifestModel, artifact: object
+) -> tuple[str, ExperimentArtifactRefModel]:
+    """Resolve an opaque id or descriptor to one manifest-bound artifact entry.
+
+    A supplied descriptor must equal the manifest entry its id selects; it is not
+    an alternative source of URI, size, checksum, or media-type claims.
+    """
+
+    if isinstance(artifact, ExperimentArtifactRefModel):
+        artifact_id = artifact.artifact_id
+    elif isinstance(artifact, str):
+        artifact_id = artifact
+    else:
+        raise PackDigestError("artifact selector must be an id or associated-artifact descriptor")
+    descriptor = manifest.artifacts.get(artifact_id)
+    if descriptor is None:
+        raise PackDigestError("artifact id is not declared in the pack manifest")
+    if isinstance(artifact, ExperimentArtifactRefModel) and artifact != descriptor:
+        raise PackDigestError("supplied descriptor does not match the pack manifest entry")
+    return artifact_id, descriptor
+
+
+def _select_single_parent(
+    manifest: AssociatedArtifactManifestModel,
+    candidates: tuple[object, ...],
+    limits: AssociatedArtifactValidationLimits | None,
+) -> object:
+    """Select the one parent RAES identity-binds, reading no payload bytes.
+
+    Runs the upstream validator's parent/set verdict with an empty reader map
+    and ignores the expected binding-presence noise. Exactly one match is
+    required; no match or an ambiguous match fails closed, preserving RAES's best
+    structured diagnostics.
+    """
+
+    matched: list[object] = []
+    best: tuple[Diagnostic, ...] | None = None
+    for parent in candidates:
+        diagnostics = validate_associated_artifact_manifest(
+            manifest, parent=parent, artifact_readers={}, limits=limits
+        )
+        residual = tuple(item for item in diagnostics if item.code not in _PRESENCE_CODES)
+        if not residual:
+            matched.append(parent)
+        elif best is None or len(residual) < len(best):
+            best = residual
+    if len(matched) == 1:
+        return matched[0]
+    if not matched:
+        raise PackDigestError("associated artifact set has no matching pack parent", best or ())
+    raise PackDigestError("associated artifact set has more than one matching pack parent")
+
+
+def _materialize_member(root_fd: int, rel: str, *, max_bytes: int) -> bytes:
+    """Copy one descriptor-anchored member into bounded immutable bytes."""
+
+    fd = _open_member(root_fd, rel)
+    chunks: list[bytes] = []
+    total = 0
+    try:
+        while chunk := os.read(fd, min(_READ_CHUNK, max_bytes + 1 - total)):
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > max_bytes:
+                raise PackDigestError("artifact bytes exceed the resolver limit")
+    except OSError as exc:
+        raise PackDigestError("pack member could not be read") from exc
+    finally:
+        os.close(fd)
+    return b"".join(chunks)
+
+
+def _bind_artifact_set(
+    root_fd: int,
+    manifest: AssociatedArtifactManifestModel,
+    paths: Mapping[str, str],
+    parent: object,
+    artifact_id: str,
+    data: bytes,
+    limits: AssociatedArtifactValidationLimits | None,
+) -> None:
+    """Run one full byte-binding pass for the selected parent.
+
+    The already-materialized selected bytes are byte-bound through an in-memory
+    reader while siblings use the existing lazy descriptor readers, so the whole
+    set is validated in one pass without reopening the selected payload.
+    """
+
+    readers: dict[str, object] = {}
+    for aid, rel in paths.items():
+        readers[aid] = io.BytesIO(data) if aid == artifact_id else _DescriptorReader(root_fd, rel)
+    try:
+        diagnostics = validate_associated_artifact_manifest(
+            manifest,
+            parent=parent,
+            artifact_readers=cast(Mapping[str, BinaryIO], readers),
+            limits=limits,
+        )
+    finally:
+        for reader in readers.values():
+            reader.close()
+    if diagnostics:
+        raise PackDigestError("associated artifact manifest failed RAES byte binding", diagnostics)
+
+
+def _project_artifact_identity(
+    descriptor: ExperimentArtifactRefModel, pack_version: str
+) -> ArtifactIdentity:
+    """Project one byte-bound descriptor + pack version into the RAES identity.
+
+    env-packs owns this projection so consumers never choose the version rule
+    locally. The identity is constructed through the pinned upstream model; a
+    descriptor that cannot construct a canonical identity fails closed.
+    """
+
+    try:
+        return ArtifactIdentity(
+            artifact_id=descriptor.artifact_id,
+            version=pack_version,
+            media_type=descriptor.media_type,
+            digest=f"sha256:{descriptor.checksum.value}",
+        )
+    # pydantic ValidationError is a ValueError
+    except ValueError as exc:
+        raise PackDigestError("resolved artifact identity is not canonical") from exc
+
+
+def resolve_pack_artifact(
+    pack_root: str | os.PathLike[str],
+    artifact: str | ExperimentArtifactRefModel,
+    *,
+    limits: PackValidationLimits | None = None,
+    artifact_limits: AssociatedArtifactValidationLimits | None = None,
+) -> ResolvedPackArtifact:
+    """Resolve one associated-artifact id to verified bytes and canonical identity.
+
+    ``artifact`` is an opaque associated-artifact id or the upstream
+    ``ExperimentArtifactRefModel`` descriptor; a supplied descriptor must equal
+    the manifest entry its id selects and cannot override any of its claims. The
+    pack root must already be immutably staged and validated by the caller
+    (``validate_pack`` / ``validate_pack_content_manifest``); this is the
+    post-validation byte-open step, not a replacement for it.
+
+    One pack root descriptor is opened; the selected regular file is opened
+    exactly once within that lifetime, copied into immutable ``bytes``, and
+    byte-bound against the validated manifest, so the returned identity's
+    ``sha256:`` digest is provably the identity of the returned bytes. No
+    network, ambient path, or subprocess is used and the library does not log;
+    failures raise :class:`PackDigestError` with bounded, payload-free
+    diagnostics.
+
+    ``limits`` bounds pack metadata, member count, and SDL parsing;
+    ``artifact_limits`` bounds artifact count and the selected/total byte
+    budgets. The two policy domains stay distinct (ADR 0033).
+    """
+
+    active_limits = limits or PackValidationLimits()
+    artifact_active = artifact_limits or AssociatedArtifactValidationLimits()
+    with _pack_context(pack_root, limits=active_limits, defer_parents=True) as (
+        root_fd,
+        manifest_rel,
+        manifest,
+        inventory,
+        paths,
+        _candidates,
+    ):
+        artifact_id, descriptor = _resolve_selector(manifest, artifact)
+        # Open the selected payload exactly once; its bytes are reused for parent
+        # parsing (when the selection is itself a parent), byte binding, and the
+        # returned result.
+        if descriptor.size_bytes > artifact_active.max_artifact_bytes:
+            raise PackDigestError("artifact size exceeds the resolver limit")
+        selected_rel = paths[artifact_id]
+        data = _materialize_member(root_fd, selected_rel, max_bytes=artifact_active.max_artifact_bytes)
+        candidates = _consumer_parent_candidates(
+            root_fd,
+            inventory,
+            active_limits,
+            selected_rel=selected_rel,
+            selected_bytes=data,
+        )
+        parent = _select_single_parent(manifest, candidates, artifact_limits)
+        _bind_artifact_set(root_fd, manifest, paths, parent, artifact_id, data, artifact_limits)
+        if _inventory(root_fd, manifest_rel, max_members=active_limits.max_members) != inventory:
+            raise PackDigestError("pack file set changed during artifact resolution")
+        # pack.yaml.version is validated equal to manifest_version, so the
+        # manifest version is the authoritative pack version for the identity.
+        identity = _project_artifact_identity(descriptor, manifest.manifest_version)
+        return ResolvedPackArtifact(identity=identity, data=data)
+
+
 __all__ = [
     "PackDigestError",
+    "ResolvedPackArtifact",
     "derive_pack_content_manifest",
     "pack_content_digest",
+    "resolve_pack_artifact",
     "validate_pack_content_manifest",
     "verify_pack_content_digest",
 ]
