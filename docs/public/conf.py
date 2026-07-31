@@ -69,7 +69,7 @@ html_title = f"{project} {release}"
 # The "Edit this page" links point back into the public source root only, so a
 # reader never lands on an internal record from the published site (ADR 0030).
 html_theme_options = {
-    "source_repository": "https://github.com/RAESystem/env-packs",
+    "source_repository": "https://github.com/OpenRAE/env-packs",
     "source_branch": "main",
     "source_directory": "docs/public/",
 }

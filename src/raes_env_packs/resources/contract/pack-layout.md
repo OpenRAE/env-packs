@@ -772,4 +772,4 @@ runtime engines. `pack.yaml` records what the pack *is* for the catalog and for
 humans. `pack.compatibility.yaml` tells a consumer what the pack exposes and
 requires, but it still does not build, resolve, score, observe, or run the pack.
 
-[raes]: https://github.com/RAESystem/rae
+[raes]: https://github.com/OpenRAE/rae

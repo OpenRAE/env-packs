@@ -8,7 +8,7 @@ package.
 ## Repository Boundaries
 
 This repository is **subordinate to RAES core** (`raes` /
-`RAESystem/rae`) and exists to make authoring and shipping RAES scenarios
+`OpenRAE/rae`) and exists to make authoring and shipping RAES scenarios
 easier. It defines **zero extensions** to RAES semantics
 (see [ADR 0021](docs/decisions/adrs/0021-adopt-raes-environment-pack-identity.md)).
 

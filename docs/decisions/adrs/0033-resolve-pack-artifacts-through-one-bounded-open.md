@@ -6,7 +6,7 @@
   [ADR 0012](0012-pack-content-identity-and-trust-boundary.md),
   [ADR 0013](0013-separate-consumer-static-validation-from-author-ci.md), and
   [ADR 0031](0031-compose-beginner-safe-pack-checks-from-existing-authorities.md)
-- Coordination: RAESystem/env-packs issue 208
+- Coordination: OpenRAE/env-packs issue 208
 
 ## Context
 

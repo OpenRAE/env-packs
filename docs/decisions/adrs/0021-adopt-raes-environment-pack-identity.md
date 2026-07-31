@@ -7,10 +7,15 @@
   [ADR 0009](0009-scenario-packs-subordinate-to-aces.md),
   [ADR 0011](0011-require-pinned-aces-sdl-validation.md), and
   [ADR 0014](0014-consume-aces-concept-authority.md)
+- Amended 2026-07-31: the GitHub org was renamed `RAESystem` → `OpenRAE`. Every
+  identity reference below — including the tag-signing certificate identity
+  (ADR 0017, `SECURITY.md`) and the Scorecard slug (ADR 0018) — now tracks the
+  current `OpenRAE/env-packs` path. PyPI distribution and Python import package
+  identities are unchanged.
 
 ## Context
 
-The repository now lives at `RAESystem/env-packs`, and upstream ACES has become
+The repository now lives at `OpenRAE/env-packs`, and upstream ACES has become
 the Reproducible Agentic Environments System (RAES). The published
 `raes==1.1.0` distribution is a hard package/import cut: this repository cannot
 move to it while retaining imports from `aces_sdl` or `aces_contracts`.
@@ -19,7 +24,7 @@ Three local identities deliberately differ:
 
 | Surface | Current identity |
 |---|---|
-| GitHub repository | `RAESystem/env-packs` |
+| GitHub repository | `OpenRAE/env-packs` |
 | PyPI distribution | `raes-env-packs` |
 | Python import package | `raes_env_packs` |
 
@@ -54,7 +59,7 @@ changelog writer.
 The final old-name publication and the new-name publication both use the
 existing protected `pypi` environment and short-lived OIDC trusted publishing.
 The `raes-env-packs` PyPI project already has its trusted-publisher binding for
-`RAESystem/env-packs`, `release-please.yml`, and environment `pypi`; no API
+`OpenRAE/env-packs`, `release-please.yml`, and environment `pypi`; no API
 token or second publishing workflow is introduced.
 
 ### Pack vocabulary and RAES vocabulary stay separate
@@ -124,7 +129,7 @@ verification, build provenance, the SBOM, and PyPI OIDC.
 ### External project identities are explicit inputs
 
 The Git remote and Sigstore certificate identity already use
-`RAESystem/env-packs`. OpenSSF Scorecard derives the repository from the GitHub
+`OpenRAE/env-packs`. OpenSSF Scorecard derives the repository from the GitHub
 workflow context, so only its badge/viewer links carry the repository slug.
 
 SonarCloud stays on its existing externally bound identity: organization

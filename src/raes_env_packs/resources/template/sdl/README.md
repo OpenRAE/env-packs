@@ -22,5 +22,5 @@ documents. Parse success establishes RAES conformance and semantic consistency;
 the live reference tests and participant walkthrough demonstrate that the build
 realizes the declared behavior. See [ADR 0011][adr-0011].
 
-[raes]: https://github.com/RAESystem/rae
-[adr-0011]: https://github.com/RAESystem/env-packs/blob/main/docs/decisions/adrs/0021-adopt-raes-environment-pack-identity.md
+[raes]: https://github.com/OpenRAE/rae
+[adr-0011]: https://github.com/OpenRAE/env-packs/blob/main/docs/decisions/adrs/0021-adopt-raes-environment-pack-identity.md

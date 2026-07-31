@@ -35,7 +35,7 @@ pip install raes-env-packs
   [pack reference](environment-packs.md).
 - **Know the limits** — see [what this is and is not](limitations.md).
 - **Contribute** — start from the
-  [contributing guide](https://github.com/RAESystem/env-packs/blob/main/CONTRIBUTING.md).
+  [contributing guide](https://github.com/OpenRAE/env-packs/blob/main/CONTRIBUTING.md).
 
 ```{toctree}
 :hidden:

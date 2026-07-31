@@ -36,7 +36,7 @@ Three parties meet at a pack, and keeping their jobs separate is what makes a
 pack portable.
 
 - **RAES owns the meaning.** The scenario language (SDL), its objectives,
-  evidence, and participant behavior belong to [RAES](https://github.com/RAESystem/rae).
+  evidence, and participant behavior belong to [RAES](https://github.com/OpenRAE/rae).
   This repository consumes them from a pinned `raes` release and adds nothing to
   them.
 - **This repository owns the format.** It defines how a pack is laid out,

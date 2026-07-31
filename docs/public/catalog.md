@@ -2,7 +2,7 @@
 
 `raes-pack-catalog` renders a machine-readable catalog projection from one or
 more staged packs. A catalog stores packs; this command produces the record a
-static catalog, a browser, a search index, or [Hub](https://github.com/RAESystem/hub)
+static catalog, a browser, a search index, or [Hub](https://github.com/OpenRAE/hub)
 reads — without any of them reparsing pack YAML or RAES SDL.
 
 It is a *generated* read model. Every fact keeps its own authority, so a card
