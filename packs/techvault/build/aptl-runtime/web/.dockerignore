@@ -1,6 +1,0 @@
-node_modules
-.svelte-kit
-tests
-coverage
-.env
-*.test.ts
