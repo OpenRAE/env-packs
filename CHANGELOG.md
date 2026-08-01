@@ -11,6 +11,14 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.4.0](https://github.com/OpenRAE/env-packs/compare/v3.3.0...v3.4.0) (2026-08-01)
+
+
+### Features
+
+* add reusable infrastructure kit authoring ([#226](https://github.com/OpenRAE/env-packs/issues/226)) ([ff8149d](https://github.com/OpenRAE/env-packs/commit/ff8149da3743ed3b19616cabc0c71a5e5788da0d))
+* add TechVault example scenario pack ([#228](https://github.com/OpenRAE/env-packs/issues/228)) ([49a3d56](https://github.com/OpenRAE/env-packs/commit/49a3d56acc974c932518583e8fc0b0002917c431))
+
 ## [3.3.0](https://github.com/OpenRAE/env-packs/compare/v3.2.0...v3.3.0) (2026-08-01)
 
 
