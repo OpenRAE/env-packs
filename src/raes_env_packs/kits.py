@@ -53,7 +53,9 @@ KIT_PROPOSAL_VERSION = "raes-pack-kit-proposal/v1"
 
 _KIT_URI_SCHEME = "raes-environment-kit"
 _KIT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9.-]{0,126}[a-z0-9]$")
-_VERSION_RE = re.compile(r"^(?a:\d+)\.(?a:\d+)\.(?a:\d+)(?:[-+][0-9A-Za-z.-]+)?$")
+_VERSION_RE = re.compile(
+    r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$", re.ASCII
+)
 _SOURCE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,126}[a-z0-9]$")
 _NAMESPACE_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _MAX_SOURCE_REVISION_BYTES = 512
@@ -1054,16 +1056,18 @@ def _secret_value(value: object) -> bool:
 def _parameter_issue(release: KitRelease, key: object, value: object) -> str | None:
     """Return the stable issue code for one proposed parameter, if any."""
 
+    issue = None
     if not isinstance(key, str) or key not in release.scenario.module.parameters:
-        return "kit.parameter.unknown"
-    valid_type = isinstance(value, (str, int, float, bool))
-    finite = not isinstance(value, float) or math.isfinite(value)
-    bounded = not isinstance(value, str) or len(value.encode("utf-8")) <= 4096
-    if not valid_type or not finite or not bounded:
-        return "kit.parameter.invalid"
-    if _secret_value(value):
-        return "kit.parameter.secret"
-    return None
+        issue = "kit.parameter.unknown"
+    else:
+        valid_type = isinstance(value, (str, int, float, bool))
+        finite = not isinstance(value, float) or math.isfinite(value)
+        bounded = not isinstance(value, str) or len(value.encode("utf-8")) <= 4096
+        if not valid_type or not finite or not bounded:
+            issue = "kit.parameter.invalid"
+        elif _secret_value(value):
+            issue = "kit.parameter.secret"
+    return issue
 
 
 def _normalize_parameters(

@@ -576,16 +576,18 @@ def _ledger_secret_violations(document: object) -> list[str]:
 def _valid_materialization_parameters(parameters: object) -> bool:
     """Whether one parameter record contains only safe finite scalars."""
 
-    if not isinstance(parameters, dict):
-        return False
-    for key, value in parameters.items():
+    valid = isinstance(parameters, dict)
+    rows = parameters.items() if isinstance(parameters, dict) else []
+    for key, value in rows:
         valid_scalar = isinstance(value, (str, int, float, bool))
         finite = not isinstance(value, float) or math.isfinite(value)
         if not isinstance(key, str) or not valid_scalar or not finite:
-            return False
+            valid = False
+            break
         if _secret_value(value):
-            return False
-    return True
+            valid = False
+            break
+    return valid
 
 
 def _validate_materialization_rows(
@@ -677,14 +679,41 @@ def _validate_dependency_presence(
 def _valid_owners(owner_rows: list[object], identities: set[str]) -> bool:
     """Whether one ownership list is unique, known, and kit-bearing."""
 
-    if not owner_rows or len(owner_rows) != len(set(map(str, owner_rows))):
-        return False
+    valid = bool(owner_rows) and len(owner_rows) == len(set(map(str, owner_rows)))
     for owner in owner_rows:
-        if not isinstance(owner, str):
-            return False
-        if owner != "pack-author" and owner not in identities:
-            return False
-    return any(owner != "pack-author" for owner in owner_rows)
+        if not isinstance(owner, str) or (
+            owner != "pack-author" and owner not in identities
+        ):
+            valid = False
+            break
+    return valid and any(owner != "pack-author" for owner in owner_rows)
+
+
+def _validate_file_row(
+    item: dict[str, object],
+    index: int,
+    paths: set[str],
+    artifact_ids: set[str],
+    identities: set[str],
+    violations: list[str],
+) -> tuple[str | None, list[object]]:
+    """Validate and index one file-ownership ledger row."""
+
+    path = _canonical_materialization_path(item.get("path"))
+    if path is None or path in paths:
+        violations.append(f"file-path:$.files[{index}].path")
+    else:
+        paths.add(path)
+    artifact_id = item.get("artifact_id")
+    if not isinstance(artifact_id, str) or artifact_id in artifact_ids:
+        violations.append(f"artifact-id:$.files[{index}].artifact_id")
+    else:
+        artifact_ids.add(artifact_id)
+    owners = item.get("owners")
+    owner_rows = owners if isinstance(owners, list) else []
+    if not _valid_owners(owner_rows, identities):
+        violations.append(f"owners:$.files[{index}].owners")
+    return path, owner_rows
 
 
 def _validate_file_rows(
@@ -698,20 +727,9 @@ def _validate_file_rows(
     for index, item in enumerate(files):
         if not isinstance(item, dict):
             continue
-        path = _canonical_materialization_path(item.get("path"))
-        if path is None or path in paths:
-            violations.append(f"file-path:$.files[{index}].path")
-        else:
-            paths.add(path)
-        artifact_id = item.get("artifact_id")
-        if not isinstance(artifact_id, str) or artifact_id in artifact_ids:
-            violations.append(f"artifact-id:$.files[{index}].artifact_id")
-        else:
-            artifact_ids.add(artifact_id)
-        owners = item.get("owners")
-        owner_rows = owners if isinstance(owners, list) else []
-        if not _valid_owners(owner_rows, identities):
-            violations.append(f"owners:$.files[{index}].owners")
+        path, owner_rows = _validate_file_row(
+            item, index, paths, artifact_ids, identities, violations
+        )
         if path is not None:
             ownership[path] = {
                 owner for owner in owner_rows if isinstance(owner, str)
