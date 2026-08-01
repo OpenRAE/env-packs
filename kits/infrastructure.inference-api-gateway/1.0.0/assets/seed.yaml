@@ -1,0 +1,21 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.inference-api-gateway
+configuration:
+  route_name: inference
+  deployment_profile: standard
+  service_label: inference-api-gateway
+declared_objects:
+- id: model_routes
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: routing_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: request_schema
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: response_schema
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Bind routes to one or more imported model-serving services.

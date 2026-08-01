@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.search-index-service
+configuration:
+  index_name: documents
+  deployment_profile: standard
+  service_label: search-index-service
+declared_objects:
+- id: index
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: field_mapping
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: index_template
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: seed_documents
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

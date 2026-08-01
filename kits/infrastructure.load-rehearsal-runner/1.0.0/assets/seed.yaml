@@ -1,0 +1,21 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.load-rehearsal-runner
+configuration:
+  workload_profile: smoke
+  deployment_profile: standard
+  service_label: load-rehearsal-runner
+declared_objects:
+- id: target_bindings
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: workload_shape
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: rate_limits
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: result_schema
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Select imported services as bounded workload targets.

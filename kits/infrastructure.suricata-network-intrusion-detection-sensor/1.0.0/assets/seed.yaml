@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.suricata-network-intrusion-detection-sensor
+configuration:
+  ruleset_name: default
+  deployment_profile: standard
+  service_label: suricata-network-intrusion-detection-sensor
+declared_objects:
+- id: capture_interface
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: ruleset
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: event_output
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: rotation_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

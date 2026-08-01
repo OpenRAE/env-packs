@@ -847,15 +847,29 @@ def _source_release_roots(source: KitSource) -> tuple[str, ...]:
         _root, root_fd = _pack_fs.open_root(source.root, error_type=KitError)
     except (_pack_fs.PackFilesystemError, OSError) as exc:
         raise KitError("kit catalog source could not be opened safely") from exc
+    flags = _pack_fs.DescriptorFlags()
     try:
-        inventory = _pack_fs.inventory(root_fd, max_members=16_384, error_type=KitError)
+        try:
+            kits_fd = os.open(
+                "kits",
+                os.O_RDONLY | flags.directory | flags.nofollow,
+                dir_fd=root_fd,
+            )
+        except OSError as exc:
+            raise KitError("kit catalog directory could not be opened safely") from exc
+        try:
+            inventory = _pack_fs.inventory(
+                kits_fd, max_members=16_384, error_type=KitError
+            )
+        finally:
+            os.close(kits_fd)
     finally:
         os.close(root_fd)
     releases: set[str] = set()
     for rel in inventory:
         parts = rel.split("/")
-        if len(parts) == 4 and parts[0] == "kits" and parts[3] == _KIT_MANIFEST:
-            releases.add("/".join(parts[:3]))
+        if len(parts) == 3 and parts[2] == _KIT_MANIFEST:
+            releases.add("/".join(("kits", *parts[:2])))
     return tuple(sorted(releases))
 
 

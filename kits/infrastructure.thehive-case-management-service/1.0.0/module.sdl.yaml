@@ -1,0 +1,121 @@
+name: thehive-case-management-service
+version: 1.0.0
+description: Reusable static infrastructure for TheHive case-management service. Configures
+  organization_name through the kit parameter contract.
+module:
+  id: infrastructure/thehive-case-management-service
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - organization_name
+  exports:
+    nodes:
+    - case_manager
+    - storage
+    content:
+    - seed_inventory
+    accounts:
+    - case_analyst
+  description: Composable TheHive case-management service infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: thehive-case-management-service
+  organization_name:
+    type: string
+    default: operations
+nodes:
+  case_manager:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (TheHive case-management
+      service). Configuration: ${organization_name}.'
+    source:
+      name: thehive
+      version: '5'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 9000
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: case_manager_surface
+        service: http
+        protocol: http
+        name: Case Manager surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+  storage:
+    type: vm
+    description: ${deployment_profile} profile for ${service_label} (TheHive case-management
+      service).
+    source:
+      name: cassandra
+      version: '5'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 9042
+      protocol: tcp
+      name: cql
+      description: Declared cql service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: case_manager
+    description: Benign infrastructure seed inventory for ${organization_name}.
+    items:
+    - name: organization
+      display_name: Organization
+      tags:
+      - infrastructure
+      - seed
+      description: Declared organization for this reusable service.
+    - name: users
+      display_name: Users
+      tags:
+      - infrastructure
+      - seed
+      description: Declared users for this reusable service.
+    - name: case_types
+      display_name: Case Types
+      tags:
+      - infrastructure
+      - seed
+      description: Declared case types for this reusable service.
+    - name: observable_types
+      display_name: Observable Types
+      tags:
+      - infrastructure
+      - seed
+      description: Declared observable types for this reusable service.
+accounts:
+  case_analyst:
+    username: case-analyst
+    node: case_manager
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

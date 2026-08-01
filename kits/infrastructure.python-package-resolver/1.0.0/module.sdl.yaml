@@ -1,0 +1,105 @@
+name: python-package-resolver
+version: 1.0.0
+description: Reusable static infrastructure for Python package resolver. Configures
+  index_name through the kit parameter contract.
+module:
+  id: infrastructure/python-package-resolver
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - index_name
+  exports:
+    nodes:
+    - resolver
+    content:
+    - seed_inventory
+    accounts:
+    - resolver_operator
+  description: Composable Python package resolver infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: python-package-resolver
+  index_name:
+    type: string
+    default: packages
+nodes:
+  resolver:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Python package
+      resolver). Configuration: ${index_name}.'
+    source:
+      name: devpi
+      version: '6'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 3141
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: resolver_surface
+        service: http
+        protocol: http
+        name: Resolver surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: resolver
+    description: Benign infrastructure seed inventory for ${index_name}.
+    items:
+    - name: package_index
+      display_name: Package Index
+      tags:
+      - infrastructure
+      - seed
+      description: Declared package index for this reusable service.
+    - name: package_metadata
+      display_name: Package Metadata
+      tags:
+      - infrastructure
+      - seed
+      description: Declared package metadata for this reusable service.
+    - name: resolver_policy
+      display_name: Resolver Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Declared resolver policy for this reusable service.
+    - name: seed_packages
+      display_name: Seed Packages
+      tags:
+      - infrastructure
+      - seed
+      description: Declared seed packages for this reusable service.
+accounts:
+  resolver_operator:
+    username: resolver-operator
+    node: resolver
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

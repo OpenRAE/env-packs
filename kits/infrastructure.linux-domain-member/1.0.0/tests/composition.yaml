@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: linux-domain-member
+  computer_name: linux-member-01
+variation:
+  deployment_profile: compact
+  service_label: linux-domain-member-alternate
+  computer_name: linux-member-02
+multi_kit_group: identity-domain

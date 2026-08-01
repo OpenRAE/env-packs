@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.rdp-accessible-windows-host-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "rdp-accessible-windows-host",
+    "ref_version": null,
+    "ref_digest": "sha256:b7c51f10923596ef62c28c6b6db22387a1337177836e3608f9e7d717b2710041",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "6a455290ef0b1a618afb2734fd32a49da7a67e5c1eae3fdb240bfff03edd1fa1"
+      },
+      "size_bytes": 487,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.rdp-accessible-windows-host@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "230c7f3a82600237dada0765c6b83dabe189141364f38b3c239e38c13ff7b41a"
+      },
+      "size_bytes": 514,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.rdp-accessible-windows-host@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "c2ffbba9154e990939a59a353fff6935a4f04e9189adcd70ce78ae6ddb73ed64"
+      },
+      "size_bytes": 592,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.rdp-accessible-windows-host@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "190a2c9a1964f6a02419a19aa2be5b902da648a90de03863326e2c92a9162f55"
+      },
+      "size_bytes": 1712,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.rdp-accessible-windows-host@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "491508b99a492d56f504de24d31a250512b5d64ad0e75eab963e813585c6fa3c"
+      },
+      "size_bytes": 2053,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.rdp-accessible-windows-host@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "75e50d30debd4a297acae198755b1584789bf98ed947ad0cdc3b63850331b500"
+      },
+      "size_bytes": 262,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.rdp-accessible-windows-host@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:22e4b4e738ace1c9002bac226d0754aa81b8c6e2311766c13769d51908791a12"
+}

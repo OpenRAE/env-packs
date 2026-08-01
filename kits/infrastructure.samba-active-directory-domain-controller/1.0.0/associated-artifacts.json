@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.samba-active-directory-domain-controller-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "samba-active-directory-domain-controller",
+    "ref_version": null,
+    "ref_digest": "sha256:59812570d2fd0281fd732a5038fba2b9bea56031bb21aa2121330ffab628987a",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "a9f1b67e7440ad0f73843eb9f4087d05969bb266cef5d8d3e7969077c9073a44"
+      },
+      "size_bytes": 535,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.samba-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "72b141159f33701b634be18d04bf2258d23824a0ff3810efe94c51123a06ccd9"
+      },
+      "size_bytes": 671,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.samba-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "11dfbb99e4d58a3fcba03abef82be4ef02f05995d96274c2d720bd17d4002313"
+      },
+      "size_bytes": 713,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.samba-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "58760d26e771dfdf7c20c81496a356f731d116034c0774ecb7ff0fb19bb22d26"
+      },
+      "size_bytes": 1795,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.samba-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "296e3fec88829c4736fec3ce09b8229b644e0eb020feb6dd43197808a23b192a"
+      },
+      "size_bytes": 3264,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.samba-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "eb59ecb1786ec953661c73d688cf8c3783655484b336f4e0d9c93ab6a6550302"
+      },
+      "size_bytes": 313,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.samba-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:155e448158ee1bc1267365b7073531cdf6be4cd2f7d3247cd1e9ac695cad868f"
+}

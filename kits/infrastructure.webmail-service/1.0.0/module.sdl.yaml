@@ -1,0 +1,99 @@
+name: webmail-service
+version: 1.0.0
+description: Reusable static infrastructure for Webmail service. Configures site_name
+  through the kit parameter contract.
+module:
+  id: infrastructure/webmail-service
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - site_name
+  exports:
+    nodes:
+    - webmail
+    content:
+    - seed_inventory
+    accounts:
+    - webmail_user
+  description: Composable Webmail service infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: webmail-service
+  site_name:
+    type: string
+    default: mail
+nodes:
+  webmail:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Webmail service).
+      Configuration: ${site_name}.'
+    source:
+      name: roundcube
+      version: '1'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 8080
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: webmail_surface
+        service: http
+        protocol: http
+        name: Webmail surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: webmail
+    description: Benign infrastructure seed inventory for ${site_name}.
+    items:
+    - name: mail_service_binding
+      display_name: Mail Service Binding
+      tags:
+      - infrastructure
+      - seed
+      description: Declared mail service binding for this reusable service.
+    - name: oidc_binding
+      display_name: Oidc Binding
+      tags:
+      - infrastructure
+      - seed
+      description: Declared oidc binding for this reusable service.
+    - name: browser_client_profile
+      display_name: Browser Client Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Declared browser client profile for this reusable service.
+accounts:
+  webmail_user:
+    username: mail-user
+    node: webmail
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

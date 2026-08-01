@@ -1,0 +1,78 @@
+name: windows-domain-member
+version: 1.0.0
+description: Reusable static infrastructure for Windows domain member. Configures
+  computer_name through the kit parameter contract.
+module:
+  id: infrastructure/windows-domain-member
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - computer_name
+  exports:
+    nodes:
+    - domain_member
+    content:
+    - seed_inventory
+    accounts:
+    - member_operator
+  description: Composable Windows domain member infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: windows-domain-member
+  computer_name:
+    type: string
+    default: win-member-01
+nodes:
+  domain_member:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Windows domain
+      member). Configuration: ${computer_name}.'
+    source:
+      name: windows-server
+      version: '2022'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 3389
+      protocol: tcp
+      name: rdp
+      description: Declared rdp service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: domain_member
+    description: Benign infrastructure seed inventory for ${computer_name}.
+    items:
+    - name: domain_join_profile
+      display_name: Domain Join Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Declared domain join profile for this reusable service.
+    - name: local_groups
+      display_name: Local Groups
+      tags:
+      - infrastructure
+      - seed
+      description: Declared local groups for this reusable service.
+    - name: management_surface
+      display_name: Management Surface
+      tags:
+      - infrastructure
+      - seed
+      description: Declared management surface for this reusable service.
+accounts:
+  member_operator:
+    username: member-operator
+    node: domain_member
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

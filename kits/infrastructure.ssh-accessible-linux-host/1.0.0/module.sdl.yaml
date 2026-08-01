@@ -1,0 +1,78 @@
+name: ssh-accessible-linux-host
+version: 1.0.0
+description: Reusable static infrastructure for SSH-accessible Linux host. Configures
+  login_name through the kit parameter contract.
+module:
+  id: infrastructure/ssh-accessible-linux-host
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - login_name
+  exports:
+    nodes:
+    - endpoint
+    content:
+    - seed_inventory
+    accounts:
+    - endpoint_user
+  description: Composable SSH-accessible Linux host infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: ssh-accessible-linux-host
+  login_name:
+    type: string
+    default: analyst
+nodes:
+  endpoint:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (SSH-accessible
+      Linux host). Configuration: ${login_name}.'
+    source:
+      name: linux
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 22
+      protocol: tcp
+      name: ssh
+      description: Declared ssh service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: endpoint
+    description: Benign infrastructure seed inventory for ${login_name}.
+    items:
+    - name: login_account
+      display_name: Login Account
+      tags:
+      - infrastructure
+      - seed
+      description: Declared login account for this reusable service.
+    - name: authorized_access
+      display_name: Authorized Access
+      tags:
+      - infrastructure
+      - seed
+      description: Declared authorized access for this reusable service.
+    - name: shell_profile
+      display_name: Shell Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Declared shell profile for this reusable service.
+accounts:
+  endpoint_user:
+    username: ${login_name}
+    node: endpoint
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.observability-evidence-store-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "observability-evidence-store",
+    "ref_version": null,
+    "ref_digest": "sha256:f54e908982cd62f877e5c50f6f7b2810a57f696bf4dba8d8160fa686cb0cc4f0",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "0dc4d1a4bc302ca66a7bc1c5e762aac4582d741a762b78ef8f9159a8bcd0fdb8"
+      },
+      "size_bytes": 489,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.observability-evidence-store@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "c85469dfa09ce165a1a62f1b786da28a95d9ec00817122c15e8ab42280793103"
+      },
+      "size_bytes": 548,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.observability-evidence-store@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "8cf3ede59ed8a9765886f2363d0f93da37e07b3b8c09cc2d6464048480f29518"
+      },
+      "size_bytes": 671,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.observability-evidence-store@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "9956e78a48447f7b018a43fe354eeea43a6de14dbb7942299c191540ee93fd7f"
+      },
+      "size_bytes": 1921,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.observability-evidence-store@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "8c47edd9297460bad9ca6bc8f42b1db5423b8f40c727ccaa9caa15549e62b3b7"
+      },
+      "size_bytes": 3698,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.observability-evidence-store@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "34d17ae27206214d8ab12f621791a9a0037079e93c0daab1017c80b924245e8a"
+      },
+      "size_bytes": 278,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.observability-evidence-store@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:1ec614a98a1d050eb8bff70669382b83b2794e34774da99dcb4a70efa3c26f13"
+}

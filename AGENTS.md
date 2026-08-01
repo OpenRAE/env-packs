@@ -1,9 +1,9 @@
 # Agent Instructions
 
 This repository is the canonical home for the RAES environment-pack definition,
-schemas, template, and authoring/validation tooling. It does not host actual
-environment packs — those live in their own catalog repositories and consume this
-package.
+schemas, template, authoring/validation tooling, first-party infrastructure kits,
+and major example packs. Published kits live under `kits/`; example packs live
+under `packs/`.
 
 ## Repository Boundaries
 
@@ -17,7 +17,9 @@ easier. It defines **zero extensions** to RAES semantics
   concept, consume it from RAES; never redefine or extend it here.
 - This repository owns only the environment-pack layout and the
   authoring/validation/release tooling.
-- Actual environment packs live in their own catalog repos, not here.
+- First-party reusable kit releases and major example packs are published here.
+- Third-party environment packs may live in their own repositories and consume
+  this package.
 - Don't import downstream catalog names, paths, branch rules, labels, product
   assumptions, or private deployment vocabulary into the canonical docs.
 

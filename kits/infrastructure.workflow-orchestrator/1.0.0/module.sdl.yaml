@@ -1,0 +1,105 @@
+name: workflow-orchestrator
+version: 1.0.0
+description: Reusable static infrastructure for Workflow orchestrator. Configures
+  workflow_name through the kit parameter contract.
+module:
+  id: infrastructure/workflow-orchestrator
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - workflow_name
+  exports:
+    nodes:
+    - orchestrator
+    content:
+    - seed_inventory
+    accounts:
+    - workflow_operator
+  description: Composable Workflow orchestrator infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: workflow-orchestrator
+  workflow_name:
+    type: string
+    default: daily_ingest
+nodes:
+  orchestrator:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Workflow orchestrator).
+      Configuration: ${workflow_name}.'
+    source:
+      name: airflow
+      version: '3'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 8080
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: orchestrator_surface
+        service: http
+        protocol: http
+        name: Orchestrator surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: orchestrator
+    description: Benign infrastructure seed inventory for ${workflow_name}.
+    items:
+    - name: workflow
+      display_name: Workflow
+      tags:
+      - infrastructure
+      - seed
+      description: Declared workflow for this reusable service.
+    - name: jobs
+      display_name: Jobs
+      tags:
+      - infrastructure
+      - seed
+      description: Declared jobs for this reusable service.
+    - name: schedule
+      display_name: Schedule
+      tags:
+      - infrastructure
+      - seed
+      description: Declared schedule for this reusable service.
+    - name: artifact_bindings
+      display_name: Artifact Bindings
+      tags:
+      - infrastructure
+      - seed
+      description: Declared artifact bindings for this reusable service.
+accounts:
+  workflow_operator:
+    username: workflow-operator
+    node: orchestrator
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

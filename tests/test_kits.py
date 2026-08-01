@@ -333,6 +333,21 @@ class KitCatalogTests(unittest.TestCase):
         })
         self.assertNotIn("supported", json.dumps(first))
 
+    def test_catalog_discovery_is_scoped_to_the_kits_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source_root = Path(tmp) / "source"
+            release_root = source_root / "kits" / KIT_ID / KIT_VERSION
+            _write_synthetic_kit(release_root)
+            (source_root / "unrelated").mkdir()
+            (source_root / "unrelated" / "link").symlink_to(release_root)
+            source = kits.KitSource(
+                id="reference", revision="sha256:abc", root=str(source_root)
+            )
+
+            document = kits.build_kit_catalog((source,))
+
+        self.assertEqual(len(document["entries"]), 1)
+
     def test_exact_release_lookup_rejects_path_selectors_and_identity_drift(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source_root = Path(tmp) / "source"

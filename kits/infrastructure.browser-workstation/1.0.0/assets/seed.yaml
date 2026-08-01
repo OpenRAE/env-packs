@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.browser-workstation
+configuration:
+  browser_profile: managed
+  deployment_profile: standard
+  service_label: browser-workstation
+declared_objects:
+- id: browser_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: trusted_roots
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: bookmarks
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: download_workspace
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

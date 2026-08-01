@@ -1,0 +1,105 @@
+name: text-model-serving
+version: 1.0.0
+description: Reusable static infrastructure for Text-model serving. Configures model_name
+  through the kit parameter contract.
+module:
+  id: infrastructure/text-model-serving
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - model_name
+  exports:
+    nodes:
+    - model_server
+    content:
+    - seed_inventory
+    accounts:
+    - model_operator
+  description: Composable Text-model serving infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: text-model-serving
+  model_name:
+    type: string
+    default: local-text
+nodes:
+  model_server:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Text-model serving).
+      Configuration: ${model_name}.'
+    source:
+      name: vllm
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 8000
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: model_server_surface
+        service: http
+        protocol: http
+        name: Model Server surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: model_server
+    description: Benign infrastructure seed inventory for ${model_name}.
+    items:
+    - name: model_artifact
+      display_name: Model Artifact
+      tags:
+      - infrastructure
+      - seed
+      description: Declared model artifact for this reusable service.
+    - name: tokenizer
+      display_name: Tokenizer
+      tags:
+      - infrastructure
+      - seed
+      description: Declared tokenizer for this reusable service.
+    - name: generation_profile
+      display_name: Generation Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Declared generation profile for this reusable service.
+    - name: inference_route
+      display_name: Inference Route
+      tags:
+      - infrastructure
+      - seed
+      description: Declared inference route for this reusable service.
+accounts:
+  model_operator:
+    username: model-operator
+    node: model_server
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

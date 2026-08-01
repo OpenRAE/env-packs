@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.windows-active-directory-domain-controller-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "windows-active-directory-domain-controller",
+    "ref_version": null,
+    "ref_digest": "sha256:b4a32e36a27537f13145e7718cdaf6735e3eefb236b708f08aca0a1c5ee631c0",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "064ac4ce1b882d6af520f09f8dba9e2e1dea9721cdc1a1521c024acb50a993b4"
+      },
+      "size_bytes": 517,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.windows-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "bd4de73b276b8c371561662e8c74631efb1b57cee6a79034eecba95f663e2ad2"
+      },
+      "size_bytes": 662,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.windows-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d3c9d2edf199f96c3267709e3c4134ccf6d763b49b618685a6ea89f4fc12da2e"
+      },
+      "size_bytes": 717,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.windows-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "872f2814b883bb259209b371e8a76e4a3c6b849167306f5e0d4197c62480d41e"
+      },
+      "size_bytes": 1795,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.windows-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "07a3f04dffa6899ddda9cc2af653e58bc827972851fef0d0b9a7c5e7e86a6a2d"
+      },
+      "size_bytes": 3255,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.windows-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d673eeea6b27ae3f9039158542c877222e00a48a867eba5c431b388359872467"
+      },
+      "size_bytes": 317,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.windows-active-directory-domain-controller@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:7cf6112196c182f6f025e284633fe183f68ead4102052dd24df313230586ee9f"
+}

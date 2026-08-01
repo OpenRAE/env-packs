@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.observability-evidence-store
+configuration:
+  retention_profile: standard
+  deployment_profile: standard
+  service_label: observability-evidence-store
+declared_objects:
+- id: metrics_datasource
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: trace_tenant
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: dashboards
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: retention_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.
