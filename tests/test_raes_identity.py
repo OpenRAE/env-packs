@@ -77,6 +77,14 @@ _BOUND_IDENTITY_LINES = {
         f"https://sonarcloud.io/project/overview?id={_SONAR_PROJECT_KEY}",
         f"sonar.projectKey={_SONAR_PROJECT_KEY}",
     ),
+    "packs/techvault/docs/provenance-ledger.yaml": (
+        f"  - artifact_id: aptl-{_RETIRED_PREFIX}-sdl",
+    ),
+    "packs/techvault/sdl/README.md": (
+        f"from APTL's operational TechVault SDL, captured from its "
+        f"`{_RETIRED_PREFIX}-sdl` 0.23.1",
+        f"the SDL through `{_RETIRED_PREFIX}_sdl`, not a TechVault-specific adapter.",
+    ),
 }
 
 
