@@ -1,6 +1,6 @@
 # Environment pack convention
 
-**Environment-pack contract version:** `5`
+**Environment-pack contract version:** `6`
 
 This document is the authoritative layout convention every RAES environment pack
 follows. It ships inside the `raes-env-packs` package alongside the schemas,
@@ -44,7 +44,10 @@ known-good reference to check against.
 environments/<name>/
   pack.yaml       # identity + provenance metadata (name, version, authors, contents)
   pack.compatibility.yaml # optional product compatibility projection
+  kit.materializations.json # optional inert kit provenance + file ownership
   sdl/            # start state (+ injects/events/timeline)
+    raes.lock.json # RAES-owned exact module resolution, when imports are present
+    kits/          # ordinary materialized RAES modules, when kits are present
   assets/         # bespoke files/content the scenario needs
   flags/          # flag values | generator | instructions, + placement.yaml
   challenges/     # CTF questions, hints, ratings — keyed by flag id
@@ -65,6 +68,68 @@ The annotated reference layout ships in the package
 [`template/`](../template/). Run the progressive wizard `raes-pack-new <id>` to
 scaffold a new pack: it generates only the files your goal needs, previews them,
 and validates the result with the same static check consumers run.
+
+### Infrastructure kit materialization (`kit.materializations.json`)
+
+**Optional, CI-enforced when present.** Infrastructure kits are independently
+released catalog authoring units that project a RAES module and declared
+pack-local files into an existing pack. They save authors from repeatedly
+recreating common identity, endpoint, network, application, data, model-service,
+security-operations, and observability foundations.
+
+Materialization does not add a pack runtime API. The result is ordinary editable
+pack source: the target SDL imports ordinary RAES modules below `sdl/kits/`, RAES
+records exact module resolution in `sdl/raes.lock.json`, supporting files occupy
+their declared normal pack paths, and the pack's existing associated-artifact
+manifest is recomputed over the exact successor inventory. A backend consumes
+the resulting RAES scenario exactly as it consumes any other pack.
+
+`kit.materializations.json` uses
+`environment-pack-kit-materializations/v1`. Each record contains only inert
+authoring provenance and explicit mutation ownership:
+
+- exact kit id and release version;
+- immutable catalog source id and revision;
+- selected namespace and target SDL document;
+- bounded, non-secret authoring parameter values; and
+- every owned file, its owners, associated-artifact id, and post-materialization
+  baseline digest.
+
+The ledger is not a dependency lock, module descriptor, trust record, runtime
+configuration, or backend capability claim. `raes.lock.json` remains the only
+module lock. Ownership is explicit: update, replacement, and removal never infer
+ownership from a familiar path or matching bytes, and they stop when an owned
+file differs from its recorded baseline. Shared files name every owner and are
+eligible for deletion only when their final owner is removed.
+
+Canonical static pack validation enforces this optional ledger whenever it is
+present. Schema, identity/namespace agreement, exact dependency references,
+member existence, unique artifact ids, and explicit file ownership must all be
+internally consistent. Kit assets may materialize only below
+`assets/briefing/`, `assets/content/`, `assets/kits/`, or `docs/kits/`; executable
+pack surfaces such as validators, tests, hooks, and workflows are never valid
+kit destinations.
+
+The kit release manifest and generated catalog projection are separate catalog
+contracts, `environment-pack-kit/v1` and
+`environment-pack-kit-catalog/v1`. They carry pack-domain authoring facts and
+references to RAES-owned module and artifact identities; they do not copy module
+descriptors, define SDL semantics, or create another dependency graph. Every kit
+release binds its exact release inventory with the RAES associated-artifact
+contract. Component-inventory declarations cover software that the release ships
+or immutably pins at the finest available RAES/upstream granularity and mark
+external or runtime-selected scope honestly; they are inputs to release SBOM
+publication, not a replacement SBOM or attestation format.
+
+The shared authoring operation is proposal-first. Discovery and inspection are
+read-only. Preview privately stages and validates the complete successor without
+mutating the target, writing a target cache or lock, executing pack/kit code, or
+acquiring content. Add, update, replacement, and removal atomically exchange the
+complete validated successor only after a concurrent-change recheck. Parameter
+documents enter through a bounded non-argv channel; credentials, tokens, private
+keys, secret-store coordinates, environment-variable names, and other secret
+material are forbidden from kit metadata, parameters, ledgers, diagnostics, and
+machine output.
 
 ### Pack metadata (`pack.yaml`)
 

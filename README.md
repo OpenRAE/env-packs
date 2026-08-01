@@ -44,11 +44,13 @@ nodes:
 pip install raes-env-packs
 ```
 
-That installs four command-line tools and the importable library:
+That installs the command-line tools and the importable library:
 
 - `raes-pack-new` — scaffold a new pack with a progressive wizard.
 - `raes-pack-validate` — the author-CI check for a catalog checkout.
 - `raes-pack-release` — build, lint, and release-gate a pack.
+- `raes-pack-kit` — discover, inspect, preview, add, update, replace, and remove
+  reusable infrastructure kits.
 - `raes-pack-issue-skeleton` — generate a pack's starter GitHub issues.
 
 ## Validate your first pack
@@ -74,7 +76,8 @@ through it step by step.
 ## Choose your route
 
 - **Author a pack** — start with the [quickstart](https://env-packs.readthedocs.io/en/latest/quickstart.html)
-  and the [pack reference](https://env-packs.readthedocs.io/en/latest/environment-packs.html).
+  and the [pack reference](https://env-packs.readthedocs.io/en/latest/environment-packs.html),
+  then compose common infrastructure from [kits](https://env-packs.readthedocs.io/en/latest/kits.html).
 - **Consume a pack** — see [validating a pack](https://env-packs.readthedocs.io/en/latest/validating.html).
 - **Contribute** — read [CONTRIBUTING.md](CONTRIBUTING.md).
 

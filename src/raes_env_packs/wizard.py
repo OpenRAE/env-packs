@@ -22,8 +22,6 @@ the writer, and the tests all consume that single proposal.
 from __future__ import annotations
 
 import argparse
-import ctypes
-import errno
 import json
 import os
 import re
@@ -37,7 +35,7 @@ from typing import TextIO
 
 import yaml
 
-from . import _pack_fs
+from . import _pack_fs, _transactions
 from .validation import validate_pack
 
 # Versioned wire identities. Bump when the machine contract changes shape.
@@ -708,18 +706,10 @@ def machine_document(proposal: Proposal) -> dict[str, object]:
 def _write_member(pack_root: Path, rel: str, content: str) -> None:
     """Write one canonical regular member under a fresh private pack root."""
 
-    # normalize_relpath rejects escapes and non-canonical names.
-    _pack_fs.normalize_relpath(rel)
-    destination = pack_root
-    for part in rel.split("/"):
-        destination = destination / part
-    resolved = destination.resolve()
-    if resolved != pack_root.resolve() and pack_root.resolve() not in resolved.parents:
-        raise WizardError(f"generated member escapes the pack root: {rel!r}")
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    # Regular file with default (umask) permissions; the content is non-sensitive
-    # generated pack material destined for the author's own catalog repo.
-    destination.write_text(content, encoding="utf-8")
+    try:
+        _transactions.write_member(pack_root, rel, content)
+    except _transactions.TransactionError as exc:
+        raise WizardError("generated member is not safe to stage") from exc
 
 
 def write_proposal(proposal: Proposal, environments_root: str) -> str:
@@ -749,7 +739,8 @@ def write_proposal(proposal: Proposal, environments_root: str) -> str:
     staging_parent = Path(tempfile.mkdtemp(prefix=".wizard-", dir=environments))
     try:
         staged = staging_parent / proposal.pack_id
-        staged.mkdir()
+        staged.mkdir(mode=0o755)
+        staged.chmod(0o755)
         for rel, content in sorted(proposal.files.items()):
             _write_member(staged, rel, content)
         result = validate_pack(str(staged))
@@ -763,34 +754,13 @@ def write_proposal(proposal: Proposal, environments_root: str) -> str:
     return str(target)
 
 
-_AT_FDCWD = -100
-_RENAME_NOREPLACE = 1
-
-
 def _rename_noreplace(src: str, dst: str) -> None:
-    """Atomic, no-replace directory rename via ``renameat2(RENAME_NOREPLACE)``.
+    """Compatibility wrapper over the shared no-replace transaction primitive."""
 
-    Raises ``OSError`` (``EEXIST`` when the target is occupied); ``WizardError``
-    only when the platform lacks the syscall. The repo already requires the
-    Linux descriptor semantics ``_pack_fs`` depends on, so the primitive is
-    available wherever the tool runs.
-    """
-
-    libc = ctypes.CDLL(None, use_errno=True)
-    renameat2 = getattr(libc, "renameat2", None)
-    if renameat2 is None:
-        raise WizardError(
-            "atomic no-replace publication is unsupported on this platform")
-    renameat2.argtypes = [
-        ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p,
-        ctypes.c_uint,
-    ]
-    renameat2.restype = ctypes.c_int
-    ctypes.set_errno(0)
-    if renameat2(_AT_FDCWD, os.fsencode(src), _AT_FDCWD, os.fsencode(dst),
-                 _RENAME_NOREPLACE) != 0:
-        code = ctypes.get_errno()
-        raise OSError(code, os.strerror(code))
+    try:
+        _transactions.publish_noreplace(Path(src), Path(dst))
+    except _transactions.TransactionError as exc:
+        raise WizardError(str(exc)) from exc
 
 
 def _publish(staged: Path, target: Path, pack_id: str) -> None:
@@ -804,12 +774,12 @@ def _publish(staged: Path, target: Path, pack_id: str) -> None:
     """
 
     try:
-        _rename_noreplace(str(staged), str(target))
-    except OSError as exc:
-        if exc.errno == errno.EEXIST:
-            raise WizardError(
-                f"target already exists: environments/{pack_id}") from exc
-        raise WizardError(f"could not publish pack: {exc}") from exc
+        _transactions.publish_noreplace(staged, target)
+    except _transactions.TargetExistsError as exc:
+        raise WizardError(
+            f"target already exists: environments/{pack_id}") from exc
+    except _transactions.TransactionError as exc:
+        raise WizardError("could not publish pack") from exc
 
 
 # --------------------------------------------------------------------------- #

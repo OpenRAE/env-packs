@@ -24,7 +24,8 @@ pip install raes-env-packs
 ## Choose your route
 
 - **Author a pack** — scaffold one with the [pack tools](new-pack-script.md) and
-  plan it against the [golden-readiness checklist](golden-readiness.md).
+  plan it against the [golden-readiness checklist](golden-readiness.md), then
+  add common infrastructure from [reusable kits](kits.md).
 - **Consume a pack** — [check a pack](checking.md) you received with
   `raes-pack-check`, or call the [`validate_pack` API](validating.md), before you
   trust its bytes.
@@ -51,6 +52,7 @@ limitations
 :caption: Author a pack
 
 new-pack-script
+kits
 pack-issue-skeleton-script
 golden-readiness
 ```

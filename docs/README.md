@@ -21,6 +21,13 @@ User-facing documentation is under [`public/`](public/index.md).
 - [Documentation style guide](development/documentation-style-guide.md) — how the
   public docs are written, so a change reads like the rest.
 
+## Manual integration walkthroughs
+
+- [Infrastructure kits](development/kits-integration-runbook.md) — compose a
+  realistic five-kit pack, then update, replace, remove, and revalidate it.
+- [Progressive wizard](development/wizard-integration-runbook.md) — exercise
+  starter routes and machine-readable replay through the shipped commands.
+
 ## Contributing
 
 Setup, tests, and the submission path are in
