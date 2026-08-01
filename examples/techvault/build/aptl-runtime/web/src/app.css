@@ -1,0 +1,225 @@
+@import 'tailwindcss';
+
+/*
+ * APTL design tokens — the canonical source for the web GUI's "quiet
+ * operational workbench" look. These `@theme` custom properties drive every
+ * Tailwind `*-aptl-*` utility (e.g. `bg-aptl-surface`, `text-aptl-text-muted`,
+ * `ring-aptl-focus`). This file is the single token source: the component kit
+ * (`web/src/lib/components/kit/`) maps semantic intent to these utilities
+ * through shared recipes in `kit/tone.ts` rather than duplicating values in JS
+ * or forking a Tailwind config. See `docs/specs/web-component-kit.md`.
+ */
+@theme {
+	/* Surface ramp — page background through raised surfaces and borders. */
+	--color-aptl-bg: #1a1d23;
+	--color-aptl-surface: #23272f;
+	--color-aptl-surface-hover: #2a2f38;
+	--color-aptl-border: #333842;
+
+	/* Text — primary copy and muted/secondary copy. */
+	--color-aptl-text: #e2e8f0;
+	--color-aptl-text-muted: #94a3b8;
+
+	/* Accent + semantic status colors. Purple stays an APTL accent; status and
+	   hierarchy carry meaning through the semantic colors below, never colour
+	   alone (see kit `Tone`: info/success/warning/danger/accent/neutral). */
+	--color-aptl-indigo: #6366f1;
+	--color-aptl-indigo-hover: #818cf8;
+	--color-aptl-violet: #a855f7;
+	--color-aptl-teal: #14b8a6;
+	--color-aptl-red: #ef4444;
+	--color-aptl-green: #22c55e;
+	--color-aptl-amber: #f59e0b;
+
+	/* Focus — named token for the shared focus-ring recipe (WCAG 2.2 visible
+	   focus). Aliases indigo so focus treatment is consistent and overridable
+	   in one place. */
+	--color-aptl-focus: #6366f1;
+
+	/* Typography — sans for UI copy (system-font fallback), mono for terminal
+	   and command text. */
+	--font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/*
+ * Color-mode palettes (UI-008f). The base @theme above is the dark palette. The
+ * SettingsDialog writes `data-color-mode` onto <html>; overriding the same
+ * `--color-aptl-*` custom properties here re-tints every `*-aptl-*` utility (and
+ * `body`, which reads the variables directly) without touching component markup.
+ * `system` follows `prefers-color-scheme` (dark base, light override below);
+ * `dark` is the base; `light` and `high-contrast` are explicit. Accent shades are
+ * darkened in light mode and brightened in high-contrast so status/link contrast
+ * stays legible (WCAG 2.2 AA target).
+ */
+
+/* Light palette — applied for explicit light mode, and for system mode when the
+   OS prefers light. The two selectors share identical values (one is gated on
+   the media query, so they cannot be merged into a single selector list). */
+html[data-color-mode='light'] {
+	--color-aptl-bg: #f8fafc;
+	--color-aptl-surface: #ffffff;
+	--color-aptl-surface-hover: #f1f5f9;
+	--color-aptl-border: #cbd5e1;
+	--color-aptl-text: #0f172a;
+	--color-aptl-text-muted: #475569;
+	--color-aptl-indigo: #4f46e5;
+	--color-aptl-indigo-hover: #4338ca;
+	--color-aptl-violet: #7c3aed;
+	--color-aptl-teal: #0d9488;
+	--color-aptl-red: #dc2626;
+	--color-aptl-green: #16a34a;
+	--color-aptl-amber: #b45309;
+	--color-aptl-focus: #4f46e5;
+}
+
+@media (prefers-color-scheme: light) {
+	html[data-color-mode='system'] {
+		--color-aptl-bg: #f8fafc;
+		--color-aptl-surface: #ffffff;
+		--color-aptl-surface-hover: #f1f5f9;
+		--color-aptl-border: #cbd5e1;
+		--color-aptl-text: #0f172a;
+		--color-aptl-text-muted: #475569;
+		--color-aptl-indigo: #4f46e5;
+		--color-aptl-indigo-hover: #4338ca;
+		--color-aptl-violet: #7c3aed;
+		--color-aptl-teal: #0d9488;
+		--color-aptl-red: #dc2626;
+		--color-aptl-green: #16a34a;
+		--color-aptl-amber: #b45309;
+		--color-aptl-focus: #4f46e5;
+	}
+}
+
+/* High-contrast palette — maximal foreground/background separation on black,
+   with bright accents and a white focus ring for a highly visible focus cue. */
+html[data-color-mode='high-contrast'] {
+	--color-aptl-bg: #000000;
+	--color-aptl-surface: #000000;
+	--color-aptl-surface-hover: #1f1f1f;
+	--color-aptl-border: #ffffff;
+	--color-aptl-text: #ffffff;
+	--color-aptl-text-muted: #e5e5e5;
+	--color-aptl-indigo: #a5b4fc;
+	--color-aptl-indigo-hover: #c7d2fe;
+	--color-aptl-violet: #c084fc;
+	--color-aptl-teal: #2dd4bf;
+	--color-aptl-red: #f87171;
+	--color-aptl-green: #4ade80;
+	--color-aptl-amber: #fbbf24;
+	--color-aptl-focus: #ffffff;
+}
+
+/* Forced reduced motion (Motion = reduced), mirroring the prefers-reduced-motion
+   block below for operators who set the preference explicitly in Settings. */
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+	animation-duration: 0.01ms !important;
+	animation-iteration-count: 1 !important;
+	transition-duration: 0.01ms !important;
+	scroll-behavior: auto !important;
+}
+
+/* Reduced-motion safety: honour `prefers-reduced-motion` globally so kit
+   affordances (e.g. the StatusBadge pulse) never animate against the user's
+   stated preference, even where a component forgets the `motion-safe:` guard. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+body {
+	background-color: var(--color-aptl-bg);
+	color: var(--color-aptl-text);
+	font-family: var(--font-sans);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Markdown prose styling for workbench narrative blocks */
+.prose-aptl {
+	color: var(--color-aptl-text);
+	line-height: 1.65;
+}
+
+.prose-aptl h1 {
+	font-size: 1.5rem;
+	font-weight: 700;
+	margin-bottom: 0.5rem;
+}
+
+.prose-aptl h2 {
+	font-size: 1.25rem;
+	font-weight: 600;
+	margin-top: 1.5rem;
+	margin-bottom: 0.5rem;
+}
+
+.prose-aptl h3 {
+	font-size: 1rem;
+	font-weight: 600;
+	margin-top: 1rem;
+	margin-bottom: 0.25rem;
+}
+
+.prose-aptl p {
+	margin-top: 0.5rem;
+	margin-bottom: 0.5rem;
+	color: var(--color-aptl-text-muted);
+}
+
+.prose-aptl strong {
+	color: var(--color-aptl-text);
+	font-weight: 600;
+}
+
+.prose-aptl code {
+	background-color: var(--color-aptl-surface);
+	border-radius: 0.25rem;
+	padding: 0.125rem 0.375rem;
+	font-family: var(--font-mono);
+	font-size: 0.8125rem;
+}
+
+.prose-aptl pre {
+	background-color: var(--color-aptl-bg);
+	border-radius: 0.5rem;
+	padding: 0.75rem 1rem;
+	overflow-x: auto;
+	margin-top: 0.75rem;
+	margin-bottom: 0.75rem;
+}
+
+.prose-aptl pre code {
+	background: none;
+	padding: 0;
+}
+
+.prose-aptl ul,
+.prose-aptl ol {
+	margin-top: 0.5rem;
+	margin-bottom: 0.5rem;
+	padding-left: 1.25rem;
+	color: var(--color-aptl-text-muted);
+}
+
+.prose-aptl li {
+	margin-top: 0.25rem;
+}
+
+.prose-aptl a {
+	color: var(--color-aptl-indigo);
+	text-decoration: underline;
+}
+
+.prose-aptl a:hover {
+	color: var(--color-aptl-indigo-hover);
+}

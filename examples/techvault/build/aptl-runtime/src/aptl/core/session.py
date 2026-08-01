@@ -1,0 +1,408 @@
+"""Scenario session state management.
+
+Tracks the active scenario session across commands via a JSON file in
+the .aptl/ state directory. Enforces valid state transitions and
+provides methods to record hints, objective completions, and session
+lifecycle events.
+"""
+
+import json
+import os
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from pathlib import Path
+from typing import Any, Optional
+
+from aptl.core.scenarios import ScenarioStateError
+from aptl.utils.logging import get_logger
+
+log = get_logger("session")
+
+try:
+    import fcntl
+except ModuleNotFoundError:
+    # Windows does not provide POSIX flock; session locks become in-process.
+    fcntl = None
+
+_SESSION_FILENAME = "session.json"
+
+
+class SessionState(str, Enum):
+    """Lifecycle state of a scenario session."""
+
+    IDLE = "idle"
+    ACTIVE = "active"
+    EVALUATING = "evaluating"
+    COMPLETED = "completed"
+
+
+@dataclass
+class ActiveSession(object):
+    """Persistent state for a running scenario.
+
+    Attributes:
+        scenario_id: ID of the active scenario.
+        state: Current lifecycle state.
+        started_at: ISO 8601 UTC timestamp of when the session started.
+        trace_id: 32-char hex trace ID for OpenTelemetry distributed tracing.
+        span_id: 16-char hex span ID for the scenario root span context.
+        hints_used: Map of objective_id to highest hint level revealed.
+        completed_objectives: List of objective IDs that have been completed.
+        flags: CTF flags captured at scenario start, keyed by container name.
+    """
+
+    scenario_id: str
+    state: SessionState
+    started_at: str
+    trace_id: str = ""
+    span_id: str = ""
+    hints_used: dict[str, int] = field(default_factory=dict)
+    completed_objectives: list[str] = field(default_factory=list)
+    flags: dict[str, dict[str, dict[str, Any]]] = field(default_factory=dict)
+    run_id: str = ""
+
+
+def _serialize_session(session: ActiveSession) -> dict[str, Any]:
+    """Convert an ActiveSession to a JSON-serializable dict.
+
+    Args:
+        session: The session to serialize.
+
+    Returns:
+        A plain dict suitable for json.dumps().
+    """
+    d = asdict(session)
+    d["state"] = session.state.value
+    return d
+
+
+def _deserialize_session(data: dict[str, Any]) -> ActiveSession:
+    """Restore an ActiveSession from a deserialized dict.
+
+    Args:
+        data: A dict loaded from session.json.
+
+    Returns:
+        The restored ActiveSession.
+
+    Raises:
+        ValueError: If the data is malformed or missing required fields.
+    """
+    try:
+        return ActiveSession(
+            scenario_id=data["scenario_id"],
+            state=SessionState(data["state"]),
+            started_at=data["started_at"],
+            trace_id=data.get("trace_id", ""),
+            span_id=data.get("span_id", ""),
+            hints_used=data.get("hints_used", {}),
+            completed_objectives=data.get("completed_objectives", []),
+            flags=data.get("flags", {}),
+            run_id=data.get("run_id", ""),
+        )
+    except (KeyError, ValueError) as e:
+        raise ValueError(f"Malformed session data: {e}") from e
+
+
+class ScenarioSession(object):
+    """Manages active scenario state across commands.
+
+    State is persisted to a JSON file in the .aptl/ directory so that
+    separate commands and background tasks can share context.
+    """
+
+    def __init__(self, state_dir: Path) -> None:
+        """Initialize session manager.
+
+        Args:
+            state_dir: Path to the .aptl/ directory. Created on first
+                write if it does not exist.
+        """
+        self._state_dir = state_dir
+        self._session_path = state_dir / _SESSION_FILENAME
+        log.debug("Session manager initialized at %s", state_dir)
+
+    @property
+    def session_path(self) -> Path:
+        """Path to the session.json file."""
+        return self._session_path
+
+    @property
+    def state_dir(self) -> Path:
+        """Path to the .aptl/ state directory."""
+        return self._state_dir
+
+    def is_active(self) -> bool:
+        """Check if a scenario is currently active.
+
+        Returns:
+            True if a session file exists and the state is ACTIVE
+            or EVALUATING.
+        """
+        session = self.get_active()
+        if session is None:
+            return False
+        return session.state in (SessionState.ACTIVE, SessionState.EVALUATING)
+
+    def get_active(self) -> Optional[ActiveSession]:
+        """Load the current session from disk.
+
+        Returns:
+            The current session, or None if no session file exists.
+
+        Raises:
+            ScenarioStateError: If the session file exists but is corrupt.
+        """
+        if not self._session_path.exists():
+            return None
+
+        with open(self._session_path, "r", encoding="utf-8") as f:
+            _lock_shared(f.fileno())
+            raw = f.read().strip()
+        if not raw:
+            return None
+
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise ScenarioStateError(
+                f"Corrupt session file {self._session_path}: {e}"
+            ) from e
+
+        try:
+            session = _deserialize_session(data)
+        except ValueError as e:
+            raise ScenarioStateError(str(e)) from e
+
+        log.debug(
+            "Loaded session: scenario='%s', state=%s",
+            session.scenario_id,
+            session.state.value,
+        )
+        return session
+
+    def start(
+        self,
+        scenario_id: str,
+    ) -> ActiveSession:
+        """Start a new scenario session.
+
+        Creates the session file and returns the new session.
+        Generates a trace_id for OpenTelemetry distributed tracing.
+
+        Args:
+            scenario_id: ID of the scenario being started.
+
+        Returns:
+            The newly created ActiveSession.
+
+        Raises:
+            ScenarioStateError: If a scenario is already active.
+        """
+        if self.is_active():
+            existing = self.get_active()
+            raise ScenarioStateError(
+                f"Cannot start scenario '{scenario_id}': "
+                f"scenario '{existing.scenario_id}' is already active. "
+                "Clear or finish the active session first."
+            )
+
+        from aptl.core.telemetry import generate_trace_context, write_trace_context
+
+        ctx = generate_trace_context()
+
+        session = ActiveSession(
+            scenario_id=scenario_id,
+            state=SessionState.ACTIVE,
+            started_at=datetime.now(timezone.utc).isoformat(),
+            trace_id=ctx["trace_id"],
+            span_id=ctx["span_id"],
+        )
+
+        self._write(session)
+        # ADR-012 intended `trace-context.json` to be the cross-process
+        # correlation handoff to MCP servers (and per ADR-033 / OBS-003
+        # it is also the trace_id source for per-run capture routing).
+        # Writing it here closes the latent producer gap that prevented
+        # MCP-side spans from joining the scenario trace and would have
+        # left every OBS-003 capture under the `_unbound` sentinel.
+        try:
+            write_trace_context(self._state_dir, ctx["trace_id"], ctx["span_id"])
+        except OSError as exc:
+            # Don't fail scenario start over a trace-context write
+            # failure — log and continue. The session is already
+            # persisted; downstream cross-process correlation is
+            # degraded but the scenario can still run.
+            log.warning("Failed to write trace-context.json: %s", exc)
+        log.info("Started session for scenario '%s'", scenario_id)
+        return session
+
+    def record_hint(self, objective_id: str, hint_level: int) -> None:
+        """Record that a hint was used for an objective.
+
+        Only updates if the new level is higher than any previously
+        recorded level for this objective.
+
+        Args:
+            objective_id: The objective the hint is for.
+            hint_level: The hint level revealed.
+
+        Raises:
+            ScenarioStateError: If no scenario is active.
+        """
+        session = self._require_active()
+        current_level = session.hints_used.get(objective_id, 0)
+        if hint_level > current_level:
+            session.hints_used[objective_id] = hint_level
+            self._write(session)
+            log.info(
+                "Recorded hint level %d for objective '%s'",
+                hint_level,
+                objective_id,
+            )
+        else:
+            log.debug(
+                "Hint level %d for '%s' not recorded (current: %d)",
+                hint_level,
+                objective_id,
+                current_level,
+            )
+
+    def record_objective_complete(self, objective_id: str) -> None:
+        """Record that an objective was completed.
+
+        Idempotent: recording the same objective twice is a no-op.
+
+        Args:
+            objective_id: The completed objective.
+
+        Raises:
+            ScenarioStateError: If no scenario is active.
+        """
+        session = self._require_active()
+        if objective_id not in session.completed_objectives:
+            session.completed_objectives.append(objective_id)
+            self._write(session)
+            log.info("Recorded objective '%s' as complete", objective_id)
+        else:
+            log.debug("Objective '%s' already recorded as complete", objective_id)
+
+    def finish(self) -> ActiveSession:
+        """Mark the current session as completed and return it.
+
+        Returns:
+            The completed session with final state.
+
+        Raises:
+            ScenarioStateError: If no scenario is active.
+        """
+        session = self._require_active()
+        session.state = SessionState.COMPLETED
+        self._write(session)
+        log.info("Finished session for scenario '%s'", session.scenario_id)
+        return session
+
+    def clear(self) -> None:
+        """Remove the session file.
+
+        Used after report generation to return to idle state. Safe to
+        call when no session exists (no-op). Also clears
+        ``trace-context.json`` so a stale trace_id doesn't route the
+        next scenario's MCP-side captures into the wrong run directory.
+        """
+        if self._session_path.exists():
+            self._session_path.unlink()
+            log.info("Cleared session file")
+        else:
+            log.debug("No session file to clear")
+        trace_ctx_path = self._state_dir / "trace-context.json"
+        if trace_ctx_path.exists():
+            trace_ctx_path.unlink()
+            log.debug("Cleared trace-context.json")
+
+    def set_evaluating(self) -> None:
+        """Transition session state from ACTIVE to EVALUATING.
+
+        Raises:
+            ScenarioStateError: If session is not in ACTIVE state.
+        """
+        session = self._require_active()
+        if session.state != SessionState.ACTIVE:
+            raise ScenarioStateError(
+                f"Cannot transition to EVALUATING: session is "
+                f"'{session.state.value}', not 'active'."
+            )
+        session.state = SessionState.EVALUATING
+        self._write(session)
+        log.debug("Session transitioned to EVALUATING")
+
+    def set_active_from_evaluating(self) -> None:
+        """Transition session state from EVALUATING back to ACTIVE.
+
+        Raises:
+            ScenarioStateError: If session is not in EVALUATING state.
+        """
+        session = self._require_active()
+        if session.state != SessionState.EVALUATING:
+            raise ScenarioStateError(
+                f"Cannot transition to ACTIVE: session is "
+                f"'{session.state.value}', not 'evaluating'."
+            )
+        session.state = SessionState.ACTIVE
+        self._write(session)
+        log.debug("Session transitioned back to ACTIVE")
+
+    def _require_active(self) -> ActiveSession:
+        """Load the current session and verify it is active.
+
+        Returns:
+            The active session.
+
+        Raises:
+            ScenarioStateError: If no session is active.
+        """
+        session = self.get_active()
+        if session is None:
+            raise ScenarioStateError("No active scenario session.")
+        if session.state not in (SessionState.ACTIVE, SessionState.EVALUATING):
+            raise ScenarioStateError(
+                f"Scenario '{session.scenario_id}' is in state "
+                f"'{session.state.value}', not active."
+            )
+        return session
+
+    def _write(self, session: ActiveSession) -> None:
+        """Persist session state to disk.
+
+        Creates the state directory and parent directories if needed.
+        Uses an exclusive file lock to prevent concurrent write corruption.
+
+        Args:
+            session: The session to persist.
+        """
+        self._state_dir.mkdir(parents=True, exist_ok=True)
+        data = _serialize_session(session)
+        payload = json.dumps(data, indent=2) + "\n"
+        fd = os.open(
+            str(self._session_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+        )
+        try:
+            _lock_exclusive(fd)
+            os.write(fd, payload.encode("utf-8"))
+        finally:
+            # `os.close(fd)` releases the LOCK_EX as a side effect.
+            os.close(fd)
+        log.debug("Wrote session to %s", self._session_path)
+
+
+def _lock_shared(fd: int) -> None:
+    """Take a shared file lock where the host OS supports POSIX flock."""
+    if fcntl is not None:
+        fcntl.flock(fd, fcntl.LOCK_SH)
+
+
+def _lock_exclusive(fd: int) -> None:
+    """Take an exclusive file lock where the host OS supports POSIX flock."""
+    if fcntl is not None:
+        fcntl.flock(fd, fcntl.LOCK_EX)

@@ -1,0 +1,62 @@
+schema_version: 1
+name: techvault-profile-bundles
+scenario: sdl/techvault.sdl.yaml
+description: >
+  Audience-specific content projections of the single TechVault ACES scenario.
+  Selecting a bundle changes documentation exposure only; it does not change
+  ACES resources or create a parallel runtime, objective, or scoring contract.
+audiences: [participant, defender, presenter]
+required_bundles: [guided, unguided, purple-team, demo]
+
+bundles:
+  - id: guided
+    title: "Guided TechVault purple-team exercise"
+    audience: participant
+    summary: "Participant-safe planning and checkpoints plus separate facilitator pacing notes."
+    runtime_profiles: [operational]
+    shared_includes:
+      - _shared/mission-context.md
+      - _shared/rules-of-engagement.md
+    participant_entrypoints:
+      - guided/participant/plan.md
+      - guided/participant/hints.md
+      - guided/participant/checkpoints.md
+    operator_entrypoints:
+      - guided/operator/pacing-notes.md
+
+  - id: unguided
+    title: "Unguided TechVault purple-team exercise"
+    audience: participant
+    summary: "A cold-start mission brief with no out-of-world solution ordering."
+    runtime_profiles: [operational]
+    shared_includes:
+      - _shared/mission-context.md
+      - _shared/rules-of-engagement.md
+    participant_entrypoints:
+      - unguided/participant/briefing.md
+      - unguided/participant/breadcrumbs.md
+    operator_entrypoints: []
+
+  - id: purple-team
+    title: "TechVault purple-team facilitation"
+    audience: defender
+    summary: "Defender observation and discussion prompts for the same ACES range."
+    runtime_profiles: [operational]
+    shared_includes: []
+    participant_entrypoints: []
+    operator_entrypoints:
+      - purple-team/operator/defender-injects.md
+      - purple-team/operator/telemetry-prompts.md
+      - purple-team/operator/after-action.md
+
+  - id: demo
+    title: "Operator-led TechVault demonstration"
+    audience: presenter
+    summary: "Presenter notes for selected capabilities in the same ACES range."
+    runtime_profiles: [operational]
+    shared_includes: []
+    participant_entrypoints: []
+    operator_entrypoints:
+      - demo/operator/presenter-script.md
+      - demo/operator/reset-notes.md
+      - demo/operator/proof-moments.md
