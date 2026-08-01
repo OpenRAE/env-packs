@@ -11,6 +11,14 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.5.0](https://github.com/OpenRAE/env-packs/compare/v3.4.0...v3.5.0) (2026-08-01)
+
+
+### Features
+
+* **techvault:** replace subset SDL with the full canonical TechVault scenario ([0122582](https://github.com/OpenRAE/env-packs/commit/012258263f93f11093b71e0be10c2f1dca020e03))
+* **techvault:** replace subset SDL with the full canonical TechVault scenario ([7fb9bc5](https://github.com/OpenRAE/env-packs/commit/7fb9bc5dae95e98b7b8597ffa6288c5c668cbe5c))
+
 ## [3.4.0](https://github.com/OpenRAE/env-packs/compare/v3.3.0...v3.4.0) (2026-08-01)
 
 
