@@ -11,7 +11,7 @@ import json
 import math
 import os
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -52,6 +52,7 @@ _PACK_MANIFEST = "pack.yaml"
 _CHALLENGES_FILE = "challenges/challenges.yaml"
 _KIT_MATERIALIZATIONS_FILE = "kit.materializations.json"
 _FILESYSTEM_CHANGED = "filesystem.changed"
+_METADATA_LIMIT_MESSAGE = "pack metadata exceeds the validation limit"
 _SECRET_KEY_FRAGMENTS = (
     "credential",
     "password",
@@ -63,12 +64,12 @@ _SECRET_KEY_FRAGMENTS = (
 _SECRET_VALUE_PATTERNS = (
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     re.compile(r"(?i)(?:x-amz-signature|sig|signature|token)=[^&\s]+"),
-    re.compile(r"(?i)https?://[^/@\s]+:[^/@\s]+@"),
+    re.compile(r"(?i)https?://[^/:@\s]+:[^/@\s]+@"),
     re.compile(r"(?:eyJ[A-Za-z0-9_-]{8,}\.){2}[A-Za-z0-9_-]{8,}"),
     re.compile(r"(?:gh[pousr]_|AKIA)[A-Za-z0-9_-]{12,}"),
 )
 _ENVIRONMENT_COORDINATE_RE = re.compile(
-    r"(?i)^(?:\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|env:[A-Za-z_][A-Za-z0-9_]*)$"
+    r"^(?:\$\{?[a-z_]\w*\}?|env:[a-z_]\w*)$", re.ASCII | re.IGNORECASE
 )
 
 
@@ -467,7 +468,7 @@ def _load_yaml_member(
     except yaml.YAMLError:
         errors.add("yaml.invalid", rel)
     except _pack_fs.PackFilesystemError as exc:
-        if str(exc) == "pack metadata exceeds the validation limit":
+        if str(exc) == _METADATA_LIMIT_MESSAGE:
             errors.add("resource.metadata-limit", rel)
         else:
             errors.add(_FILESYSTEM_CHANGED, rel)
@@ -492,6 +493,8 @@ def _strict_json_member(
     """Load one bounded JSON member without duplicate keys or non-finite numbers."""
 
     def object_pairs(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        """Reject duplicate object members during JSON decoding."""
+
         document: dict[str, object] = {}
         for key, value in pairs:
             if key in document:
@@ -500,6 +503,8 @@ def _strict_json_member(
         return document
 
     def invalid_constant(_value: str) -> object:
+        """Reject non-finite JSON numeric extensions."""
+
         raise ValueError("non-finite JSON number")
 
     try:
@@ -511,17 +516,19 @@ def _strict_json_member(
             object_pairs_hook=object_pairs,
             parse_constant=invalid_constant,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+    except ValueError:
         errors.add("kit-materializations.invalid", rel)
     except _pack_fs.PackFilesystemError as exc:
-        if str(exc) == "pack metadata exceeds the validation limit":
+        if str(exc) == _METADATA_LIMIT_MESSAGE:
             errors.add("resource.metadata-limit", rel)
         else:
             errors.add(_FILESYSTEM_CHANGED, rel)
     return None
 
 
-def _iter_mapping_values(value: object):
+def _iter_mapping_values(value: object) -> Iterator[tuple[object, object]]:
+    """Yield every mapping member from one nested JSON-like value."""
+
     if isinstance(value, dict):
         for key, item in value.items():
             yield key, item
@@ -532,6 +539,8 @@ def _iter_mapping_values(value: object):
 
 
 def _secret_value(value: object) -> bool:
+    """Whether a scalar value has a disallowed secret-bearing shape."""
+
     return isinstance(value, str) and (
         _ENVIRONMENT_COORDINATE_RE.fullmatch(value) is not None
         or any(pattern.search(value) for pattern in _SECRET_VALUE_PATTERNS)
@@ -539,6 +548,8 @@ def _secret_value(value: object) -> bool:
 
 
 def _canonical_materialization_path(value: object) -> str | None:
+    """Return one canonical materialization member path when valid."""
+
     if not isinstance(value, str):
         return None
     try:
@@ -547,14 +558,10 @@ def _canonical_materialization_path(value: object) -> str | None:
         return None
 
 
-def validate_kit_materializations_document(document: object) -> list[str]:
-    """Validate the shared inert materialization and ownership ledger contract."""
+def _ledger_secret_violations(document: object) -> list[str]:
+    """Return value-free secret-shape failures for a ledger document."""
 
-    schema = _trusted_schema(_KIT_MATERIALIZATIONS_SCHEMA)
-    violations = [
-        f"schema.{item.code}:{item.path}"
-        for item in _schema_violations(document, schema, schema)
-    ]
+    violations: list[str] = []
     for key, value in _iter_mapping_values(document):
         normalized = str(key).casefold().replace("-", "_")
         if any(fragment in normalized for fragment in _SECRET_KEY_FRAGMENTS):
@@ -563,55 +570,92 @@ def validate_kit_materializations_document(document: object) -> list[str]:
             pattern.search(value) for pattern in _SECRET_VALUE_PATTERNS
         ):
             violations.append("secret-value:$")
-    if not isinstance(document, dict):
-        return sorted(set(violations))
+    return violations
 
-    materializations = document.get("materializations")
-    rows = materializations if isinstance(materializations, list) else []
+
+def _valid_materialization_parameters(parameters: object) -> bool:
+    """Whether one parameter record contains only safe finite scalars."""
+
+    if not isinstance(parameters, dict):
+        return False
+    for key, value in parameters.items():
+        valid_scalar = isinstance(value, (str, int, float, bool))
+        finite = not isinstance(value, float) or math.isfinite(value)
+        if not isinstance(key, str) or not valid_scalar or not finite:
+            return False
+        if _secret_value(value):
+            return False
+    return True
+
+
+def _validate_materialization_rows(
+    rows: list[object], violations: list[str]
+) -> tuple[set[str], set[tuple[str, str]]]:
+    """Validate materialization identities, paths, parameters, and uniqueness."""
+
     identities: set[str] = set()
     installed: set[tuple[str, str]] = set()
     for index, item in enumerate(rows):
         if not isinstance(item, dict):
             continue
-        identity = item.get("id")
-        namespace = item.get("namespace")
-        if not isinstance(identity, str) or identity in identities:
-            violations.append(f"identity:$.materializations[{index}].id")
-        else:
-            identities.add(identity)
-        if identity != namespace:
-            violations.append(f"namespace:$.materializations[{index}].namespace")
-        kit_id = item.get("kit_id")
-        kit_version = item.get("kit_version")
-        if isinstance(kit_id, str) and isinstance(kit_version, str):
-            installed.add((kit_id, kit_version))
-        for field in ("target_sdl", "module_path"):
-            if _canonical_materialization_path(item.get(field)) is None:
-                violations.append(f"path:$.materializations[{index}].{field}")
-        parameters = item.get("parameters")
-        if not isinstance(parameters, dict) or any(
-            not isinstance(key, str)
-            or not isinstance(value, (str, int, float, bool))
-            or isinstance(value, float) and not math.isfinite(value)
-            or _secret_value(value)
-            for key, value in (
-                parameters.items() if isinstance(parameters, dict) else ()
+        _validate_materialization_identity(
+            item, index, identities, installed, violations
+        )
+        _validate_materialization_content(item, index, violations)
+    return identities, installed
+
+
+def _validate_materialization_identity(
+    item: dict[str, object],
+    index: int,
+    identities: set[str],
+    installed: set[tuple[str, str]],
+    violations: list[str],
+) -> None:
+    """Validate and index one materialization identity."""
+
+    identity = item.get("id")
+    if not isinstance(identity, str) or identity in identities:
+        violations.append(f"identity:$.materializations[{index}].id")
+    else:
+        identities.add(identity)
+    if identity != item.get("namespace"):
+        violations.append(f"namespace:$.materializations[{index}].namespace")
+    kit_id = item.get("kit_id")
+    kit_version = item.get("kit_version")
+    if isinstance(kit_id, str) and isinstance(kit_version, str):
+        installed.add((kit_id, kit_version))
+
+
+def _validate_materialization_content(
+    item: dict[str, object], index: int, violations: list[str]
+) -> None:
+    """Validate paths, parameters, and dependency uniqueness for one row."""
+
+    for field in ("target_sdl", "module_path"):
+        if _canonical_materialization_path(item.get(field)) is None:
+            violations.append(f"path:$.materializations[{index}].{field}")
+    if not _valid_materialization_parameters(item.get("parameters")):
+        violations.append(f"parameters:$.materializations[{index}].parameters")
+    dependencies = item.get("dependencies")
+    rows = dependencies if isinstance(dependencies, list) else []
+    seen: set[tuple[object, object]] = set()
+    for dependency_index, dependency in enumerate(rows):
+        if not isinstance(dependency, dict):
+            continue
+        pair = (dependency.get("id"), dependency.get("version"))
+        if pair in seen:
+            violations.append(
+                f"dependency-duplicate:$.materializations[{index}]"
+                f".dependencies[{dependency_index}]"
             )
-        ):
-            violations.append(f"parameters:$.materializations[{index}].parameters")
-        dependencies = item.get("dependencies")
-        dependency_rows = dependencies if isinstance(dependencies, list) else []
-        seen_dependencies: set[tuple[object, object]] = set()
-        for dependency_index, dependency in enumerate(dependency_rows):
-            if not isinstance(dependency, dict):
-                continue
-            pair = (dependency.get("id"), dependency.get("version"))
-            if pair in seen_dependencies:
-                violations.append(
-                    f"dependency-duplicate:$.materializations[{index}]"
-                    f".dependencies[{dependency_index}]"
-                )
-            seen_dependencies.add(pair)
+        seen.add(pair)
+
+
+def _validate_dependency_presence(
+    rows: list[object], installed: set[tuple[str, str]], violations: list[str]
+) -> None:
+    """Require every exact kit dependency to be installed in the same ledger."""
 
     for index, item in enumerate(rows):
         if not isinstance(item, dict):
@@ -629,8 +673,25 @@ def validate_kit_materializations_document(document: object) -> list[str]:
                     f".dependencies[{dependency_index}]"
                 )
 
-    file_rows = document.get("files")
-    files = file_rows if isinstance(file_rows, list) else []
+
+def _valid_owners(owner_rows: list[object], identities: set[str]) -> bool:
+    """Whether one ownership list is unique, known, and kit-bearing."""
+
+    if not owner_rows or len(owner_rows) != len(set(map(str, owner_rows))):
+        return False
+    for owner in owner_rows:
+        if not isinstance(owner, str):
+            return False
+        if owner != "pack-author" and owner not in identities:
+            return False
+    return any(owner != "pack-author" for owner in owner_rows)
+
+
+def _validate_file_rows(
+    files: list[object], identities: set[str], violations: list[str]
+) -> dict[str, set[str]]:
+    """Validate unique artifact/file identities and return their ownership index."""
+
     paths: set[str] = set()
     artifact_ids: set[str] = set()
     ownership: dict[str, set[str]] = {}
@@ -649,21 +710,19 @@ def validate_kit_materializations_document(document: object) -> list[str]:
             artifact_ids.add(artifact_id)
         owners = item.get("owners")
         owner_rows = owners if isinstance(owners, list) else []
-        if (
-            not owner_rows
-            or len(owner_rows) != len(set(map(str, owner_rows)))
-            or any(
-                not isinstance(owner, str)
-                or owner != "pack-author" and owner not in identities
-                for owner in owner_rows
-            )
-            or not any(owner != "pack-author" for owner in owner_rows)
-        ):
+        if not _valid_owners(owner_rows, identities):
             violations.append(f"owners:$.files[{index}].owners")
         if path is not None:
             ownership[path] = {
                 owner for owner in owner_rows if isinstance(owner, str)
             }
+    return ownership
+
+
+def _validate_ownership_joins(
+    rows: list[object], ownership: dict[str, set[str]], violations: list[str]
+) -> None:
+    """Require every materialization to own its target and module members."""
 
     for index, item in enumerate(rows):
         if not isinstance(item, dict) or not isinstance(item.get("id"), str):
@@ -673,7 +732,67 @@ def validate_kit_materializations_document(document: object) -> list[str]:
             path = _canonical_materialization_path(item.get(field))
             if path is not None and identity not in ownership.get(path, set()):
                 violations.append(f"ownership:$.materializations[{index}].{field}")
+
+
+def validate_kit_materializations_document(document: object) -> list[str]:
+    """Validate the shared inert materialization and ownership ledger contract."""
+
+    schema = _trusted_schema(_KIT_MATERIALIZATIONS_SCHEMA)
+    violations = [
+        f"schema.{item.code}:{item.path}"
+        for item in _schema_violations(document, schema, schema)
+    ]
+    violations.extend(_ledger_secret_violations(document))
+    if not isinstance(document, dict):
+        return sorted(set(violations))
+    materializations = document.get("materializations")
+    rows = materializations if isinstance(materializations, list) else []
+    identities, installed = _validate_materialization_rows(rows, violations)
+    _validate_dependency_presence(rows, installed, violations)
+    file_rows = document.get("files")
+    files = file_rows if isinstance(file_rows, list) else []
+    ownership = _validate_file_rows(files, identities, violations)
+    _validate_ownership_joins(rows, ownership, violations)
     return sorted(set(violations))
+
+
+def _validate_materialization_members(
+    document: dict[str, object], inventory: frozenset[str], errors: _Errors
+) -> None:
+    """Require every target and module pointer to name an existing member."""
+
+    materializations = document.get("materializations")
+    rows = materializations if isinstance(materializations, list) else []
+    for index, item in enumerate(rows):
+        if not isinstance(item, dict):
+            continue
+        for field in ("target_sdl", "module_path"):
+            path = _canonical_materialization_path(item.get(field))
+            if path is not None and path not in inventory:
+                errors.add(
+                    "kit-materializations.member-missing",
+                    _KIT_MATERIALIZATIONS_FILE,
+                    f"materializations[{index}].{field}",
+                )
+
+
+def _validate_owned_file_members(
+    document: dict[str, object], inventory: frozenset[str], errors: _Errors
+) -> None:
+    """Require every ownership row to name an existing pack member."""
+
+    file_rows = document.get("files")
+    rows = file_rows if isinstance(file_rows, list) else []
+    for index, item in enumerate(rows):
+        if not isinstance(item, dict):
+            continue
+        path = _canonical_materialization_path(item.get("path"))
+        if path is not None and path not in inventory:
+            errors.add(
+                "kit-materializations.member-missing",
+                _KIT_MATERIALIZATIONS_FILE,
+                f"files[{index}].path",
+            )
 
 
 def _validate_kit_materializations(
@@ -700,35 +819,8 @@ def _validate_kit_materializations(
         )
     if not isinstance(document, dict):
         return
-    for index, item in enumerate(
-        document.get("materializations", [])
-        if isinstance(document.get("materializations"), list)
-        else []
-    ):
-        if not isinstance(item, dict):
-            continue
-        for field in ("target_sdl", "module_path"):
-            path = _canonical_materialization_path(item.get(field))
-            if path is not None and path not in inventory:
-                errors.add(
-                    "kit-materializations.member-missing",
-                    _KIT_MATERIALIZATIONS_FILE,
-                    f"materializations[{index}].{field}",
-                )
-    for index, item in enumerate(
-        document.get("files", [])
-        if isinstance(document.get("files"), list)
-        else []
-    ):
-        if not isinstance(item, dict):
-            continue
-        path = _canonical_materialization_path(item.get("path"))
-        if path is not None and path not in inventory:
-            errors.add(
-                "kit-materializations.member-missing",
-                _KIT_MATERIALIZATIONS_FILE,
-                f"files[{index}].path",
-            )
+    _validate_materialization_members(document, inventory, errors)
+    _validate_owned_file_members(document, inventory, errors)
 
 
 def _add_schema_violations(
@@ -1171,7 +1263,7 @@ def _parse_sdl_document(
     except OSError:
         errors.add(_FILESYSTEM_CHANGED, rel)
     except _pack_fs.PackFilesystemError as exc:
-        if str(exc) == "pack metadata exceeds the validation limit":
+        if str(exc) == _METADATA_LIMIT_MESSAGE:
             errors.add("resource.sdl-limit", rel)
         else:
             errors.add(_FILESYSTEM_CHANGED, rel)

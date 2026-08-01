@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes
 import errno
 import os
+import stat
 from pathlib import Path
 
 from . import _pack_fs
@@ -41,7 +42,7 @@ def write_member(root: Path, rel: str, content: bytes | str) -> None:
     try:
         descriptor = os.open(destination, flags, 0o600)
         try:
-            os.fchmod(descriptor, 0o644)
+            os.fchmod(descriptor, stat.S_IRUSR | stat.S_IWUSR)
             with os.fdopen(descriptor, "wb", closefd=False) as stream:
                 stream.write(payload)
                 stream.flush()

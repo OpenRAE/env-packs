@@ -29,12 +29,16 @@ def _terminal_text(value: object) -> str:
 
 
 def _source(args: argparse.Namespace) -> kits.KitSource:
+    """Build the immutable staged-source descriptor from parsed arguments."""
+
     return kits.KitSource(
         id=args.source_id, revision=args.source_revision, root=args.source_root
     )
 
 
 def _source_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the shared staged-source arguments to one command parser."""
+
     parser.add_argument("source_root", help="staged local catalog source root")
     parser.add_argument("--source-id", required=True, help="stable catalog source id")
     parser.add_argument(
@@ -43,6 +47,8 @@ def _source_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def _format_argument(parser: argparse.ArgumentParser) -> None:
+    """Add the stable machine-output switch to one command parser."""
+
     parser.add_argument("--json", action="store_true", help="emit stable JSON")
 
 
@@ -54,6 +60,8 @@ def _mutation_arguments(
     target: bool,
     materialization: bool,
 ) -> None:
+    """Add the arguments shared by pack mutation commands."""
+
     parser.add_argument("pack_root", help="existing environment-pack root")
     if release:
         _source_arguments(parser)
@@ -76,6 +84,8 @@ def _mutation_arguments(
 
 
 def _parser() -> argparse.ArgumentParser:
+    """Build the complete command parser without reading process state."""
+
     parser = argparse.ArgumentParser(
         prog="raes-pack-kit",
         description="Discover and compose catalog-owned infrastructure kits.",
@@ -113,10 +123,14 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _parameters(args: argparse.Namespace, stdin: TextIO) -> Mapping[str, object]:
+    """Read a bounded duplicate-free JSON parameter mapping from stdin."""
+
     if not getattr(args, "parameters", None):
         return {}
 
     def object_pairs(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        """Reject duplicate JSON object members while decoding."""
+
         document: dict[str, object] = {}
         for key, value in pairs:
             if key in document:
@@ -125,6 +139,8 @@ def _parameters(args: argparse.Namespace, stdin: TextIO) -> Mapping[str, object]
         return document
 
     def invalid_constant(_value: str) -> object:
+        """Reject JSON extensions for non-finite numeric values."""
+
         raise ValueError("non-finite JSON number")
 
     try:
@@ -136,7 +152,7 @@ def _parameters(args: argparse.Namespace, stdin: TextIO) -> Mapping[str, object]
             object_pairs_hook=object_pairs,
             parse_constant=invalid_constant,
         )
-    except (UnicodeError, json.JSONDecodeError, ValueError) as exc:
+    except ValueError as exc:
         raise kits.KitError("parameter input is not valid JSON") from exc
     if not isinstance(document, dict):
         raise kits.KitError("parameter input must be a JSON mapping")
@@ -144,6 +160,8 @@ def _parameters(args: argparse.Namespace, stdin: TextIO) -> Mapping[str, object]
 
 
 def _emit(value: object, *, as_json: bool, stdout: TextIO) -> None:
+    """Render one bounded discovery or proposal document."""
+
     if as_json:
         print(json.dumps(value, indent=2, sort_keys=True), file=stdout)
         return
@@ -171,6 +189,8 @@ def _emit(value: object, *, as_json: bool, stdout: TextIO) -> None:
 
 
 def _discovery(args: argparse.Namespace, stdout: TextIO) -> int:
+    """Run one catalog discovery command."""
+
     source = _source(args)
     catalog = kits.build_kit_catalog((source,))
     if args.command == "list":
@@ -188,39 +208,44 @@ def _discovery(args: argparse.Namespace, stdout: TextIO) -> int:
 def _proposal(
     args: argparse.Namespace, stdin: TextIO
 ) -> kits.KitProposal:
+    """Build one mutation proposal from parsed command arguments."""
+
     if args.command == "remove":
-        return kits.propose_remove(
+        proposal = kits.propose_remove(
             args.pack_root, materialization_id=args.materialization_id
         )
-    source = _source(args)
-    release = kits.source_release(source, args.kit_id, args.kit_version)
-    parameters = _parameters(args, stdin)
-    if args.command == "add":
-        return kits.propose_add(
-            args.pack_root,
-            release,
-            source,
-            namespace=args.namespace,
-            target_sdl=args.target_sdl,
-            parameters=parameters,
-        )
-    if args.command == "update":
-        return kits.propose_update(
-            args.pack_root,
-            release,
-            source,
-            materialization_id=args.materialization_id,
-            parameters=parameters,
-        )
-    return kits.propose_replace(
-        args.pack_root,
-        release,
-        source,
-        materialization_id=args.materialization_id,
-        namespace=args.namespace,
-        target_sdl=args.target_sdl,
-        parameters=parameters,
-    )
+    else:
+        source = _source(args)
+        release = kits.source_release(source, args.kit_id, args.kit_version)
+        parameters = _parameters(args, stdin)
+        if args.command == "add":
+            proposal = kits.propose_add(
+                args.pack_root,
+                release,
+                source,
+                namespace=args.namespace,
+                target_sdl=args.target_sdl,
+                parameters=parameters,
+            )
+        elif args.command == "update":
+            proposal = kits.propose_update(
+                args.pack_root,
+                release,
+                source,
+                materialization_id=args.materialization_id,
+                parameters=parameters,
+            )
+        else:
+            proposal = kits.propose_replace(
+                args.pack_root,
+                release,
+                source,
+                materialization_id=args.materialization_id,
+                namespace=args.namespace,
+                target_sdl=args.target_sdl,
+                parameters=parameters,
+            )
+    return proposal
 
 
 def main(
@@ -235,29 +260,31 @@ def main(
     stdin = stdin or sys.stdin
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
+    exit_code = EXIT_OK
     try:
         args = _parser().parse_args(argv)
         if args.command in {"list", "search", "inspect"}:
-            return _discovery(args, stdout)
-        proposal = _proposal(args, stdin)
-        document = kits.proposal_document(proposal)
-        _emit(document, as_json=args.json, stdout=stdout)
-        if proposal.diagnostics:
-            return EXIT_BLOCKING
-        if not args.preview:
-            kits.apply_proposal(proposal)
-        return EXIT_OK
+            exit_code = _discovery(args, stdout)
+        else:
+            proposal = _proposal(args, stdin)
+            document = kits.proposal_document(proposal)
+            _emit(document, as_json=args.json, stdout=stdout)
+            if proposal.diagnostics:
+                exit_code = EXIT_BLOCKING
+            elif not args.preview:
+                kits.apply_proposal(proposal)
     except kits.KitRecoveryError as exc:
         print(f"error: {exc}", file=stderr)
         print(f"recovery: {_terminal_text(exc.recovery_path)}", file=stderr)
-        return EXIT_TOOL_FAILURE
+        exit_code = EXIT_TOOL_FAILURE
     except kits.KitError as exc:
         # KitError messages are bounded and value-free by contract.
         print(f"error: {exc}", file=stderr)
-        return EXIT_BLOCKING
+        exit_code = EXIT_BLOCKING
     except (OSError, RuntimeError):
         print("error: kit tool failure", file=stderr)
-        return EXIT_TOOL_FAILURE
+        exit_code = EXIT_TOOL_FAILURE
+    return exit_code
 
 
 if __name__ == "__main__":

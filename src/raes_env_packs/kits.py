@@ -16,9 +16,9 @@ import os
 import re
 import shutil
 import tempfile
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
 from urllib.parse import quote, unquote_to_bytes, urlsplit
 
 import yaml
@@ -53,7 +53,7 @@ KIT_PROPOSAL_VERSION = "raes-pack-kit-proposal/v1"
 
 _KIT_URI_SCHEME = "raes-environment-kit"
 _KIT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9.-]{0,126}[a-z0-9]$")
-_VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$")
+_VERSION_RE = re.compile(r"^(?a:\d+)\.(?a:\d+)\.(?a:\d+)(?:[-+][0-9A-Za-z.-]+)?$")
 _SOURCE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,126}[a-z0-9]$")
 _NAMESPACE_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _MAX_SOURCE_REVISION_BYTES = 512
@@ -90,14 +90,20 @@ _SECRET_KEY_FRAGMENTS = (
 _SECRET_VALUE_PATTERNS = (
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     re.compile(r"(?i)(?:x-amz-signature|sig|signature|token)=[^&\s]+"),
-    re.compile(r"(?i)https?://[^/@\s]+:[^/@\s]+@"),
+    re.compile(r"(?i)https?://[^/:@\s]+:[^/@\s]+@"),
     re.compile(r"(?:eyJ[A-Za-z0-9_-]{8,}\.){2}[A-Za-z0-9_-]{8,}"),
     re.compile(r"(?:gh[pousr]_|AKIA)[A-Za-z0-9_-]{12,}"),
 )
 _ENVIRONMENT_COORDINATE_RE = re.compile(
-    r"(?i)^(?:\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|env:[A-Za-z_][A-Za-z0-9_]*)$"
+    r"^(?:\$\{?[a-z_]\w*\}?|env:[a-z_]\w*)$", re.ASCII | re.IGNORECASE
 )
 _TERMINAL_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+_PACK_MANIFEST = "pack.yaml"
+_KIT_MANIFEST = "kit.yaml"
+_PACK_MANIFEST_INVALID = "pack manifest is invalid"
+_SHA256_PREFIX = "sha256:"
+_SDL_SUFFIX = ".sdl.yaml"
+_AUTHORING_TIME_ONLY = "authoring-time only"
 
 
 class KitError(ValueError):
@@ -115,7 +121,7 @@ class KitRecoveryError(KitError):
 
 
 @dataclass(frozen=True)
-class KitLimits:
+class KitLimits(object):
     """Resource bounds for inspecting one staged kit release."""
 
     max_members: int = 256
@@ -142,7 +148,7 @@ class KitLimits:
 
 
 @dataclass(frozen=True)
-class KitSource:
+class KitSource(object):
     """A stable catalog source id and immutable revision over a staged root."""
 
     id: str
@@ -151,7 +157,7 @@ class KitSource:
 
 
 @dataclass(frozen=True)
-class KitRelease:
+class KitRelease(object):
     """One validated kit release and its RAES-owned module facts."""
 
     root: str
@@ -170,20 +176,24 @@ class KitRelease:
 
 
 @dataclass(frozen=True)
-class _SnapshotFile:
+class _SnapshotFile(object):
+    """One immutable pack member captured for a proposal."""
+
     path: str
     content: bytes
     digest: str
 
 
 @dataclass(frozen=True)
-class _PackSnapshot:
+class _PackSnapshot(object):
+    """An exact bounded pack tree and its aggregate digest."""
+
     files: tuple[_SnapshotFile, ...]
     digest: str
 
 
 @dataclass(frozen=True)
-class KitProposal:
+class KitProposal(object):
     """One immutable, exact successor proposal consumed by every front end."""
 
     operation: str
@@ -206,6 +216,8 @@ class KitProposal:
 
 
 def _schema_violations(document: object, schema_path: Path) -> list[str]:
+    """Project schema diagnostics into stable value-free strings."""
+
     schema = validation._trusted_schema(schema_path)
     return [
         f"{item.code}:{item.path}"
@@ -213,7 +225,9 @@ def _schema_violations(document: object, schema_path: Path) -> list[str]:
     ]
 
 
-def _iter_mapping_values(value: object):
+def _iter_mapping_values(value: object) -> Iterator[tuple[object, object]]:
+    """Yield every mapping member from one nested JSON-like value."""
+
     if isinstance(value, dict):
         for key, item in value.items():
             yield key, item
@@ -224,6 +238,8 @@ def _iter_mapping_values(value: object):
 
 
 def _secret_shape_violations(document: object) -> list[str]:
+    """Return secret-shaped key and value violations without echoing values."""
+
     violations: list[str] = []
     for key, value in _iter_mapping_values(document):
         normalized = str(key).casefold().replace("-", "_")
@@ -237,6 +253,8 @@ def _secret_shape_violations(document: object) -> list[str]:
 
 
 def _canonical_member(value: object, field: str, violations: list[str]) -> str | None:
+    """Normalize one member path and record a bounded failure on error."""
+
     if not isinstance(value, str):
         return None
     try:
@@ -258,14 +276,11 @@ def _safe_asset_target(value: object) -> bool:
     return rel.startswith(_SAFE_ASSET_TARGET_PREFIXES)
 
 
-def validate_kit_document(document: object) -> list[str]:
-    """Return stable, value-free violations for one authored kit manifest."""
+def _validate_kit_identity_fields(
+    document: Mapping[str, object], violations: list[str]
+) -> None:
+    """Validate non-empty identity fields and canonical manifest pointers."""
 
-    violations = _schema_violations(document, _KIT_SCHEMA)
-    if not isinstance(document, dict):
-        return sorted(set(violations))
-
-    violations.extend(_secret_shape_violations(document))
     for field in ("id", "version", "title", "summary", "released_at"):
         value = document.get(field)
         if not isinstance(value, str) or not value.strip():
@@ -284,6 +299,12 @@ def validate_kit_document(document: object) -> list[str]:
         violations,
     )
 
+
+def _validate_kit_resources(
+    document: Mapping[str, object], violations: list[str]
+) -> None:
+    """Validate positive integer resource estimates when present."""
+
     resources = document.get("resources")
     if isinstance(resources, dict):
         for field in ("cpu_cores", "memory_mib", "storage_mib"):
@@ -291,25 +312,51 @@ def validate_kit_document(document: object) -> list[str]:
             if not isinstance(value, int) or isinstance(value, bool) or value < 1:
                 violations.append(f"positive:$.resources.{field}")
 
+
+def _validate_kit_assets(
+    document: Mapping[str, object], violations: list[str]
+) -> None:
+    """Validate closed asset destinations and unique byte identities."""
+
     seen_targets: set[str] = set()
     seen_artifacts: set[str] = set()
     assets = document.get("assets")
     for index, asset in enumerate(assets if isinstance(assets, list) else []):
         if not isinstance(asset, dict):
             continue
-        source = _canonical_member(asset.get("source"), f"assets[{index}].source", violations)
-        target = _canonical_member(asset.get("target"), f"assets[{index}].target", violations)
-        if not _safe_asset_target(target):
-            violations.append(f"safe-target:$.assets[{index}].target")
-        artifact_id = asset.get("artifact_id")
-        if target is not None and target in seen_targets:
-            violations.append(f"duplicate:$.assets[{index}].target")
-        if isinstance(artifact_id, str) and artifact_id in seen_artifacts:
-            violations.append(f"duplicate:$.assets[{index}].artifact_id")
-        if target is not None:
-            seen_targets.add(target)
-        if isinstance(artifact_id, str):
-            seen_artifacts.add(artifact_id)
+        _validate_kit_asset(
+            asset, index, seen_targets, seen_artifacts, violations
+        )
+
+
+def _validate_kit_asset(
+    asset: Mapping[str, object],
+    index: int,
+    seen_targets: set[str],
+    seen_artifacts: set[str],
+    violations: list[str],
+) -> None:
+    """Validate one asset row and update its uniqueness indexes."""
+
+    _canonical_member(asset.get("source"), f"assets[{index}].source", violations)
+    target = _canonical_member(asset.get("target"), f"assets[{index}].target", violations)
+    if not _safe_asset_target(target):
+        violations.append(f"safe-target:$.assets[{index}].target")
+    artifact_id = asset.get("artifact_id")
+    if target is not None and target in seen_targets:
+        violations.append(f"duplicate:$.assets[{index}].target")
+    if isinstance(artifact_id, str) and artifact_id in seen_artifacts:
+        violations.append(f"duplicate:$.assets[{index}].artifact_id")
+    if target is not None:
+        seen_targets.add(target)
+    if isinstance(artifact_id, str):
+        seen_artifacts.add(artifact_id)
+
+
+def _validate_kit_tests(
+    document: Mapping[str, object], violations: list[str]
+) -> None:
+    """Validate unique test pointers and the required coverage kinds."""
 
     tests = document.get("tests")
     seen_tests: set[tuple[object, object]] = set()
@@ -327,6 +374,12 @@ def validate_kit_document(document: object) -> list[str]:
         if kind not in test_kinds:
             violations.append(f"required:$.tests[kind={kind}]")
 
+
+def _validate_component_inventory(
+    document: Mapping[str, object], violations: list[str]
+) -> None:
+    """Validate component authority claims at their declared scope."""
+
     components = document.get("component_inventory")
     if not isinstance(components, list) or not components:
         violations.append("required:$.component_inventory")
@@ -339,6 +392,12 @@ def validate_kit_document(document: object) -> list[str]:
         authority = component.get("authority")
         if scope in {"shipped", "pinned"} and authority == "author-declared-external":
             violations.append(f"authority:$.component_inventory[{index}]")
+
+
+def _validate_kit_prerequisites(
+    document: Mapping[str, object], violations: list[str]
+) -> None:
+    """Validate unique exact prerequisite identities."""
 
     prerequisites = document.get("prerequisites")
     seen_prerequisites: set[tuple[object, object, object]] = set()
@@ -355,14 +414,38 @@ def validate_kit_document(document: object) -> list[str]:
         if identity in seen_prerequisites:
             violations.append(f"duplicate:$.prerequisites[{index}]")
         seen_prerequisites.add(identity)
-        if prerequisite.get("kind") == "kit" and (
-            not isinstance(prerequisite.get("id"), str)
-            or _KIT_ID_RE.fullmatch(str(prerequisite["id"])) is None
-            or not isinstance(prerequisite.get("version"), str)
-            or _VERSION_RE.fullmatch(str(prerequisite["version"])) is None
+        if prerequisite.get("kind") == "kit" and not _valid_kit_prerequisite(
+            prerequisite
         ):
             violations.append(f"identity:$.prerequisites[{index}]")
 
+
+def _valid_kit_prerequisite(prerequisite: Mapping[str, object]) -> bool:
+    """Whether one kit prerequisite carries a canonical exact identity."""
+
+    kit_id = prerequisite.get("id")
+    version = prerequisite.get("version")
+    return (
+        isinstance(kit_id, str)
+        and _KIT_ID_RE.fullmatch(kit_id) is not None
+        and isinstance(version, str)
+        and _VERSION_RE.fullmatch(version) is not None
+    )
+
+
+def validate_kit_document(document: object) -> list[str]:
+    """Return stable, value-free violations for one authored kit manifest."""
+
+    violations = _schema_violations(document, _KIT_SCHEMA)
+    if not isinstance(document, dict):
+        return sorted(set(violations))
+    violations.extend(_secret_shape_violations(document))
+    _validate_kit_identity_fields(document, violations)
+    _validate_kit_resources(document, violations)
+    _validate_kit_assets(document, violations)
+    _validate_kit_tests(document, violations)
+    _validate_component_inventory(document, violations)
+    _validate_kit_prerequisites(document, violations)
     return sorted(set(violations))
 
 
@@ -379,6 +462,8 @@ def validate_materializations_document(document: object) -> list[str]:
 
 
 def _strict_yaml(data: bytes, *, limits: KitLimits) -> object:
+    """Decode bounded duplicate-free YAML with shared parser limits."""
+
     try:
         text = data.decode("utf-8", errors="strict")
         validation._check_yaml_events(
@@ -390,7 +475,7 @@ def _strict_yaml(data: bytes, *, limits: KitLimits) -> object:
             ),
         )
         return yaml.load(text, Loader=validation._StrictLoader)
-    except (UnicodeDecodeError, yaml.YAMLError, ValueError) as exc:
+    except (yaml.YAMLError, ValueError) as exc:
         raise KitError("kit manifest is not valid bounded strict YAML") from exc
 
 
@@ -398,6 +483,8 @@ def _strict_json_object(data: bytes, *, label: str) -> dict[str, object]:
     """Parse one bounded UTF-8 JSON object while rejecting duplicate members."""
 
     def object_pairs(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        """Reject duplicate object members during JSON decoding."""
+
         document: dict[str, object] = {}
         for key, value in pairs:
             if key in document:
@@ -406,6 +493,8 @@ def _strict_json_object(data: bytes, *, label: str) -> dict[str, object]:
         return document
 
     def invalid_constant(_value: str) -> object:
+        """Reject non-finite JSON numeric extensions."""
+
         raise ValueError("non-finite JSON number")
 
     try:
@@ -414,7 +503,7 @@ def _strict_json_object(data: bytes, *, label: str) -> dict[str, object]:
             object_pairs_hook=object_pairs,
             parse_constant=invalid_constant,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+    except ValueError as exc:
         raise KitError(f"{label} is invalid") from exc
     if not isinstance(document, dict):
         raise KitError(f"{label} is invalid")
@@ -422,16 +511,20 @@ def _strict_json_object(data: bytes, *, label: str) -> dict[str, object]:
 
 
 def _strict_pack_yaml(data: bytes) -> dict[str, object]:
+    """Load the pack manifest as one strict mapping."""
+
     try:
         document = _strict_yaml(data, limits=KitLimits())
     except KitError as exc:
-        raise KitError("pack manifest is invalid") from exc
+        raise KitError(_PACK_MANIFEST_INVALID) from exc
     if not isinstance(document, dict):
-        raise KitError("pack manifest is invalid")
+        raise KitError(_PACK_MANIFEST_INVALID)
     return document
 
 
 def _read_member(root_fd: int, rel: str, limits: KitLimits) -> bytes:
+    """Read one bounded kit member through the safe pack filesystem layer."""
+
     try:
         return _pack_fs.read_member_bytes(
             root_fd,
@@ -444,6 +537,8 @@ def _read_member(root_fd: int, rel: str, limits: KitLimits) -> bytes:
 
 
 def _kit_uri_path(uri: str) -> str:
+    """Resolve one canonical kit artifact locator to a release member."""
+
     parsed = urlsplit(uri)
     if (
         parsed.scheme != _KIT_URI_SCHEME
@@ -461,6 +556,8 @@ def _kit_uri_path(uri: str) -> str:
 
 
 def _module_document(document: Mapping[str, object]) -> str:
+    """Return the canonical RAES module path from a kit manifest."""
+
     module = document.get("module")
     if not isinstance(module, dict):
         raise KitError("kit module pointer is invalid")
@@ -471,6 +568,8 @@ def _module_document(document: Mapping[str, object]) -> str:
 
 
 def _manifest_document(document: Mapping[str, object]) -> str:
+    """Return the canonical associated-artifact manifest path."""
+
     rel = document.get("associated_artifact_manifest")
     if not isinstance(rel, str):
         raise KitError("kit associated-artifact pointer is invalid")
@@ -478,9 +577,160 @@ def _manifest_document(document: Mapping[str, object]) -> str:
 
 
 def _verify_infrastructure_only(scenario: object) -> None:
+    """Reject scenario behavior and narrative sections from kit modules."""
+
     for section in _FORBIDDEN_MODULE_SECTIONS:
         if getattr(scenario, section, None):
             raise KitError("kit module contains scenario behavior or narrative")
+
+
+def _load_release_document(
+    root_fd: int, inventory: tuple[str, ...], limits: KitLimits
+) -> dict[str, object]:
+    """Load and validate the closed kit manifest from an admitted inventory."""
+
+    if _KIT_MANIFEST not in inventory:
+        raise KitError("kit manifest is missing")
+    document = _strict_yaml(
+        _read_member(root_fd, _KIT_MANIFEST, limits), limits=limits
+    )
+    if not isinstance(document, dict) or validate_kit_document(document):
+        raise KitError("kit manifest does not satisfy the closed contract")
+    return document
+
+
+def _required_release_paths(document: Mapping[str, object]) -> set[str]:
+    """Collect every kit member directly referenced by the release manifest."""
+
+    paths = {_module_document(document), _manifest_document(document)}
+    assets = document.get("assets")
+    for item in assets if isinstance(assets, list) else []:
+        if isinstance(item, dict) and isinstance(item.get("source"), str):
+            paths.add(str(item["source"]))
+    tests = document.get("tests")
+    for item in tests if isinstance(tests, list) else []:
+        if isinstance(item, dict) and isinstance(item.get("path"), str):
+            paths.add(str(item["path"]))
+    return paths
+
+
+def _secret_parameter_name(parameters: object) -> bool:
+    """Whether a RAES parameter list contains a secret-shaped name."""
+
+    if not isinstance(parameters, list):
+        return False
+    return any(
+        isinstance(parameter, str)
+        and any(
+            fragment in parameter.casefold().replace("-", "_")
+            for fragment in _SECRET_KEY_FRAGMENTS
+        )
+        for parameter in parameters
+    )
+
+
+def _load_release_scenario(
+    root: str,
+    root_fd: int,
+    module_rel: str,
+    document: Mapping[str, object],
+    limits: KitLimits,
+) -> object:
+    """Parse and validate the RAES-owned infrastructure module."""
+
+    raw_module = _strict_yaml(_read_member(root_fd, module_rel, limits), limits=limits)
+    _validate_raw_module(raw_module)
+    try:
+        scenario = parse_sdl_file(Path(root, *module_rel.split("/")))
+    except (SDLError, OSError, ValueError) as exc:
+        raise KitError("kit module is not valid RAES SDL") from exc
+    descriptor = getattr(scenario, "module", None)
+    if descriptor is None:
+        raise KitError("kit module has no RAES module descriptor")
+    if descriptor.version != document.get("version"):
+        raise KitError("kit version and RAES module version differ")
+    if _secret_parameter_name(list(descriptor.parameters)):
+        raise KitError("kit module declares a secret-shaped parameter")
+    _verify_infrastructure_only(scenario)
+    return scenario
+
+
+def _validate_raw_module(raw_module: object) -> None:
+    """Reject forbidden sections and secret-shaped raw parameter names."""
+
+    if isinstance(raw_module, dict) and any(
+        raw_module.get(section) for section in _FORBIDDEN_MODULE_SECTIONS
+    ):
+        raise KitError("kit module contains scenario behavior or narrative")
+    raw_descriptor = raw_module.get("module") if isinstance(raw_module, dict) else None
+    raw_parameters = (
+        raw_descriptor.get("parameters") if isinstance(raw_descriptor, dict) else []
+    )
+    if _secret_parameter_name(raw_parameters):
+        raise KitError("kit module declares a secret-shaped parameter")
+
+
+def _release_artifact_readers(
+    root_fd: int,
+    inventory: tuple[str, ...],
+    manifest_rel: str,
+    manifest: AssociatedArtifactManifestModel,
+    manifest_size: int,
+    limits: KitLimits,
+) -> tuple[dict[str, str], dict[str, io.BytesIO]]:
+    """Load the exact bounded artifact payload declared by one release."""
+
+    artifact_paths: dict[str, str] = {}
+    readers: dict[str, io.BytesIO] = {}
+    total = manifest_size
+    if total > limits.max_total_bytes:
+        raise KitError("kit payload bytes exceed the inspection limit")
+    for artifact_id, artifact in manifest.artifacts.items():
+        rel = _kit_uri_path(artifact.uri)
+        if rel == manifest_rel or rel in artifact_paths.values():
+            raise KitError("kit associated-artifact paths are not unique")
+        if rel not in inventory:
+            raise KitError("kit associated artifact is missing")
+        data = _read_member(root_fd, rel, limits)
+        total += len(data)
+        if total > limits.max_total_bytes:
+            raise KitError("kit payload bytes exceed the inspection limit")
+        artifact_paths[artifact_id] = rel
+        readers[artifact_id] = io.BytesIO(data)
+    return artifact_paths, readers
+
+
+def _load_release_manifest(
+    root_fd: int,
+    inventory: tuple[str, ...],
+    manifest_rel: str,
+    document: Mapping[str, object],
+    scenario: object,
+    limits: KitLimits,
+) -> AssociatedArtifactManifestModel:
+    """Load and byte-bind the release's exact associated-artifact manifest."""
+
+    manifest_bytes = _read_member(root_fd, manifest_rel, limits)
+    try:
+        manifest = load_associated_artifact_manifest_json(manifest_bytes)
+    except (ValueError, TypeError) as exc:
+        raise KitError("kit associated-artifact manifest is invalid") from exc
+    expected_id = f"{document['id']}-associated-artifacts"
+    if manifest.manifest_id != expected_id or manifest.manifest_version != document["version"]:
+        raise KitError("kit associated-artifact identity does not match the kit")
+    artifact_paths, readers = _release_artifact_readers(
+        root_fd, inventory, manifest_rel, manifest, len(manifest_bytes), limits
+    )
+    if set(artifact_paths.values()) != set(inventory) - {manifest_rel}:
+        raise KitError("kit associated artifacts do not cover the exact release")
+    diagnostics = validate_associated_artifact_manifest(
+        manifest, parent=scenario, artifact_readers=readers
+    )
+    if diagnostics:
+        raise KitError("kit associated-artifact byte binding failed")
+    if canonical_sdl_digest(scenario).value != manifest.parent_ref.ref_digest:
+        raise KitError("kit semantic parent digest does not match the module")
+    return manifest
 
 
 def load_kit_release(
@@ -497,103 +747,15 @@ def load_kit_release(
         inventory = _pack_fs.inventory(
             root_fd, max_members=active.max_members, error_type=KitError
         )
-        if "kit.yaml" not in inventory:
-            raise KitError("kit manifest is missing")
-        document = _strict_yaml(_read_member(root_fd, "kit.yaml", active), limits=active)
-        violations = validate_kit_document(document)
-        if violations or not isinstance(document, dict):
-            raise KitError("kit manifest does not satisfy the closed contract")
-
+        document = _load_release_document(root_fd, inventory, active)
         module_rel = _module_document(document)
         manifest_rel = _manifest_document(document)
-        required_paths = {module_rel, manifest_rel}
-        required_paths.update(
-            str(item.get("source"))
-            for item in document.get("assets", [])
-            if isinstance(item, dict) and isinstance(item.get("source"), str)
-        )
-        required_paths.update(
-            str(item.get("path"))
-            for item in document.get("tests", [])
-            if isinstance(item, dict) and isinstance(item.get("path"), str)
-        )
-        if not required_paths.issubset(set(inventory)):
+        if not _required_release_paths(document).issubset(set(inventory)):
             raise KitError("kit references a missing member")
-
-        raw_module = _strict_yaml(_read_member(root_fd, module_rel, active), limits=active)
-        if isinstance(raw_module, dict) and any(
-            raw_module.get(section) for section in _FORBIDDEN_MODULE_SECTIONS
-        ):
-            raise KitError("kit module contains scenario behavior or narrative")
-        raw_descriptor = raw_module.get("module") if isinstance(raw_module, dict) else None
-        raw_parameters = (
-            raw_descriptor.get("parameters") if isinstance(raw_descriptor, dict) else []
+        scenario = _load_release_scenario(root, root_fd, module_rel, document, active)
+        manifest = _load_release_manifest(
+            root_fd, inventory, manifest_rel, document, scenario, active
         )
-        if isinstance(raw_parameters, list) and any(
-            isinstance(parameter, str)
-            and any(
-                fragment in parameter.casefold().replace("-", "_")
-                for fragment in _SECRET_KEY_FRAGMENTS
-            )
-            for parameter in raw_parameters
-        ):
-            raise KitError("kit module declares a secret-shaped parameter")
-
-        try:
-            scenario = parse_sdl_file(Path(root, *module_rel.split("/")))
-        except (SDLError, OSError, ValueError) as exc:
-            raise KitError("kit module is not valid RAES SDL") from exc
-        descriptor = getattr(scenario, "module", None)
-        if descriptor is None:
-            raise KitError("kit module has no RAES module descriptor")
-        if descriptor.version != document.get("version"):
-            raise KitError("kit version and RAES module version differ")
-        if any(
-            fragment in parameter.casefold().replace("-", "_")
-            for parameter in descriptor.parameters
-            for fragment in _SECRET_KEY_FRAGMENTS
-        ):
-            raise KitError("kit module declares a secret-shaped parameter")
-        _verify_infrastructure_only(scenario)
-
-        manifest_bytes = _read_member(root_fd, manifest_rel, active)
-        try:
-            manifest = load_associated_artifact_manifest_json(manifest_bytes)
-        except (ValueError, TypeError) as exc:
-            raise KitError("kit associated-artifact manifest is invalid") from exc
-        if (
-            manifest.manifest_id != f"{document['id']}-associated-artifacts"
-            or manifest.manifest_version != document["version"]
-        ):
-            raise KitError("kit associated-artifact identity does not match the kit")
-
-        artifact_paths: dict[str, str] = {}
-        readers: dict[str, io.BytesIO] = {}
-        total = len(manifest_bytes)
-        if total > active.max_total_bytes:
-            raise KitError("kit payload bytes exceed the inspection limit")
-        for artifact_id, artifact in manifest.artifacts.items():
-            rel = _kit_uri_path(artifact.uri)
-            if rel == manifest_rel or rel in artifact_paths.values():
-                raise KitError("kit associated-artifact paths are not unique")
-            if rel not in inventory:
-                raise KitError("kit associated artifact is missing")
-            data = _read_member(root_fd, rel, active)
-            total += len(data)
-            if total > active.max_total_bytes:
-                raise KitError("kit payload bytes exceed the inspection limit")
-            artifact_paths[artifact_id] = rel
-            readers[artifact_id] = io.BytesIO(data)
-        expected_inventory = set(inventory) - {manifest_rel}
-        if set(artifact_paths.values()) != expected_inventory:
-            raise KitError("kit associated artifacts do not cover the exact release")
-        diagnostics = validate_associated_artifact_manifest(
-            manifest, parent=scenario, artifact_readers=readers
-        )
-        if diagnostics:
-            raise KitError("kit associated-artifact byte binding failed")
-        if canonical_sdl_digest(scenario).value != manifest.parent_ref.ref_digest:
-            raise KitError("kit semantic parent digest does not match the module")
         if _pack_fs.inventory(
             root_fd, max_members=active.max_members, error_type=KitError
         ) != inventory:
@@ -660,6 +822,8 @@ def inspect_kit(release: KitRelease) -> dict[str, object]:
 
 
 def _validate_source(source: KitSource) -> None:
+    """Validate one staged catalog source descriptor without opening it."""
+
     if not isinstance(source.id, str) or _SOURCE_ID_RE.fullmatch(source.id) is None:
         raise KitError("kit source id is invalid")
     if (
@@ -674,6 +838,8 @@ def _validate_source(source: KitSource) -> None:
 
 
 def _source_release_roots(source: KitSource) -> tuple[str, ...]:
+    """Discover canonical immutable release roots below one staged source."""
+
     _validate_source(source)
     try:
         _root, root_fd = _pack_fs.open_root(source.root, error_type=KitError)
@@ -686,7 +852,7 @@ def _source_release_roots(source: KitSource) -> tuple[str, ...]:
     releases: set[str] = set()
     for rel in inventory:
         parts = rel.split("/")
-        if len(parts) == 4 and parts[0] == "kits" and parts[3] == "kit.yaml":
+        if len(parts) == 4 and parts[0] == "kits" and parts[3] == _KIT_MANIFEST:
             releases.add("/".join(parts[:3]))
     return tuple(sorted(releases))
 
@@ -779,17 +945,21 @@ _CACHE_PREFIX = (("sdl", ".raes", "module-cache"),)
 
 
 def _digest_bytes(data: bytes) -> str:
-    return "sha256:" + hashlib.sha256(data).hexdigest()
+    """Return the canonical SHA-256 identity for one byte string."""
+
+    return _SHA256_PREFIX + hashlib.sha256(data).hexdigest()
 
 
 def _snapshot_digest(files: tuple[_SnapshotFile, ...]) -> str:
+    """Digest an ordered set of pack-member identities."""
+
     digest = hashlib.sha256()
     for item in files:
         encoded = item.path.encode("utf-8")
         digest.update(len(encoded).to_bytes(8, "big"))
         digest.update(encoded)
-        digest.update(bytes.fromhex(item.digest.removeprefix("sha256:")))
-    return "sha256:" + digest.hexdigest()
+        digest.update(bytes.fromhex(item.digest.removeprefix(_SHA256_PREFIX)))
+    return _SHA256_PREFIX + digest.hexdigest()
 
 
 def _capture_pack(pack_root: str | os.PathLike[str]) -> _PackSnapshot:
@@ -833,10 +1003,14 @@ def _capture_pack(pack_root: str | os.PathLike[str]) -> _PackSnapshot:
 
 
 def _snapshot_mapping(snapshot: _PackSnapshot) -> dict[str, bytes]:
+    """Project an immutable snapshot into a mutable staging mapping."""
+
     return {item.path: item.content for item in snapshot.files}
 
 
 def _write_snapshot(root: Path, files: Mapping[str, bytes]) -> None:
+    """Write a complete snapshot below one fresh private directory."""
+
     root.mkdir(mode=0o755)
     root.chmod(0o755)
     for rel, content in sorted(files.items()):
@@ -846,6 +1020,8 @@ def _write_snapshot(root: Path, files: Mapping[str, bytes]) -> None:
 def _diagnostic(
     code: str, path: str | None = None, field_path: str | None = None
 ) -> validation.Diagnostic:
+    """Build one bounded value-free author diagnostic."""
+
     message = code
     if path:
         message += f": {path}"
@@ -859,11 +1035,15 @@ def _diagnostic(
 def _ordered_diagnostics(
     diagnostics: list[validation.Diagnostic],
 ) -> tuple[validation.Diagnostic, ...]:
+    """Deduplicate and deterministically order author diagnostics."""
+
     unique = {item.message: item for item in diagnostics}
     return tuple(unique[key] for key in sorted(unique))
 
 
 def _secret_value(value: object) -> bool:
+    """Whether a scalar value has a disallowed secret-bearing shape."""
+
     if isinstance(value, str):
         return _ENVIRONMENT_COORDINATE_RE.fullmatch(value) is not None or any(
             pattern.search(value) for pattern in _SECRET_VALUE_PATTERNS
@@ -871,39 +1051,42 @@ def _secret_value(value: object) -> bool:
     return False
 
 
+def _parameter_issue(release: KitRelease, key: object, value: object) -> str | None:
+    """Return the stable issue code for one proposed parameter, if any."""
+
+    if not isinstance(key, str) or key not in release.scenario.module.parameters:
+        return "kit.parameter.unknown"
+    valid_type = isinstance(value, (str, int, float, bool))
+    finite = not isinstance(value, float) or math.isfinite(value)
+    bounded = not isinstance(value, str) or len(value.encode("utf-8")) <= 4096
+    if not valid_type or not finite or not bounded:
+        return "kit.parameter.invalid"
+    if _secret_value(value):
+        return "kit.parameter.secret"
+    return None
+
+
 def _normalize_parameters(
     release: KitRelease, parameters: Mapping[str, object]
 ) -> tuple[dict[str, object], list[validation.Diagnostic]]:
+    """Validate public scalar parameters without retaining secret-shaped values."""
+
     diagnostics: list[validation.Diagnostic] = []
     if not isinstance(parameters, Mapping) or len(parameters) > 64:
         return {}, [_diagnostic("kit.parameter.invalid", field_path="parameters")]
-    allowed = set(release.scenario.module.parameters)
     normalized: dict[str, object] = {}
     for key, value in sorted(parameters.items(), key=lambda item: str(item[0])):
-        if not isinstance(key, str) or key not in allowed:
-            diagnostics.append(
-                _diagnostic("kit.parameter.unknown", field_path="parameters")
-            )
-            continue
-        if (
-            not isinstance(value, (str, int, float, bool))
-            or isinstance(value, float) and not math.isfinite(value)
-            or isinstance(value, str) and len(value.encode("utf-8")) > 4096
-        ):
-            diagnostics.append(
-                _diagnostic("kit.parameter.invalid", field_path="parameters")
-            )
-            continue
-        if _secret_value(value):
-            diagnostics.append(
-                _diagnostic("kit.parameter.secret", field_path="parameters")
-            )
-            continue
-        normalized[key] = value
+        issue = _parameter_issue(release, key, value)
+        if issue is None:
+            normalized[str(key)] = value
+        else:
+            diagnostics.append(_diagnostic(issue, field_path="parameters"))
     return normalized, diagnostics
 
 
 def _load_ledger(files: Mapping[str, bytes]) -> dict[str, object]:
+    """Load or initialize the inert kit materialization ledger."""
+
     if KIT_MATERIALIZATIONS_PATH not in files:
         return {
             "schema_version": KIT_MATERIALIZATIONS_SCHEMA_VERSION,
@@ -919,10 +1102,12 @@ def _load_ledger(files: Mapping[str, bytes]) -> dict[str, object]:
 
 
 def _pack_pointer(files: Mapping[str, bytes]) -> tuple[dict[str, object], str]:
+    """Load the pack manifest and its associated-artifact pointer."""
+
     try:
-        pack = _strict_pack_yaml(files["pack.yaml"])
+        pack = _strict_pack_yaml(files[_PACK_MANIFEST])
     except KeyError as exc:
-        raise KitError("pack manifest is invalid") from exc
+        raise KitError(_PACK_MANIFEST_INVALID) from exc
     pointer = pack.get("associated_artifact_manifest")
     if not isinstance(pointer, str):
         raise KitError("pack has no associated-artifact identity")
@@ -930,6 +1115,8 @@ def _pack_pointer(files: Mapping[str, bytes]) -> tuple[dict[str, object], str]:
 
 
 def _pack_artifact_path(uri: str, manifest_rel: str) -> str:
+    """Resolve one canonical pack artifact locator to a member path."""
+
     parsed = urlsplit(uri)
     if (
         parsed.scheme != "raes-environment-pack"
@@ -952,6 +1139,8 @@ def _pack_artifact_path(uri: str, manifest_rel: str) -> str:
 def _load_pack_artifacts(
     files: Mapping[str, bytes], manifest_rel: str
 ) -> tuple[AssociatedArtifactManifestModel, dict[str, str]]:
+    """Load a pack artifact manifest and its unique member-path index."""
+
     try:
         manifest = load_associated_artifact_manifest_json(files[manifest_rel])
     except (KeyError, ValueError, TypeError) as exc:
@@ -966,6 +1155,8 @@ def _load_pack_artifacts(
 
 
 def _release_bytes(release: KitRelease, rel: str) -> bytes:
+    """Safely reopen and read one admitted release member."""
+
     try:
         _root, root_fd = _pack_fs.open_root(release.root, error_type=KitError)
     except (KitError, OSError) as exc:
@@ -982,6 +1173,8 @@ def _release_bytes(release: KitRelease, rel: str) -> bytes:
 
 
 def _release_artifact_metadata(release: KitRelease) -> dict[str, dict[str, object]]:
+    """Index admitted artifact metadata by canonical release member path."""
+
     metadata: dict[str, dict[str, object]] = {}
     for artifact in release.associated_artifacts.artifacts.values():
         metadata[_kit_uri_path(artifact.uri)] = artifact.model_dump(mode="python")
@@ -991,6 +1184,8 @@ def _release_artifact_metadata(release: KitRelease) -> dict[str, dict[str, objec
 def _unique_artifact_id(
     preferred: str, unavailable: set[str], *, path: str
 ) -> str:
+    """Choose a deterministic artifact id not present in the unavailable set."""
+
     candidate = re.sub(r"[^a-zA-Z0-9_.-]+", "-", preferred).strip("-") or "artifact"
     if candidate not in unavailable:
         return candidate
@@ -1010,6 +1205,8 @@ def _new_artifact(
     created_at: str,
     metadata: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
+    """Build one byte-bound associated-artifact record."""
+
     document = dict(metadata or {})
     document.update(
         {
@@ -1030,41 +1227,33 @@ def _new_artifact(
     return document
 
 
-def _ensure_pack_identity(
-    candidate: Path, files: dict[str, bytes], *, created_at: str
-) -> None:
-    """Initialize the existing RAES associated-artifact contract when absent."""
+def _direct_sdl_paths(files: Mapping[str, bytes]) -> list[str]:
+    """Return direct pack SDL documents eligible to be the semantic parent."""
 
-    try:
-        pack = _strict_pack_yaml(files["pack.yaml"])
-    except KeyError as exc:
-        raise KitError("pack manifest is invalid") from exc
-    existing = pack.get("associated_artifact_manifest")
-    if isinstance(existing, str):
-        return
-    if existing is not None or "associated-artifacts.json" in files:
-        raise KitError("pack associated-artifact pointer is ambiguous")
-    manifest_rel = "associated-artifacts.json"
-    pack["associated_artifact_manifest"] = manifest_rel
-    files["pack.yaml"] = yaml.safe_dump(pack, sort_keys=False).encode("utf-8")
-    _transactions.write_member(candidate, "pack.yaml", files["pack.yaml"])
-
-    name = pack.get("name")
-    version = pack.get("version")
-    if not isinstance(name, str) or not name or version is None:
-        raise KitError("pack identity is invalid")
-    paths = sorted(
+    return sorted(
         rel
         for rel in files
-        if rel.startswith("sdl/") and rel.count("/") == 1 and rel.endswith(".sdl.yaml")
+        if rel.startswith("sdl/") and rel.count("/") == 1 and rel.endswith(_SDL_SUFFIX)
     )
+
+
+def _pack_parent(
+    candidate: Path,
+    files: Mapping[str, bytes],
+    name: object,
+    *,
+    missing_message: str,
+) -> tuple[object, object]:
+    """Resolve the RAES semantic parent and its originally parsed form."""
+
+    paths = _direct_sdl_paths(files)
     parsed = [parse_sdl_file(candidate.joinpath(*rel.split("/"))) for rel in paths]
     parent_index = next(
         (index for index, scenario in enumerate(parsed) if scenario.name == name),
         None,
     )
     if parent_index is None:
-        raise KitError("pack semantic parent is invalid")
+        raise KitError(missing_message)
     parsed_parent = parsed[parent_index]
     parent_path = candidate.joinpath(*paths[parent_index].split("/"))
     parent = (
@@ -1072,14 +1261,28 @@ def _ensure_pack_identity(
         if isinstance(parsed_parent, Scenario)
         else authored_sdl_parent(parent_path, expanded=parsed_parent)
     )
+    return parent, parsed_parent
+
+
+def _parent_reference(name: object, parent: object, parsed_parent: object) -> dict[str, object]:
+    """Build the RAES-associated-artifact parent reference for one pack."""
+
     if isinstance(parsed_parent, Scenario):
-        parent_ref: dict[str, object] = {
+        return {
             "ref_kind": "scenario-snapshot",
-            "ref_id": name,
+            "ref_id": str(name),
             "ref_digest": canonical_sdl_digest(parent).value,
         }
-    else:
-        parent_ref = {"ref_kind": "scenario", "ref_id": name}
+    # RAES 3.2 validates the expanded composition but does not admit that
+    # authoring phase as an artifact snapshot parent (OpenRAE/rae#1040).
+    return {"ref_kind": "scenario", "ref_id": str(name)}
+
+
+def _initial_pack_artifacts(
+    files: Mapping[str, bytes], created_at: str
+) -> dict[str, object]:
+    """Bind every existing pack member into a new artifact manifest."""
+
     artifacts: dict[str, object] = {}
     for rel in sorted(files):
         artifact_id = f"pack-{hashlib.sha256(rel.encode()).hexdigest()[:16]}"
@@ -1090,6 +1293,37 @@ def _ensure_pack_identity(
             source="environment-pack-author",
             created_at=created_at,
         )
+    return artifacts
+
+
+def _ensure_pack_identity(
+    candidate: Path, files: dict[str, bytes], *, created_at: str
+) -> None:
+    """Initialize the existing RAES associated-artifact contract when absent."""
+
+    try:
+        pack = _strict_pack_yaml(files[_PACK_MANIFEST])
+    except KeyError as exc:
+        raise KitError(_PACK_MANIFEST_INVALID) from exc
+    existing = pack.get("associated_artifact_manifest")
+    if isinstance(existing, str):
+        return
+    if existing is not None or "associated-artifacts.json" in files:
+        raise KitError("pack associated-artifact pointer is ambiguous")
+    manifest_rel = "associated-artifacts.json"
+    pack["associated_artifact_manifest"] = manifest_rel
+    files[_PACK_MANIFEST] = yaml.safe_dump(pack, sort_keys=False).encode("utf-8")
+    _transactions.write_member(candidate, _PACK_MANIFEST, files[_PACK_MANIFEST])
+
+    name = pack.get("name")
+    version = pack.get("version")
+    if not isinstance(name, str) or not name or version is None:
+        raise KitError("pack identity is invalid")
+    parent, parsed_parent = _pack_parent(
+        candidate, files, name, missing_message="pack semantic parent is invalid"
+    )
+    parent_ref = _parent_reference(name, parent, parsed_parent)
+    artifacts = _initial_pack_artifacts(files, created_at)
     manifest = AssociatedArtifactManifestModel.model_validate(
         {
             "schema_version": "associated-artifact-manifest/v1",
@@ -1099,7 +1333,7 @@ def _ensure_pack_identity(
             "scope": "scenario",
             "parent_ref": parent_ref,
             "artifacts": artifacts,
-            "set_digest": "sha256:" + "0" * 64,
+            "set_digest": _SHA256_PREFIX + "0" * 64,
         }
     )
     manifest = manifest.model_copy(
@@ -1109,6 +1343,42 @@ def _ensure_pack_identity(
         "utf-8"
     )
     _transactions.write_member(candidate, manifest_rel, files[manifest_rel])
+
+
+def _generated_artifact_preference(rel: str) -> str:
+    """Return a stable preferred id for one generated pack member."""
+
+    if rel == KIT_MATERIALIZATIONS_PATH:
+        return "kit-materializations"
+    if rel.endswith("/raes.lock.json"):
+        return "raes-lock"
+    return f"pack-{hashlib.sha256(rel.encode()).hexdigest()[:16]}"
+
+
+def _artifact_selection(
+    rel: str,
+    prior_by_path: Mapping[str, Mapping[str, object]],
+    kit_metadata: Mapping[str, tuple[str, Mapping[str, object]]],
+    reserved: set[str],
+    used: set[str],
+) -> tuple[str, Mapping[str, object] | None, str]:
+    """Select identity and retained metadata for one successor member."""
+
+    prior_document = prior_by_path.get(rel)
+    if prior_document is not None:
+        artifact_id = str(prior_document["artifact_id"])
+        if artifact_id in used:
+            raise KitError("associated-artifact id collision")
+        source = str(prior_document.get("source") or "environment-pack-author")
+        return artifact_id, prior_document, source
+    if rel in kit_metadata:
+        preferred, metadata = kit_metadata[rel]
+        artifact_id = _unique_artifact_id(preferred, reserved | used, path=rel)
+        return artifact_id, metadata, str(metadata.get("source") or "environment-kit")
+    artifact_id = _unique_artifact_id(
+        _generated_artifact_preference(rel), reserved | used, path=rel
+    )
+    return artifact_id, None, "environment-pack-author"
 
 
 def _refresh_associated_artifacts(
@@ -1129,34 +1399,13 @@ def _refresh_associated_artifacts(
         if rel in files
     }
     artifacts: dict[str, object] = {}
-    prior_ids = set(prior.artifacts)
+    reserved = set(prior.artifacts)
+    used: set[str] = set()
     for rel in inventory:
-        prior_document = prior_by_path.get(rel)
-        if prior_document is not None:
-            artifact_id = str(prior_document["artifact_id"])
-            if artifact_id in artifacts:
-                raise KitError("associated-artifact id collision")
-            metadata = prior_document
-            source = str(prior_document.get("source") or "environment-pack-author")
-        elif rel in kit_metadata:
-            preferred, metadata = kit_metadata[rel]
-            artifact_id = _unique_artifact_id(
-                preferred, prior_ids | set(artifacts), path=rel
-            )
-            source = str(metadata.get("source") or "environment-kit")
-        else:
-            preferred = (
-                "kit-materializations"
-                if rel == KIT_MATERIALIZATIONS_PATH
-                else "raes-lock"
-                if rel.endswith("/raes.lock.json")
-                else f"pack-{hashlib.sha256(rel.encode()).hexdigest()[:16]}"
-            )
-            artifact_id = _unique_artifact_id(
-                preferred, prior_ids | set(artifacts), path=rel
-            )
-            metadata = None
-            source = "environment-pack-author"
+        artifact_id, metadata, source = _artifact_selection(
+            rel, prior_by_path, kit_metadata, reserved, used
+        )
+        used.add(artifact_id)
         artifacts[artifact_id] = _new_artifact(
             artifact_id,
             rel,
@@ -1166,44 +1415,14 @@ def _refresh_associated_artifacts(
             metadata=metadata,
         )
 
-    scenario_paths = sorted(
-        rel
-        for rel in inventory
-        if rel.startswith("sdl/") and rel.count("/") == 1 and rel.endswith(".sdl.yaml")
-    )
-    if not scenario_paths:
-        raise KitError("pack has no direct SDL semantic parent")
-    paths = [candidate.joinpath(*rel.split("/")) for rel in scenario_paths]
-    expanded = [parse_sdl_file(path) for path in paths]
-    scenarios = [
-        scenario
-        if isinstance(scenario, Scenario)
-        else authored_sdl_parent(path, expanded=scenario)
-        for path, scenario in zip(paths, expanded)
-    ]
     name = pack.get("name")
-    parent_index = next(
-        (index for index, scenario in enumerate(scenarios) if scenario.name == name),
-        None,
+    parent, parsed_parent = _pack_parent(
+        candidate,
+        files,
+        name,
+        missing_message="pack semantic parent does not match pack identity",
     )
-    if parent_index is None:
-        raise KitError("pack semantic parent does not match pack identity")
-    parent = scenarios[parent_index]
-    parsed_parent = expanded[parent_index]
-    if isinstance(parsed_parent, Scenario):
-        parent_ref: dict[str, object] = {
-            "ref_kind": "scenario-snapshot",
-            "ref_id": str(name),
-            "ref_digest": canonical_sdl_digest(parent).value,
-        }
-    else:
-        # RAES 3.2 canonicalizes the validated expanded composition but its
-        # associated-artifact validator does not yet admit that authoring phase
-        # as a snapshot parent (OpenRAE/rae#1040). Use RAES's generic scenario
-        # reference without manufacturing private validation state. The exact
-        # root SDL, module files, lock, and all other pack bytes remain bound by
-        # the RAES associated-artifact set digest.
-        parent_ref = {"ref_kind": "scenario", "ref_id": str(name)}
+    parent_ref = _parent_reference(name, parent, parsed_parent)
     payload = prior.model_dump(mode="python")
     payload.update(
         {
@@ -1211,7 +1430,7 @@ def _refresh_associated_artifacts(
             "manifest_version": str(pack.get("version")),
             "parent_ref": parent_ref,
             "artifacts": artifacts,
-            "set_digest": "sha256:" + "0" * 64,
+            "set_digest": _SHA256_PREFIX + "0" * 64,
         }
     )
     manifest = AssociatedArtifactManifestModel.model_validate(payload)
@@ -1223,12 +1442,58 @@ def _refresh_associated_artifacts(
 
 
 def _module_destination(release: KitRelease, namespace: str) -> str:
+    """Return the closed pack destination for one kit module."""
+
     return f"sdl/kits/{namespace}/{release.id}/{release.version}/module.sdl.yaml"
 
 
 def _local_source(target_sdl: str, module_path: str) -> str:
+    """Build the RAES local import locator relative to the target SDL."""
+
     relative = os.path.relpath(module_path, os.path.dirname(target_sdl)).replace(os.sep, "/")
     return f"local:{relative}"
+
+
+def _append_import(
+    text_content: str,
+    current: object,
+    import_value: Mapping[str, object] | None,
+) -> dict[str, object]:
+    """Append one import after initializing the RAES list when absent."""
+
+    if current is None:
+        first = apply_structured_edit(
+            text_content, operation="set", pointer="/imports", value=[]
+        )
+        if first.get("status") not in {"edited", "edited_with_diagnostics"}:
+            raise KitError("RAES could not initialize module imports")
+        text = str(first["content"])
+    elif isinstance(current, list):
+        text = text_content
+    else:
+        raise KitError("target SDL imports are invalid")
+    return apply_structured_edit(
+        text, operation="append", pointer="/imports", value=dict(import_value or {})
+    )
+
+
+def _delete_import(text_content: str, current: object, namespace: str) -> dict[str, object]:
+    """Delete the single RAES import owned by one namespace."""
+
+    if not isinstance(current, list):
+        raise KitError("owned RAES import is missing")
+    indices = [
+        index
+        for index, item in enumerate(current)
+        if isinstance(item, dict) and item.get("namespace") == namespace
+    ]
+    if len(indices) != 1:
+        raise KitError("owned RAES import is missing or ambiguous")
+    return apply_structured_edit(
+        text_content,
+        operation="delete",
+        pointer=f"/imports/{indices[0]}",
+    )
 
 
 def _edit_import(
@@ -1238,44 +1503,20 @@ def _edit_import(
     import_value: Mapping[str, object] | None = None,
     namespace: str = "",
 ) -> bytes:
+    """Apply one RAES-owned structured import edit to a target document."""
+
     try:
         text_content = content.decode("utf-8", errors="strict")
         document = load_sdl_fragment(text_content)
-    except (UnicodeDecodeError, SDLError, ValueError) as exc:
+    except (SDLError, ValueError) as exc:
         raise KitError("target SDL is invalid") from exc
     if not isinstance(document, dict):
         raise KitError("target SDL is invalid")
     current = document.get("imports")
     if operation == "add":
-        if current is None:
-            first = apply_structured_edit(
-                text_content, operation="set", pointer="/imports", value=[]
-            )
-            if first.get("status") not in {"edited", "edited_with_diagnostics"}:
-                raise KitError("RAES could not initialize module imports")
-            text = str(first["content"])
-        elif isinstance(current, list):
-            text = text_content
-        else:
-            raise KitError("target SDL imports are invalid")
-        result = apply_structured_edit(
-            text, operation="append", pointer="/imports", value=dict(import_value or {})
-        )
+        result = _append_import(text_content, current, import_value)
     else:
-        if not isinstance(current, list):
-            raise KitError("owned RAES import is missing")
-        indices = [
-            index
-            for index, item in enumerate(current)
-            if isinstance(item, dict) and item.get("namespace") == namespace
-        ]
-        if len(indices) != 1:
-            raise KitError("owned RAES import is missing or ambiguous")
-        result = apply_structured_edit(
-            text_content,
-            operation="delete",
-            pointer=f"/imports/{indices[0]}",
-        )
+        result = _delete_import(text_content, current, namespace)
     if result.get("status") not in {"edited", "edited_with_diagnostics"}:
         raise KitError("RAES rejected the module import edit")
     # RAES's language edit cannot file-resolve imports and therefore returns an
@@ -1286,6 +1527,8 @@ def _edit_import(
 
 
 def _lock_bytes(candidate: Path, target_sdl: str) -> bytes:
+    """Resolve and serialize RAES's exact module lock for one target SDL."""
+
     try:
         lock = resolve_lock_records(candidate.joinpath(*target_sdl.split("/")))
     except (SDLError, OSError, ValueError) as exc:
@@ -1296,6 +1539,8 @@ def _lock_bytes(candidate: Path, target_sdl: str) -> bytes:
 
 
 def _lock_path(target_sdl: str) -> str:
+    """Return the RAES lock sibling for one target SDL document."""
+
     directory = os.path.dirname(target_sdl)
     return f"{directory}/raes.lock.json" if directory else "raes.lock.json"
 
@@ -1303,6 +1548,8 @@ def _lock_path(target_sdl: str) -> str:
 def _baseline_file(
     path: str, owners: list[str], artifact_id: str, files: Mapping[str, bytes]
 ) -> dict[str, object]:
+    """Build one exact file-ownership baseline record."""
+
     return {
         "path": path,
         "baseline_digest": _digest_bytes(files[path]),
@@ -1314,6 +1561,8 @@ def _baseline_file(
 def _artifact_ids_for_files(
     files: Mapping[str, bytes], manifest_rel: str
 ) -> dict[str, str]:
+    """Index pack associated-artifact ids by member path."""
+
     _manifest, paths = _load_pack_artifacts(files, manifest_rel)
     return {rel: artifact_id for artifact_id, rel in paths.items()}
 
@@ -1326,6 +1575,8 @@ def _finalize_candidate(
     kit_metadata: Mapping[str, tuple[str, Mapping[str, object]]],
     created_at: str,
 ) -> _PackSnapshot:
+    """Bind and validate a fully staged successor, then capture it."""
+
     files[KIT_MATERIALIZATIONS_PATH] = (
         json.dumps(ledger, indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
@@ -1350,6 +1601,8 @@ def _finalize_candidate(
 
 
 def _changes(base: _PackSnapshot, successor: _PackSnapshot) -> tuple[str, ...]:
+    """Return the deterministic member-level difference between snapshots."""
+
     old = {item.path: item.digest for item in base.files}
     new = {item.path: item.digest for item in successor.files}
     return tuple(
@@ -1359,31 +1612,15 @@ def _changes(base: _PackSnapshot, successor: _PackSnapshot) -> tuple[str, ...]:
 
 def _blocked_proposal(
     *,
-    operation: str,
-    pack_root: str,
     base: _PackSnapshot,
-    kit_id: str,
-    kit_version: str,
-    materialization_id: str,
-    namespace: str,
-    target_sdl: str,
-    parameter_names: tuple[str, ...],
-    topology: tuple[str, ...],
-    dependencies: tuple[str, ...],
     diagnostics: list[validation.Diagnostic],
+    **fields: object,
 ) -> KitProposal:
+    """Build an immutable non-applicable proposal carrying diagnostics."""
+
     return KitProposal(
-        operation=operation,
-        pack_root=pack_root,
-        kit_id=kit_id,
-        kit_version=kit_version,
-        materialization_id=materialization_id,
-        namespace=namespace,
-        target_sdl=target_sdl,
-        parameter_names=parameter_names,
-        topology=topology,
-        dependencies=dependencies,
-        assumptions=("authoring-time only", "local immutable kit release"),
+        **fields,
+        assumptions=(_AUTHORING_TIME_ONLY, "local immutable kit release"),
         lock_changes=(),
         changes=(),
         diagnostics=_ordered_diagnostics(diagnostics),
@@ -1393,43 +1630,62 @@ def _blocked_proposal(
     )
 
 
-def _propose_add(
-    pack_root: str | os.PathLike[str],
-    release: KitRelease,
-    source: KitSource,
-    *,
-    namespace: str,
-    target_sdl: str,
-    parameters: Mapping[str, object],
-    _base: _PackSnapshot | None = None,
-    _ledger: dict[str, object] | None = None,
-    _extra_lock_targets: tuple[str, ...] = (),
-) -> KitProposal:
-    """Build an add proposal, optionally over an internal combined successor."""
+@dataclass(frozen=True)
+class _AddRequest(object):
+    """Author choices for one kit addition."""
 
-    # Re-admit the exact release bytes at the proposal boundary. A frozen
-    # dataclass does not make nested mapping values immutable, and front ends
-    # must never be able to mutate an already-admitted release in memory.
-    release = load_kit_release(release.root)
-    canonical_root = os.path.realpath(os.fspath(pack_root))
-    base = _base if _base is not None else _capture_pack(canonical_root)
-    base_files = _snapshot_mapping(base)
-    ledger = _ledger if _ledger is not None else _load_ledger(base_files)
-    diagnostics: list[validation.Diagnostic] = []
-    normalized, parameter_diagnostics = _normalize_parameters(release, parameters)
-    diagnostics.extend(parameter_diagnostics)
+    namespace: str
+    target_sdl: str
+    parameters: Mapping[str, object]
+
+
+@dataclass(frozen=True)
+class _AddState(object):
+    """Optional internal predecessor state for a combined transaction."""
+
+    base: _PackSnapshot | None = None
+    ledger: dict[str, object] | None = None
+    extra_lock_targets: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class _AddAdmission(object):
+    """Normalized admission facts consumed by staging and preview rendering."""
+
+    canonical_root: str
+    base: _PackSnapshot
+    base_files: dict[str, bytes]
+    ledger: dict[str, object]
+    normalized: dict[str, object]
+    target_sdl: str
+    materializations: list[dict[str, object]]
+    dependency_records: tuple[dict[str, str], ...]
+    dependencies: tuple[str, ...]
+    module_path: str
+    topology: tuple[str, ...]
+    diagnostics: tuple[validation.Diagnostic, ...]
+
+
+def _source_matches_release(source: KitSource, release: KitRelease) -> bool:
+    """Whether one release is rooted at the exact declared source coordinate."""
+
     try:
         _validate_source(source)
         expected_release_root = os.path.realpath(
             Path(source.root, "kits", release.id, release.version)
         )
-        valid_source = os.path.realpath(release.root) == expected_release_root
-    except (KitError, TypeError, ValueError):
-        valid_source = False
-    if not valid_source:
-        diagnostics.append(_diagnostic("kit.source.conflict"))
-    if _NAMESPACE_RE.fullmatch(namespace) is None:
-        diagnostics.append(_diagnostic("kit.namespace.invalid", field_path="namespace"))
+        return os.path.realpath(release.root) == expected_release_root
+    except (TypeError, ValueError):
+        return False
+
+
+def _admit_target_sdl(
+    target_sdl: str,
+    base_files: Mapping[str, bytes],
+    diagnostics: list[validation.Diagnostic],
+) -> str:
+    """Normalize one direct SDL target and record all bounded path failures."""
+
     try:
         target_sdl = _pack_fs.normalize_relpath(target_sdl, error_type=KitError)
     except KitError:
@@ -1440,24 +1696,40 @@ def _propose_add(
     if not (
         target_sdl.startswith("sdl/")
         and target_sdl.count("/") == 1
-        and target_sdl.endswith(".sdl.yaml")
+        and target_sdl.endswith(_SDL_SUFFIX)
     ):
         diagnostics.append(_diagnostic("kit.path.invalid", target_sdl))
-    materializations = list(ledger["materializations"])
+    return target_sdl
+
+
+def _existing_add_conflicts(
+    base_files: Mapping[str, bytes],
+    ledger: Mapping[str, object],
+    materializations: list[dict[str, object]],
+    release: KitRelease,
+    namespace: str,
+    target_sdl: str,
+) -> list[validation.Diagnostic]:
+    """Return ownership, namespace, export, and version conflicts."""
+
+    diagnostics: list[validation.Diagnostic] = []
     for item in materializations:
         diagnostics.extend(
             _owned_modification_diagnostics(base_files, ledger, str(item["id"]))
         )
-    installed = {
-        (str(item["kit_id"]), str(item["kit_version"]))
-        for item in materializations
-    }
-    for item in materializations:
         if item["namespace"] == namespace or item["id"] == namespace:
             diagnostics.append(_diagnostic("kit.namespace.conflict", target_sdl))
             diagnostics.append(_diagnostic("kit.export.conflict", target_sdl))
         if item["kit_id"] == release.id and item["kit_version"] != release.version:
             diagnostics.append(_diagnostic("kit.version.conflict"))
+    return diagnostics
+
+
+def _add_dependencies(
+    release: KitRelease, materializations: list[dict[str, object]]
+) -> tuple[tuple[dict[str, str], ...], tuple[str, ...], list[validation.Diagnostic]]:
+    """Project exact dependencies and report any missing installed release."""
+
     dependency_records = tuple(
         sorted(
             (
@@ -1471,11 +1743,23 @@ def _propose_add(
     dependencies = tuple(
         f"{item['id']}@{item['version']}" for item in dependency_records
     )
+    installed = {
+        (str(item["kit_id"]), str(item["kit_version"]))
+        for item in materializations
+    }
+    diagnostics: list[validation.Diagnostic] = []
     for dependency in dependency_records:
         if (dependency["id"], dependency["version"]) not in installed:
             diagnostics.append(_diagnostic("kit.dependency.missing"))
+    return dependency_records, dependencies, diagnostics
 
-    module_path = _module_destination(release, namespace)
+
+def _planned_add_conflicts(
+    release: KitRelease, module_path: str, base_files: Mapping[str, bytes]
+) -> list[validation.Diagnostic]:
+    """Return destination and visibility conflicts for planned release members."""
+
+    diagnostics: list[validation.Diagnostic] = []
     planned_paths = {module_path}
     for asset in release.document["assets"]:
         target = str(asset["target"])
@@ -1489,180 +1773,317 @@ def _propose_add(
     for rel in planned_paths:
         if rel in base_files:
             diagnostics.append(_diagnostic("kit.path.conflict", rel))
+    return diagnostics
+
+
+def _admit_add(
+    pack_root: str | os.PathLike[str],
+    release: KitRelease,
+    source: KitSource,
+    request: _AddRequest,
+    state: _AddState,
+) -> _AddAdmission:
+    """Normalize and validate all inputs before any successor is staged."""
+
+    canonical_root = os.path.realpath(os.fspath(pack_root))
+    base = state.base if state.base is not None else _capture_pack(canonical_root)
+    base_files = _snapshot_mapping(base)
+    ledger = state.ledger if state.ledger is not None else _load_ledger(base_files)
+    normalized, diagnostics = _normalize_parameters(release, request.parameters)
+    if not _source_matches_release(source, release):
+        diagnostics.append(_diagnostic("kit.source.conflict"))
+    if _NAMESPACE_RE.fullmatch(request.namespace) is None:
+        diagnostics.append(_diagnostic("kit.namespace.invalid", field_path="namespace"))
+    target_sdl = _admit_target_sdl(request.target_sdl, base_files, diagnostics)
+    materializations = list(ledger["materializations"])
+    diagnostics.extend(
+        _existing_add_conflicts(
+            base_files,
+            ledger,
+            materializations,
+            release,
+            request.namespace,
+            target_sdl,
+        )
+    )
+    dependency_records, dependencies, dependency_diagnostics = _add_dependencies(
+        release, materializations
+    )
+    diagnostics.extend(dependency_diagnostics)
+    module_path = _module_destination(release, request.namespace)
+    diagnostics.extend(_planned_add_conflicts(release, module_path, base_files))
     topology = tuple(
         f"{section}.{name}"
         for section, names in sorted(release.scenario.module.exports.items())
         for name in names
     )
-    if diagnostics:
+    return _AddAdmission(
+        canonical_root=canonical_root,
+        base=base,
+        base_files=base_files,
+        ledger=ledger,
+        normalized=normalized,
+        target_sdl=target_sdl,
+        materializations=materializations,
+        dependency_records=dependency_records,
+        dependencies=dependencies,
+        module_path=module_path,
+        topology=topology,
+        diagnostics=_ordered_diagnostics(diagnostics),
+    )
+
+
+def _stage_kit_members(
+    candidate: Path,
+    base_files: Mapping[str, bytes],
+    release: KitRelease,
+    namespace: str,
+    module_path: str,
+) -> tuple[dict[str, bytes], dict[str, tuple[str, Mapping[str, object]]], bytes]:
+    """Stage the kit module and closed asset set with retained metadata."""
+
+    files = dict(base_files)
+    _ensure_pack_identity(candidate, files, created_at=str(release.document["released_at"]))
+    release_metadata = _release_artifact_metadata(release)
+    kit_metadata: dict[str, tuple[str, Mapping[str, object]]] = {}
+    source_module = _module_document(release.document)
+    module_body = _release_bytes(release, source_module)
+    files[module_path] = module_body
+    _transactions.write_member(candidate, module_path, module_body)
+    module_artifact = next(
+        artifact
+        for artifact in release.associated_artifacts.artifacts.values()
+        if _kit_uri_path(artifact.uri) == source_module
+    )
+    kit_metadata[module_path] = (
+        f"kit-{namespace}-{module_artifact.artifact_id}",
+        release_metadata[source_module],
+    )
+    for asset in release.document["assets"]:
+        source_rel = str(asset["source"])
+        target_rel = str(asset["target"])
+        body = _release_bytes(release, source_rel)
+        files[target_rel] = body
+        _transactions.write_member(candidate, target_rel, body)
+        kit_metadata[target_rel] = (
+            f"kit-{namespace}-{asset['artifact_id']}",
+            release_metadata[source_rel],
+        )
+    return files, kit_metadata, module_body
+
+
+def _stage_import_locks(
+    candidate: Path,
+    files: dict[str, bytes],
+    release: KitRelease,
+    request: _AddRequest,
+    admission: _AddAdmission,
+    module_body: bytes,
+    extra_lock_targets: tuple[str, ...],
+) -> tuple[str, list[str]]:
+    """Stage the RAES import edit and exact locks for every affected root."""
+
+    import_value = {
+        "source": _local_source(admission.target_sdl, admission.module_path),
+        "namespace": request.namespace,
+        "version": release.version,
+        "parameters": admission.normalized,
+        "digest": _digest_bytes(module_body),
+    }
+    files[admission.target_sdl] = _edit_import(
+        files[admission.target_sdl], operation="add", import_value=import_value
+    )
+    _transactions.write_member(candidate, admission.target_sdl, files[admission.target_sdl])
+    lock_path = _lock_path(admission.target_sdl)
+    lock_paths: list[str] = []
+    for lock_target in sorted({admission.target_sdl, *extra_lock_targets}):
+        resolved = _lock_path(lock_target)
+        files[resolved] = _lock_bytes(candidate, lock_target)
+        _transactions.write_member(candidate, resolved, files[resolved])
+        lock_paths.append(resolved)
+    return lock_path, lock_paths
+
+
+def _register_successor_artifacts(
+    files: Mapping[str, bytes],
+    kit_metadata: dict[str, tuple[str, Mapping[str, object]]],
+    lock_paths: list[str],
+    release: KitRelease,
+) -> dict[str, str]:
+    """Reserve exact artifact ids for kit and generated successor members."""
+
+    _pack, manifest_rel = _pack_pointer(files)
+    prior_manifest, prior_paths = _load_pack_artifacts(files, manifest_rel)
+    artifact_for_path = {rel: key for key, rel in prior_paths.items()}
+    unavailable = set(prior_manifest.artifacts)
+    for rel in sorted(kit_metadata):
+        preferred, metadata = kit_metadata[rel]
+        artifact_id = _unique_artifact_id(preferred, unavailable, path=rel)
+        unavailable.add(artifact_id)
+        kit_metadata[rel] = (artifact_id, metadata)
+        artifact_for_path[rel] = artifact_id
+    generated = [(rel, "raes-lock") for rel in lock_paths]
+    generated.append((KIT_MATERIALIZATIONS_PATH, "kit-materializations"))
+    for rel, preferred in generated:
+        if rel in artifact_for_path:
+            continue
+        artifact_id = _unique_artifact_id(preferred, unavailable, path=rel)
+        unavailable.add(artifact_id)
+        artifact_for_path[rel] = artifact_id
+        kit_metadata[rel] = (
+            artifact_id,
+            {
+                "source": "environment-pack-author",
+                "role": "configuration",
+                "media_type": "application/json",
+                "created_at": str(release.document["released_at"]),
+                "sensitivity": "internal",
+            },
+        )
+    return artifact_for_path
+
+
+def _addition_ledger(
+    files: Mapping[str, bytes],
+    release: KitRelease,
+    source: KitSource,
+    request: _AddRequest,
+    admission: _AddAdmission,
+    lock_path: str,
+    artifact_for_path: Mapping[str, str],
+) -> dict[str, object]:
+    """Build the ownership ledger after one admitted addition."""
+
+    new_materialization = {
+        "id": request.namespace,
+        "kit_id": release.id,
+        "kit_version": release.version,
+        "source": {"id": source.id, "revision": source.revision},
+        "namespace": request.namespace,
+        "target_sdl": admission.target_sdl,
+        "parameters": admission.normalized,
+        "dependencies": list(admission.dependency_records),
+        "module_path": admission.module_path,
+    }
+    materializations = [*admission.materializations, new_materialization]
+    materializations.sort(key=lambda item: str(item["id"]))
+    ownership: dict[str, tuple[list[str], str]] = {
+        str(entry["path"]): (list(entry["owners"]), str(entry["artifact_id"]))
+        for entry in admission.ledger["files"]
+    }
+    ownership[admission.module_path] = (
+        [request.namespace],
+        artifact_for_path[admission.module_path],
+    )
+    for asset in release.document["assets"]:
+        target = str(asset["target"])
+        ownership[target] = ([request.namespace], artifact_for_path[target])
+    for shared in (admission.target_sdl, lock_path):
+        owners, artifact_id = ownership.get(
+            shared, (["pack-author"], artifact_for_path[shared])
+        )
+        ownership[shared] = ([*owners, request.namespace], artifact_id)
+    return _ownership_ledger(files, materializations, ownership)
+
+
+def _materialize_add(
+    candidate: Path,
+    release: KitRelease,
+    source: KitSource,
+    request: _AddRequest,
+    state: _AddState,
+    admission: _AddAdmission,
+) -> _PackSnapshot:
+    """Stage, bind, and validate one admitted complete successor."""
+
+    _write_snapshot(candidate, admission.base_files)
+    files, kit_metadata, module_body = _stage_kit_members(
+        candidate,
+        admission.base_files,
+        release,
+        request.namespace,
+        admission.module_path,
+    )
+    lock_path, lock_paths = _stage_import_locks(
+        candidate,
+        files,
+        release,
+        request,
+        admission,
+        module_body,
+        state.extra_lock_targets,
+    )
+    artifact_for_path = _register_successor_artifacts(
+        files, kit_metadata, lock_paths, release
+    )
+    ledger = _addition_ledger(
+        files, release, source, request, admission, lock_path, artifact_for_path
+    )
+    return _finalize_candidate(
+        candidate,
+        files,
+        ledger,
+        kit_metadata=kit_metadata,
+        created_at=str(release.document["released_at"]),
+    )
+
+
+def _propose_add(
+    pack_root: str | os.PathLike[str],
+    release: KitRelease,
+    source: KitSource,
+    request: _AddRequest,
+    state: _AddState | None = None,
+) -> KitProposal:
+    """Build an add proposal, optionally over an internal combined successor."""
+
+    # Re-admit the exact bytes because frozen dataclasses do not freeze nested maps.
+    release = load_kit_release(release.root)
+    active_state = state or _AddState()
+    admission = _admit_add(pack_root, release, source, request, active_state)
+    if admission.diagnostics:
         return _blocked_proposal(
             operation="add",
-            pack_root=canonical_root,
-            base=base,
+            pack_root=admission.canonical_root,
+            base=admission.base,
             kit_id=release.id,
             kit_version=release.version,
-            materialization_id=namespace,
-            namespace=namespace,
-            target_sdl=target_sdl,
-            parameter_names=tuple(sorted(normalized)),
-            topology=topology,
-            dependencies=dependencies,
-            diagnostics=diagnostics,
+            materialization_id=request.namespace,
+            namespace=request.namespace,
+            target_sdl=admission.target_sdl,
+            parameter_names=tuple(sorted(admission.normalized)),
+            topology=admission.topology,
+            dependencies=admission.dependencies,
+            diagnostics=list(admission.diagnostics),
         )
-
-    staging_parent = Path(tempfile.mkdtemp(prefix=".kit-preview-", dir=Path(canonical_root).parent))
-    candidate = staging_parent / Path(canonical_root).name
+    staging_parent = Path(
+        tempfile.mkdtemp(
+            prefix=".kit-preview-", dir=Path(admission.canonical_root).parent
+        )
+    )
+    candidate = staging_parent / Path(admission.canonical_root).name
     try:
-        _write_snapshot(candidate, base_files)
-        files = dict(base_files)
-        _ensure_pack_identity(
-            candidate, files, created_at=str(release.document["released_at"])
-        )
-        release_metadata = _release_artifact_metadata(release)
-        kit_metadata: dict[str, tuple[str, Mapping[str, object]]] = {}
-        source_module = _module_document(release.document)
-        module_body = _release_bytes(release, source_module)
-        files[module_path] = module_body
-        _transactions.write_member(candidate, module_path, module_body)
-        module_artifact = next(
-            artifact
-            for artifact in release.associated_artifacts.artifacts.values()
-            if _kit_uri_path(artifact.uri) == source_module
-        )
-        kit_metadata[module_path] = (
-            f"kit-{namespace}-{module_artifact.artifact_id}",
-            release_metadata[source_module],
-        )
-        for asset in release.document["assets"]:
-            source_rel = str(asset["source"])
-            target_rel = str(asset["target"])
-            body = _release_bytes(release, source_rel)
-            files[target_rel] = body
-            _transactions.write_member(candidate, target_rel, body)
-            kit_metadata[target_rel] = (
-                f"kit-{namespace}-{asset['artifact_id']}",
-                release_metadata[source_rel],
-            )
-
-        import_value = {
-            "source": _local_source(target_sdl, module_path),
-            "namespace": namespace,
-            "version": release.version,
-            "parameters": normalized,
-            "digest": _digest_bytes(module_body),
-        }
-        files[target_sdl] = _edit_import(
-            files[target_sdl], operation="add", import_value=import_value
-        )
-        _transactions.write_member(candidate, target_sdl, files[target_sdl])
-        lock_path = _lock_path(target_sdl)
-        lock_targets = tuple(sorted(set((target_sdl, *_extra_lock_targets))))
-        lock_paths: list[str] = []
-        for lock_target in lock_targets:
-            resolved_lock_path = _lock_path(lock_target)
-            files[resolved_lock_path] = _lock_bytes(candidate, lock_target)
-            _transactions.write_member(
-                candidate, resolved_lock_path, files[resolved_lock_path]
-            )
-            lock_paths.append(resolved_lock_path)
-
-        _pack, manifest_rel = _pack_pointer(files)
-        prior_manifest, prior_paths = _load_pack_artifacts(files, manifest_rel)
-        artifact_for_path = {rel: key for key, rel in prior_paths.items()}
-        unavailable = set(prior_manifest.artifacts)
-        for rel in sorted(kit_metadata):
-            preferred, metadata = kit_metadata[rel]
-            artifact_id = _unique_artifact_id(preferred, unavailable, path=rel)
-            unavailable.add(artifact_id)
-            kit_metadata[rel] = (artifact_id, metadata)
-            artifact_for_path[rel] = artifact_id
-        generated_metadata = [
-            (rel, "raes-lock", "application/json") for rel in lock_paths
-        ]
-        generated_metadata.append(
-            (
-                KIT_MATERIALIZATIONS_PATH,
-                "kit-materializations",
-                "application/json",
-            )
-        )
-        for rel, preferred, media_type in generated_metadata:
-            if rel in artifact_for_path:
-                continue
-            artifact_id = _unique_artifact_id(preferred, unavailable, path=rel)
-            unavailable.add(artifact_id)
-            artifact_for_path[rel] = artifact_id
-            kit_metadata[rel] = (
-                artifact_id,
-                {
-                    "source": "environment-pack-author",
-                    "role": "configuration",
-                    "media_type": media_type,
-                    "created_at": str(release.document["released_at"]),
-                    "sensitivity": "internal",
-                },
-            )
-
-        new_materialization = {
-            "id": namespace,
-            "kit_id": release.id,
-            "kit_version": release.version,
-            "source": {"id": source.id, "revision": source.revision},
-            "namespace": namespace,
-            "target_sdl": target_sdl,
-            "parameters": normalized,
-            "dependencies": list(dependency_records),
-            "module_path": module_path,
-        }
-        materializations.append(new_materialization)
-        materializations.sort(key=lambda item: str(item["id"]))
-        ownership: dict[str, tuple[list[str], str]] = {}
-        for entry in ledger["files"]:
-            ownership[str(entry["path"])] = (
-                list(entry["owners"]), str(entry["artifact_id"])
-            )
-        ownership[module_path] = ([namespace], artifact_for_path[module_path])
-        for asset in release.document["assets"]:
-            target_rel = str(asset["target"])
-            ownership[target_rel] = ([namespace], artifact_for_path[target_rel])
-        for shared in (target_sdl, lock_path):
-            owners, artifact_id = ownership.get(
-                shared, (["pack-author"], artifact_for_path[shared])
-            )
-            ownership[shared] = ([*owners, namespace], artifact_id)
-        ledger = {
-            "schema_version": KIT_MATERIALIZATIONS_SCHEMA_VERSION,
-            "materializations": materializations,
-            "files": [
-                _baseline_file(rel, owners, artifact_id, files)
-                for rel, (owners, artifact_id) in sorted(ownership.items())
-            ],
-        }
-        successor = _finalize_candidate(
-            candidate,
-            files,
-            ledger,
-            kit_metadata=kit_metadata,
-            created_at=str(release.document["released_at"]),
+        successor = _materialize_add(
+            candidate, release, source, request, active_state, admission
         )
     finally:
         shutil.rmtree(staging_parent, ignore_errors=True)
     return KitProposal(
         operation="add",
-        pack_root=canonical_root,
+        pack_root=admission.canonical_root,
         kit_id=release.id,
         kit_version=release.version,
-        materialization_id=namespace,
-        namespace=namespace,
-        target_sdl=target_sdl,
-        parameter_names=tuple(sorted(normalized)),
-        topology=topology,
-        dependencies=dependencies,
-        assumptions=("authoring-time only", "local immutable kit release"),
-        lock_changes=(f"add:{namespace}",),
-        changes=_changes(base, successor),
+        materialization_id=request.namespace,
+        namespace=request.namespace,
+        target_sdl=admission.target_sdl,
+        parameter_names=tuple(sorted(admission.normalized)),
+        topology=admission.topology,
+        dependencies=admission.dependencies,
+        assumptions=(_AUTHORING_TIME_ONLY, "local immutable kit release"),
+        lock_changes=(f"add:{request.namespace}",),
+        changes=_changes(admission.base, successor),
         diagnostics=(),
-        _base_digest=base.digest,
+        _base_digest=admission.base.digest,
         _successor=successor.files,
         _successor_digest=successor.digest,
     )
@@ -1683,15 +2104,15 @@ def propose_add(
         pack_root,
         release,
         source,
-        namespace=namespace,
-        target_sdl=target_sdl,
-        parameters=parameters,
+        _AddRequest(namespace, target_sdl, parameters),
     )
 
 
 def _owned_modification_diagnostics(
     files: Mapping[str, bytes], ledger: Mapping[str, object], materialization_id: str
 ) -> list[validation.Diagnostic]:
+    """Detect author changes to files owned by one materialization."""
+
     diagnostics: list[validation.Diagnostic] = []
     for entry in ledger["files"]:
         if materialization_id not in entry["owners"]:
@@ -1709,6 +2130,8 @@ def _removal_diagnostics(
     *,
     successor_kit: tuple[str, str] | None,
 ) -> list[validation.Diagnostic]:
+    """Return ownership and dependency conflicts blocking one removal."""
+
     materialization_id = str(materialization["id"])
     diagnostics = _owned_modification_diagnostics(
         files, ledger, materialization_id
@@ -1776,6 +2199,8 @@ def _ownership_ledger(
     materializations: list[Mapping[str, object]],
     ownership: Mapping[str, tuple[list[str], str]],
 ) -> dict[str, object]:
+    """Build the canonical materialization and file-ownership ledger."""
+
     return {
         "schema_version": KIT_MATERIALIZATIONS_SCHEMA_VERSION,
         "materializations": list(materializations),
@@ -1870,7 +2295,7 @@ def _propose_remove(
         parameter_names=tuple(sorted(materialization["parameters"])),
         topology=(),
         dependencies=(),
-        assumptions=("authoring-time only", "explicit ownership only"),
+        assumptions=(_AUTHORING_TIME_ONLY, "explicit ownership only"),
         lock_changes=(f"remove:{namespace}",),
         changes=_changes(base, successor),
         diagnostics=(),
@@ -1895,6 +2320,8 @@ def propose_remove(
 def _materialization(
     files: Mapping[str, bytes], materialization_id: str
 ) -> Mapping[str, object] | None:
+    """Find one unambiguous materialization record by id."""
+
     ledger = _load_ledger(files)
     matches = [
         item for item in ledger["materializations"] if item["id"] == materialization_id
@@ -1902,21 +2329,37 @@ def _materialization(
     return matches[0] if len(matches) == 1 else None
 
 
-def _replacement_proposal(
+@dataclass(frozen=True)
+class _ReplacementRequest(object):
+    """Author choices and policy for one update or replacement."""
+
+    operation: str
+    materialization_id: str
+    namespace: str
+    target_sdl: str
+    parameters: Mapping[str, object]
+    require_same_kit: bool
+
+
+@dataclass(frozen=True)
+class _ReplacementAdmission(object):
+    """Captured predecessor and admitted current materialization."""
+
+    canonical_root: str
+    original: _PackSnapshot
+    original_files: dict[str, bytes]
+    ledger: dict[str, object]
+    current: Mapping[str, object] | None
+    diagnostics: tuple[validation.Diagnostic, ...]
+
+
+def _admit_replacement(
     pack_root: str | os.PathLike[str],
     release: KitRelease,
-    source: KitSource,
-    *,
-    operation: str,
-    materialization_id: str,
-    namespace: str,
-    target_sdl: str,
-    parameters: Mapping[str, object],
-    require_same_kit: bool,
-) -> KitProposal:
-    """Compose a remove successor and add successor without touching the pack."""
+    request: _ReplacementRequest,
+) -> _ReplacementAdmission:
+    """Capture and validate the predecessor selected for replacement."""
 
-    release = load_kit_release(release.root)
     canonical_root = os.path.realpath(os.fspath(pack_root))
     original = _capture_pack(canonical_root)
     original_files = _snapshot_mapping(original)
@@ -1924,69 +2367,86 @@ def _replacement_proposal(
     matches = [
         item
         for item in ledger["materializations"]
-        if item["id"] == materialization_id
+        if item["id"] == request.materialization_id
     ]
+    diagnostics: list[validation.Diagnostic] = []
+    current = matches[0] if len(matches) == 1 else None
     if len(matches) != 1:
-        return _blocked_proposal(
-            operation=operation,
-            pack_root=canonical_root,
-            base=original,
-            kit_id=release.id,
-            kit_version=release.version,
-            materialization_id=materialization_id,
-            namespace=namespace,
-            target_sdl=target_sdl,
-            parameter_names=tuple(sorted(str(key) for key in parameters)),
-            topology=(),
-            dependencies=(),
-            diagnostics=[_diagnostic("kit.materialization.missing")],
+        diagnostics.append(_diagnostic("kit.materialization.missing"))
+    elif request.require_same_kit and current["kit_id"] != release.id:
+        diagnostics.append(_diagnostic("kit.update.identity-conflict"))
+    elif current is not None:
+        diagnostics.extend(
+            _removal_diagnostics(
+                original_files,
+                ledger,
+                current,
+                successor_kit=(release.id, release.version),
+            )
         )
-    current = matches[0]
-    if require_same_kit and current["kit_id"] != release.id:
-        return _blocked_proposal(
-            operation=operation,
-            pack_root=canonical_root,
-            base=original,
-            kit_id=release.id,
-            kit_version=release.version,
-            materialization_id=materialization_id,
-            namespace=namespace,
-            target_sdl=target_sdl,
-            parameter_names=tuple(sorted(str(key) for key in parameters)),
-            topology=(),
-            dependencies=(),
-            diagnostics=[_diagnostic("kit.update.identity-conflict")],
-        )
-    removal_diagnostics = _removal_diagnostics(
+    return _ReplacementAdmission(
+        canonical_root,
+        original,
         original_files,
         ledger,
         current,
-        successor_kit=(release.id, release.version),
+        _ordered_diagnostics(diagnostics),
     )
-    if removal_diagnostics:
-        return _blocked_proposal(
-            operation=operation,
-            pack_root=canonical_root,
-            base=original,
-            kit_id=release.id,
-            kit_version=release.version,
-            materialization_id=materialization_id,
-            namespace=namespace,
-            target_sdl=target_sdl,
-            parameter_names=tuple(sorted(str(key) for key in parameters)),
-            topology=(),
-            dependencies=(),
-            diagnostics=removal_diagnostics,
-        )
 
-    staging_parent = Path(
-        tempfile.mkdtemp(prefix=".kit-chain-", dir=Path(canonical_root).parent)
+
+def _blocked_replacement(
+    release: KitRelease,
+    request: _ReplacementRequest,
+    admission: _ReplacementAdmission,
+    diagnostics: list[validation.Diagnostic],
+    addition: KitProposal | None = None,
+) -> KitProposal:
+    """Build a blocked replacement from admission or successor diagnostics."""
+
+    return _blocked_proposal(
+        operation=request.operation,
+        pack_root=admission.canonical_root,
+        base=admission.original,
+        kit_id=release.id,
+        kit_version=release.version,
+        materialization_id=request.materialization_id,
+        namespace=request.namespace,
+        target_sdl=request.target_sdl,
+        parameter_names=(
+            addition.parameter_names
+            if addition is not None
+            else tuple(sorted(str(key) for key in request.parameters))
+        ),
+        topology=addition.topology if addition is not None else (),
+        dependencies=addition.dependencies if addition is not None else (),
+        diagnostics=diagnostics,
     )
-    candidate = staging_parent / Path(canonical_root).name
+
+
+def _stage_replacement_add(
+    release: KitRelease,
+    source: KitSource,
+    request: _ReplacementRequest,
+    admission: _ReplacementAdmission,
+) -> KitProposal:
+    """Stage the combined removal predecessor and successor addition."""
+
+    assert admission.current is not None
+    staging_parent = Path(
+        tempfile.mkdtemp(
+            prefix=".kit-chain-", dir=Path(admission.canonical_root).parent
+        )
+    )
+    candidate = staging_parent / Path(admission.canonical_root).name
     try:
-        _write_snapshot(candidate, original_files)
+        _write_snapshot(candidate, admission.original_files)
         files, remaining, ownership, removed_target, _removed_namespace = (
-            _stage_removal(candidate, original_files, ledger, current)
+            _stage_removal(
+                candidate,
+                admission.original_files,
+                admission.ledger,
+                admission.current,
+            )
         )
         raw_ledger = _ownership_ledger(files, remaining, ownership)
         files[KIT_MATERIALIZATIONS_PATH] = (
@@ -2002,47 +2462,56 @@ def _replacement_proposal(
             candidate,
             release,
             source,
-            namespace=namespace,
-            target_sdl=target_sdl,
-            parameters=parameters,
-            _base=raw_snapshot,
-            _ledger=raw_ledger,
-            _extra_lock_targets=(removed_target,),
+            _AddRequest(request.namespace, request.target_sdl, request.parameters),
+            _AddState(
+                base=raw_snapshot,
+                ledger=raw_ledger,
+                extra_lock_targets=(removed_target,),
+            ),
         )
     finally:
         shutil.rmtree(staging_parent, ignore_errors=True)
+    return addition
+
+
+def _replacement_proposal(
+    pack_root: str | os.PathLike[str],
+    release: KitRelease,
+    source: KitSource,
+    request: _ReplacementRequest,
+) -> KitProposal:
+    """Compose a remove successor and add successor without touching the pack."""
+
+    release = load_kit_release(release.root)
+    admission = _admit_replacement(pack_root, release, request)
+    if admission.diagnostics:
+        return _blocked_replacement(
+            release, request, admission, list(admission.diagnostics)
+        )
+    addition = _stage_replacement_add(release, source, request, admission)
     if addition.diagnostics:
-        return _blocked_proposal(
-            operation=operation,
-            pack_root=canonical_root,
-            base=original,
-            kit_id=release.id,
-            kit_version=release.version,
-            materialization_id=materialization_id,
-            namespace=namespace,
-            target_sdl=target_sdl,
-            parameter_names=addition.parameter_names,
-            topology=addition.topology,
-            dependencies=addition.dependencies,
-            diagnostics=list(addition.diagnostics),
+        return _blocked_replacement(
+            release, request, admission, list(addition.diagnostics), addition
         )
     successor = _PackSnapshot(addition._successor, addition._successor_digest)
     return KitProposal(
-        operation=operation,
-        pack_root=canonical_root,
+        operation=request.operation,
+        pack_root=admission.canonical_root,
         kit_id=release.id,
         kit_version=release.version,
-        materialization_id=namespace,
-        namespace=namespace,
-        target_sdl=target_sdl,
+        materialization_id=request.namespace,
+        namespace=request.namespace,
+        target_sdl=request.target_sdl,
         parameter_names=addition.parameter_names,
         topology=addition.topology,
         dependencies=addition.dependencies,
-        assumptions=("authoring-time only", "remove and add are one transaction"),
-        lock_changes=(f"{operation}:{materialization_id}:{namespace}",),
-        changes=_changes(original, successor),
+        assumptions=(_AUTHORING_TIME_ONLY, "remove and add are one transaction"),
+        lock_changes=(
+            f"{request.operation}:{request.materialization_id}:{request.namespace}",
+        ),
+        changes=_changes(admission.original, successor),
         diagnostics=(),
-        _base_digest=original.digest,
+        _base_digest=admission.original.digest,
         _successor=successor.files,
         _successor_digest=successor.digest,
     )
@@ -2066,12 +2535,9 @@ def propose_update(
         pack_root,
         release,
         source,
-        operation="update",
-        materialization_id=materialization_id,
-        namespace=namespace,
-        target_sdl=target_sdl,
-        parameters=parameters,
-        require_same_kit=True,
+        _ReplacementRequest(
+            "update", materialization_id, namespace, target_sdl, parameters, True
+        ),
     )
 
 
@@ -2091,12 +2557,9 @@ def propose_replace(
         pack_root,
         release,
         source,
-        operation="replace",
-        materialization_id=materialization_id,
-        namespace=namespace,
-        target_sdl=target_sdl,
-        parameters=parameters,
-        require_same_kit=False,
+        _ReplacementRequest(
+            "replace", materialization_id, namespace, target_sdl, parameters, False
+        ),
     )
 
 

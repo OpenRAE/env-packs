@@ -35,7 +35,7 @@ from typing import TextIO
 
 import yaml
 
-from . import _pack_fs, _transactions
+from . import _transactions
 from .validation import validate_pack
 
 # Versioned wire identities. Bump when the machine contract changes shape.
