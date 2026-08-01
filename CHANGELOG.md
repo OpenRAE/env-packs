@@ -11,6 +11,14 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.3.0](https://github.com/OpenRAE/env-packs/compare/v3.2.0...v3.3.0) (2026-08-01)
+
+
+### Features
+
+* require the compatibility-tested RAES 3.x runtime contract ([b7fafc4](https://github.com/OpenRAE/env-packs/commit/b7fafc444638bb71922ee9bedbad43a9b8fcecc4))
+* require the compatibility-tested RAES 3.x runtime contract ([5ad5d9c](https://github.com/OpenRAE/env-packs/commit/5ad5d9c8c6cb2c78bb3357638ec4e91e7f7fab29)), closes [#217](https://github.com/OpenRAE/env-packs/issues/217)
+
 ## [3.2.0](https://github.com/OpenRAE/env-packs/compare/v3.1.0...v3.2.0) (2026-07-31)
 
 
