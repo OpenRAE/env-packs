@@ -22,9 +22,12 @@ classifiers = [
 ]
 # raes is a hard, exactly-pinned dependency (ADR 0011): SDL is validated
 # *through RAES* (raes.parse_sdl_file), never a local restatement, and the
-# gate is fail-closed, so RAES cannot be optional. The exact pin is deliberate
-# while RAES SDL contracts are `stability: draft`; advancing it requires
-# compatibility tests against this package's validator and template.
+# gate is fail-closed, so RAES cannot be optional. The pin tracks the latest
+# compatibility-tested RAES release -- currently the 3.x SDL contract corpus.
+# While those contracts are `stability: draft`, advancing the pin requires
+# compatibility tests against this package's validator and template, so a
+# downstream consumer resolves exactly the RAES runtime this release was
+# validated against.
 dependencies = ["PyYAML>=6", "raes==3.2.0"]
 
 [project.urls]
