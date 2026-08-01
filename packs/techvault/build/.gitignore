@@ -1,0 +1,12 @@
+.operator/
+aptl-runtime/.aptl/
+aptl-runtime/.env
+aptl-runtime/config/lab-ssh/
+aptl-runtime/config/soc_certs/
+aptl-runtime/config/wazuh_indexer_ssl_certs/
+aptl-runtime/keys/
+aptl-runtime/web/.svelte-kit/
+aptl-runtime/web/coverage/
+aptl-runtime/web/node_modules/
+aptl-runtime/runs/
+*.log

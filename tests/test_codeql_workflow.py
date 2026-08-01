@@ -22,6 +22,7 @@ import yaml
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _WORKFLOW = _ROOT / ".github" / "workflows" / "codeql.yml"
+_CONFIG = _ROOT / ".github" / "codeql" / "codeql-config.yml"
 
 _CHECKOUT_ACTION = "actions/checkout@"
 _INIT_ACTION = "github/codeql-action/init@"
@@ -118,6 +119,26 @@ class CodeqlWorkflowContractTests(unittest.TestCase):
         entry = next((e for e in include if e.get("language") == "python"), None)
         self.assertIsNotNone(entry, "matrix must analyze the python language")
         self.assertEqual(entry.get("build-mode"), "none")
+
+    def test_intentional_techvault_runtime_surfaces_are_excluded(self) -> None:
+        init_step = next(
+            step
+            for step in self.steps
+            if str(step.get("uses", "")).startswith(_INIT_ACTION)
+        )
+        self.assertEqual(
+            init_step["with"]["config-file"],
+            "./.github/codeql/codeql-config.yml",
+        )
+        config = yaml.safe_load(_CONFIG.read_text(encoding="utf-8"))
+        self.assertEqual(
+            config["paths-ignore"],
+            [
+                "packs/techvault/build/aptl-runtime/containers/webapp/**",
+                "packs/techvault/build/aptl-runtime/src/aptl/core/host_ports.py",
+                "packs/techvault/build/render_runtime.py",
+            ],
+        )
 
     # --- actions: pinned + ordered --------------------------------------
     def test_codeql_actions_present_and_sha_pinned(self) -> None:

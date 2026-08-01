@@ -1,0 +1,9 @@
+name: "Environment-pack tooling"
+
+# TechVault deliberately contains a vulnerable application and local range
+# plumbing. Keep CodeQL focused on canonical repository tooling while excluding
+# only those known intentional runtime surfaces.
+paths-ignore:
+  - packs/techvault/build/aptl-runtime/containers/webapp/**
+  - packs/techvault/build/aptl-runtime/src/aptl/core/host_ports.py
+  - packs/techvault/build/render_runtime.py
