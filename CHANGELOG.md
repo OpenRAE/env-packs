@@ -11,6 +11,15 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.2.0](https://github.com/OpenRAE/env-packs/compare/v3.1.0...v3.2.0) (2026-07-31)
+
+
+### Features
+
+* **catalog:** render pack cards and a machine-readable catalog index ([#206](https://github.com/OpenRAE/env-packs/issues/206)) ([58013af](https://github.com/OpenRAE/env-packs/commit/58013af7b8c34400e95e9515bc6ba161f38cbd7b))
+* **consumer-api:** public single-open pack artifact resolver ([#209](https://github.com/OpenRAE/env-packs/issues/209)) ([f05338e](https://github.com/OpenRAE/env-packs/commit/f05338e392eba071e579df29f28933c4f31482d5))
+* **scaffold:** replace the monolithic scaffold with a progressive wizard ([#211](https://github.com/OpenRAE/env-packs/issues/211)) ([2acc73a](https://github.com/OpenRAE/env-packs/commit/2acc73a378dd266209e3bd7128149043449e0130))
+
 ## [3.1.0](https://github.com/RAESystem/env-packs/compare/v3.0.0...v3.1.0) (2026-07-29)
 
 
