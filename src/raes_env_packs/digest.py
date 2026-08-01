@@ -34,7 +34,7 @@ from raes_contracts.contracts import (
     ExperimentArtifactRefModel,
 )
 from raes_contracts.diagnostics import Diagnostic
-from raes import SDLError, parse_sdl, parse_sdl_file
+from raes import SDLError, Scenario, load_sdl_fragment, parse_sdl, parse_sdl_file
 from raes.artifact_requirements import ArtifactIdentity
 
 from . import _pack_fs
@@ -290,10 +290,34 @@ def _parse_parent_candidates(root: str, inventory: tuple[str, ...]) -> tuple[obj
     candidates: list[object] = []
     for rel in sdl_docs:
         try:
-            candidates.append(parse_sdl_file(Path(root, *rel.split("/"))))
+            path = Path(root, *rel.split("/"))
+            expanded = parse_sdl_file(path)
+            if isinstance(expanded, Scenario):
+                candidates.append(expanded)
+            else:
+                candidates.append(authored_sdl_parent(path, expanded=expanded))
+                candidates.append(expanded)
         except (SDLError, OSError) as exc:
             raise PackDigestError("pack SDL parent is invalid") from exc
     return tuple(candidates)
+
+
+def authored_sdl_parent(path: Path, *, expanded: object) -> Scenario:
+    """Return RAES's authored ``Scenario`` after file-backed validation.
+
+    ``parse_sdl_file`` must run first at every caller so imports are resolved and
+    the expanded composition is semantically validated. This public authored
+    model is used only with RAES's generic ``scenario`` parent reference. A
+    composed ``scenario-snapshot`` remains blocked until RAES admits its
+    validated expanded authoring object directly (OpenRAE/rae#1040).
+    """
+
+    # ``load_sdl_fragment`` is RAES's public bounded, duplicate-key-safe source
+    # loader. Scenario is RAES's public authored model; no SDL field is restated.
+    if not getattr(expanded, "semantic_validated", False):
+        raise PackDigestError("expanded SDL validation witness is missing")
+    document = load_sdl_fragment(path.read_text(encoding="utf-8"))
+    return Scenario.model_validate(document)
 
 
 def _reader_map(root_fd: int, paths: Mapping[str, str]) -> dict[str, _DescriptorReader]:

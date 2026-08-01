@@ -1,0 +1,24 @@
+# Pack identity and provenance metadata. Runtime scenario truth lives in ACES.
+name: techvault
+title: "TechVault"
+version: 0.6.0
+status: golden
+description: "The TechVault purple-team enterprise range migrated from APTL: a vulnerable business environment, red-team Kali access, and an integrated SOC stack defined by one canonical RAES SDL."
+authors:
+  - Autarchy <noreply@autarchy.ai>
+license: "© 2026 Autarchy Corp. All rights reserved. APTL-derived files retain their MIT provenance."
+requirement: null
+contents:
+  flag_layer: false
+  reference_triangle: true
+  profile_bundles: true
+compatibility_manifest: pack.compatibility.yaml
+provenance_ledger: docs/provenance-ledger.yaml
+
+profile_bundles:
+  manifest: profiles/bundles.yaml
+  bundles:
+    - id: guided
+    - id: unguided
+    - id: purple-team
+    - id: demo

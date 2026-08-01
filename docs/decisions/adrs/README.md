@@ -40,6 +40,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0032](0032-derive-catalog-projection-from-existing-authorities.md) | Derive one catalog projection from existing authorities | Accepted |
 | [0033](0033-resolve-pack-artifacts-through-one-bounded-open.md) | Resolve pack artifacts through one bounded open | Accepted |
 | [0034](0034-compose-progressive-scaffolding-from-pack-and-raes-authorities.md) | Compose progressive scaffolding from pack and RAES authorities | Accepted |
+| [0035](0035-compose-catalog-kits-through-raes-and-transactional-pack-projections.md) | Compose catalog kits through RAES and transactional pack projections | Accepted |
 
 ```{toctree}
 :hidden:

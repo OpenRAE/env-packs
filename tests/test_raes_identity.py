@@ -77,6 +77,14 @@ _BOUND_IDENTITY_LINES = {
         f"https://sonarcloud.io/project/overview?id={_SONAR_PROJECT_KEY}",
         f"sonar.projectKey={_SONAR_PROJECT_KEY}",
     ),
+    "packs/techvault/docs/provenance-ledger.yaml": (
+        f"  - artifact_id: aptl-{_RETIRED_PREFIX}-sdl",
+    ),
+    "packs/techvault/sdl/README.md": (
+        f"from APTL's operational TechVault SDL, captured from its "
+        f"`{_RETIRED_PREFIX}-sdl` 0.23.1",
+        f"the SDL through `{_RETIRED_PREFIX}_sdl`, not a TechVault-specific adapter.",
+    ),
 }
 
 
@@ -115,6 +123,7 @@ class PackageIdentityTests(unittest.TestCase):
                 "raes-pack-new": "raes_env_packs.wizard:main",
                 "raes-new-pack": "raes_env_packs.wizard:main",
                 "raes-pack-issue-skeleton": "raes_env_packs.issue_skeleton:main",
+                "raes-pack-kit": "raes_env_packs.kit_cli:main",
             },
         )
 
@@ -167,7 +176,7 @@ class PackContractIdentityTests(unittest.TestCase):
         layout = (
             _NEW_PACKAGE / "resources" / "contract" / "pack-layout.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("Environment-pack contract version:** `5`", layout)
+        self.assertIn("Environment-pack contract version:** `6`", layout)
 
         digest = (_NEW_PACKAGE / "digest.py").read_text(encoding="utf-8")
         self.assertIn('_PACK_URI_SCHEME = "raes-environment-pack"', digest)

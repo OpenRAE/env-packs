@@ -1,0 +1,42 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install Docker CLI via official APT repo (not curl|sh)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl git gnupg && \
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
+    chmod a+r /etc/apt/keyrings/docker.asc && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends docker-ce-cli && \
+    apt-get purge -y gnupg && \
+    apt-get autoremove -y && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps
+COPY pyproject.toml .
+COPY README.md .
+# hatch_build.py is a declared wheel build hook in pyproject.toml, so
+# `pip install .` requires it in the build context (issue #659). It no-ops
+# here (no docker-compose.yml in this context), so no lab assets are bundled
+# into the API image.
+COPY hatch_build.py .
+COPY src/ src/
+RUN pip install --no-cache-dir ".[web]" && \
+    apt-get purge -y git && \
+    apt-get autoremove -y && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+EXPOSE 8400
+
+# Use the `aptl web serve` entrypoint (not raw uvicorn) so the container mints
+# the per-process browser-session secrets and logs the one-time login URL/token
+# (UI-008a / ADR-039). Grab the launch token from the container logs to bootstrap
+# a browser session through the UI origin. `aptl web serve` is always
+# single-worker by design (the launch-token, session, and terminal-ticket stores
+# are in-process); it exposes no --workers flag, so passing one crash-loops the
+# container. --api-only is deliberate: this container serves only the JSON API;
+# the sibling aptl-web-ui (Caddy) container serves the built GUI.
+CMD ["aptl", "web", "serve", "--host", "0.0.0.0", "--port", "8400", "--api-only"]
