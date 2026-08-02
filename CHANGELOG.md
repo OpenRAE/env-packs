@@ -11,6 +11,14 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.6.1](https://github.com/OpenRAE/env-packs/compare/v3.6.0...v3.6.1) (2026-08-02)
+
+
+### Bug Fixes
+
+* **deps:** bump websockets from 16.1.1 to 17.0 ([#243](https://github.com/OpenRAE/env-packs/issues/243)) ([6f52cc2](https://github.com/OpenRAE/env-packs/commit/6f52cc2b2fd9215ba83716d2f1e850936764b62f))
+* pin RAES 3.3.0 ([#247](https://github.com/OpenRAE/env-packs/issues/247)) ([f900df5](https://github.com/OpenRAE/env-packs/commit/f900df51d69acd1e36bcb426e8d17c1e6afe7696))
+
 ## [3.6.0](https://github.com/OpenRAE/env-packs/compare/v3.5.0...v3.6.0) (2026-08-02)
 
 
