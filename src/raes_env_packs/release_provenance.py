@@ -46,7 +46,7 @@ def _subject_hex(set_digest: str) -> str:
 
 
 @dataclass(frozen=True)
-class ReleaseFacts:
+class ReleaseFacts(object):
     """The six release facts bound into a pack-release provenance statement.
 
     ``lock`` is a bounded projection of the resolved module graph

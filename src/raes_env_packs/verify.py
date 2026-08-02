@@ -122,13 +122,24 @@ class VerificationResult(object):
         return signature is not None and signature.state == STATE_VERIFIED
 
 
-def _sha256_file(path: str) -> str | None:
-    """Return the canonical ``sha256:`` digest of a file, or ``None`` when absent."""
+def _sha256_file(root: str, *parts: str) -> str | None:
+    """Return the canonical ``sha256:`` digest of ``root``/``parts``, or ``None``.
 
-    if not os.path.isfile(path):
+    ``root`` is trusted and ``parts`` are relative; the joined path is resolved and
+    confirmed to stay inside ``root`` *in this function*, so the exact value that
+    reaches the ``open`` sink is the containment-validated realpath (Sonar
+    pythonsecurity:S8707). A path that escapes ``root`` or is absent yields
+    ``None``.
+    """
+
+    root_real = os.path.realpath(root)
+    candidate = os.path.realpath(os.path.join(root_real, *parts))
+    if candidate != root_real and os.path.commonpath([root_real, candidate]) != root_real:
+        return None
+    if not os.path.isfile(candidate):
         return None
     hasher = hashlib.sha256()
-    with open(path, "rb") as handle:
+    with open(candidate, "rb") as handle:
         for chunk in iter(lambda: handle.read(65536), b""):
             hasher.update(chunk)
     return "sha256:" + hasher.hexdigest()
@@ -297,9 +308,11 @@ def _signature_gate(set_digest: str, provenance_document: object, verifier: Sign
     if verifier is None:
         return Evidence(GATE_RELEASE_SIGNATURE, STATE_UNAVAILABLE, "no signature verifier configured")
     provenance = provenance_document if isinstance(provenance_document, dict) else {}
+    # A broad catch is deliberate: an external verifier failure is a failed gate,
+    # not a tool crash.
     try:
         ok = verifier(set_digest, provenance)
-    except Exception:  # an external verifier failure is a failed gate, not a tool crash
+    except Exception:
         return Evidence(GATE_RELEASE_SIGNATURE, STATE_FAILED, "signature verification raised")
     return Evidence(
         GATE_RELEASE_SIGNATURE,
@@ -311,20 +324,14 @@ def _signature_gate(set_digest: str, provenance_document: object, verifier: Sign
 def _lock_gate(pack_root: str, provenance_document: object) -> Evidence:
     """RAES lock drift: the staged lock must match the attested lock digest.
 
-    ``pack_root`` is external, so the staged lock path is resolved and confirmed
-    to stay inside it before its bytes reach the hash sink: the real lock path
-    and the real pack root must share the pack root as their common prefix
-    (``os.path.commonpath([root_real, lock_real]) == root_real``). A path that
-    escapes that boundary -- for instance a lock symlinked out of the pack -- is
-    treated as no staged lock at all (digest ``None``), so containment failure
-    collapses into the same absent/failed handling as a genuinely missing lock
-    rather than reading bytes from outside the pack.
+    ``pack_root`` is external, so ``_sha256_file`` resolves the staged lock path
+    and confirms it stays inside the pack before any bytes reach the hash sink. A
+    path that escapes that boundary -- for instance a lock symlinked out of the
+    pack -- yields digest ``None``, collapsing into the same absent/failed handling
+    as a genuinely missing lock rather than reading bytes from outside the pack.
     """
 
-    root_real = os.path.realpath(pack_root)
-    lock_real = os.path.realpath(os.path.join(pack_root, "sdl", "raes.lock.json"))
-    within_pack = os.path.commonpath([root_real, lock_real]) == root_real
-    lock_digest = _sha256_file(lock_real) if within_pack else None
+    lock_digest = _sha256_file(pack_root, "sdl", "raes.lock.json")
     predicate = provenance_document.get("predicate", {}) if isinstance(provenance_document, dict) else {}
     attested = predicate.get("lock") if isinstance(predicate.get("lock"), dict) else None
     attested_digest = attested.get("digest") if isinstance(attested, dict) else None
@@ -454,12 +461,14 @@ def main(argv: list[str] | None = None, *, stdout: TextIO | None = None, stderr:
         help="reject unless the release signature/attestation verifies")
     args = parser.parse_args(argv)
 
+    # A broad catch is deliberate: an unexpected defect here is a tool failure
+    # (exit 3), not a signal that the pack is untrusted.
     try:
         profile, sbom_document, provenance_document = load_release_evidence(args.release)
         result = verify_pack_release(
             args.pack, release_profile=profile,
             sbom_document=sbom_document, provenance_document=provenance_document)
-    except Exception as exc:  # a defect here is a tool failure, not an untrusted pack
+    except Exception as exc:
         print(f"raes-pack-verify: internal error ({type(exc).__name__})", file=err)
         return EXIT_TOOL_FAILURE
 

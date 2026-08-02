@@ -81,10 +81,10 @@ class InstallTests(_Fixture):
         with tempfile.TemporaryDirectory() as root:
             target = os.path.join(root, "techvault")
             plan = dist.plan_install(_TECHVAULT, self.evidence, target)
+            policy = dist.PromotionPolicy(require_signature=False)
             with self.assertRaises(dist.DistributionError):
                 dist.apply_install(plan, _TECHVAULT, self.evidence, target,
-                                   authorized=False,
-                                   policy=dist.PromotionPolicy(require_signature=False))
+                                   authorized=False, policy=policy)
             self.assertFalse(os.path.exists(target))
 
     def test_apply_installs_and_writes_a_receipt_beside_the_pack(self) -> None:
@@ -129,10 +129,10 @@ class InstallTests(_Fixture):
         with tempfile.TemporaryDirectory() as root:
             target = os.path.join(root, "techvault")
             verify_plan = dist.plan_verify(_TECHVAULT, self.evidence)
+            policy = dist.PromotionPolicy(require_signature=False)
             with self.assertRaises(dist.DistributionError):
                 dist.apply_install(verify_plan, _TECHVAULT, self.evidence, target,
-                                   authorized=True,
-                                   policy=dist.PromotionPolicy(require_signature=False))
+                                   authorized=True, policy=policy)
 
     def test_apply_refuses_a_target_other_than_the_planned_one(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -140,10 +140,10 @@ class InstallTests(_Fixture):
             plan = dist.plan_install(_TECHVAULT, self.evidence, planned)
             elsewhere = os.path.join(root, "elsewhere", "techvault")
             os.makedirs(os.path.dirname(elsewhere))
+            policy = dist.PromotionPolicy(require_signature=False)
             with self.assertRaises(dist.DistributionError):
                 dist.apply_install(plan, _TECHVAULT, self.evidence, elsewhere,
-                                   authorized=True,
-                                   policy=dist.PromotionPolicy(require_signature=False))
+                                   authorized=True, policy=policy)
 
     def test_update_replaces_atomically_over_an_existing_target(self) -> None:
         with tempfile.TemporaryDirectory() as root:
