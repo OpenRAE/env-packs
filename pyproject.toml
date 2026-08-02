@@ -28,7 +28,7 @@ classifiers = [
 # compatibility tests against this package's validator and template, so a
 # downstream consumer resolves exactly the RAES runtime this release was
 # validated against.
-dependencies = ["PyYAML>=6", "raes==3.2.0"]
+dependencies = ["PyYAML>=6", "raes==3.3.0"]
 
 [project.urls]
 Homepage = "https://github.com/OpenRAE/env-packs"
