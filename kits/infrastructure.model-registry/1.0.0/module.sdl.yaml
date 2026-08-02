@@ -1,0 +1,105 @@
+name: model-registry
+version: 1.0.0
+description: Reusable static infrastructure for Model registry. Configures registry_namespace
+  through the kit parameter contract.
+module:
+  id: infrastructure/model-registry
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - registry_namespace
+  exports:
+    nodes:
+    - registry
+    content:
+    - seed_inventory
+    accounts:
+    - registry_operator
+  description: Composable Model registry infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: model-registry
+  registry_namespace:
+    type: string
+    default: baseline
+nodes:
+  registry:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Model registry).
+      Configuration: ${registry_namespace}.'
+    source:
+      name: mlflow
+      version: '3'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 5000
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: registry_surface
+        service: http
+        protocol: http
+        name: Registry surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: registry
+    description: Benign infrastructure seed inventory for ${registry_namespace}.
+    items:
+    - name: namespace
+      display_name: Namespace
+      tags:
+      - infrastructure
+      - seed
+      description: Declared namespace for this reusable service.
+    - name: models
+      display_name: Models
+      tags:
+      - infrastructure
+      - seed
+      description: Declared models for this reusable service.
+    - name: versions
+      display_name: Versions
+      tags:
+      - infrastructure
+      - seed
+      description: Declared versions for this reusable service.
+    - name: artifact_metadata
+      display_name: Artifact Metadata
+      tags:
+      - infrastructure
+      - seed
+      description: Declared artifact metadata for this reusable service.
+accounts:
+  registry_operator:
+    username: registry-operator
+    node: registry
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

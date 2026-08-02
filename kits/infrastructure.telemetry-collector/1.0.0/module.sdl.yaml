@@ -1,0 +1,80 @@
+name: telemetry-collector
+version: 1.0.0
+description: Reusable static infrastructure for Telemetry collector. Configures pipeline_name
+  through the kit parameter contract.
+module:
+  id: infrastructure/telemetry-collector
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - pipeline_name
+  exports:
+    nodes:
+    - collector
+    content:
+    - seed_inventory
+  description: Composable Telemetry collector infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: telemetry-collector
+  pipeline_name:
+    type: string
+    default: default
+nodes:
+  collector:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Telemetry collector).
+      Configuration: ${pipeline_name}.'
+    source:
+      name: opentelemetry-collector
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 4317
+      protocol: tcp
+      name: otlp-grpc
+      description: Declared otlp-grpc service surface.
+    - port: 4318
+      protocol: tcp
+      name: otlp-http
+      description: Declared otlp-http service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: collector
+    description: Benign infrastructure seed inventory for ${pipeline_name}.
+    items:
+    - name: receivers
+      display_name: Receivers
+      tags:
+      - infrastructure
+      - seed
+      description: Declared receivers for this reusable service.
+    - name: processors
+      display_name: Processors
+      tags:
+      - infrastructure
+      - seed
+      description: Declared processors for this reusable service.
+    - name: export_routes
+      display_name: Export Routes
+      tags:
+      - infrastructure
+      - seed
+      description: Declared export routes for this reusable service.
+    - name: resource_attributes
+      display_name: Resource Attributes
+      tags:
+      - infrastructure
+      - seed
+      description: Declared resource attributes for this reusable service.

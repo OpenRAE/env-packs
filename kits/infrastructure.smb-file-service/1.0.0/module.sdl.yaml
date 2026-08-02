@@ -1,0 +1,84 @@
+name: smb-file-service
+version: 1.0.0
+description: Reusable static infrastructure for SMB file service. Configures share_name
+  through the kit parameter contract.
+module:
+  id: infrastructure/smb-file-service
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - share_name
+  exports:
+    nodes:
+    - file_service
+    content:
+    - seed_inventory
+    accounts:
+    - file_operator
+  description: Composable SMB file service infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: smb-file-service
+  share_name:
+    type: string
+    default: shared
+nodes:
+  file_service:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (SMB file service).
+      Configuration: ${share_name}.'
+    source:
+      name: samba
+      version: '4'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 445
+      protocol: tcp
+      name: smb
+      description: Declared smb service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: file_service
+    description: Benign infrastructure seed inventory for ${share_name}.
+    items:
+    - name: share
+      display_name: Share
+      tags:
+      - infrastructure
+      - seed
+      description: Declared share for this reusable service.
+    - name: directory_tree
+      display_name: Directory Tree
+      tags:
+      - infrastructure
+      - seed
+      description: Declared directory tree for this reusable service.
+    - name: seed_files
+      display_name: Seed Files
+      tags:
+      - infrastructure
+      - seed
+      description: Declared seed files for this reusable service.
+    - name: access_groups
+      display_name: Access Groups
+      tags:
+      - infrastructure
+      - seed
+      description: Declared access groups for this reusable service.
+accounts:
+  file_operator:
+    username: file-operator
+    node: file_service
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

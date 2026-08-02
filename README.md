@@ -16,8 +16,9 @@ build packs; consumers validate a pack before they trust it. The format and the
 tools ship together, so you validate a pack against the same version you built it
 against.
 
-This repository defines and validates the format. It does not host packs — those
-live in their own catalog repositories.
+This repository defines and validates the format, publishes the first-party
+infrastructure-kit collection under `kits/`, and hosts major example packs under
+`packs/`. Third-party catalogs consume the same package and contracts.
 
 ## What a pack looks like
 
@@ -85,11 +86,12 @@ Full documentation is on [Read the Docs](https://env-packs.readthedocs.io/en/lat
 
 ## What this is and is not
 
-This project defines the pack format and the tools that check it. It does **not**
-host packs, run a scenario, or define scenario meaning — the RAES scenario
-language and its semantics belong to [RAES](https://github.com/OpenRAE/rae), and
-this project consumes them from an exactly pinned `raes` release. It is a
-single-maintainer project with no support SLA. See the
+This project defines the pack format and tools, publishes first-party reusable
+kits, and hosts major example packs. It does **not** run a scenario or define
+scenario meaning — the RAES scenario language and its semantics belong to
+[RAES](https://github.com/OpenRAE/rae), and this project consumes them from an
+exactly pinned `raes` release. It is a single-maintainer project with no support
+SLA. See the
 [limitations](https://env-packs.readthedocs.io/en/latest/limitations.html) for the
 full picture.
 

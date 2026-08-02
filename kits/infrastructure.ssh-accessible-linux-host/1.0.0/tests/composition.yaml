@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: ssh-accessible-linux-host
+  login_name: analyst
+variation:
+  deployment_profile: compact
+  service_label: ssh-accessible-linux-host-alternate
+  login_name: operator
+multi_kit_group: access-workstation

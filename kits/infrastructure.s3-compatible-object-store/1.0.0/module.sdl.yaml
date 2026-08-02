@@ -1,0 +1,88 @@
+name: s3-compatible-object-store
+version: 1.0.0
+description: Reusable static infrastructure for S3-compatible object store. Configures
+  bucket_name through the kit parameter contract.
+module:
+  id: infrastructure/s3-compatible-object-store
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - bucket_name
+  exports:
+    nodes:
+    - object_store
+    content:
+    - seed_inventory
+    accounts:
+    - object_store_operator
+  description: Composable S3-compatible object store infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: s3-compatible-object-store
+  bucket_name:
+    type: string
+    default: artifacts
+nodes:
+  object_store:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (S3-compatible
+      object store). Configuration: ${bucket_name}.'
+    source:
+      name: minio
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 9000
+      protocol: tcp
+      name: s3
+      description: Declared s3 service surface.
+    - port: 9001
+      protocol: tcp
+      name: console
+      description: Declared console service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: object_store
+    description: Benign infrastructure seed inventory for ${bucket_name}.
+    items:
+    - name: bucket
+      display_name: Bucket
+      tags:
+      - infrastructure
+      - seed
+      description: Declared bucket for this reusable service.
+    - name: access_policy
+      display_name: Access Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Declared access policy for this reusable service.
+    - name: seed_objects
+      display_name: Seed Objects
+      tags:
+      - infrastructure
+      - seed
+      description: Declared seed objects for this reusable service.
+    - name: lifecycle_profile
+      display_name: Lifecycle Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Declared lifecycle profile for this reusable service.
+accounts:
+  object_store_operator:
+    username: object-operator
+    node: object_store
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

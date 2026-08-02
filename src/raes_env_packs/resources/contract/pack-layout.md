@@ -7,11 +7,11 @@ follows. It ships inside the `raes-env-packs` package alongside the schemas,
 template, and tools that enforce it, so an author always validates against the
 same contract version they build against.
 
-Environment packs themselves live in their own catalog repositories: this package
-**defines and validates** the format, it does not host packs. Everything below
-describes the `environments/<name>/` layout an author creates in a catalog repo, and
-`raes-pack-validate` / `raes-pack-release` check that layout against this
-contract.
+This repository **defines and validates** the format, publishes first-party kits
+under `kits/`, and hosts major examples under `packs/`. Third-party catalog
+repositories use the same contract. Everything below describes the
+`environments/<name>/` layout an author creates, and `raes-pack-validate` /
+`raes-pack-release` check that layout against this contract.
 
 > First-pass rule of thumb: **put in what a scenario has, skip what it
 > doesn't.** A pack is a declarative bundle plus one known-good reference — it

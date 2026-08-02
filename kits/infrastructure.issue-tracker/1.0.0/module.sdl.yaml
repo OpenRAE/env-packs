@@ -1,0 +1,105 @@
+name: issue-tracker
+version: 1.0.0
+description: Reusable static infrastructure for Issue tracker. Configures project_key
+  through the kit parameter contract.
+module:
+  id: infrastructure/issue-tracker
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - project_key
+  exports:
+    nodes:
+    - tracker
+    content:
+    - seed_inventory
+    accounts:
+    - tracker_user
+  description: Composable Issue tracker infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: issue-tracker
+  project_key:
+    type: string
+    default: LAB
+nodes:
+  tracker:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Issue tracker).
+      Configuration: ${project_key}.'
+    source:
+      name: openproject
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 8080
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: tracker_surface
+        service: http
+        protocol: http
+        name: Tracker surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: tracker
+    description: Benign infrastructure seed inventory for ${project_key}.
+    items:
+    - name: project
+      display_name: Project
+      tags:
+      - infrastructure
+      - seed
+      description: Declared project for this reusable service.
+    - name: users
+      display_name: Users
+      tags:
+      - infrastructure
+      - seed
+      description: Declared users for this reusable service.
+    - name: tickets
+      display_name: Tickets
+      tags:
+      - infrastructure
+      - seed
+      description: Declared tickets for this reusable service.
+    - name: workflow_states
+      display_name: Workflow States
+      tags:
+      - infrastructure
+      - seed
+      description: Declared workflow states for this reusable service.
+accounts:
+  tracker_user:
+    username: project-user
+    node: tracker
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

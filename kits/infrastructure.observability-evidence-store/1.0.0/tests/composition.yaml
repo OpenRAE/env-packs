@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: observability-evidence-store
+  retention_profile: standard
+variation:
+  deployment_profile: compact
+  service_label: observability-evidence-store-alternate
+  retention_profile: extended
+multi_kit_group: policy-operations

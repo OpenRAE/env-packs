@@ -1,0 +1,105 @@
+name: inference-api-gateway
+version: 1.0.0
+description: Reusable static infrastructure for Inference API gateway. Configures
+  route_name through the kit parameter contract.
+module:
+  id: infrastructure/inference-api-gateway
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - route_name
+  exports:
+    nodes:
+    - gateway
+    content:
+    - seed_inventory
+    accounts:
+    - gateway_operator
+  description: Composable Inference API gateway infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: inference-api-gateway
+  route_name:
+    type: string
+    default: inference
+nodes:
+  gateway:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Inference API
+      gateway). Configuration: ${route_name}.'
+    source:
+      name: litellm
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 4000
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: gateway_surface
+        service: http
+        protocol: http
+        name: Gateway surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: gateway
+    description: Benign infrastructure seed inventory for ${route_name}.
+    items:
+    - name: model_routes
+      display_name: Model Routes
+      tags:
+      - infrastructure
+      - seed
+      description: Declared model routes for this reusable service.
+    - name: routing_policy
+      display_name: Routing Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Declared routing policy for this reusable service.
+    - name: request_schema
+      display_name: Request Schema
+      tags:
+      - infrastructure
+      - seed
+      description: Declared request schema for this reusable service.
+    - name: response_schema
+      display_name: Response Schema
+      tags:
+      - infrastructure
+      - seed
+      description: Declared response schema for this reusable service.
+accounts:
+  gateway_operator:
+    username: inference-operator
+    node: gateway
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

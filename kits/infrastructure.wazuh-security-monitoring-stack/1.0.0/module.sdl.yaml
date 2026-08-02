@@ -1,0 +1,162 @@
+name: wazuh-security-monitoring-stack
+version: 1.0.0
+description: Reusable static infrastructure for Wazuh security monitoring stack. Configures
+  enrollment_group through the kit parameter contract.
+module:
+  id: infrastructure/wazuh-security-monitoring-stack
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - enrollment_group
+  exports:
+    nodes:
+    - manager
+    - indexer
+    - dashboard
+    content:
+    - seed_inventory
+    accounts:
+    - monitoring_operator
+  description: Composable Wazuh security monitoring stack infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: wazuh-security-monitoring-stack
+  enrollment_group:
+    type: string
+    default: lab
+nodes:
+  manager:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Wazuh security
+      monitoring stack). Configuration: ${enrollment_group}.'
+    source:
+      name: wazuh-manager
+      version: '4'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 1514
+      protocol: tcp
+      name: events
+      description: Declared events service surface.
+    - port: 55000
+      protocol: tcp
+      name: api
+      description: Declared api service surface.
+  indexer:
+    type: vm
+    description: ${deployment_profile} profile for ${service_label} (Wazuh security
+      monitoring stack).
+    source:
+      name: wazuh-indexer
+      version: '4'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 9200
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: indexer_surface
+        service: http
+        protocol: http
+        name: Indexer surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+  dashboard:
+    type: vm
+    description: ${deployment_profile} profile for ${service_label} (Wazuh security
+      monitoring stack).
+    source:
+      name: wazuh-dashboard
+      version: '4'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 5601
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: dashboard_surface
+        service: http
+        protocol: http
+        name: Dashboard surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: manager
+    description: Benign infrastructure seed inventory for ${enrollment_group}.
+    items:
+    - name: manager_configuration
+      display_name: Manager Configuration
+      tags:
+      - infrastructure
+      - seed
+      description: Declared manager configuration for this reusable service.
+    - name: agent_group
+      display_name: Agent Group
+      tags:
+      - infrastructure
+      - seed
+      description: Declared agent group for this reusable service.
+    - name: index_pattern
+      display_name: Index Pattern
+      tags:
+      - infrastructure
+      - seed
+      description: Declared index pattern for this reusable service.
+    - name: dashboard_space
+      display_name: Dashboard Space
+      tags:
+      - infrastructure
+      - seed
+      description: Declared dashboard space for this reusable service.
+accounts:
+  monitoring_operator:
+    username: monitoring-operator
+    node: manager
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

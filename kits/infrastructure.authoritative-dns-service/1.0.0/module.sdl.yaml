@@ -1,0 +1,76 @@
+name: authoritative-dns-service
+version: 1.0.0
+description: Reusable static infrastructure for Authoritative DNS service. Configures
+  zone_name through the kit parameter contract.
+module:
+  id: infrastructure/authoritative-dns-service
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - zone_name
+  exports:
+    nodes:
+    - dns
+    content:
+    - seed_inventory
+  description: Composable Authoritative DNS service infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: authoritative-dns-service
+  zone_name:
+    type: string
+    default: environment.test
+nodes:
+  dns:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Authoritative
+      DNS service). Configuration: ${zone_name}.'
+    source:
+      name: bind9
+      version: '9'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 53
+      protocol: tcp
+      name: dns
+      description: Declared dns service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: dns
+    description: Benign infrastructure seed inventory for ${zone_name}.
+    items:
+    - name: zone
+      display_name: Zone
+      tags:
+      - infrastructure
+      - seed
+      description: Declared zone for this reusable service.
+    - name: soa_record
+      display_name: Soa Record
+      tags:
+      - infrastructure
+      - seed
+      description: Declared soa record for this reusable service.
+    - name: a_records
+      display_name: A Records
+      tags:
+      - infrastructure
+      - seed
+      description: Declared a records for this reusable service.
+    - name: service_records
+      display_name: Service Records
+      tags:
+      - infrastructure
+      - seed
+      description: Declared service records for this reusable service.

@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.python-package-resolver
+configuration:
+  index_name: packages
+  deployment_profile: standard
+  service_label: python-package-resolver
+declared_objects:
+- id: package_index
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: package_metadata
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: resolver_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: seed_packages
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

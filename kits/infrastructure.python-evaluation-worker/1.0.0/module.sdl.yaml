@@ -1,0 +1,84 @@
+name: python-evaluation-worker
+version: 1.0.0
+description: Reusable static infrastructure for Python evaluation worker. Configures
+  queue_name through the kit parameter contract.
+module:
+  id: infrastructure/python-evaluation-worker
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - queue_name
+  exports:
+    nodes:
+    - worker
+    content:
+    - seed_inventory
+    accounts:
+    - worker_operator
+  description: Composable Python evaluation worker infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: python-evaluation-worker
+  queue_name:
+    type: string
+    default: evaluation
+nodes:
+  worker:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Python evaluation
+      worker). Configuration: ${queue_name}.'
+    source:
+      name: python
+      version: '3.12'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 8000
+      protocol: tcp
+      name: control
+      description: Declared control service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: worker
+    description: Benign infrastructure seed inventory for ${queue_name}.
+    items:
+    - name: work_queue
+      display_name: Work Queue
+      tags:
+      - infrastructure
+      - seed
+      description: Declared work queue for this reusable service.
+    - name: input_contract
+      display_name: Input Contract
+      tags:
+      - infrastructure
+      - seed
+      description: Declared input contract for this reusable service.
+    - name: result_contract
+      display_name: Result Contract
+      tags:
+      - infrastructure
+      - seed
+      description: Declared result contract for this reusable service.
+    - name: resource_limits
+      display_name: Resource Limits
+      tags:
+      - infrastructure
+      - seed
+      description: Declared resource limits for this reusable service.
+accounts:
+  worker_operator:
+    username: worker-operator
+    node: worker
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

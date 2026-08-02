@@ -1,0 +1,84 @@
+name: isolated-python-analysis-sandbox
+version: 1.0.0
+description: Reusable static infrastructure for Isolated Python analysis sandbox.
+  Configures workspace_name through the kit parameter contract.
+module:
+  id: infrastructure/isolated-python-analysis-sandbox
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - workspace_name
+  exports:
+    nodes:
+    - sandbox
+    content:
+    - seed_inventory
+    accounts:
+    - sandbox_user
+  description: Composable Isolated Python analysis sandbox infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: isolated-python-analysis-sandbox
+  workspace_name:
+    type: string
+    default: inspection
+nodes:
+  sandbox:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Isolated Python
+      analysis sandbox). Configuration: ${workspace_name}.'
+    source:
+      name: python
+      version: '3.12'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 8000
+      protocol: tcp
+      name: control
+      description: Declared control service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: sandbox
+    description: Benign infrastructure seed inventory for ${workspace_name}.
+    items:
+    - name: workspace
+      display_name: Workspace
+      tags:
+      - infrastructure
+      - seed
+      description: Declared workspace for this reusable service.
+    - name: runtime_limits
+      display_name: Runtime Limits
+      tags:
+      - infrastructure
+      - seed
+      description: Declared runtime limits for this reusable service.
+    - name: input_mount
+      display_name: Input Mount
+      tags:
+      - infrastructure
+      - seed
+      description: Declared input mount for this reusable service.
+    - name: result_mount
+      display_name: Result Mount
+      tags:
+      - infrastructure
+      - seed
+      description: Declared result mount for this reusable service.
+accounts:
+  sandbox_user:
+    username: analyst
+    node: sandbox
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

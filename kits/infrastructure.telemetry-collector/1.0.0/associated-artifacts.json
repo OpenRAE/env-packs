@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.telemetry-collector-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "telemetry-collector",
+    "ref_version": null,
+    "ref_digest": "sha256:1f246a7d9db948bf804995c10aa598834d2b2bc857ee1c41a0ebb1cecc9f9c8e",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "4fbfe8004e6fa6ae147bf935b0ab689b31a400f1e2148bddbe3edbe2cfd4756c"
+      },
+      "size_bytes": 471,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.telemetry-collector@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "82e87d778a83330d228a62c8788bee698759bfc3b8e3fcd0a441d9f0ad1c462c"
+      },
+      "size_bytes": 483,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.telemetry-collector@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "10340a2f38bcab9ca6b8a06b1af33180f2e14f68e9a1b8a83a12d626c6069188"
+      },
+      "size_bytes": 643,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.telemetry-collector@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "03b32b6bfc658143186b565230e11be2f0ee5755684bbc884a7ff72a2eba5966"
+      },
+      "size_bytes": 1683,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.telemetry-collector@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "ddd88bd019ade94a8656ec2c8016651b183d74befb3a03989d44f182fbea55af"
+      },
+      "size_bytes": 2077,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.telemetry-collector@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "3a968168945a64233cd0b3e3746f2dda1bc8753d5af54e70f7d94b189c69b87d"
+      },
+      "size_bytes": 251,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.telemetry-collector@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:e9c28c00d9659c69ea8863db30a2af9842fd82dea55443982556cf8cbe09e201"
+}

@@ -4,11 +4,11 @@ End-to-end author proof for infrastructure kits (`raes-pack-kit`, issue #190).
 The unit suite covers schema admission, discovery, proposal construction,
 conflict diagnostics, ownership, atomic mutation, and failure recovery. This
 runbook drives the real shipped command modules against the released kit
-collection in an explicitly staged local catalog checkout.
+collection in this repository.
 
-The harness is deliberately outside `tests/`, so normal CI does not require a
-second repository. It does not acquire content, call a registry, execute kit
-code, or touch a backend.
+The harness is deliberately outside `tests/`. It does not acquire content, call
+a registry, execute kit code, or touch a backend. The normal unit suite validates
+every checked-in kit release and representative multi-kit composition.
 
 ## What it proves
 
@@ -27,11 +27,11 @@ code, or touch a backend.
 
 ## Run it
 
-Check out the admitted kit catalog locally, then from this repository root run:
+From this repository root run:
 
 ```sh
 .venv/bin/python tests_integration/kit_author_walkthrough.py \
-  --catalog ../reference-packs
+  --catalog .
 ```
 
 The harness derives the current catalog commit as its immutable source revision.
@@ -40,7 +40,7 @@ the admitted revision explicitly:
 
 ```sh
 .venv/bin/python tests_integration/kit_author_walkthrough.py \
-  --catalog /staging/reference-packs \
+  --catalog /staging/env-packs \
   --source-revision sha256:0123456789abcdef
 ```
 

@@ -1,0 +1,19 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.windows-domain-member
+configuration:
+  computer_name: win-member-01
+  deployment_profile: standard
+  service_label: windows-domain-member
+declared_objects:
+- id: domain_join_profile
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: local_groups
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: management_surface
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Compose with one exported RAES identity domain and add the pack-level domain-join
+  relationship.

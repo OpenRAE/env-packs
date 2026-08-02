@@ -17,13 +17,8 @@ import textwrap
 from dataclasses import dataclass
 from collections.abc import Callable
 
-# This tooling repository owns the environment-pack format and release tooling,
-# not pack content, so it must never be a target for pack-implementation issues
-# (ADR 0001/0009). Packs live in their own catalog repositories; the caller
-# names the target explicitly. Canonical tooling stays catalog-neutral: it never
-# embeds a concrete downstream catalog identity, only this repository's own name
-# (to reject it) and an obvious placeholder used in help and error text.
-FORMAT_TOOLING_REPO = "OpenRAE/env-packs"
+# The caller always names the content-owning repository explicitly. It may be
+# this first-party repository or any community/private catalog.
 EXAMPLE_CATALOG = "example-org/example-packs"
 # Minimal structural safety check for an OWNER/REPOSITORY selector. It rejects
 # URLs, query/path suffixes, extra components, whitespace, and control chars;
@@ -113,31 +108,22 @@ def validate_pack_id(pack_id: str) -> None:
 
 
 def ensure_not_tooling_repo(repo: str) -> None:
-    """Reject the format/tooling repository as a pack-issue target.
+    """Compatibility hook retained now that this repository may host content."""
 
-    Compares case-insensitively so it catches both a raw selector and a
-    canonical name resolved by gh (case variants, redirected aliases).
-    """
-    if repo.lower() == FORMAT_TOOLING_REPO.lower():
-        raise SystemExit(
-            f"{repo} owns the environment-pack format and tooling, not pack "
-            "content, so it cannot host pack-implementation issues. Target the "
-            "catalog repository that will own the pack — your first-party, "
-            f"community, or private catalog (e.g. {EXAMPLE_CATALOG}).")
+    del repo
 
 
 def validate_target_selector(repo: str | None) -> str:
     """Validate the --repo selector locally, without spawning gh.
 
-    Structurally requires an OWNER/REPOSITORY slug and rejects the tooling
-    repository outright. Canonical existence/access/redirect resolution is left
-    to gh (see GhClient.resolve_canonical_repo).
+    Structurally requires an OWNER/REPOSITORY slug. Canonical
+    existence/access/redirect resolution is left to gh (see
+    GhClient.resolve_canonical_repo).
     """
     if not repo:
         raise SystemExit(
             "--repo OWNER/REPOSITORY is required: name the catalog repository "
-            "that will own the pack. This tooling repository does not host "
-            f"packs (e.g. {EXAMPLE_CATALOG}).")
+            f"that will own the pack (e.g. {EXAMPLE_CATALOG}).")
     if not TARGET_REPO_RE.fullmatch(repo):
         raise SystemExit(
             "--repo must be a GitHub OWNER/REPOSITORY slug using letters, "
@@ -653,9 +639,7 @@ class GhClient(object):
         """Resolve the target to its canonical OWNER/REPOSITORY via gh.
 
         gh follows renames/redirects and canonicalizes case, and fails when the
-        repository does not exist or the caller cannot access it. This closes
-        the gap where a redirected alias could otherwise reach a forbidden
-        target that a raw string comparison would miss.
+        repository does not exist or the caller cannot access it.
         """
         row = self.run(["repo", "view", self.repo, "--json", "nameWithOwner"])
         if not isinstance(row, dict) or not row.get("nameWithOwner"):
@@ -755,8 +739,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--repo",
         help=("GitHub catalog repository (OWNER/REPOSITORY) that will own the "
               f"pack, e.g. {EXAMPLE_CATALOG}; use your own first-party, "
-              "community, or private catalog. Required: this format/tooling "
-              "repository does not host packs and cannot be targeted."))
+              "community, or private catalog, or OpenRAE/env-packs for "
+              "first-party content."))
     parser.add_argument("--pack-id", help="lowercase kebab-case environment pack id")
     parser.add_argument("--title", help="human-readable scenario title")
     parser.add_argument("--focus", default="TBD by the pack-design agent.",

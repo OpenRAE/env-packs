@@ -1,0 +1,101 @@
+name: static-web-service
+version: 1.0.0
+description: Reusable static infrastructure for Static web service. Configures site_name
+  through the kit parameter contract.
+module:
+  id: infrastructure/static-web-service
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - site_name
+  exports:
+    nodes:
+    - web
+    content:
+    - seed_inventory
+  description: Composable Static web service infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: static-web-service
+  site_name:
+    type: string
+    default: reference
+nodes:
+  web:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Static web service).
+      Configuration: ${site_name}.'
+    source:
+      name: nginx
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 80
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    - port: 443
+      protocol: tcp
+      name: https
+      description: Declared https service surface.
+    runtime:
+      applications:
+      - application_id: web_surface
+        service: http
+        protocol: http
+        name: Web surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: web
+    description: Benign infrastructure seed inventory for ${site_name}.
+    items:
+    - name: index_page
+      display_name: Index Page
+      tags:
+      - infrastructure
+      - seed
+      description: Declared index page for this reusable service.
+    - name: static_assets
+      display_name: Static Assets
+      tags:
+      - infrastructure
+      - seed
+      description: Declared static assets for this reusable service.
+    - name: tls_profile
+      display_name: Tls Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Declared tls profile for this reusable service.
+    - name: health_route
+      display_name: Health Route
+      tags:
+      - infrastructure
+      - seed
+      description: Declared health route for this reusable service.

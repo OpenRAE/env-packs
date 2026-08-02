@@ -1,0 +1,142 @@
+name: observability-evidence-store
+version: 1.0.0
+description: Reusable static infrastructure for Observability/evidence store. Configures
+  retention_profile through the kit parameter contract.
+module:
+  id: infrastructure/observability-evidence-store
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - retention_profile
+  exports:
+    nodes:
+    - metrics
+    - traces
+    content:
+    - seed_inventory
+    accounts:
+    - observability_operator
+  description: Composable Observability/evidence store infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: observability-evidence-store
+  retention_profile:
+    type: string
+    default: standard
+nodes:
+  metrics:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Observability/evidence
+      store). Configuration: ${retention_profile}.'
+    source:
+      name: grafana
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 3000
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: metrics_surface
+        service: http
+        protocol: http
+        name: Metrics surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+  traces:
+    type: vm
+    description: ${deployment_profile} profile for ${service_label} (Observability/evidence
+      store).
+    source:
+      name: tempo
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 3200
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: traces_surface
+        service: http
+        protocol: http
+        name: Traces surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: metrics
+    description: Benign infrastructure seed inventory for ${retention_profile}.
+    items:
+    - name: metrics_datasource
+      display_name: Metrics Datasource
+      tags:
+      - infrastructure
+      - seed
+      description: Declared metrics datasource for this reusable service.
+    - name: trace_tenant
+      display_name: Trace Tenant
+      tags:
+      - infrastructure
+      - seed
+      description: Declared trace tenant for this reusable service.
+    - name: dashboards
+      display_name: Dashboards
+      tags:
+      - infrastructure
+      - seed
+      description: Declared dashboards for this reusable service.
+    - name: retention_policy
+      display_name: Retention Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Declared retention policy for this reusable service.
+accounts:
+  observability_operator:
+    username: observability-operator
+    node: metrics
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.
