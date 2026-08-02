@@ -8,6 +8,12 @@ vendoring the contract.
 
 from importlib.metadata import version
 
+from .component_boundary import (
+    Component,
+    ComponentBoundaryError,
+    pack_component_boundary,
+    validate_publication_supply_document,
+)
 from .digest import (
     PackDigestError,
     ResolvedPackArtifact,
@@ -16,6 +22,29 @@ from .digest import (
     resolve_pack_artifact,
     validate_pack_content_manifest,
     verify_pack_content_digest,
+)
+from .distribution import (
+    DistributionError,
+    OperationPlan,
+    Selector,
+    apply_install,
+    export_pack_archive,
+    plan_install,
+    plan_lock,
+    plan_publish,
+    plan_update,
+    plan_verify,
+    stage_pack_archive,
+)
+from .release_provenance import (
+    build_release_provenance,
+    validate_release_provenance,
+)
+from .sbom import generate_sbom, sbom_digest, validate_sbom_document
+from .verify import (
+    VerificationResult,
+    load_release_evidence,
+    verify_pack_release,
 )
 from .kits import (
     KitError,
@@ -49,7 +78,30 @@ __version__ = version("raes-env-packs")
 
 __all__ = [
     "__version__",
+    "Component",
+    "ComponentBoundaryError",
     "Diagnostic",
+    "DistributionError",
+    "OperationPlan",
+    "Selector",
+    "VerificationResult",
+    "apply_install",
+    "build_release_provenance",
+    "export_pack_archive",
+    "generate_sbom",
+    "load_release_evidence",
+    "pack_component_boundary",
+    "plan_install",
+    "plan_lock",
+    "plan_publish",
+    "plan_update",
+    "plan_verify",
+    "sbom_digest",
+    "stage_pack_archive",
+    "validate_publication_supply_document",
+    "validate_release_provenance",
+    "validate_sbom_document",
+    "verify_pack_release",
     "KitError",
     "KitLimits",
     "KitProposal",

@@ -50,8 +50,10 @@ import re
 import shutil
 import sys
 import tempfile
+from pathlib import Path
 
 import yaml
+from raes.module_registry import load_lockfile
 from raes_contracts.associated_artifacts import associated_artifact_set_digest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -60,8 +62,10 @@ if _HERE not in sys.path:
 # content_ci is a sibling module, imported after the sys.path insert above.
 import content_ci as cc
 from raes_env_packs import _pack_fs
+from raes_env_packs import component_boundary
 from raes_env_packs import digest as digest_module
-from raes_env_packs import publication, validation
+from raes_env_packs import publication, release_provenance, validation
+from raes_env_packs import sbom as sbom_module
 
 REPO = cc._REPO
 PACKS_ROOT = cc.PACKS_ROOT
@@ -102,6 +106,9 @@ _STAGE_CHUNK = 64 * 1024
 # prose.
 _CONTRACT_VERSION_RE = re.compile(r"Environment-pack contract version:\**\s*`([^`]+)`")
 _CANONICAL_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+# The canonical digest algorithm prefix, defined once so a release digest is
+# spelled identically everywhere it is composed.
+_SHA256_PREFIX = "sha256:"
 _CONTRACT_SOURCE = os.path.join(cc._RES, "contract", "pack-layout.md")
 CONTRACT_SOURCE_LABEL = "contract/pack-layout.md"
 
@@ -119,7 +126,7 @@ def load_contract_version() -> tuple[str | None, str]:
         raw = fh.read()
     body = raw.decode("utf-8", errors="replace")
     m = _CONTRACT_VERSION_RE.search(body)
-    digest = "sha256:" + hashlib.sha256(raw).hexdigest()
+    digest = _SHA256_PREFIX + hashlib.sha256(raw).hexdigest()
     return (m.group(1) if m else None), digest
 
 
@@ -522,8 +529,15 @@ def _stage_views(pc: "PackContracts", pack_root: str, staging: str,
 
 
 def build_release(pack_root: str, out_dir: str, *,
-                  include_build_provenance: bool = False) -> tuple[dict[str, object], list[str]]:
+                  include_build_provenance: bool = False,
+                  publish: bool = False) -> tuple[dict[str, object], list[str]]:
     """Assemble the boundary-split release tree and its metadata.
+
+    ``publish`` promotes a local projection to a published release (ADR 0037):
+    content identity becomes mandatory, and the generated SBOM + provenance are
+    staged beside the views and referenced from ``release.yaml`` as an
+    ``evidence`` block. A local projection (``publish=False``) keeps ADR 0028's
+    optional binding and carries no evidence.
 
     Returns ``(metadata, failures)``. The release tree is treated as an atomic
     derived artifact: everything is staged into a scratch directory and fully
@@ -563,6 +577,11 @@ def build_release(pack_root: str, out_dir: str, *,
         bind_failures, view_members = _bind_view_sets(
             pack_root, metadata, staged_by_view, staging)
         failures += bind_failures
+        # A published release carries its generated SBOM + provenance beside the
+        # views before the profile is validated, so the evidence references in
+        # release.yaml are checked as part of the same gate.
+        if publish and not failures:
+            failures += _emit_evidence(pc, pack_root, metadata, staging)
         failures += _publication_failures(pc, pack_root, metadata, view_members)
         failures += _immutability_failures(pc, release_root, metadata)
         if failures:
@@ -633,6 +652,147 @@ def _git_commit(repo_root: str) -> str | None:
         return out.stdout.strip() or None
     except (OSError, subprocess.CalledProcessError):
         return None
+
+
+# --------------------------------------------------------------------------- #
+# Release evidence (per-pack SBOM + provenance, ADR 0037)
+# --------------------------------------------------------------------------- #
+def _builder_id() -> str:
+    """Return a non-secret builder/workflow identity for release provenance.
+
+    In CI the GitHub workflow ref names the builder; locally a stable
+    ``local-build`` identity keeps the field non-empty. This is a provenance
+    fact, not a trust claim, and carries no secret material.
+    """
+    workflow = os.environ.get("GITHUB_WORKFLOW_REF")
+    if workflow:
+        return f"github-actions:{workflow}"
+    repository = os.environ.get("GITHUB_REPOSITORY")
+    if repository:
+        return f"github-actions:{repository}"
+    return "local-build"
+
+
+def _default_kit_source_resolver(source_id: str, revision: str, kit_id: str,
+                                 kit_version: str, repo_root: str = REPO) -> str | None:
+    """Resolve a first-party kit source/revision to its immutable staged root.
+
+    First-party kits live under ``kits/`` in this repository at an immutable Git
+    revision (ADR 0036), so the repository root is the staged catalog source. A
+    source whose release is not present here returns ``None`` and is reported as
+    authority-unavailable rather than inferred from filenames.
+    """
+    candidate = os.path.join(repo_root, "kits", str(kit_id), str(kit_version))
+    return repo_root if os.path.isdir(candidate) else None
+
+
+def _lock_projection(pack_root: str) -> dict[str, object] | None:
+    """Bounded, reproducible projection of the pack's raes.lock.json, or ``None``.
+
+    The digest is over the exact lock bytes so a consumer can detect drift; the
+    module list is the resolved graph RAES recorded. ``None`` means the pack
+    imports no modules, which the provenance records faithfully rather than as an
+    empty-but-present lock.
+    """
+    root_real = os.path.realpath(pack_root)
+    try:
+        lock_path: str | None = _resolved_within(root_real, "sdl", "raes.lock.json")
+    except ValueError:
+        lock_path = None
+    if lock_path is None or not os.path.isfile(lock_path):
+        return None
+    with open(lock_path, "rb") as fh:
+        raw = fh.read()
+    digest = _SHA256_PREFIX + hashlib.sha256(raw).hexdigest()
+    modules: list[dict[str, object]] = []
+    try:
+        lockfile = load_lockfile(Path(pack_root, "sdl"))
+        for record in getattr(lockfile, "imports", None) or ():
+            modules.append({
+                "module_id": getattr(record, "module_id", None),
+                "module_version": getattr(record, "module_version", None),
+                "content_digest": getattr(record, "content_digest", None),
+            })
+    except (OSError, ValueError):
+        modules = []
+    return {"digest": digest, "modules": modules}
+
+
+def _emit_evidence(pc: "PackContracts", pack_root: str,
+                   metadata: dict[str, object], staging: str) -> list[str]:
+    """Generate, self-verify, and stage the release SBOM + provenance.
+
+    Sets ``metadata['evidence']`` to reference both by digest. Content identity is
+    mandatory for a published release (ADR 0037 amends ADR 0028): a pack with no
+    associated-artifact manifest cannot be published. The generated evidence is
+    checked against its own consumer gate before it is written, so a generator
+    defect fails the build rather than shipping unverifiable evidence, and it is
+    staged beside -- never inside -- the associated-artifact set it describes.
+    """
+    binding = _semantic_binding(pack_root)
+    if binding is None:
+        return [f"{pc.name}: a published release requires content identity "
+                "(declare associated_artifact_manifest in pack.yaml)"]
+    semantic_parent, source_set = binding
+    set_digest = source_set["set_digest"]
+
+    try:
+        _result, scenarios = validation._validate_pack_for_author_ci(pack_root)
+    except (OSError, ValueError):
+        scenarios = ()
+    components, cb_diagnostics = component_boundary.pack_component_boundary(
+        pack_root, scenarios=scenarios,
+        kit_source_resolver=_default_kit_source_resolver)
+    failures = [f"{pc.name}: component boundary {d.code} at {d.path}"
+                for d in cb_diagnostics]
+    if failures:
+        return failures
+
+    name = metadata["release"]["pack"]["name"]
+    version = metadata["release"]["pack"]["version"]
+    sbom_document = sbom_module.generate_sbom(
+        pack_name=name, pack_version=version, set_digest=set_digest,
+        components=components)
+    sbom_digest = sbom_module.sbom_digest(sbom_document)
+    lock = _lock_projection(pack_root)
+    view_sets = [{"view": view["view"], "set_digest": view["set"]["set_digest"]}
+                 for view in metadata["release"]["views"] if view.get("set")]
+    sbom_path = f"{name}-{version}.cdx.json"
+    provenance_path = f"{name}-{version}.provenance.json"
+    source_revision = _git_commit(REPO)
+    builder = _builder_id()
+    provenance = release_provenance.build_release_provenance(
+        pack_name=name, pack_version=version, set_digest=set_digest,
+        facts=release_provenance.ReleaseFacts(
+            semantic_parent=semantic_parent, source_revision=source_revision,
+            builder_id=builder, lock=lock, view_sets=view_sets,
+            sbom={"digest": sbom_digest, "format": sbom_module.BOM_FORMAT,
+                  "path": sbom_path}))
+    provenance_digest = release_provenance.provenance_digest(provenance)
+
+    failures += [f"{pc.name}: generated SBOM {d.code}" for d in
+                 sbom_module.validate_sbom_document(
+                     sbom_document, expected_name=name, expected_version=version,
+                     expected_set_digest=set_digest,
+                     expected_component_refs=frozenset(c.id for c in components))]
+    failures += [f"{pc.name}: generated provenance {d.code}" for d in
+                 release_provenance.validate_release_provenance(
+                     provenance, expected_name=name, expected_version=version,
+                     expected_set_digest=set_digest, expected_sbom_digest=sbom_digest)]
+    if not failures:
+        with open(os.path.join(staging, sbom_path), "wb") as fh:
+            fh.write(sbom_module.sbom_bytes(sbom_document))
+        with open(os.path.join(staging, provenance_path), "wb") as fh:
+            fh.write(release_provenance.provenance_bytes(provenance))
+        metadata["evidence"] = {
+            "sbom": {"path": sbom_path, "digest": sbom_digest,
+                     "format": sbom_module.BOM_FORMAT},
+            "provenance": {"path": provenance_path, "digest": provenance_digest},
+            "source_revision": source_revision,
+            "builder": {"id": builder},
+            "lock": {"digest": lock["digest"] if lock else None},
+        }
+    return failures
 
 
 def _supported_bundle_ids(compat: dict[str, object]) -> list[str]:
@@ -777,7 +937,7 @@ def _bind_view_sets(pack_root: str, metadata: dict[str, object],
             "manifest_id": f"{pack['name']}-{name}-associated-artifacts",
             "manifest_version": pack["version"],
             "artifacts": artifacts,
-            "set_digest": "sha256:" + "0" * 64,
+            "set_digest": _SHA256_PREFIX + "0" * 64,
         })
         view_manifest = view_manifest.model_copy(update={
             "set_digest": associated_artifact_set_digest(view_manifest)})
@@ -1164,7 +1324,8 @@ def _cmd_build(args: argparse.Namespace) -> int:
     """Cmd build."""
     _meta, failures = build_release(
         _resolve_pack(args.pack), args.out,
-        include_build_provenance=args.build_provenance)
+        include_build_provenance=args.build_provenance,
+        publish=args.publish)
     return _report("PACK BUILD", failures)
 
 
@@ -1180,6 +1341,10 @@ def main(argv: list[str] | None = None) -> int:
     bp.add_argument("--pack", required=True)
     bp.add_argument("--out", required=True)
     bp.add_argument("--build-provenance", action="store_true")
+    bp.add_argument(
+        "--publish", action="store_true",
+        help="Produce a published release: mandatory content identity plus a "
+             "generated SBOM and provenance referenced from release.yaml.")
     cp = sub.add_parser("check")
     check_target = cp.add_mutually_exclusive_group()
     check_target.add_argument("--all", action="store_true")

@@ -145,7 +145,7 @@ def _make_pack(root: str, *, delivery_bundles, profile_bundles=False,
 class ContractVersionTests(unittest.TestCase):
     def test_reads_version_and_digest_from_readme(self):
         version, digest = PR.load_contract_version()
-        self.assertEqual(version, "6")
+        self.assertEqual(version, "7")
         self.assertTrue(digest.startswith("sha256:"))
         self.assertEqual(len(digest), len("sha256:") + 64)
 

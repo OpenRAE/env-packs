@@ -1,5 +1,5 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
-$id: "https://raes.dev/schemas/environment-pack-publication-v1.json"
+$id: "https://raes.dev/schemas/environment-pack-publication-v2.json"
 title: RAES environment pack publication profile
 description: >
   Immutable publication profile for one environment-pack release. It records
@@ -36,7 +36,7 @@ required:
 properties:
   schema_version:
     type: string
-    const: "environment-pack-publication/v1"
+    const: "environment-pack-publication/v2"
   summary:
     description: >
       Bounded descriptive release facts carried alongside identity: the
@@ -111,6 +111,57 @@ properties:
         type: array
         items:
           $ref: "#/$defs/channel_record"
+  evidence:
+    description: >
+      References to the external release evidence (ADR 0037): the generated
+      CycloneDX SBOM and the in-toto release provenance statement, each bound by
+      its own digest, plus the source revision, builder identity, and lock digest
+      the provenance attests. This evidence is generated over the release subject
+      (the associated-artifact set digest) and is deliberately outside the set it
+      describes, so it never introduces a recursive identity. It is present only
+      for a published release; a local, non-published projection omits it (ADR
+      0028 as amended by ADR 0037). Registry endpoints, credentials, and signing
+      identities are never evidence content.
+    type: object
+    additionalProperties: false
+    required: [sbom, provenance]
+    properties:
+      sbom:
+        type: object
+        additionalProperties: false
+        required: [path, digest, format]
+        properties:
+          path:
+            type: string
+          digest:
+            $ref: "#/$defs/digest"
+          format:
+            type: string
+      provenance:
+        type: object
+        additionalProperties: false
+        required: [path, digest]
+        properties:
+          path:
+            type: string
+          digest:
+            $ref: "#/$defs/digest"
+      source_revision:
+        type: [string, "null"]
+      builder:
+        type: object
+        additionalProperties: false
+        required: [id]
+        properties:
+          id:
+            type: string
+      lock:
+        type: object
+        additionalProperties: false
+        required: [digest]
+        properties:
+          digest:
+            type: [string, "null"]
 $defs:
   digest:
     type: string

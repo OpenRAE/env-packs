@@ -1,0 +1,131 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://raes.dev/schemas/environment-pack-publication-supply-v1.json"
+title: RAES environment pack publication supply
+description: >
+  Closed author input for what one environment-pack release supplies. It carries
+  the RAES-joined publication and capability rows the release advertises, their
+  non-secret availability and channels, and the pack-controlled component
+  boundary the release SBOM is generated from (ADR 0037). Derivation cannot
+  invent which permitted assets an author chose to ship or which components a
+  pack distributes, so these rows are authored; everything else in the release
+  profile is derived by the release tool. This document defines ZERO extensions
+  to RAES semantics: publication and capability rows are validated by
+  constructing the exactly pinned upstream RAES models, and this schema
+  enumerates no mechanism, trust, or identity vocabulary of its own.
+$comment: >
+  The component boundary is the accountable inventory input. Each entry names one
+  software component the pack distributes or immutably pins, at the finest
+  authoritative identity available, and marks external, runtime-selected, opaque,
+  and unresolved scope explicitly. A shipped or pinned component cannot disappear
+  behind this declaration: release-time reconciliation joins it against the
+  associated-artifact inventory, every raes.lock.json record, materialized-kit
+  component inventory recovered through the immutable kit source and revision, and
+  RAES Source/artifact identities, and refuses an unmapped or omitted one. This is
+  inventory input only; it is not a second pack identity, module lock, trust
+  record, or SBOM format.
+type: object
+additionalProperties: false
+required:
+  - schema_version
+properties:
+  schema_version:
+    type: string
+    const: "environment-pack-publication-supply/v1"
+  publications:
+    description: >
+      RAES-authored requirement joins the release advertises. Shape is validated
+      by publication.py against the pinned upstream models, not enumerated here.
+    type: array
+    items:
+      type: object
+  capability_claims:
+    description: >
+      Backend-native satisfaction claims. Shape validated upstream, not here.
+    type: array
+    items:
+      type: object
+  availability:
+    description: >
+      Non-secret provider/location records. Credentials, tokens, signed-URL
+      values, and secret-store coordinates are never publication content and are
+      rejected by the release gate.
+    type: array
+    items:
+      type: object
+  channels:
+    description: Mutable channel records resolving to one immutable release identity.
+    type: array
+    items:
+      type: object
+  component_boundary:
+    description: >
+      The pack-controlled component boundary the release SBOM is generated from.
+    type: array
+    items:
+      $ref: "#/$defs/component"
+$defs:
+  component:
+    description: >
+      One declared software component. `scope` states how the pack relates to it;
+      `authority` names where its identity is established; `ref` is a stable,
+      non-secret identifier under that authority. `shipped` and `pinned`
+      components are pack-controlled and must carry the finest identity available;
+      `external`, `runtime-selected`, `opaque`, and `unresolved` are explicit
+      non-controlled scopes whose transitive contents the generator never guesses.
+    type: object
+    additionalProperties: false
+    required: [id, scope, kind, authority, ref, description]
+    properties:
+      id:
+        type: string
+        pattern: "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+      scope:
+        type: string
+        enum: [shipped, pinned, external, runtime-selected, opaque, unresolved]
+      kind:
+        type: string
+        enum:
+          - raes-module
+          - container-image
+          - os-package
+          - language-package
+          - executable
+          - model
+          - dataset
+          - firmware
+          - source
+          - other
+      authority:
+        type: string
+        enum:
+          - raes-source
+          - raes-artifact
+          - module-lock
+          - kit
+          - associated-artifact
+          - upstream-sbom
+          - author-declared-external
+      ref:
+        type: string
+        minLength: 1
+      version:
+        type: [string, "null"]
+      digest:
+        description: >
+          A `sha256:<64-hex>` content digest when the component is content
+          addressable. Its exact shape is enforced by the release reconciliation
+          so a precise diagnostic can name a malformed value.
+        type: [string, "null"]
+      license:
+        type: [string, "null"]
+      provenance:
+        type: [string, "null"]
+      upstream_sbom:
+        description: >
+          Optional associated-artifact id of an independently scoped upstream
+          SBOM this component is documented by. The upstream document is preserved
+          and referenced, never flattened into the generated pack SBOM.
+        type: [string, "null"]
+      description:
+        type: string
+        minLength: 1

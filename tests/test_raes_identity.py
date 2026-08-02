@@ -120,6 +120,8 @@ class PackageIdentityTests(unittest.TestCase):
                 "raes-new-pack": "raes_env_packs.wizard:main",
                 "raes-pack-issue-skeleton": "raes_env_packs.issue_skeleton:main",
                 "raes-pack-kit": "raes_env_packs.kit_cli:main",
+                "raes-pack-verify": "raes_env_packs.verify:main",
+                "raes-pack-dist": "raes_env_packs.distribution:main",
             },
         )
 
@@ -172,7 +174,7 @@ class PackContractIdentityTests(unittest.TestCase):
         layout = (
             _NEW_PACKAGE / "resources" / "contract" / "pack-layout.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("Environment-pack contract version:** `6`", layout)
+        self.assertIn("Environment-pack contract version:** `7`", layout)
 
         digest = (_NEW_PACKAGE / "digest.py").read_text(encoding="utf-8")
         self.assertIn('_PACK_URI_SCHEME = "raes-environment-pack"', digest)
