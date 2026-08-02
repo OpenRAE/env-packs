@@ -2599,8 +2599,8 @@ content:
   # Public/Engineering/Finance/HR/IT-Backups/Shared; the red-team exercise
   # mines the planted creds (engineering/deployments/deploy.sh), PII
   # (hr/employees/directory.csv), wifi passwords (shared/wifi-passwords.txt),
-  # and a leaked deploy key (it-backups/keys/). Realized from a checked-in
-  # fixture, not baked onto an image. Keeps the onboarding + public notice.
+  # and a leaked deploy key in the IT-Backups share. The exact pack artifact
+  # carries the fixture rather than relying on a checkout path.
   fileshare-shares:
     type: directory
     target: fileshare
@@ -2653,13 +2653,13 @@ content:
             timing: pack-ingestion
   # dev-user's leaked SSH private key (loot WS-03) is the real workstation->
   # victim lateral-movement pivot: the standup-generated workstation pivot
-  # keypair (config/lab-ssh/workstation_pivot_key, ensure_workstation_pivot_key
-  # in src/aptl/core/ssh.py) whose public half victim already authorizes
+  # keypair from the `techvault-ssh-keys` generated artifact, whose public half
+  # victim already authorizes
   # (victim-authorized-keys below). Placing its private half here as dev-user's
   # ~/.ssh/id_rsa reproduces the v5.0.0 workstation entrypoint's throwaway
   # dev-user keypair, so `ssh -i ~/.ssh/id_rsa labadmin@victim` from the
-  # compromised workstation works. The key is never tracked (lab-ssh is
-  # gitignored + generated per standup), so no id_rsa/PEM secret ships in-repo.
+  # compromised workstation works. The private key is generated per standup,
+  # so no id_rsa/PEM secret ships in the pack.
   db-init-schema:
     type: file
     target: db
