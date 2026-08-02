@@ -2008,29 +2008,29 @@ generated_artifacts:
     provenance: techvault:soc-certificate-profile/v1
     outputs:
       - name: ca-private-key
-        path: ca/lab-ca.key
+        path: lab-ca.key
         sensitivity: secret
         disposition: producer_private
       - name: ca-certificate
-        path: ca/lab-ca.crt
+        path: lab-ca.pem
         sensitivity: public
       - name: misp-certificate
-        path: misp/server.crt
+        path: misp/server.pem
         sensitivity: public
       - name: misp-private-key
         path: misp/server.key
         sensitivity: secret
       - name: thehive-keystore
-        path: thehive/thehive.p12
+        path: thehive/keystore.p12
         sensitivity: restricted
       - name: thehive-keystore-password
-        path: thehive/keystore-password
+        path: thehive/keystore.p12.password
         sensitivity: secret
       - name: shuffle-certificate
-        path: shuffle/server.crt
+        path: shuffle-frontend/server.pem
         sensitivity: public
       - name: shuffle-private-key
-        path: shuffle/server.key
+        path: shuffle-frontend/server.key
         sensitivity: secret
     consumers:
       - node: misp
