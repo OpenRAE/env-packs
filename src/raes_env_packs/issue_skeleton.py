@@ -17,6 +17,9 @@ import textwrap
 from dataclasses import dataclass
 from collections.abc import Callable
 
+# ADR 0036 permits first-party content in this repository while external
+# catalogs retain their established environments/<name> convention.
+FIRST_PARTY_PACK_REPO = "OpenRAE/env-packs"
 # The caller always names the content-owning repository explicitly. It may be
 # this first-party repository or any community/private catalog.
 EXAMPLE_CATALOG = "example-org/example-packs"
@@ -45,6 +48,7 @@ class PackPlan(object):
     focus: str
     sources: tuple[str, ...]
     labels: tuple[str, ...]
+    pack_root: str = "environments"
     milestone_number: int | None = None
     milestone_title: str | None = None
 
@@ -107,6 +111,15 @@ def validate_pack_id(pack_id: str) -> None:
             "digit, and contain only a-z, 0-9, and '-'")
 
 
+def pack_root_for_repo(repo: str | None) -> str:
+    """Return the repository's conventional direct pack root."""
+    return (
+        "packs"
+        if repo is not None and repo.lower() == FIRST_PARTY_PACK_REPO.lower()
+        else "environments"
+    )
+
+
 def ensure_not_tooling_repo(repo: str) -> None:
     """Compatibility hook retained now that this repository may host content."""
 
@@ -128,7 +141,6 @@ def validate_target_selector(repo: str | None) -> str:
         raise SystemExit(
             "--repo must be a GitHub OWNER/REPOSITORY slug using letters, "
             f"digits, '.', '_', and '-'; got {repo!r}")
-    ensure_not_tooling_repo(repo)
     return repo
 
 
@@ -144,7 +156,7 @@ def pack_block(plan: PackPlan) -> str:
     return clean(f"""\
     ## Pack
     - Pack id: `{plan.pack_id}`
-    - Pack root: `environments/{plan.pack_id}/`
+    - Pack root: `{plan.pack_root}/{plan.pack_id}/`
     - Working title: {plan.title}
     - Scenario focus: {plan.focus}
 
@@ -775,6 +787,7 @@ def plan_from_args(args: argparse.Namespace) -> PackPlan:
         focus=args.focus,
         sources=tuple(args.source),
         labels=tuple(args.label),
+        pack_root=pack_root_for_repo(args.repo),
         milestone_number=args.milestone_number,
         milestone_title=args.milestone_title,
     )
@@ -795,6 +808,7 @@ def prepare_operations(args: argparse.Namespace,
         focus=plan.focus,
         sources=plan.sources,
         labels=plan.labels,
+        pack_root=plan.pack_root,
         milestone_number=milestone_number,
         milestone_title=plan.milestone_title,
     )
@@ -851,16 +865,13 @@ def apply_operations(client: GhClient, operations: list[Operation],
 def main(argv: list[str] | None = None) -> None:
     """Command-line entry point."""
     args = parse_args(argv or sys.argv[1:])
-    # Validate and resolve the catalog target once, at ingress, before any
-    # milestone/issue/label read or mutation. Local checks reject missing,
-    # malformed, and obviously-forbidden targets with no subprocess; gh then
-    # resolves the canonical name so redirected aliases cannot bypass the
-    # tooling-repo prohibition.
+    # Validate and resolve the target once, at ingress, before any
+    # milestone/issue/label read or mutation.
     selector = validate_target_selector(args.repo)
     client = GhClient(selector)
     canonical = client.resolve_canonical_repo()
-    ensure_not_tooling_repo(canonical)
     client.repo = canonical
+    args.repo = canonical
     operations, milestone_number = prepare_operations(args, client)
     if not args.apply:
         print("DRY RUN: no GitHub changes will be written. Pass --apply to write.")

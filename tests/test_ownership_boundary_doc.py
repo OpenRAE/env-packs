@@ -75,10 +75,10 @@ class OwnershipBoundaryDocTests(unittest.TestCase):
             with self.subTest(owner=owner):
                 self.assertIn(owner, self.text, f"the boundary must name {owner}")
         self.assertIn(
-            "downstream scenario or experiment owner",
+            "declared pack owner",
             self.text,
-            "the downstream scenario or experiment owner is the fourth owner and "
-            "must be named distinctly from the format owner (#138)",
+            "scenario-content ownership must remain an explicit role even when "
+            "this repository fills it for a first-party pack",
         )
 
     def test_each_owner_keeps_its_responsibilities(self) -> None:
@@ -89,13 +89,16 @@ class OwnershipBoundaryDocTests(unittest.TestCase):
                     f"the guidance must still state what {owner} owns (#138)",
                 )
 
-    def test_format_owner_is_not_the_scenario_owner(self) -> None:
-        # The whole point of the four-way split: owning the format is not owning
-        # a workload authored in it.
+    def test_format_owner_can_host_selected_packs_without_owning_semantics(self) -> None:
+        # ADR 0036 permits first-party content here without collapsing the RAES
+        # semantic or backend boundaries.
         self.assertIn(
-            "not a scenario", self.text,
-            "the guidance must distinguish owning the format from owning a "
-            "particular experiment or scenario (#138)",
+            "selected first-party scenario packs", self.text,
+            "the current charter must acknowledge first-party pack ownership",
+        )
+        self.assertIn(
+            "remain RAES inputs", self.text,
+            "hosting a pack must not transfer semantic authority from RAES",
         )
 
     def test_pack_cannot_select_runtime_implementation(self) -> None:

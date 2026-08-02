@@ -144,7 +144,7 @@ class SkeletonTemplateTests(unittest.TestCase):
 
 
 class RepoTargetTests(unittest.TestCase):
-    """The content-owning repository must be named explicitly (issue #194)."""
+    """The owning repository must be named explicitly (issues #194, #234)."""
 
     def test_repo_has_no_argparse_default(self):
         args = SKELETON.parse_args(
@@ -173,19 +173,21 @@ class RepoTargetTests(unittest.TestCase):
                 self.assertEqual(
                     SKELETON.validate_target_selector(target), target)
 
-    def test_env_packs_is_an_explicit_first_party_target(self):
+    def test_first_party_host_is_allowed_case_insensitively(self):
         for target in ("OpenRAE/env-packs", "openrae/ENV-PACKS"):
             with self.subTest(target=target):
                 self.assertEqual(SKELETON.validate_target_selector(target), target)
+                self.assertEqual(SKELETON.pack_root_for_repo(target), "packs")
 
-    def test_ensure_not_tooling_repo_allows_catalogs(self):
-        SKELETON.ensure_not_tooling_repo("some-org/ok")
-        SKELETON.ensure_not_tooling_repo("example-org/first-party-packs")
-        SKELETON.ensure_not_tooling_repo("OpenRAE/env-packs")
+    def test_external_catalog_uses_environments_root(self):
+        self.assertEqual(
+            SKELETON.pack_root_for_repo("some-org/community-packs"),
+            "environments",
+        )
 
     def test_example_catalog_is_a_neutral_placeholder(self):
-        # The generic example remains neutral even though first-party content
-        # may explicitly target OpenRAE/env-packs.
+        # The external-catalog example fed to help and error text remains an
+        # obvious placeholder, never a concrete downstream catalog.
         self.assertRegex(SKELETON.EXAMPLE_CATALOG,
                          r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
         self.assertNotIn("openrae", SKELETON.EXAMPLE_CATALOG.lower())
@@ -201,6 +203,11 @@ class RepoTargetTests(unittest.TestCase):
                     with self.assertRaises(SystemExit):
                         SKELETON.main(argv)
             run.assert_not_called()
+
+    def test_ensure_not_tooling_repo_allows_catalogs(self):
+        SKELETON.ensure_not_tooling_repo("some-org/ok")
+        SKELETON.ensure_not_tooling_repo("example-org/first-party-packs")
+        SKELETON.ensure_not_tooling_repo("OpenRAE/env-packs")
 
     def test_canonical_alias_to_env_packs_is_allowed(self):
         resolved = mock.Mock(

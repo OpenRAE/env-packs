@@ -9,9 +9,10 @@ same contract version they build against.
 
 This repository **defines and validates** the format, publishes first-party kits
 under `kits/`, and hosts major examples under `packs/`. Third-party catalog
-repositories use the same contract. Everything below describes the
-`environments/<name>/` layout an author creates, and `raes-pack-validate` /
-`raes-pack-release` check that layout against this contract.
+repositories use the same contract and conventionally place packs at
+`environments/<name>/`. `raes-pack-validate` and `raes-pack-release` accept an
+explicit `packs/` or `environments/` root and check every pack against this same
+contract.
 
 > First-pass rule of thumb: **put in what a scenario has, skip what it
 > doesn't.** A pack is a declarative bundle plus one known-good reference — it
@@ -32,7 +33,7 @@ known-good reference to check against.
 
 | DLC concept | Environment pack |
 |---|---|
-| The bundle you download | `environments/<name>/` |
+| The bundle you download | `<pack-root>/<name>/` |
 | Game content (levels, assets, items) | SDL start state + bespoke assets + flags + challenges |
 | "How to install / what it is" | docs: walkthroughs, concepts, lineage, diagrams, attack-path model |
 | Reference build the studio ships | AWS golden build + tests + matching walkthrough |

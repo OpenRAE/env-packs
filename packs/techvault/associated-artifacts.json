@@ -1,0 +1,465 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "techvault-associated-artifacts",
+  "manifest_version": "0.1.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario",
+    "ref_id": "techvault",
+    "ref_version": null,
+    "ref_digest": null,
+    "ref_path": null
+  },
+  "artifacts": {
+    "techvault-pack-README-md": {
+      "artifact_id": "techvault-pack-README-md",
+      "role": "other",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-pack:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "2758d2f794032a515a6238187d95af9e4889462974aba6102e307c4fe3b4dddd"
+      },
+      "size_bytes": 2082,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-db-init-schema": {
+      "artifact_id": "techvault-db-init-schema",
+      "role": "other",
+      "media_type": "application/sql",
+      "uri": "raes-environment-pack:/assets/content/db-init-schema.sql",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7a1748928d6222db2e3877ec8f6599ec7e1aec8c2956d2842b8e49e146c52981"
+      },
+      "size_bytes": 3176,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-db-init-seed": {
+      "artifact_id": "techvault-db-init-seed",
+      "role": "other",
+      "media_type": "application/sql",
+      "uri": "raes-environment-pack:/assets/content/db-init-seed-data.sql",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "c98ab23427180f604ca9ccec5a00b426dc8d883a4102bbba24e76d5cda0f03dc"
+      },
+      "size_bytes": 4054,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-dns-named-conf": {
+      "artifact_id": "techvault-dns-named-conf",
+      "role": "other",
+      "media_type": "text/plain",
+      "uri": "raes-environment-pack:/assets/content/dns-named.conf",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "3df85c5e388295b0e321598c9932a78bfb18e47315263c6990e9e36cb1b62ee7"
+      },
+      "size_bytes": 877,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-dns-reverse-zone": {
+      "artifact_id": "techvault-dns-reverse-zone",
+      "role": "other",
+      "media_type": "text/plain",
+      "uri": "raes-environment-pack:/assets/content/dns-zone-172.20.rev",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "ceb577f74bf3841ee10dae1a35e07afb921f9136bd4f9dbbd60d4afd1a4f0a02"
+      },
+      "size_bytes": 883,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-dns-forward-zone": {
+      "artifact_id": "techvault-dns-forward-zone",
+      "role": "other",
+      "media_type": "text/plain",
+      "uri": "raes-environment-pack:/assets/content/dns-zone-techvault.local.zone",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d12de977f09275e342454a58ca004f7909ff808c29143b4c6d4ecb14db611a82"
+      },
+      "size_bytes": 1539,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-fileshare-shares": {
+      "artifact_id": "techvault-fileshare-shares",
+      "role": "other",
+      "media_type": "application/x-tar",
+      "uri": "raes-environment-pack:/assets/content/fileshare-shares.tar",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "342bc178915bd1fc8d84d2a57511175ad386eec08ac2830b9757c8dc2847e726"
+      },
+      "size_bytes": 30720,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-fileshare-smb-conf": {
+      "artifact_id": "techvault-fileshare-smb-conf",
+      "role": "other",
+      "media_type": "text/plain",
+      "uri": "raes-environment-pack:/assets/content/fileshare-smb.conf",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "847edd4733cb764eba178c933831bf1af2359cd9042674994f70b91491a289e0"
+      },
+      "size_bytes": 1208,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-flaggen-script": {
+      "artifact_id": "techvault-flaggen-script",
+      "role": "other",
+      "media_type": "text/x-shellscript",
+      "uri": "raes-environment-pack:/assets/content/flaggen.sh",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38"
+      },
+      "size_bytes": 1862,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-kali-capture-client": {
+      "artifact_id": "techvault-kali-capture-client",
+      "role": "other",
+      "media_type": "text/x-python",
+      "uri": "raes-environment-pack:/assets/content/kali-capture-client",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d9f56dac38241055fa13057261a30a9922dbc7c22bddd850f2ace8cd22176fc2"
+      },
+      "size_bytes": 8770,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-kali-wrap-shell": {
+      "artifact_id": "techvault-kali-wrap-shell",
+      "role": "other",
+      "media_type": "text/x-shellscript",
+      "uri": "raes-environment-pack:/assets/content/kali-wrap-shell.sh",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "4c718dc0eac63a682565014fdd7168797fc90e8d5d401987f351b03806498c7e"
+      },
+      "size_bytes": 4979,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-misp-sync-hatch-build": {
+      "artifact_id": "techvault-misp-sync-hatch-build",
+      "role": "other",
+      "media_type": "text/x-python",
+      "uri": "raes-environment-pack:/assets/content/misp-sync-hatch-build.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "975022d60fe6f5187b169d3e20932fd6c242dc1658f59232627eab7e75bf713c"
+      },
+      "size_bytes": 7576,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-misp-sync-pyproject": {
+      "artifact_id": "techvault-misp-sync-pyproject",
+      "role": "other",
+      "media_type": "text/x-toml",
+      "uri": "raes-environment-pack:/assets/content/misp-sync-pyproject.toml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "0e7214cdacc8f396e91360782c9aaf6d8c6523d2fb944cfcd3763c4ac996450f"
+      },
+      "size_bytes": 6539,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-misp-sync-readme": {
+      "artifact_id": "techvault-misp-sync-readme",
+      "role": "other",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-pack:/assets/content/misp-sync-readme.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "07c3dee4987c47e57bc8f0333073abdc07b832a7e82136c3123577531978231b"
+      },
+      "size_bytes": 10645,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-misp-sync-src": {
+      "artifact_id": "techvault-misp-sync-src",
+      "role": "other",
+      "media_type": "application/x-tar",
+      "uri": "raes-environment-pack:/assets/content/misp-sync-src.tar",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "c872e56e963934883190f7fed307116504c39d6771a528852a8b4e27682e8b91"
+      },
+      "size_bytes": 3287040,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-webapp-app": {
+      "artifact_id": "techvault-webapp-app",
+      "role": "other",
+      "media_type": "application/x-tar",
+      "uri": "raes-environment-pack:/assets/content/webapp-app.tar",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "521886364d4cb8bf4f6b3be05bf5598cba182b27a7ee4715ae0dc518134f4101"
+      },
+      "size_bytes": 30720,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-workstation-dev-user-home": {
+      "artifact_id": "techvault-workstation-dev-user-home",
+      "role": "other",
+      "media_type": "application/x-tar",
+      "uri": "raes-environment-pack:/assets/content/workstation-dev-user-home.tar",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "a1a4f93fe5783a0ed1caf7c7bb78c1fae1506d4ab5eef34464f43b4e4884b4b7"
+      },
+      "size_bytes": 20480,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-pack-docs-attack-path-md": {
+      "artifact_id": "techvault-pack-docs-attack-path-md",
+      "role": "other",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-pack:/docs/attack-path.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "9aed617ea7b40b810134181077d0fc97286044f8fdb8d3c74c618c95964b37be"
+      },
+      "size_bytes": 581,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-docs-concepts-md": {
+      "artifact_id": "techvault-pack-docs-concepts-md",
+      "role": "other",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-pack:/docs/concepts.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "fc8cca821601779633d87922d6e54d7c73a0f1e9a60d23e0940023475815e1ff"
+      },
+      "size_bytes": 668,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-docs-golden-readiness-checklist-md": {
+      "artifact_id": "techvault-pack-docs-golden-readiness-checklist-md",
+      "role": "other",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-pack:/docs/golden-readiness-checklist.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "6729487ccafdaac404dd41d2e0a9d220c25b80e7bf481c0f487817779eb53e0a"
+      },
+      "size_bytes": 1170,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-docs-lineage-md": {
+      "artifact_id": "techvault-pack-docs-lineage-md",
+      "role": "other",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-pack:/docs/lineage.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "81c2e10bf8591d3b1e5be0510fe96d21c87847d0912a4158c7f1a40adb7569d7"
+      },
+      "size_bytes": 944,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-docs-provenance-ledger-yaml": {
+      "artifact_id": "techvault-pack-docs-provenance-ledger-yaml",
+      "role": "other",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "9d2df8c5301716df6f6f15532463a9d3aede22ac1b3daf49e733ad52dc0be877"
+      },
+      "size_bytes": 1940,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-pack-compatibility-yaml": {
+      "artifact_id": "techvault-pack-pack-compatibility-yaml",
+      "role": "other",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-pack:/pack.compatibility.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "bdd9b049c9ef59f9df38db2b9dd6eeb6096323c01349581f164663098099c076"
+      },
+      "size_bytes": 1571,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-pack-yaml": {
+      "artifact_id": "techvault-pack-pack-yaml",
+      "role": "other",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-pack:/pack.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "57533d1e95793afddacdfded33f89e2c0b068b89bd6e58b3545782924e34990a"
+      },
+      "size_bytes": 542,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-profiles-exact-artifact-copy-v1-json": {
+      "artifact_id": "techvault-pack-profiles-exact-artifact-copy-v1-json",
+      "role": "other",
+      "media_type": "application/json",
+      "uri": "raes-environment-pack:/profiles/exact-artifact-copy-v1.json",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "50af432a137bc44ebd2a2a6c3e8e23eebf86cbbd170d13ec68000b2896ff2a3e"
+      },
+      "size_bytes": 422,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-sdl-techvault-sdl-yaml": {
+      "artifact_id": "techvault-pack-sdl-techvault-sdl-yaml",
+      "role": "other",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "fee9dc7b7f448ee14925ae4877e1a56f39a4540ce7b9f4bbfb2a888ecc2b26e8"
+      },
+      "size_bytes": 122257,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-validation-tests-test-pack-py": {
+      "artifact_id": "techvault-pack-validation-tests-test-pack-py",
+      "role": "other",
+      "media_type": "text/x-python",
+      "uri": "raes-environment-pack:/validation/tests/test_pack.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "3239f2855b07217376ffe42b72908df0896dd54d53b6205ca56f9b22924a2fc9"
+      },
+      "size_bytes": 1270,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-validation-validate-techvault-py": {
+      "artifact_id": "techvault-pack-validation-validate-techvault-py",
+      "role": "other",
+      "media_type": "text/x-python",
+      "uri": "raes-environment-pack:/validation/validate_techvault.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "983a3fd26546e126e4c8312c83491811441a6c80a40c1ab2f0cfd74252091b1f"
+      },
+      "size_bytes": 812,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:88ce79b536ccfe538d5626228886fde36da1c52e755bda7b0d8ff98257c71850"
+}

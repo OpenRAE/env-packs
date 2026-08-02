@@ -6,7 +6,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 
 | ADR | Title | Status |
 | --- | --- | --- |
-| [0001](0001-repository-purpose-and-boundary.md) | Repository purpose and boundary | Purpose/boundary superseded by 0009 |
+| [0001](0001-repository-purpose-and-boundary.md) | Repository purpose and boundary | Purpose/boundary superseded by 0009 and 0036 |
 | [0002](0002-distribute-as-installable-package.md) | Distribute as an installable Python package bundling schemas and template | Accepted |
 | [0003](0003-build-and-release-model.md) | Build and release model | Accepted |
 | [0004](0004-sbom-and-supply-chain.md) | SBOM and supply-chain provenance | Accepted |
@@ -14,7 +14,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0006](0006-conventional-commit-releases.md) | Conventional-commit-driven automatic releases (reusable blueprint) | Versioning superseded by 0007 |
 | [0007](0007-changelog-driven-versioning.md) | Changelog-driven versioning (reusable blueprint) | Superseded by 0008 |
 | [0008](0008-adopt-release-please.md) | Adopt release-please (reusable blueprint) | Accepted |
-| [0009](0009-scenario-packs-subordinate-to-aces.md) | Scenario packs are strictly subordinate to ACES (zero extensions) | Accepted |
+| [0009](0009-scenario-packs-subordinate-to-aces.md) | Scenario packs are strictly subordinate to ACES (zero extensions) | No-hosting clause superseded by 0036; semantic boundary accepted |
 | [0010](0010-consume-aces-reusable-asset-trust-policy.md) | Consume ACES reusable-asset trust policy for pack provenance | Accepted |
 | [0011](0011-require-pinned-aces-sdl-validation.md) | Require pinned ACES SDL validation for scenario packs | Accepted |
 | [0012](0012-pack-content-identity-and-trust-boundary.md) | Pack content identity consumes RAES associated-artifact manifests | Accepted |

@@ -123,6 +123,11 @@ builds a boundary-split release tree, leak-scans the participant tier, and emits
 validated publication profile. Run `raes-pack-release check --all` in a catalog
 you control.
 
+This repository's selected first-party packs live under `packs/` and are gated
+explicitly with `raes-pack-validate --packs-root packs` and
+`raes-pack-release check --packs-root packs`. The explicit root prevents the
+legacy external-catalog default (`environments/`) from hiding hosted packs.
+
 ## Catalog projection
 
 `raes-pack-catalog` renders a versioned, machine-readable

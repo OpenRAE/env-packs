@@ -18,6 +18,7 @@ easier. It defines **zero extensions** to RAES semantics
 - This repository owns only the environment-pack layout and the
   authoring/validation/release tooling.
 - First-party reusable kit releases and major example packs are published here.
+- Runtime backends consume hosted packs; they do not own the portable scenario.
 - Third-party environment packs may live in their own repositories and consume
   this package.
 - Don't import downstream catalog names, paths, branch rules, labels, product
@@ -31,6 +32,8 @@ Before declaring repository work complete, run (in a venv with `pip install -e .
 python -m unittest discover -s tests
 raes-pack-validate --repo .
 raes-pack-release check --all
+raes-pack-validate --packs-root packs
+raes-pack-release check --packs-root packs
 python3 -m compileall src tests
 ```
 

@@ -23,13 +23,16 @@ same checks CI runs:
 python -m unittest discover -s tests   # unit tests
 raes-pack-validate --repo .            # environment-pack content gate
 raes-pack-release check --all          # pack release gate
+raes-pack-validate --packs-root packs  # hosted first-party packs
+raes-pack-release check --packs-root packs
 python -m compileall src tests         # byte-compile
 ```
 
 ## Stay inside the boundary
 
-This repository defines and validates the pack format; it does not host packs and
-does not define RAES semantics. Keep changes within that boundary — see
+This repository defines and validates the pack format and hosts selected
+first-party packs under `packs/`; it does not define RAES semantics. Keep
+changes within that boundary — see
 [what a pack is](docs/public/concepts.md) and the
 [ownership boundary](docs/public/ownership-boundary.md). Where RAES owns a concept,
 consume it from RAES rather than restating it here.
