@@ -47,9 +47,13 @@ raes-pack-kit = "raes_env_packs.kit_cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/raes_env_packs"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"packs/techvault" = "raes_env_packs/resources/packs/techvault"
+
 [tool.hatch.build.targets.sdist]
 include = [
     "/src/raes_env_packs",
+    "/packs/techvault",
     "/docs",
     "/tests",
     "/README.md",
