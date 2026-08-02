@@ -77,8 +77,9 @@ def offline_rehearsal(workdir: str) -> None:
     # authenticated path is exercised by the registry rehearsal.
     receipt = dist.apply_install(
         install, _TECHVAULT, evidence_dir, target,
-        authorized=True, selector=selector, transport=transport,
-        require_signature=False)
+        authorized=True,
+        policy=dist.PromotionPolicy(selector=selector, transport=transport,
+                                    require_signature=False))
     _log(f"installed; receipt subject {receipt['subject']['digest']}")
 
     result = dist.plan_verify(target, evidence_dir).verification
@@ -91,8 +92,9 @@ def offline_rehearsal(workdir: str) -> None:
     _log(f"update plan changes: {[c.category for c in update.changes]}")
     dist.apply_install(
         update, _TECHVAULT, evidence_dir, target,
-        authorized=True, selector=selector, transport=transport,
-        require_signature=False)
+        authorized=True,
+        policy=dist.PromotionPolicy(selector=selector, transport=transport,
+                                    require_signature=False))
 
     prior = dist.read_receipt(target)
     if prior is None or prior.get("subject", {}).get("digest") is None:
@@ -195,8 +197,8 @@ def registry_rehearsal(registry: str, workdir: str) -> None:
         signature_verifier=cosign_verifier)
     dist.apply_install(
         plan, staged, pulled, target, authorized=True,
-        selector=selector, transport=transport,
-        signature_verifier=cosign_verifier, require_signature=True)
+        policy=dist.PromotionPolicy(selector=selector, transport=transport,
+                                    signature_verifier=cosign_verifier, require_signature=True))
     _log("clean consumer installed the pulled, signed release")
     _log("REGISTRY REHEARSAL PASSED")
 

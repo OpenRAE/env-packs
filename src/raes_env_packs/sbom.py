@@ -91,10 +91,10 @@ def _hex(digest: str | None) -> str | None:
     return None
 
 
-def _component_entry(component: component_boundary.Component) -> dict:
+def _component_entry(component: component_boundary.Component) -> dict[str, object]:
     """Render one declared component as a CycloneDX component object."""
 
-    entry: dict = {
+    entry: dict[str, object] = {
         "type": _KIND_TO_TYPE.get(component.kind, "library"),
         "bom-ref": component.id,
         "name": component.ref,
@@ -133,7 +133,7 @@ def generate_sbom(
     set_digest: str,
     components: Sequence[component_boundary.Component],
     timestamp: str | None = None,
-) -> dict:
+) -> dict[str, object]:
     """Generate a CycloneDX 1.5 SBOM document for one validated pack release.
 
     ``set_digest`` is the validator-derived RAES associated-artifact set digest --
@@ -156,7 +156,7 @@ def generate_sbom(
             {"name": _PROP_DIGEST_DOMAIN, "value": _SET_DIGEST_DOMAIN},
         ],
     }
-    metadata: dict = {"component": metadata_component}
+    metadata: dict[str, object] = {"component": metadata_component}
     if timestamp is not None:
         metadata["timestamp"] = timestamp
     return {
@@ -169,7 +169,7 @@ def generate_sbom(
     }
 
 
-def sbom_bytes(document: dict) -> bytes:
+def sbom_bytes(document: dict[str, object]) -> bytes:
     """Serialize an SBOM to canonical, reproducible UTF-8 JSON bytes."""
 
     return (
@@ -177,10 +177,79 @@ def sbom_bytes(document: dict) -> bytes:
     ).encode("utf-8")
 
 
-def sbom_digest(document: dict) -> str:
+def sbom_digest(document: dict[str, object]) -> str:
     """Return the SBOM's own canonical ``sha256:`` digest over its bytes."""
 
     return "sha256:" + hashlib.sha256(sbom_bytes(document)).hexdigest()
+
+
+def _append_format_diagnostics(
+    document: dict[str, object], diagnostics: list[validation.Diagnostic]
+) -> None:
+    """Append format and spec-version diagnostics for a candidate SBOM document."""
+
+    if document.get("bomFormat") != BOM_FORMAT:
+        diagnostics.append(validation.Diagnostic("sbom.format", path="$.bomFormat"))
+    if document.get("specVersion") != SPEC_VERSION:
+        diagnostics.append(validation.Diagnostic("sbom.spec-version", path="$.specVersion"))
+
+
+def _metadata_component(document: dict[str, object]) -> dict[str, object]:
+    """Return the SBOM metadata component object, or an empty mapping when absent."""
+
+    metadata = document.get("metadata")
+    component = metadata.get("component") if isinstance(metadata, dict) else None
+    return component if isinstance(component, dict) else {}
+
+
+def _append_subject_diagnostics(
+    component: dict[str, object],
+    expected_name: str,
+    expected_version: str,
+    diagnostics: list[validation.Diagnostic],
+) -> None:
+    """Append a subject-mismatch diagnostic when the metadata name/version differ."""
+
+    if component.get("name") != expected_name or component.get("version") != expected_version:
+        diagnostics.append(validation.Diagnostic("sbom.subject-mismatch", path="$.metadata.component"))
+
+
+def _append_subject_digest_diagnostics(
+    component: dict[str, object],
+    expected_set_digest: str,
+    diagnostics: list[validation.Diagnostic],
+) -> None:
+    """Append a subject-digest diagnostic when the bound set digest is not the subject."""
+
+    properties = {
+        item.get("name"): item.get("value")
+        for item in component.get("properties", [])
+        if isinstance(item, dict)
+    }
+    if properties.get(_PROP_SET_DIGEST) != expected_set_digest:
+        diagnostics.append(
+            validation.Diagnostic(
+                "sbom.subject-digest-mismatch", path="$.metadata.component.properties"
+            )
+        )
+
+
+def _append_coverage_diagnostics(
+    document: dict[str, object],
+    expected_component_refs: frozenset[str],
+    diagnostics: list[validation.Diagnostic],
+) -> None:
+    """Append a coverage diagnostic for every declared component ref the SBOM omits."""
+
+    present = {
+        entry.get("bom-ref")
+        for entry in document.get("components", [])
+        if isinstance(entry, dict)
+    }
+    diagnostics.extend(
+        validation.Diagnostic("sbom.coverage-missing", path=f"$.components[{ref}]")
+        for ref in sorted(expected_component_refs - present)
+    )
 
 
 def validate_sbom_document(
@@ -204,34 +273,11 @@ def validate_sbom_document(
     if not isinstance(document, dict):
         return [validation.Diagnostic("sbom.not-an-object", path="$")]
     diagnostics: list[validation.Diagnostic] = []
-    if document.get("bomFormat") != BOM_FORMAT:
-        diagnostics.append(validation.Diagnostic("sbom.format", path="$.bomFormat"))
-    if document.get("specVersion") != SPEC_VERSION:
-        diagnostics.append(validation.Diagnostic("sbom.spec-version", path="$.specVersion"))
-    component = (
-        document.get("metadata", {}).get("component")
-        if isinstance(document.get("metadata"), dict)
-        else None
-    )
-    component = component if isinstance(component, dict) else {}
-    if component.get("name") != expected_name or component.get("version") != expected_version:
-        diagnostics.append(validation.Diagnostic("sbom.subject-mismatch", path="$.metadata.component"))
-    properties = {
-        item.get("name"): item.get("value")
-        for item in component.get("properties", [])
-        if isinstance(item, dict)
-    }
-    if properties.get(_PROP_SET_DIGEST) != expected_set_digest:
-        diagnostics.append(validation.Diagnostic("sbom.subject-digest-mismatch", path="$.metadata.component.properties"))
-    present = {
-        entry.get("bom-ref")
-        for entry in document.get("components", [])
-        if isinstance(entry, dict)
-    }
-    diagnostics.extend(
-        validation.Diagnostic("sbom.coverage-missing", path=f"$.components[{ref}]")
-        for ref in sorted(expected_component_refs - present)
-    )
+    _append_format_diagnostics(document, diagnostics)
+    component = _metadata_component(document)
+    _append_subject_diagnostics(component, expected_name, expected_version, diagnostics)
+    _append_subject_digest_diagnostics(component, expected_set_digest, diagnostics)
+    _append_coverage_diagnostics(document, expected_component_refs, diagnostics)
     return diagnostics
 
 

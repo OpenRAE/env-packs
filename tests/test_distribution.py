@@ -83,7 +83,8 @@ class InstallTests(_Fixture):
             plan = dist.plan_install(_TECHVAULT, self.evidence, target)
             with self.assertRaises(dist.DistributionError):
                 dist.apply_install(plan, _TECHVAULT, self.evidence, target,
-                                   authorized=False, require_signature=False)
+                                   authorized=False,
+                                   policy=dist.PromotionPolicy(require_signature=False))
             self.assertFalse(os.path.exists(target))
 
     def test_apply_installs_and_writes_a_receipt_beside_the_pack(self) -> None:
@@ -91,7 +92,8 @@ class InstallTests(_Fixture):
             target = os.path.join(root, "techvault")
             plan = dist.plan_install(_TECHVAULT, self.evidence, target)
             receipt = dist.apply_install(plan, _TECHVAULT, self.evidence, target,
-                                         authorized=True, require_signature=False)
+                                         authorized=True,
+                                         policy=dist.PromotionPolicy(require_signature=False))
             self.assertTrue(os.path.isfile(os.path.join(target, "pack.yaml")))
             self.assertEqual(receipt["schema_version"], "environment-pack-install-receipt/v1")
             self.assertEqual(dist.read_receipt(target)["subject"]["domain"],
@@ -109,14 +111,18 @@ class InstallTests(_Fixture):
 
     def test_apply_accepts_a_verified_signature(self) -> None:
         set_digest = _read_set_digest(self.evidence)
-        verifier = lambda subject, prov: subject == set_digest  # noqa: E731
+
+        def verifier(subject: str, _prov: object) -> bool:
+            return subject == set_digest
+
         with tempfile.TemporaryDirectory() as root:
             target = os.path.join(root, "techvault")
             plan = dist.plan_install(_TECHVAULT, self.evidence, target,
                                      signature_verifier=verifier)
             self.assertTrue(plan.verification.authenticated)
             dist.apply_install(plan, _TECHVAULT, self.evidence, target,
-                               authorized=True, signature_verifier=verifier)
+                               authorized=True,
+                               policy=dist.PromotionPolicy(signature_verifier=verifier))
             self.assertTrue(os.path.isfile(os.path.join(target, "pack.yaml")))
 
     def test_apply_refuses_a_non_install_plan(self) -> None:
@@ -125,7 +131,8 @@ class InstallTests(_Fixture):
             verify_plan = dist.plan_verify(_TECHVAULT, self.evidence)
             with self.assertRaises(dist.DistributionError):
                 dist.apply_install(verify_plan, _TECHVAULT, self.evidence, target,
-                                   authorized=True, require_signature=False)
+                                   authorized=True,
+                                   policy=dist.PromotionPolicy(require_signature=False))
 
     def test_apply_refuses_a_target_other_than_the_planned_one(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -135,19 +142,22 @@ class InstallTests(_Fixture):
             os.makedirs(os.path.dirname(elsewhere))
             with self.assertRaises(dist.DistributionError):
                 dist.apply_install(plan, _TECHVAULT, self.evidence, elsewhere,
-                                   authorized=True, require_signature=False)
+                                   authorized=True,
+                                   policy=dist.PromotionPolicy(require_signature=False))
 
     def test_update_replaces_atomically_over_an_existing_target(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             target = os.path.join(root, "techvault")
             first = dist.plan_install(_TECHVAULT, self.evidence, target)
             dist.apply_install(first, _TECHVAULT, self.evidence, target,
-                               authorized=True, require_signature=False)
+                               authorized=True,
+                               policy=dist.PromotionPolicy(require_signature=False))
             update = dist.plan_update(target, _TECHVAULT, self.evidence)
             categories = {c.category for c in update.changes}
             self.assertIn(dist.CHANGE_VERSION, categories)
             dist.apply_install(update, _TECHVAULT, self.evidence, target,
-                               authorized=True, require_signature=False)
+                               authorized=True,
+                               policy=dist.PromotionPolicy(require_signature=False))
             self.assertTrue(os.path.isfile(os.path.join(target, "pack.yaml")))
 
 
@@ -169,8 +179,9 @@ class ArchiveRouteTests(_Fixture):
             self.assertTrue(plan.applicable)
             receipt = dist.apply_install(
                 plan, _TECHVAULT, self.evidence, target,
-                authorized=True, selector=selector, transport=transport,
-                require_signature=False)
+                authorized=True,
+                policy=dist.PromotionPolicy(selector=selector, transport=transport,
+                                            require_signature=False))
             self.assertEqual(receipt["transport"]["digest"], digest)
             self.assertEqual(receipt["transport"]["domain"], dist.DIGEST_DOMAIN_ARCHIVE)
 

@@ -33,7 +33,7 @@ import sys
 import tarfile
 import tempfile
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TextIO
 
 from . import _pack_fs
 from . import _transactions
@@ -127,7 +127,7 @@ class OperationPlan(object):
     operation: str
     route: str
     selector: Selector | None
-    resolved: dict
+    resolved: dict[str, object]
     changes: tuple[Change, ...]
     effects: tuple[Effect, ...]
     verification: verify_module.VerificationResult | None
@@ -185,7 +185,9 @@ class OperationPlan(object):
         return "\n".join(lines)
 
 
-def _verification_json(result: verify_module.VerificationResult | None) -> dict | None:
+def _verification_json(result: verify_module.VerificationResult | None) -> dict[str, object] | None:
+    """Render a verification result as its stable JSON fragment, or ``None``."""
+
     if result is None:
         return None
     return {
@@ -215,6 +217,21 @@ def _sorted_regular_files(pack_root: str) -> list[str]:
     return sorted(out)
 
 
+def _add_archive_member(tar: tarfile.TarFile, pack_root: str, rel: str) -> None:
+    """Add one pack-relative file to the tar with normalized, reproducible metadata."""
+
+    info = tarfile.TarInfo(name=rel)
+    full = os.path.join(pack_root, rel)
+    info.size = os.path.getsize(full)
+    info.mtime = 0
+    info.mode = 0o644
+    info.uid = info.gid = 0
+    info.uname = info.gname = ""
+    info.type = tarfile.REGTYPE
+    with open(full, "rb") as handle:
+        tar.addfile(info, handle)
+
+
 def export_pack_archive(pack_root: str | os.PathLike[str], dest_path: str | os.PathLike[str]) -> str:
     """Write a byte-deterministic tar.gz of a pack and return its archive digest.
 
@@ -233,16 +250,7 @@ def export_pack_archive(pack_root: str | os.PathLike[str], dest_path: str | os.P
         with gzip.GzipFile(filename="", fileobj=raw, mode="wb", mtime=0) as gz:
             with tarfile.open(fileobj=gz, mode="w") as tar:
                 for rel in members:
-                    info = tarfile.TarInfo(name=rel)
-                    full = os.path.join(pack_root, rel)
-                    info.size = os.path.getsize(full)
-                    info.mtime = 0
-                    info.mode = 0o644
-                    info.uid = info.gid = 0
-                    info.uname = info.gname = ""
-                    info.type = tarfile.REGTYPE
-                    with open(full, "rb") as handle:
-                        tar.addfile(info, handle)
+                    _add_archive_member(tar, pack_root, rel)
     return archive_digest(dest_path)
 
 
@@ -254,6 +262,62 @@ def archive_digest(archive_path: str | os.PathLike[str]) -> str:
         for chunk in iter(lambda: handle.read(65536), b""):
             hasher.update(chunk)
     return "sha256:" + hasher.hexdigest()
+
+
+def _ensure_within(root: str, candidate: str) -> None:
+    """Fail closed unless ``candidate`` resolves inside ``root`` (path-traversal guard)."""
+
+    root_real = os.path.realpath(root)
+    candidate_real = os.path.realpath(candidate)
+    if os.path.commonpath([root_real, candidate_real]) != root_real:
+        raise DistributionError("resolved path escapes its permitted root")
+
+
+def _stage_one_member(
+    tar: tarfile.TarFile,
+    member: tarfile.TarInfo,
+    staging: Path,
+    seen: set[str],
+    active: ArchiveLimits,
+    running_total: int,
+) -> int:
+    """Validate one archive member against the limits and extract it safely.
+
+    Absolute or escaping paths, symlinks, hardlinks, special files, duplicate
+    normalized names, oversized members, and an excessive expanded total all fail
+    closed. Returns the running expanded-byte total including this member.
+    """
+
+    if member.issym() or member.islnk():
+        raise DistributionError("archive contains a link member")
+    if member.ischr() or member.isblk() or member.isfifo() or member.isdev():
+        raise DistributionError("archive contains a special-file member")
+    if member.isdir():
+        return running_total
+    if not member.isfile():
+        raise DistributionError("archive contains an unsupported member type")
+    try:
+        rel = _pack_fs.normalize_relpath(member.name, error_type=DistributionError)
+    except DistributionError:
+        raise DistributionError("archive member name is unsafe")
+    if rel in seen:
+        raise DistributionError("archive contains a duplicate member")
+    seen.add(rel)
+    if member.size > active.max_member_bytes:
+        raise DistributionError("archive member exceeds the size limit")
+    running_total += member.size
+    if running_total > active.max_total_bytes:
+        raise DistributionError("archive expands beyond the total-size limit")
+    source = tar.extractfile(member)
+    if source is None:
+        raise DistributionError("archive member could not be read")
+    root = str(staging)
+    target = os.path.join(root, rel)
+    _ensure_within(root, target)
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as out:
+        shutil.copyfileobj(source, out, length=65536)
+    return running_total
 
 
 def stage_pack_archive(
@@ -282,33 +346,7 @@ def stage_pack_archive(
             count += 1
             if count > active.max_members:
                 raise DistributionError("archive exceeds the member-count limit")
-            if member.issym() or member.islnk():
-                raise DistributionError("archive contains a link member")
-            if member.ischr() or member.isblk() or member.isfifo() or member.isdev():
-                raise DistributionError("archive contains a special-file member")
-            if member.isdir():
-                continue
-            if not member.isfile():
-                raise DistributionError("archive contains an unsupported member type")
-            try:
-                rel = _pack_fs.normalize_relpath(member.name, error_type=DistributionError)
-            except DistributionError:
-                raise DistributionError("archive member name is unsafe")
-            if rel in seen:
-                raise DistributionError("archive contains a duplicate member")
-            seen.add(rel)
-            if member.size > active.max_member_bytes:
-                raise DistributionError("archive member exceeds the size limit")
-            total += member.size
-            if total > active.max_total_bytes:
-                raise DistributionError("archive expands beyond the total-size limit")
-            source = tar.extractfile(member)
-            if source is None:
-                raise DistributionError("archive member could not be read")
-            target = staging / rel
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with open(os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as out:
-                shutil.copyfileobj(source, out, length=65536)
+            total = _stage_one_member(tar, member, staging, seen, active, total)
 
 
 def _stage_tree(src: str, staging: str) -> None:
@@ -316,6 +354,7 @@ def _stage_tree(src: str, staging: str) -> None:
 
     for rel in _sorted_regular_files(src):
         target = os.path.join(staging, rel)
+        _ensure_within(staging, target)
         os.makedirs(os.path.dirname(target), exist_ok=True)
         with open(os.path.join(src, rel), "rb") as source:
             fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -344,11 +383,19 @@ class Transport(Protocol):
 class ArchiveTransport(object):
     """The offline archive route: a selector reference is a local archive path."""
 
+    limits: ArchiveLimits = dataclasses.field(default_factory=ArchiveLimits)
+
     def resolve(self, selector: Selector) -> str:
+        """Bound the archive by size, then return its canonical transport digest."""
+
+        if os.path.getsize(selector.reference) > self.limits.max_total_bytes:
+            raise DistributionError("archive exceeds the total-size limit")
         return archive_digest(selector.reference)
 
     def stage(self, selector: Selector, staging_dir: str) -> None:
-        stage_pack_archive(selector.reference, staging_dir)
+        """Extract the referenced archive into staging under this transport's limits."""
+
+        stage_pack_archive(selector.reference, staging_dir, limits=self.limits)
 
 
 # --------------------------------------------------------------------------- #
@@ -359,8 +406,8 @@ def build_receipt(
     selector: Selector | None,
     transport_digest: str | None,
     result: verify_module.VerificationResult,
-    evidence: dict | None,
-) -> dict:
+    evidence: dict[str, object] | None,
+) -> dict[str, object]:
     """Build a consumer-local receipt for drift detection and rollback guidance.
 
     It records the resolved reference, the verified RAES subject, the transport
@@ -387,14 +434,14 @@ def build_receipt(
     }
 
 
-def write_receipt(target_dir: str | os.PathLike[str], receipt: dict) -> None:
+def write_receipt(target_dir: str | os.PathLike[str], receipt: dict[str, object]) -> None:
     """Write a receipt beside an installed pack, outside the pack's own files."""
 
     path = Path(target_dir).parent / f"{Path(target_dir).name}{RECEIPT_NAME}"
     path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def read_receipt(target_dir: str | os.PathLike[str]) -> dict | None:
+def read_receipt(target_dir: str | os.PathLike[str]) -> dict[str, object] | None:
     """Read the receipt beside an installed pack, or ``None`` when absent."""
 
     path = Path(target_dir).parent / f"{Path(target_dir).name}{RECEIPT_NAME}"
@@ -444,7 +491,7 @@ def plan_lock(pack_root: str, evidence_dir: str) -> OperationPlan:
     module lock digest a consumer pins against. It is read-only.
     """
 
-    profile, _sbom, provenance = verify_module.load_release_evidence(evidence_dir)
+    _, _sbom, provenance = verify_module.load_release_evidence(evidence_dir)
     predicate = provenance.get("predicate", {}) if isinstance(provenance, dict) else {}
     lock = predicate.get("lock") if isinstance(predicate.get("lock"), dict) else None
     result = _verify_staged(pack_root, evidence_dir)
@@ -456,6 +503,51 @@ def plan_lock(pack_root: str, evidence_dir: str) -> OperationPlan:
     return OperationPlan(
         operation=OPERATION_LOCK, route="repository", selector=None,
         resolved=resolved, changes=(), effects=(), verification=result, diagnostics=())
+
+
+def _stage_and_verify(
+    source: str,
+    name_from: str,
+    evidence_dir: str,
+    selector: Selector | None,
+    transport: Transport | None,
+    signature_verifier: verify_module.SignatureVerifier | None,
+) -> verify_module.VerificationResult:
+    """Stage the source under a pack-named scratch dir and verify it against its evidence."""
+
+    with tempfile.TemporaryDirectory() as scratch:
+        # The staged directory is named after the pack: static validation requires
+        # pack.yaml.name to equal the directory basename.
+        staging = os.path.join(scratch, os.path.basename(os.path.abspath(name_from)))
+        os.makedirs(staging)
+        _stage_source(source, staging, selector, transport)
+        return _verify_staged(staging, evidence_dir, signature_verifier=signature_verifier)
+
+
+def _apply_transport_resolution(
+    resolved: dict[str, object], selector: Selector | None, transport: Transport | None,
+) -> None:
+    """Record the resolved immutable transport digest and domain for a remote selector."""
+
+    if selector is not None and transport is not None:
+        resolved["transport_digest"] = transport.resolve(selector)
+        resolved["transport_domain"] = selector.digest_domain or DIGEST_DOMAIN_OCI
+
+
+def _update_changes(
+    prior_subject: str | None,
+    prior_sbom: str | None,
+    result: verify_module.VerificationResult,
+    evidence_dir: str,
+) -> tuple[Change, ...]:
+    """Diff the installed receipt against the new release into surfaced changes."""
+
+    profile, _sbom, _ = verify_module.load_release_evidence(evidence_dir)
+    new_sbom = (profile.get("evidence", {}).get("sbom", {}) if isinstance(profile, dict) else {}).get("digest")
+    changes = [Change(CHANGE_VERSION, prior_subject, result.subject)]
+    if prior_sbom != new_sbom:
+        changes.append(Change(CHANGE_SBOM_SCOPE, prior_sbom, new_sbom))
+    return tuple(changes)
 
 
 def plan_install(
@@ -478,23 +570,16 @@ def plan_install(
 
     diagnostics: list[validation.Diagnostic] = []
     effects = [Effect(EFFECT_FILESYSTEM_WRITE, f"write pack into {os.path.basename(target_dir)}")]
-    resolved: dict = {"target": os.path.abspath(target_dir), "target_existed": os.path.exists(target_dir)}
+    resolved: dict[str, object] = {"target": os.path.abspath(target_dir), "target_existed": os.path.exists(target_dir)}
     if selector is not None and transport is not None:
         effects.insert(0, Effect(EFFECT_NETWORK, f"fetch {selector.repository}"))
-        resolved["transport_digest"] = transport.resolve(selector)
-        resolved["transport_domain"] = selector.digest_domain or DIGEST_DOMAIN_OCI
+    _apply_transport_resolution(resolved, selector, transport)
     if resolved["target_existed"]:
         diagnostics.append(validation.Diagnostic("distribution.target-exists", path=target_dir))
 
-    with tempfile.TemporaryDirectory() as scratch:
-        # The staged directory is named after the pack: static validation requires
-        # pack.yaml.name to equal the directory basename.
-        staging = os.path.join(scratch, os.path.basename(os.path.abspath(target_dir)))
-        os.makedirs(staging)
-        _stage_source(source, staging, selector, transport)
-        result = _verify_staged(staging, evidence_dir, signature_verifier=signature_verifier)
-        resolved["subject"] = result.subject or ""
-        resolved["subject_domain"] = DIGEST_DOMAIN_SET
+    result = _stage_and_verify(source, target_dir, evidence_dir, selector, transport, signature_verifier)
+    resolved["subject"] = result.subject or ""
+    resolved["subject_domain"] = DIGEST_DOMAIN_SET
     return OperationPlan(
         operation=OPERATION_INSTALL, route="archive" if selector else "repository",
         selector=selector, resolved=resolved, changes=(Change(CHANGE_VERSION, None, resolved.get("subject")),),
@@ -521,27 +606,16 @@ def plan_update(
     prior_subject = (receipt.get("subject") or {}).get("digest")
     prior_sbom = (receipt.get("evidence") or {}).get("sbom")
 
-    with tempfile.TemporaryDirectory() as scratch:
-        staging = os.path.join(scratch, os.path.basename(os.path.abspath(current_target)))
-        os.makedirs(staging)
-        _stage_source(source, staging, selector, transport)
-        result = _verify_staged(staging, evidence_dir, signature_verifier=signature_verifier)
-
-    profile, _sbom, provenance = verify_module.load_release_evidence(evidence_dir)
-    new_sbom = (profile.get("evidence", {}).get("sbom", {}) if isinstance(profile, dict) else {}).get("digest")
-    changes = [Change(CHANGE_VERSION, prior_subject, result.subject)]
-    if prior_sbom != new_sbom:
-        changes.append(Change(CHANGE_SBOM_SCOPE, prior_sbom, new_sbom))
-    resolved = {
+    result = _stage_and_verify(source, current_target, evidence_dir, selector, transport, signature_verifier)
+    changes = _update_changes(prior_subject, prior_sbom, result, evidence_dir)
+    resolved: dict[str, object] = {
         "subject": result.subject or "", "subject_domain": DIGEST_DOMAIN_SET,
         "target": os.path.abspath(current_target), "target_existed": os.path.exists(current_target),
     }
-    if selector is not None and transport is not None:
-        resolved["transport_digest"] = transport.resolve(selector)
-        resolved["transport_domain"] = selector.digest_domain or DIGEST_DOMAIN_OCI
+    _apply_transport_resolution(resolved, selector, transport)
     return OperationPlan(
         operation=OPERATION_UPDATE, route="archive" if selector else "repository",
-        selector=selector, resolved=resolved, changes=tuple(changes),
+        selector=selector, resolved=resolved, changes=changes,
         effects=(Effect(EFFECT_FILESYSTEM_WRITE, f"replace pack at {os.path.basename(current_target)}"),),
         verification=result, diagnostics=())
 
@@ -581,7 +655,9 @@ def plan_publish(
         changes=(), effects=tuple(effects), verification=None, diagnostics=tuple(diagnostics))
 
 
-def _stage_source(source: str, staging: str, selector, transport) -> None:
+def _stage_source(
+    source: str, staging: str, selector: Selector | None, transport: Transport | None,
+) -> None:
     """Stage the source bytes into ``staging`` via the archive or repository route."""
 
     if selector is not None and transport is not None:
@@ -593,6 +669,88 @@ def _stage_source(source: str, staging: str, selector, transport) -> None:
 # --------------------------------------------------------------------------- #
 # Apply (effects occur only here, and only when authorized)
 # --------------------------------------------------------------------------- #
+@dataclasses.dataclass(frozen=True)
+class PromotionPolicy(object):
+    """Optional promotion inputs for :func:`apply_install`.
+
+    ``selector``/``transport`` name the remote route (both ``None`` selects the
+    local repository route); ``signature_verifier`` authenticates a published
+    release; ``require_signature`` (default ``True``) makes promotion fail closed
+    on a release whose signature cannot be verified.
+    """
+
+    selector: Selector | None = None
+    transport: Transport | None = None
+    signature_verifier: verify_module.SignatureVerifier | None = None
+    require_signature: bool = True
+
+
+def _check_apply_preconditions(plan: OperationPlan, target_dir: str, *, authorized: bool) -> None:
+    """Refuse an apply unless it binds to the exact authorized, still-valid proposal."""
+
+    if not authorized:
+        raise DistributionError("apply requires explicit authorization of the plan")
+    if plan.operation not in (OPERATION_INSTALL, OPERATION_UPDATE):
+        raise DistributionError(f"apply requires an install or update plan, not {plan.operation}")
+    if not plan.applicable:
+        raise DistributionError("plan is not applicable; refusing to apply")
+    if os.path.abspath(target_dir) != plan.resolved.get("target"):
+        raise DistributionError("apply target does not match the authorized plan target")
+    target_exists = os.path.exists(target_dir)
+    if plan.operation == OPERATION_INSTALL and target_exists:
+        raise DistributionError("install target now exists; re-plan before applying")
+    if plan.operation == OPERATION_UPDATE and not target_exists:
+        raise DistributionError("update target no longer exists; plan an install")
+
+
+def _stage_and_check_for_apply(
+    plan: OperationPlan, source: str, evidence_dir: str, staging: str, policy: PromotionPolicy,
+) -> verify_module.VerificationResult:
+    """Stage the bytes and fail closed unless they match the plan and its signing gate."""
+
+    _stage_source(source, staging, policy.selector, policy.transport)
+    if policy.selector is not None and policy.transport is not None:
+        resolved_digest = plan.resolved.get("transport_digest")
+        if resolved_digest is not None and policy.transport.resolve(policy.selector) != resolved_digest:
+            raise DistributionError("remote transport digest drifted from the plan")
+    result = _verify_staged(staging, evidence_dir, signature_verifier=policy.signature_verifier)
+    if not result.accepted:
+        raise DistributionError("staged bytes failed verification at apply time")
+    if result.subject != plan.resolved.get("subject"):
+        raise DistributionError("staged subject differs from the authorized plan")
+    if policy.require_signature and not result.authenticated:
+        raise DistributionError(
+            "release is not authenticated; supply a signature verifier or "
+            "set require_signature=False to accept an unsigned release")
+    return result
+
+
+def _promote(staging: str, target_dir: str) -> None:
+    """Atomically place staged bytes at the target; the live tree is never deleted first."""
+
+    target = Path(target_dir)
+    if target.exists():
+        # Atomic swap: the live target is never deleted before replacement. After
+        # the exchange `staging` holds the previous tree, which the caller's
+        # scratch cleanup retires.
+        _transactions.exchange(Path(staging), target)
+    else:
+        _transactions.publish_noreplace(Path(staging), target)
+
+
+def _receipt_for_apply(
+    plan: OperationPlan, evidence_dir: str,
+    result: verify_module.VerificationResult, policy: PromotionPolicy,
+) -> dict[str, object]:
+    """Build the consumer receipt recorded beside a freshly promoted pack."""
+
+    profile, _sbom, _provenance = verify_module.load_release_evidence(evidence_dir)
+    evidence = profile.get("evidence") if isinstance(profile, dict) else None
+    return build_receipt(
+        selector=policy.selector, transport_digest=plan.resolved.get("transport_digest"),
+        result=result, evidence=evidence)
+
+
 def apply_install(
     plan: OperationPlan,
     source: str,
@@ -600,11 +758,8 @@ def apply_install(
     target_dir: str,
     *,
     authorized: bool,
-    selector: Selector | None = None,
-    transport: Transport | None = None,
-    signature_verifier: verify_module.SignatureVerifier | None = None,
-    require_signature: bool = True,
-) -> dict:
+    policy: PromotionPolicy | None = None,
+) -> dict[str, object]:
     """Apply an install/update plan: re-verify staged bytes, then promote atomically.
 
     The apply is bound to the exact effect-bearing proposal, not merely to "some
@@ -620,33 +775,25 @@ def apply_install(
       digest must equal the plan's, so a drifted source cannot be substituted.
 
     Promotion additionally **fails closed on authenticity**: a published release
-    must verify its signature (``require_signature=True``, the default). Without a
-    configured signature verifier the release-signature gate is ``unavailable``
-    and the apply refuses rather than promoting integrity-only, self-consistent
-    bytes an attacker without the signing identity could forge. A caller with no
-    signing infrastructure opts out explicitly with ``require_signature=False``.
+    must verify its signature (``policy.require_signature=True``, the default).
+    Without a configured signature verifier the release-signature gate is
+    ``unavailable`` and the apply refuses rather than promoting integrity-only,
+    self-consistent bytes an attacker without the signing identity could forge. A
+    caller with no signing infrastructure opts out explicitly with a
+    ``PromotionPolicy(require_signature=False)``.
 
     Refuses unless the exact proposal was authorized. Promotes with a no-replace
     move for a fresh install or an atomic exchange for an update; the live target
     is never deleted or overlaid before replacement. Returns the written receipt.
     """
 
-    if not authorized:
-        raise DistributionError("apply requires explicit authorization of the plan")
-    if plan.operation not in (OPERATION_INSTALL, OPERATION_UPDATE):
-        raise DistributionError(f"apply requires an install or update plan, not {plan.operation}")
-    if not plan.applicable:
-        raise DistributionError("plan is not applicable; refusing to apply")
-    if os.path.abspath(target_dir) != plan.resolved.get("target"):
-        raise DistributionError("apply target does not match the authorized plan target")
-
-    target_exists = os.path.exists(target_dir)
-    if plan.operation == OPERATION_INSTALL and target_exists:
-        raise DistributionError("install target now exists; re-plan before applying")
-    if plan.operation == OPERATION_UPDATE and not target_exists:
-        raise DistributionError("update target no longer exists; plan an install")
+    policy = policy or PromotionPolicy()
+    _check_apply_preconditions(plan, target_dir, authorized=authorized)
 
     parent = os.path.dirname(os.path.abspath(target_dir)) or "."
+    # Confine every filesystem write below to the target's own parent: the target
+    # (and so the scratch and the promotion) may never resolve outside it.
+    _ensure_within(parent, target_dir)
     os.makedirs(parent, exist_ok=True)
     scratch = tempfile.mkdtemp(prefix=".pack-stage-", dir=parent)
     # Stage under the pack's own name so validation and the promoted directory
@@ -654,34 +801,9 @@ def apply_install(
     staging = os.path.join(scratch, os.path.basename(os.path.abspath(target_dir)))
     os.makedirs(staging)
     try:
-        _stage_source(source, staging, selector, transport)
-        if selector is not None and transport is not None:
-            resolved_digest = plan.resolved.get("transport_digest")
-            if resolved_digest is not None and transport.resolve(selector) != resolved_digest:
-                raise DistributionError("remote transport digest drifted from the plan")
-        result = _verify_staged(staging, evidence_dir, signature_verifier=signature_verifier)
-        if not result.accepted:
-            raise DistributionError("staged bytes failed verification at apply time")
-        if result.subject != plan.resolved.get("subject"):
-            raise DistributionError("staged subject differs from the authorized plan")
-        if require_signature and not result.authenticated:
-            raise DistributionError(
-                "release is not authenticated; supply a signature verifier or "
-                "set require_signature=False to accept an unsigned release")
-        target = Path(target_dir)
-        if target.exists():
-            # Atomic swap: the live target is never deleted before replacement.
-            # After the exchange `staging` holds the previous tree, which the
-            # scratch cleanup in `finally` retires.
-            _transactions.exchange(Path(staging), target)
-        else:
-            _transactions.publish_noreplace(Path(staging), target)
-        profile, _sbom, _provenance = verify_module.load_release_evidence(evidence_dir)
-        evidence = profile.get("evidence") if isinstance(profile, dict) else None
-        transport_digest = plan.resolved.get("transport_digest")
-        receipt = build_receipt(
-            selector=selector, transport_digest=transport_digest,
-            result=result, evidence=evidence)
+        result = _stage_and_check_for_apply(plan, source, evidence_dir, staging, policy)
+        _promote(staging, target_dir)
+        receipt = _receipt_for_apply(plan, evidence_dir, result, policy)
         write_receipt(target_dir, receipt)
         return receipt
     finally:
@@ -697,11 +819,13 @@ EXIT_USAGE = 2
 EXIT_TOOL_FAILURE = 3
 
 
-def _emit(plan: OperationPlan, *, as_json: bool, out) -> None:
+def _emit(plan: OperationPlan, *, as_json: bool, out: TextIO) -> None:
+    """Print the plan to ``out`` as the JSON envelope or human-readable text."""
+
     print(plan.render_json() if as_json else plan.render_human(), file=out)
 
 
-def main(argv: list[str] | None = None, *, stdout=None, stderr=None) -> int:
+def main(argv: list[str] | None = None, *, stdout: TextIO | None = None, stderr: TextIO | None = None) -> int:
     """Command-line entry point for the proposal-first distribution workflow."""
 
     out = stdout if stdout is not None else sys.stdout
@@ -741,46 +865,58 @@ def main(argv: list[str] | None = None, *, stdout=None, stderr=None) -> int:
     except DistributionError as exc:
         print(f"raes-pack-dist: {exc}", file=err)
         return EXIT_BLOCKING
-    except Exception as exc:  # noqa: BLE001 -- a defect is a tool failure, not an untrusted pack
+    # A broad catch is deliberate here: an unexpected defect is a tool failure
+    # (exit 3), never a signal that the pack is untrusted.
+    except Exception as exc:
         print(f"raes-pack-dist: internal error ({type(exc).__name__})", file=err)
         return EXIT_TOOL_FAILURE
 
 
-def _dispatch(args: argparse.Namespace, *, out, err) -> int:
-    if args.verb == "verify":
-        plan = plan_verify(args.pack, args.release)
-        _emit(plan, as_json=args.json, out=out)
-        return EXIT_OK if plan.applicable else EXIT_BLOCKING
-    if args.verb == "lock":
-        plan = plan_lock(args.pack, args.release)
-        _emit(plan, as_json=args.json, out=out)
-        return EXIT_OK if plan.applicable else EXIT_BLOCKING
-    if args.verb == "publish":
-        selector = Selector(repository=args.repository, reference=args.reference)
-        plan = plan_publish(args.release, selector=selector)
-        _emit(plan, as_json=args.json, out=out)
-        return EXIT_OK if plan.applicable else EXIT_BLOCKING
+def _plan_read_only(args: argparse.Namespace) -> OperationPlan:
+    """Build the read-only plan (verify, lock, or publish) named by the CLI verb."""
 
-    selector = transport = None
+    if args.verb == OPERATION_VERIFY:
+        return plan_verify(args.pack, args.release)
+    if args.verb == OPERATION_LOCK:
+        return plan_lock(args.pack, args.release)
+    selector = Selector(repository=args.repository, reference=args.reference)
+    return plan_publish(args.release, selector=selector)
+
+
+def _dispatch_apply(args: argparse.Namespace, *, out: TextIO, err: TextIO) -> int:
+    """Plan an install/update, emit it, and cause effects only when ``--apply`` authorizes them."""
+
+    selector: Selector | None = None
+    transport: Transport | None = None
     if args.archive:
         selector = Selector(repository="local", reference=args.archive,
                             digest_domain=DIGEST_DOMAIN_ARCHIVE)
         transport = ArchiveTransport()
-    planner = plan_install if args.verb == "install" else plan_update
-    if args.verb == "install":
-        plan = planner(args.pack, args.release, args.target,
-                       selector=selector, transport=transport)
+    if args.verb == OPERATION_INSTALL:
+        plan = plan_install(args.pack, args.release, args.target,
+                            selector=selector, transport=transport)
     else:
-        plan = planner(args.target, args.pack, args.release,
-                       selector=selector, transport=transport)
+        plan = plan_update(args.target, args.pack, args.release,
+                           selector=selector, transport=transport)
     _emit(plan, as_json=args.json, out=out)
     if not args.apply:
         return EXIT_OK if plan.applicable else EXIT_BLOCKING
-    apply_install(plan, args.pack, args.release, args.target,
-                  authorized=True, selector=selector, transport=transport,
-                  require_signature=not args.allow_unsigned)
+    apply_install(
+        plan, args.pack, args.release, args.target, authorized=True,
+        policy=PromotionPolicy(selector=selector, transport=transport,
+                               require_signature=not args.allow_unsigned))
     print(f"applied: {args.verb} -> {args.target}", file=err)
     return EXIT_OK
+
+
+def _dispatch(args: argparse.Namespace, *, out: TextIO, err: TextIO) -> int:
+    """Route a parsed CLI verb to its planner; only ``--apply`` on install/update causes effects."""
+
+    if args.verb in (OPERATION_VERIFY, OPERATION_LOCK, OPERATION_PUBLISH):
+        plan = _plan_read_only(args)
+        _emit(plan, as_json=args.json, out=out)
+        return EXIT_OK if plan.applicable else EXIT_BLOCKING
+    return _dispatch_apply(args, out=out, err=err)
 
 
 __all__ = [
@@ -790,6 +926,7 @@ __all__ = [
     "DistributionError",
     "Effect",
     "OperationPlan",
+    "PromotionPolicy",
     "Selector",
     "Transport",
     "TransportUnavailable",

@@ -106,6 +106,9 @@ _STAGE_CHUNK = 64 * 1024
 # prose.
 _CONTRACT_VERSION_RE = re.compile(r"Environment-pack contract version:\**\s*`([^`]+)`")
 _CANONICAL_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+# The canonical digest algorithm prefix, defined once so a release digest is
+# spelled identically everywhere it is composed.
+_SHA256_PREFIX = "sha256:"
 _CONTRACT_SOURCE = os.path.join(cc._RES, "contract", "pack-layout.md")
 CONTRACT_SOURCE_LABEL = "contract/pack-layout.md"
 
@@ -123,7 +126,7 @@ def load_contract_version() -> tuple[str | None, str]:
         raw = fh.read()
     body = raw.decode("utf-8", errors="replace")
     m = _CONTRACT_VERSION_RE.search(body)
-    digest = "sha256:" + hashlib.sha256(raw).hexdigest()
+    digest = _SHA256_PREFIX + hashlib.sha256(raw).hexdigest()
     return (m.group(1) if m else None), digest
 
 
@@ -670,8 +673,8 @@ def _builder_id() -> str:
     return "local-build"
 
 
-def _default_kit_source_resolver(source_id, revision, kit_id, kit_version,
-                                 repo_root: str = REPO):
+def _default_kit_source_resolver(source_id: str, revision: str, kit_id: str,
+                                 kit_version: str, repo_root: str = REPO) -> str | None:
     """Resolve a first-party kit source/revision to its immutable staged root.
 
     First-party kits live under ``kits/`` in this repository at an immutable Git
@@ -693,14 +696,14 @@ def _lock_projection(pack_root: str) -> dict[str, object] | None:
     """
     root_real = os.path.realpath(pack_root)
     try:
-        lock_path = _resolved_within(root_real, "sdl", "raes.lock.json")
+        lock_path: str | None = _resolved_within(root_real, "sdl", "raes.lock.json")
     except ValueError:
-        return None
-    if not os.path.isfile(lock_path):
+        lock_path = None
+    if lock_path is None or not os.path.isfile(lock_path):
         return None
     with open(lock_path, "rb") as fh:
         raw = fh.read()
-    digest = "sha256:" + hashlib.sha256(raw).hexdigest()
+    digest = _SHA256_PREFIX + hashlib.sha256(raw).hexdigest()
     modules: list[dict[str, object]] = []
     try:
         lockfile = load_lockfile(Path(pack_root, "sdl"))
@@ -760,9 +763,11 @@ def _emit_evidence(pc: "PackContracts", pack_root: str,
     builder = _builder_id()
     provenance = release_provenance.build_release_provenance(
         pack_name=name, pack_version=version, set_digest=set_digest,
-        semantic_parent=semantic_parent, source_revision=source_revision,
-        builder_id=builder, lock=lock, view_sets=view_sets,
-        sbom={"digest": sbom_digest, "format": sbom_module.BOM_FORMAT, "path": sbom_path})
+        facts=release_provenance.ReleaseFacts(
+            semantic_parent=semantic_parent, source_revision=source_revision,
+            builder_id=builder, lock=lock, view_sets=view_sets,
+            sbom={"digest": sbom_digest, "format": sbom_module.BOM_FORMAT,
+                  "path": sbom_path}))
     provenance_digest = release_provenance.provenance_digest(provenance)
 
     failures += [f"{pc.name}: generated SBOM {d.code}" for d in
@@ -774,22 +779,20 @@ def _emit_evidence(pc: "PackContracts", pack_root: str,
                  release_provenance.validate_release_provenance(
                      provenance, expected_name=name, expected_version=version,
                      expected_set_digest=set_digest, expected_sbom_digest=sbom_digest)]
-    if failures:
-        return failures
-
-    with open(os.path.join(staging, sbom_path), "wb") as fh:
-        fh.write(sbom_module.sbom_bytes(sbom_document))
-    with open(os.path.join(staging, provenance_path), "wb") as fh:
-        fh.write(release_provenance.provenance_bytes(provenance))
-    metadata["evidence"] = {
-        "sbom": {"path": sbom_path, "digest": sbom_digest,
-                 "format": sbom_module.BOM_FORMAT},
-        "provenance": {"path": provenance_path, "digest": provenance_digest},
-        "source_revision": source_revision,
-        "builder": {"id": builder},
-        "lock": {"digest": lock["digest"] if lock else None},
-    }
-    return []
+    if not failures:
+        with open(os.path.join(staging, sbom_path), "wb") as fh:
+            fh.write(sbom_module.sbom_bytes(sbom_document))
+        with open(os.path.join(staging, provenance_path), "wb") as fh:
+            fh.write(release_provenance.provenance_bytes(provenance))
+        metadata["evidence"] = {
+            "sbom": {"path": sbom_path, "digest": sbom_digest,
+                     "format": sbom_module.BOM_FORMAT},
+            "provenance": {"path": provenance_path, "digest": provenance_digest},
+            "source_revision": source_revision,
+            "builder": {"id": builder},
+            "lock": {"digest": lock["digest"] if lock else None},
+        }
+    return failures
 
 
 def _supported_bundle_ids(compat: dict[str, object]) -> list[str]:
@@ -934,7 +937,7 @@ def _bind_view_sets(pack_root: str, metadata: dict[str, object],
             "manifest_id": f"{pack['name']}-{name}-associated-artifacts",
             "manifest_version": pack["version"],
             "artifacts": artifacts,
-            "set_digest": "sha256:" + "0" * 64,
+            "set_digest": _SHA256_PREFIX + "0" * 64,
         })
         view_manifest = view_manifest.model_copy(update={
             "set_digest": associated_artifact_set_digest(view_manifest)})

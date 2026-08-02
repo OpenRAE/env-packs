@@ -11,11 +11,16 @@ _SBOM = "sha256:" + "b" * 64
 _LOCK = "sha256:" + "c" * 64
 
 
+_TOP_LEVEL_KEYS = ("pack_name", "pack_version", "set_digest")
+
+
 def _build(**overrides) -> dict:
-    kwargs = {
+    top = {
         "pack_name": "techvault",
         "pack_version": "0.1.0",
         "set_digest": _SET,
+    }
+    facts = {
         "semantic_parent": {"parent_ref": "techvault", "digest": None},
         "source_revision": "abc123",
         "builder_id": "github-actions://openrae/env-packs",
@@ -23,8 +28,10 @@ def _build(**overrides) -> dict:
         "view_sets": [{"view": "participant", "set_digest": _SET}],
         "sbom": {"digest": _SBOM, "format": "CycloneDX", "path": "techvault-0.1.0.cdx.json"},
     }
-    kwargs.update(overrides)
-    return rp.build_release_provenance(**kwargs)
+    for key, value in overrides.items():
+        target = top if key in _TOP_LEVEL_KEYS else facts
+        target[key] = value
+    return rp.build_release_provenance(**top, facts=rp.ReleaseFacts(**facts))
 
 
 class BuildTests(unittest.TestCase):
@@ -50,7 +57,9 @@ class BuildTests(unittest.TestCase):
             _build(set_digest="nope")
 
     def test_output_is_deterministic(self) -> None:
-        self.assertEqual(rp.provenance_bytes(_build()), rp.provenance_bytes(_build()))
+        first = rp.provenance_bytes(_build())
+        second = rp.provenance_bytes(_build())
+        self.assertEqual(first, second)
 
     def test_digest_is_canonical(self) -> None:
         self.assertRegex(rp.provenance_digest(_build()), r"^sha256:[0-9a-f]{64}$")

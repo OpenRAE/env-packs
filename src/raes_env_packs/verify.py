@@ -35,6 +35,7 @@ import os
 import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import TextIO
 
 import yaml
 
@@ -157,20 +158,32 @@ def load_release_evidence(
 
 
 def _load_json_pointer(base: Path, evidence: object, key: str) -> dict | None:
-    """Load one evidence document referenced by ``evidence[key].path``."""
+    """Load one evidence document referenced by ``evidence[key].path``.
 
-    if not isinstance(evidence, dict) or not isinstance(evidence.get(key), dict):
-        return None
-    rel = evidence[key].get("path")
-    if not isinstance(rel, str):
-        return None
-    target = (base / rel).resolve()
-    if base.resolve() not in target.parents and target != base.resolve():
-        return None
-    try:
-        return json.loads(target.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
+    The referenced path is external, so it is resolved and confirmed to stay
+    inside ``base`` before any bytes are read. Containment is enforced two ways:
+    the resolved target must sit under ``base`` by ``Path.parents`` *and* their
+    real paths must share ``base`` as their common prefix
+    (``os.path.commonpath([base_real, target_real]) == base_real``). A path that
+    escapes -- or bytes that cannot be parsed -- yields ``None`` rather than
+    reaching the reader.
+    """
+
+    document: dict | None = None
+    ref = evidence.get(key) if isinstance(evidence, dict) else None
+    rel = ref.get("path") if isinstance(ref, dict) else None
+    if isinstance(rel, str):
+        base_real = os.path.realpath(base)
+        base_resolved = base.resolve()
+        target = (base / rel).resolve()
+        under_base = base_resolved in target.parents or target == base_resolved
+        contained = under_base and os.path.commonpath([base_real, os.path.realpath(target)]) == base_real
+        if contained:
+            try:
+                document = json.loads(target.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                document = None
+    return document
 
 
 def _static_gate(pack_root: str) -> Evidence:
@@ -209,13 +222,17 @@ def _publication_gate(profile: object, name: str, version: str, set_digest: str)
     pack = identity.get("pack") if isinstance(identity.get("pack"), dict) else {}
     source_set = identity.get("source_set") if isinstance(identity.get("source_set"), dict) else {}
     if pack.get("name") != name or pack.get("version") != version:
-        return Evidence(GATE_PUBLICATION, STATE_FAILED, "release profile names a different pack")
-    if source_set.get("set_digest") != set_digest:
-        return Evidence(GATE_PUBLICATION, STATE_FAILED, "release profile binds a different set digest")
-    return Evidence(GATE_PUBLICATION, STATE_VERIFIED, "release profile matches the verified subject")
+        result = Evidence(GATE_PUBLICATION, STATE_FAILED, "release profile names a different pack")
+    elif source_set.get("set_digest") != set_digest:
+        result = Evidence(GATE_PUBLICATION, STATE_FAILED, "release profile binds a different set digest")
+    else:
+        result = Evidence(GATE_PUBLICATION, STATE_VERIFIED, "release profile matches the verified subject")
+    return result
 
 
 def _evidence_ref(profile: object, key: str) -> dict | None:
+    """Return the ``evidence[key]`` reference mapping from ``profile``, or ``None``."""
+
     evidence = profile.get("evidence") if isinstance(profile, dict) else None
     ref = evidence.get(key) if isinstance(evidence, dict) else None
     return ref if isinstance(ref, dict) else None
@@ -229,19 +246,22 @@ def _sbom_gate(profile: object, sbom_document: object, name: str, version: str, 
         return Evidence(GATE_SBOM, STATE_ABSENT, "no SBOM referenced by the release")
     if not isinstance(sbom_document, dict):
         return Evidence(GATE_SBOM, STATE_UNVERIFIED, "SBOM referenced but not supplied")
-    if sbom_module.sbom_digest(sbom_document) != ref.get("digest"):
-        return Evidence(GATE_SBOM, STATE_FAILED, "SBOM bytes do not match the referenced digest")
+
+    component = sbom_document.get("metadata", {}).get("component", {})
     subject = {
         item.get("name"): item.get("value")
-        for item in sbom_document.get("metadata", {}).get("component", {}).get("properties", [])
+        for item in component.get("properties", [])
         if isinstance(item, dict)
     }
-    component = sbom_document.get("metadata", {}).get("component", {})
-    if component.get("name") != name or component.get("version") != version:
-        return Evidence(GATE_SBOM, STATE_FAILED, "SBOM subject names a different pack")
-    if subject.get("raes:associated-artifact-set-digest") != set_digest:
-        return Evidence(GATE_SBOM, STATE_FAILED, "SBOM subject binds a different set digest")
-    return Evidence(GATE_SBOM, STATE_VERIFIED, "SBOM integrity and subject verified")
+    if sbom_module.sbom_digest(sbom_document) != ref.get("digest"):
+        result = Evidence(GATE_SBOM, STATE_FAILED, "SBOM bytes do not match the referenced digest")
+    elif component.get("name") != name or component.get("version") != version:
+        result = Evidence(GATE_SBOM, STATE_FAILED, "SBOM subject names a different pack")
+    elif subject.get("raes:associated-artifact-set-digest") != set_digest:
+        result = Evidence(GATE_SBOM, STATE_FAILED, "SBOM subject binds a different set digest")
+    else:
+        result = Evidence(GATE_SBOM, STATE_VERIFIED, "SBOM integrity and subject verified")
+    return result
 
 
 def _provenance_gate(
@@ -256,15 +276,19 @@ def _provenance_gate(
         return Evidence(GATE_PROVENANCE, STATE_ABSENT, "no provenance referenced by the release")
     if not isinstance(provenance_document, dict):
         return Evidence(GATE_PROVENANCE, STATE_UNVERIFIED, "provenance referenced but not supplied")
-    if release_provenance.provenance_digest(provenance_document) != ref.get("digest"):
-        return Evidence(GATE_PROVENANCE, STATE_FAILED, "provenance bytes do not match the referenced digest")
+
     expected_sbom = sbom_ref.get("digest") if isinstance(sbom_ref, dict) else None
-    diagnostics = release_provenance.validate_release_provenance(
-        provenance_document, expected_name=name, expected_version=version,
-        expected_set_digest=set_digest, expected_sbom_digest=expected_sbom or "")
-    if diagnostics:
-        return Evidence(GATE_PROVENANCE, STATE_FAILED, "provenance bindings do not match the subject")
-    return Evidence(GATE_PROVENANCE, STATE_VERIFIED, "provenance binds subject, SBOM, and lock")
+    if release_provenance.provenance_digest(provenance_document) != ref.get("digest"):
+        result = Evidence(GATE_PROVENANCE, STATE_FAILED, "provenance bytes do not match the referenced digest")
+    else:
+        diagnostics = release_provenance.validate_release_provenance(
+            provenance_document, expected_name=name, expected_version=version,
+            expected_set_digest=set_digest, expected_sbom_digest=expected_sbom or "")
+        if diagnostics:
+            result = Evidence(GATE_PROVENANCE, STATE_FAILED, "provenance bindings do not match the subject")
+        else:
+            result = Evidence(GATE_PROVENANCE, STATE_VERIFIED, "provenance binds subject, SBOM, and lock")
+    return result
 
 
 def _signature_gate(set_digest: str, provenance_document: object, verifier: SignatureVerifier | None) -> Evidence:
@@ -275,7 +299,7 @@ def _signature_gate(set_digest: str, provenance_document: object, verifier: Sign
     provenance = provenance_document if isinstance(provenance_document, dict) else {}
     try:
         ok = verifier(set_digest, provenance)
-    except Exception:  # noqa: BLE001 -- an external verifier failure is a failed gate, not a tool crash
+    except Exception:  # an external verifier failure is a failed gate, not a tool crash
         return Evidence(GATE_RELEASE_SIGNATURE, STATE_FAILED, "signature verification raised")
     return Evidence(
         GATE_RELEASE_SIGNATURE,
@@ -285,19 +309,35 @@ def _signature_gate(set_digest: str, provenance_document: object, verifier: Sign
 
 
 def _lock_gate(pack_root: str, provenance_document: object) -> Evidence:
-    """RAES lock drift: the staged lock must match the attested lock digest."""
+    """RAES lock drift: the staged lock must match the attested lock digest.
 
-    lock_digest = _sha256_file(os.path.join(pack_root, "sdl", "raes.lock.json"))
+    ``pack_root`` is external, so the staged lock path is resolved and confirmed
+    to stay inside it before its bytes reach the hash sink: the real lock path
+    and the real pack root must share the pack root as their common prefix
+    (``os.path.commonpath([root_real, lock_real]) == root_real``). A path that
+    escapes that boundary -- for instance a lock symlinked out of the pack -- is
+    treated as no staged lock at all (digest ``None``), so containment failure
+    collapses into the same absent/failed handling as a genuinely missing lock
+    rather than reading bytes from outside the pack.
+    """
+
+    root_real = os.path.realpath(pack_root)
+    lock_real = os.path.realpath(os.path.join(pack_root, "sdl", "raes.lock.json"))
+    within_pack = os.path.commonpath([root_real, lock_real]) == root_real
+    lock_digest = _sha256_file(lock_real) if within_pack else None
     predicate = provenance_document.get("predicate", {}) if isinstance(provenance_document, dict) else {}
     attested = predicate.get("lock") if isinstance(predicate.get("lock"), dict) else None
     attested_digest = attested.get("digest") if isinstance(attested, dict) else None
+
     if lock_digest is None and not attested_digest:
-        return Evidence(GATE_LOCK, STATE_ABSENT, "pack imports no modules")
-    if lock_digest is None or attested_digest is None:
-        return Evidence(GATE_LOCK, STATE_FAILED, "lock presence disagrees with the attested lock")
-    if lock_digest != attested_digest:
-        return Evidence(GATE_LOCK, STATE_FAILED, "raes.lock.json has drifted from the attested digest")
-    return Evidence(GATE_LOCK, STATE_VERIFIED, "raes.lock.json matches the attested digest")
+        result = Evidence(GATE_LOCK, STATE_ABSENT, "pack imports no modules")
+    elif lock_digest is None or attested_digest is None:
+        result = Evidence(GATE_LOCK, STATE_FAILED, "lock presence disagrees with the attested lock")
+    elif lock_digest != attested_digest:
+        result = Evidence(GATE_LOCK, STATE_FAILED, "raes.lock.json has drifted from the attested digest")
+    else:
+        result = Evidence(GATE_LOCK, STATE_VERIFIED, "raes.lock.json matches the attested digest")
+    return result
 
 
 def verify_pack_release(
@@ -395,7 +435,7 @@ def render_human(result: VerificationResult, *, require_signature: bool) -> str:
     return "\n".join(lines)
 
 
-def main(argv: list[str] | None = None, *, stdout=None, stderr=None) -> int:
+def main(argv: list[str] | None = None, *, stdout: TextIO | None = None, stderr: TextIO | None = None) -> int:
     """Command-line entry point for consumer verification."""
 
     out = stdout if stdout is not None else sys.stdout
@@ -419,7 +459,7 @@ def main(argv: list[str] | None = None, *, stdout=None, stderr=None) -> int:
         result = verify_pack_release(
             args.pack, release_profile=profile,
             sbom_document=sbom_document, provenance_document=provenance_document)
-    except Exception as exc:  # noqa: BLE001 -- a defect here is a tool failure, not an untrusted pack
+    except Exception as exc:  # a defect here is a tool failure, not an untrusted pack
         print(f"raes-pack-verify: internal error ({type(exc).__name__})", file=err)
         return EXIT_TOOL_FAILURE
 

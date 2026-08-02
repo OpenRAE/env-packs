@@ -32,8 +32,9 @@ from __future__ import annotations
 import dataclasses
 import os
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from typing import cast
 
 import yaml
 from raes.module_registry import load_lockfile
@@ -53,6 +54,11 @@ _CONTROLLED_SCOPES = frozenset({"shipped", "pinned"})
 _KIT_MATERIALIZATIONS = "kit.materializations.json"
 _SDL_LOCK_DIR = "sdl"
 _CONTAINER_MEDIA_HINTS = ("docker", "oci.image", "container")
+
+# Maps ``(source_id, revision, kit_id, kit_version)`` to an immutable staged
+# catalog root that contains ``kits/``, or ``None`` when no such root can be
+# supplied for that materialization.
+KitSourceResolver = Callable[[str, str, str, str], str | None]
 
 
 class ComponentBoundaryError(ValueError):
@@ -101,13 +107,13 @@ def _canonical_digest(value: object) -> str | None:
     fabricating a shape a consumer would treat as evidence.
     """
 
-    if not isinstance(value, str):
-        return None
-    if _CANONICAL_DIGEST_RE.fullmatch(value):
-        return value
-    if _BARE_SHA256_RE.fullmatch(value):
-        return f"sha256:{value}"
-    return None
+    result: str | None = None
+    if isinstance(value, str):
+        if _CANONICAL_DIGEST_RE.fullmatch(value):
+            result = value
+        elif _BARE_SHA256_RE.fullmatch(value):
+            result = f"sha256:{value}"
+    return result
 
 
 def _slug(prefix: str, ref: str, used: set[str]) -> str:
@@ -156,9 +162,25 @@ def validate_publication_supply_document(
     if diagnostics or not isinstance(document, dict):
         return diagnostics, ()
 
+    components, row_diagnostics = _declared_components(document.get("component_boundary"))
+    diagnostics.extend(row_diagnostics)
+    return diagnostics, tuple(components)
+
+
+def _declared_components(
+    rows: object,
+) -> tuple[list[Component], list[validation.Diagnostic]]:
+    """Project and semantically validate each authored ``component_boundary`` row.
+
+    Returns ``(components, diagnostics)``. Every well-formed row becomes a
+    :class:`Component`, and every semantic rule the closed JSON subset cannot
+    express is checked against a shared id set so a duplicate id or a controlled
+    scope missing its digest is refused. A non-list ``rows`` yields no components.
+    """
+
     components: list[Component] = []
+    diagnostics: list[validation.Diagnostic] = []
     seen_ids: set[str] = set()
-    rows = document.get("component_boundary")
     for index, row in enumerate(rows if isinstance(rows, list) else ()):
         if not isinstance(row, dict):
             continue
@@ -167,17 +189,19 @@ def validate_publication_supply_document(
         diagnostics.extend(
             _component_semantics(component, f"$.component_boundary[{index}]", seen_ids)
         )
-    return diagnostics, tuple(components)
+    return components, diagnostics
 
 
 def _component_from_row(row: Mapping[str, object]) -> Component:
     """Project one validated boundary row into a :class:`Component`."""
 
     def text(key: str) -> str:
+        """Return the row's string value for ``key``, or an empty string."""
         value = row.get(key)
         return value if isinstance(value, str) else ""
 
     def optional(key: str) -> str | None:
+        """Return the row's string value for ``key``, or ``None`` when absent."""
         value = row.get(key)
         return value if isinstance(value, str) else None
 
@@ -241,9 +265,21 @@ def incumbent_components(
     exact artifact from the inventory.
     """
 
+    # One shared id set keeps every derived component id unique across the three
+    # incumbent authorities; the helpers run in a fixed order so the union is
+    # deterministic.
     used: set[str] = set()
-    out: list[Component] = []
+    return [
+        *_module_components(lockfile, used),
+        *_kit_inventory_components(kit_inventories, used),
+        *_sdl_artifact_components(scenarios, used),
+    ]
 
+
+def _module_components(lockfile: object, used: set[str]) -> list[Component]:
+    """Derive the pinned RAES module components the ``raes.lock.json`` proves."""
+
+    out: list[Component] = []
     imports = getattr(lockfile, "imports", None)
     for record in imports if isinstance(imports, Sequence) else ():
         module_id = getattr(record, "module_id", None)
@@ -264,7 +300,15 @@ def incumbent_components(
                 description=f"RAES module {module_id} pinned by raes.lock.json",
             )
         )
+    return out
 
+
+def _kit_inventory_components(
+    kit_inventories: Sequence[Mapping[str, object]], used: set[str]
+) -> list[Component]:
+    """Derive the shipped/pinned components recovered kit inventories declare."""
+
+    out: list[Component] = []
     for entry in kit_inventories:
         scope = entry.get("scope")
         ref = entry.get("ref")
@@ -285,7 +329,15 @@ def incumbent_components(
                 description=str(entry.get("description") or f"kit component {ref}"),
             )
         )
+    return out
 
+
+def _sdl_artifact_components(
+    scenarios: Sequence[object], used: set[str]
+) -> list[Component]:
+    """Derive the pinned components from the pack SDL's exact artifacts."""
+
+    out: list[Component] = []
     requirements = publication_module.authored_artifact_requirements(scenarios)
     for requirement in requirements.values():
         exact = getattr(requirement, "exact_artifact", None) if requirement else None
@@ -311,6 +363,8 @@ def incumbent_components(
 
 
 def _str_or_none(value: object) -> str | None:
+    """Return ``value`` when it is a non-empty string, else ``None``."""
+
     return value if isinstance(value, str) and value else None
 
 
@@ -355,11 +409,14 @@ def merge_components(
 def _enrich(incumbent: Component, declared: Component) -> Component:
     """Fill an incumbent's optional fields from the authored row, keeping identity."""
 
-    return dataclasses.replace(
-        incumbent,
-        license=incumbent.license or declared.license,
-        provenance=incumbent.provenance or declared.provenance,
-        upstream_sbom=incumbent.upstream_sbom or declared.upstream_sbom,
+    return cast(
+        Component,
+        dataclasses.replace(
+            incumbent,
+            license=incumbent.license or declared.license,
+            provenance=incumbent.provenance or declared.provenance,
+            upstream_sbom=incumbent.upstream_sbom or declared.upstream_sbom,
+        ),
     )
 
 
@@ -393,21 +450,25 @@ def _read_member_yaml(pack_root: str | os.PathLike[str], rel: str) -> object | N
         _root, root_fd = _pack_fs.open_root(pack_root)
     except (_pack_fs.PackFilesystemError, OSError):
         return None
+    raw: bytes | None = None
     try:
         norm = _pack_fs.normalize_relpath(rel)
         raw = _pack_fs.read_member_bytes(root_fd, norm, max_bytes=8 * 1024 * 1024)
     except (_pack_fs.PackFilesystemError, OSError):
-        return None
+        raw = None
     finally:
         os.close(root_fd)
-    try:
-        return yaml.safe_load(raw.decode("utf-8"))
-    except (UnicodeDecodeError, yaml.YAMLError):
-        return None
+    result: object | None = None
+    if raw is not None:
+        try:
+            result = yaml.safe_load(raw.decode("utf-8"))
+        except (UnicodeDecodeError, yaml.YAMLError):
+            result = None
+    return result
 
 
 def _recover_kit_inventories(
-    pack_root: str | os.PathLike[str], kit_source_resolver
+    pack_root: str | os.PathLike[str], kit_source_resolver: KitSourceResolver | None = None
 ) -> tuple[list[dict[str, object]], list[validation.Diagnostic]]:
     """Recover kit component inventories through the immutable source/revision.
 
@@ -427,38 +488,70 @@ def _recover_kit_inventories(
     for index, record in enumerate(records):
         if not isinstance(record, dict):
             continue
-        source = record.get("source") if isinstance(record.get("source"), dict) else {}
-        kit_id = record.get("kit_id")
-        kit_version = record.get("kit_version")
-        source_id = source.get("id")
-        revision = source.get("revision")
-        path = f"{_KIT_MATERIALIZATIONS}[{index}]"
-        if not all(isinstance(v, str) and v for v in (kit_id, kit_version, source_id, revision)):
-            diagnostics.append(
-                validation.Diagnostic("component-boundary.kit-record-invalid", path=path)
-            )
-            continue
-        root = kit_source_resolver(source_id, revision, kit_id, kit_version) if kit_source_resolver else None
-        if root is None:
-            diagnostics.append(
-                validation.Diagnostic("component-boundary.kit-source-unavailable", path=path)
-            )
-            continue
-        try:
-            release = kits_module.source_release(
-                kits_module.KitSource(id=source_id, revision=revision, root=str(root)),
-                kit_id,
-                kit_version,
-            )
-        except kits_module.KitError:
-            diagnostics.append(
-                validation.Diagnostic("component-boundary.kit-source-unavailable", path=path)
-            )
-            continue
-        for entry in release.document.get("component_inventory", ()):
-            if isinstance(entry, dict):
-                inventories.append({**entry, "__kit_id": kit_id})
+        entries, record_diagnostics = _recover_one_kit_inventory(record, index, kit_source_resolver)
+        inventories.extend(entries)
+        diagnostics.extend(record_diagnostics)
     return inventories, diagnostics
+
+
+def _recover_one_kit_inventory(
+    record: Mapping[str, object],
+    index: int,
+    kit_source_resolver: KitSourceResolver | None,
+) -> tuple[list[dict[str, object]], list[validation.Diagnostic]]:
+    """Recover one materialization record's kit inventory entries.
+
+    Returns ``(entries, diagnostics)``. A record missing its immutable identity,
+    or a kit that cannot be opened through the resolver-supplied source, is
+    reported as a single bounded diagnostic and yields no entries; a recovered kit
+    tags every inventory row with its originating ``__kit_id``.
+    """
+
+    path = f"{_KIT_MATERIALIZATIONS}[{index}]"
+    source = record.get("source") if isinstance(record.get("source"), dict) else {}
+    kit_id = record.get("kit_id")
+    kit_version = record.get("kit_version")
+    source_id = source.get("id")
+    revision = source.get("revision")
+    if not all(isinstance(v, str) and v for v in (kit_id, kit_version, source_id, revision)):
+        return [], [validation.Diagnostic("component-boundary.kit-record-invalid", path=path)]
+    inventory = _open_kit_inventory(source_id, revision, kit_id, kit_version, kit_source_resolver)
+    if inventory is None:
+        return [], [validation.Diagnostic("component-boundary.kit-source-unavailable", path=path)]
+    return [{**entry, "__kit_id": kit_id} for entry in inventory], []
+
+
+def _open_kit_inventory(
+    source_id: str,
+    revision: str,
+    kit_id: str,
+    kit_version: str,
+    kit_source_resolver: KitSourceResolver | None,
+) -> list[dict[str, object]] | None:
+    """Return one kit's raw ``component_inventory`` rows, or ``None`` when unavailable.
+
+    ``None`` means no resolver could supply the immutable staged root or the kit
+    could not be opened through it -- an authority-unavailable failure the caller
+    reports rather than inferring components from filenames. A kit that opens with
+    no inventory returns an empty list.
+    """
+
+    root = kit_source_resolver(source_id, revision, kit_id, kit_version) if kit_source_resolver else None
+    if root is None:
+        return None
+    try:
+        release = kits_module.source_release(
+            kits_module.KitSource(id=source_id, revision=revision, root=str(root)),
+            kit_id,
+            kit_version,
+        )
+    except kits_module.KitError:
+        return None
+    return [
+        entry
+        for entry in release.document.get("component_inventory", ())
+        if isinstance(entry, dict)
+    ]
 
 
 def _load_lockfile(pack_root: str | os.PathLike[str]) -> object:
@@ -480,11 +573,24 @@ def _associated_artifact_ids(pack_root: str | os.PathLike[str]) -> frozenset[str
     return frozenset(manifest.artifacts)
 
 
+def _unknown_artifact_diagnostics(
+    pack_root: str | os.PathLike[str], declared: Sequence[Component]
+) -> list[validation.Diagnostic]:
+    """Flag authored associated-artifact rows the pack does not actually contain."""
+
+    return [
+        validation.Diagnostic("component-boundary.artifact-unknown", path=component.id)
+        for component in declared
+        if component.authority == "associated-artifact"
+        and component.ref not in _associated_artifact_ids(pack_root)
+    ]
+
+
 def pack_component_boundary(
     pack_root: str | os.PathLike[str],
     *,
     scenarios: Sequence[object] | None = None,
-    kit_source_resolver=None,
+    kit_source_resolver: KitSourceResolver | None = None,
 ) -> tuple[tuple[Component, ...], list[validation.Diagnostic]]:
     """Resolve one pack's full component boundary for SBOM generation.
 
@@ -507,14 +613,7 @@ def pack_component_boundary(
         schema_diagnostics, declared = validate_publication_supply_document(document)
         if schema_diagnostics:
             return declared, schema_diagnostics
-        for component in declared:
-            if (
-                component.authority == "associated-artifact"
-                and component.ref not in _associated_artifact_ids(pack_root)
-            ):
-                diagnostics.append(
-                    validation.Diagnostic("component-boundary.artifact-unknown", path=component.id)
-                )
+        diagnostics.extend(_unknown_artifact_diagnostics(pack_root, declared))
 
     kit_inventories, kit_diagnostics = _recover_kit_inventories(pack_root, kit_source_resolver)
     diagnostics.extend(kit_diagnostics)
