@@ -1,0 +1,52 @@
+schema_version: environment-pack-kit/v1
+id: infrastructure.inference-api-gateway
+version: 1.0.0
+title: Inference API gateway
+summary: Reusable inference api gateway with domain-specific configuration, declared
+  service surfaces, seeded objects, and pack-local integration material.
+concern: ai-model
+released_at: '2026-08-01T00:00:00Z'
+module:
+  path: module.sdl.yaml
+assets:
+- source: assets/integration.md
+  target: assets/kits/inference-api-gateway/integration.md
+  visibility: operator
+  artifact_id: integration-material
+- source: assets/seed.yaml
+  target: assets/kits/inference-api-gateway/seed.yaml
+  visibility: operator
+  artifact_id: seed-profile
+resources:
+  cpu_cores: 2
+  memory_mib: 2048
+  storage_mib: 4096
+  notes: Planning estimates only; realization sizing remains backend-owned.
+prerequisites:
+- kind: external
+  id: model-services
+  version: raes-3.2
+  description: Bind routes to one or more imported model-serving services.
+limitations:
+- Declares static infrastructure, seeded state, and integration surfaces only.
+- Does not claim launch, readiness, traffic attachment, credential delivery, or runtime
+  evidence.
+- Bind routes to one or more imported model-serving services.
+license:
+  expression: MIT
+  redistribution: open
+  attribution: OpenRAE contributors
+tests:
+- path: tests/composition.yaml
+  kind: validate
+- path: tests/composition.yaml
+  kind: parameter-variation
+- path: tests/composition.yaml
+  kind: multi-kit
+component_inventory:
+- scope: unresolved
+  authority: raes-source
+  ref: /nodes/gateway/source
+  description: RAES carries the declared litellm stable source; immutable artifact
+    selection remains unresolved until pack publication.
+associated_artifact_manifest: associated-artifacts.json

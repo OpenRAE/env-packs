@@ -1,0 +1,78 @@
+name: rdp-accessible-windows-host
+version: 1.0.0
+description: Reusable static infrastructure for RDP-accessible Windows host. Configures
+  login_name through the kit parameter contract.
+module:
+  id: infrastructure/rdp-accessible-windows-host
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - login_name
+  exports:
+    nodes:
+    - endpoint
+    content:
+    - seed_inventory
+    accounts:
+    - endpoint_user
+  description: Composable RDP-accessible Windows host infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: rdp-accessible-windows-host
+  login_name:
+    type: string
+    default: analyst
+nodes:
+  endpoint:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (RDP-accessible
+      Windows host). Configuration: ${login_name}.'
+    source:
+      name: windows-server
+      version: '2022'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 3389
+      protocol: tcp
+      name: rdp
+      description: Declared rdp service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: endpoint
+    description: Benign infrastructure seed inventory for ${login_name}.
+    items:
+    - name: login_account
+      display_name: Login Account
+      tags:
+      - infrastructure
+      - seed
+      description: Declared login account for this reusable service.
+    - name: desktop_profile
+      display_name: Desktop Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Declared desktop profile for this reusable service.
+    - name: remote_access_policy
+      display_name: Remote Access Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Declared remote access policy for this reusable service.
+accounts:
+  endpoint_user:
+    username: ${login_name}
+    node: endpoint
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

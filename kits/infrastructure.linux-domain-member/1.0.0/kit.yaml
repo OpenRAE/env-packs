@@ -1,0 +1,54 @@
+schema_version: environment-pack-kit/v1
+id: infrastructure.linux-domain-member
+version: 1.0.0
+title: Linux domain member
+summary: Reusable linux domain member with domain-specific configuration, declared
+  service surfaces, seeded objects, and pack-local integration material.
+concern: identity-domain
+released_at: '2026-08-01T00:00:00Z'
+module:
+  path: module.sdl.yaml
+assets:
+- source: assets/integration.md
+  target: assets/kits/linux-domain-member/integration.md
+  visibility: operator
+  artifact_id: integration-material
+- source: assets/seed.yaml
+  target: assets/kits/linux-domain-member/seed.yaml
+  visibility: operator
+  artifact_id: seed-profile
+resources:
+  cpu_cores: 2
+  memory_mib: 2048
+  storage_mib: 4096
+  notes: Planning estimates only; realization sizing remains backend-owned.
+prerequisites:
+- kind: external
+  id: directory-authority
+  version: raes-3.2
+  description: Compose with one exported RAES identity domain and add the pack-level
+    domain-join relationship.
+limitations:
+- Declares static infrastructure, seeded state, and integration surfaces only.
+- Does not claim launch, readiness, traffic attachment, credential delivery, or runtime
+  evidence.
+- Compose with one exported RAES identity domain and add the pack-level domain-join
+  relationship.
+license:
+  expression: MIT
+  redistribution: open
+  attribution: OpenRAE contributors
+tests:
+- path: tests/composition.yaml
+  kind: validate
+- path: tests/composition.yaml
+  kind: parameter-variation
+- path: tests/composition.yaml
+  kind: multi-kit
+component_inventory:
+- scope: unresolved
+  authority: raes-source
+  ref: /nodes/domain_member/source
+  description: RAES carries the declared linux stable source; immutable artifact selection
+    remains unresolved until pack publication.
+associated_artifact_manifest: associated-artifacts.json

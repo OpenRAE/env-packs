@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.thehive-case-management-service
+configuration:
+  organization_name: operations
+  deployment_profile: standard
+  service_label: thehive-case-management-service
+declared_objects:
+- id: organization
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: users
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: case_types
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: observable_types
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

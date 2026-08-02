@@ -1901,7 +1901,7 @@ generated_artifacts:
   wazuh-indexer-certs:
     generator: certificate_bundle
     lifecycle: reuse_valid
-    provenance: config/certs.yml
+    provenance: techvault:wazuh-indexer-certificate-profile/v1
     outputs:
       - {name: root-ca, path: root-ca.pem, sensitivity: public}
       - {name: indexer-key, path: wazuh.indexer-key.pem, sensitivity: secret}
@@ -1910,10 +1910,11 @@ generated_artifacts:
       - node: wazuh-indexer
         mount_destination: /usr/share/wazuh-indexer/certs
         access_mode: read_only
+        selected_outputs: [root-ca, indexer-key, indexer-cert]
   wazuh-manager-certs:
     generator: certificate_bundle
     lifecycle: reuse_valid
-    provenance: config/certs.yml
+    provenance: techvault:wazuh-manager-certificate-profile/v1
     outputs:
       - {name: manager-root-ca, path: root-ca-manager.pem, sensitivity: public}
       - {name: manager-key, path: wazuh.manager-key.pem, sensitivity: secret}
@@ -1922,10 +1923,11 @@ generated_artifacts:
       - node: wazuh-manager
         mount_destination: /etc/ssl/wazuh
         access_mode: read_only
+        selected_outputs: [manager-root-ca, manager-key, manager-cert]
   wazuh-dashboard-certs:
     generator: certificate_bundle
     lifecycle: reuse_valid
-    provenance: config/certs.yml
+    provenance: techvault:wazuh-dashboard-certificate-profile/v1
     outputs:
       - {name: root-ca, path: root-ca.pem, sensitivity: public}
       - {name: dashboard-key, path: wazuh.dashboard-key.pem, sensitivity: secret}
@@ -1934,17 +1936,161 @@ generated_artifacts:
       - node: wazuh-dashboard
         mount_destination: /usr/share/wazuh-dashboard/certs
         access_mode: read_only
+        selected_outputs: [root-ca, dashboard-key, dashboard-cert]
   wazuh-manager-config:
     generator: rendered_config
     lifecycle: regenerate_on_change
-    provenance: config/wazuh_cluster/wazuh_manager.conf
+    provenance: techvault:wazuh-manager-config-profile/v1
     outputs:
       - {name: manager-config, path: wazuh_manager.conf, sensitivity: secret}
     consumers:
       - node: wazuh-manager
         mount_destination: /wazuh-config-mount/etc/ossec.conf
         access_mode: read_only
+        selected_outputs: [manager-config]
     ordering_dependencies: [generated_artifacts.wazuh-manager-certs]
+
+  # Backend-produced access material replaces the seven former content.source
+  # entries that pointed at standup-generated APTL paths. The operator private
+  # key remains inside the producer. Each node receives only the output subset
+  # needed for its declared SSH path; no private key is copied into this pack.
+  techvault-ssh-keys:
+    generator: ssh_key_bundle
+    lifecycle: regenerate_on_change
+    provenance: techvault:ssh-access-profile/v1
+    outputs:
+      - name: operator-private-key
+        path: operator/control-plane-key
+        sensitivity: secret
+        disposition: producer_private
+      - name: workstation-dev-private-key
+        path: dev-user/.ssh/id_rsa
+        sensitivity: secret
+      - name: workstation-dev-public-key
+        path: dev-user/.ssh/id_rsa.pub
+        sensitivity: public
+      - name: workstation-pivot-private-key
+        path: labadmin/.ssh/id_ed25519
+        sensitivity: secret
+      - name: target-authorized-keys
+        path: labadmin/.ssh/authorized_keys
+        sensitivity: restricted
+      - name: kali-authorized-keys
+        path: kali/.ssh/authorized_keys
+        sensitivity: restricted
+      - name: kali-pivot-private-key
+        path: kali/.ssh/kali_pivot_key
+        sensitivity: secret
+    consumers:
+      - node: workstation
+        mount_destination: /home
+        access_mode: read_only
+        selected_outputs:
+          - workstation-dev-private-key
+          - workstation-dev-public-key
+          - workstation-pivot-private-key
+          - target-authorized-keys
+      - node: victim
+        mount_destination: /home
+        access_mode: read_only
+        selected_outputs: [target-authorized-keys]
+      - node: kali
+        mount_destination: /home
+        access_mode: read_only
+        selected_outputs: [kali-authorized-keys, kali-pivot-private-key]
+
+  # The SOC trust chain is separate from Wazuh's certificate bundles. Its CA
+  # private key is producer-private, while each service selects only the public
+  # CA and its own leaf/keystore material.
+  techvault-soc-certificates:
+    generator: certificate_bundle
+    lifecycle: reuse_valid
+    provenance: techvault:soc-certificate-profile/v1
+    outputs:
+      - name: ca-private-key
+        path: ca/lab-ca.key
+        sensitivity: secret
+        disposition: producer_private
+      - name: ca-certificate
+        path: ca/lab-ca.crt
+        sensitivity: public
+      - name: misp-certificate
+        path: misp/server.crt
+        sensitivity: public
+      - name: misp-private-key
+        path: misp/server.key
+        sensitivity: secret
+      - name: thehive-keystore
+        path: thehive/thehive.p12
+        sensitivity: restricted
+      - name: thehive-keystore-password
+        path: thehive/keystore-password
+        sensitivity: secret
+      - name: shuffle-certificate
+        path: shuffle/server.crt
+        sensitivity: public
+      - name: shuffle-private-key
+        path: shuffle/server.key
+        sensitivity: secret
+    consumers:
+      - node: misp
+        mount_destination: /opt/aptl/soc-certs
+        access_mode: read_only
+        selected_outputs: [ca-certificate, misp-certificate, misp-private-key]
+      - node: thehive
+        mount_destination: /opt/aptl/soc-certs
+        access_mode: read_only
+        selected_outputs: [ca-certificate, thehive-keystore, thehive-keystore-password]
+      - node: cortex
+        mount_destination: /opt/aptl/soc-certs
+        access_mode: read_only
+        selected_outputs: [ca-certificate]
+      - node: shuffle-frontend
+        mount_destination: /opt/aptl/soc-certs
+        access_mode: read_only
+        selected_outputs: [ca-certificate, shuffle-certificate, shuffle-private-key]
+
+  # Per-node flag signing keys are backend-produced and never ship as pack
+  # bytes. The producer retains its seed; each node receives only its own key,
+  # and the scoring backend can validate the corresponding aptl:v2 HMAC token.
+  techvault-flag-signing-keys:
+    generator: rendered_config
+    lifecycle: regenerate_on_change
+    provenance: techvault:flag-signing-profile/v2
+    outputs:
+      - name: signing-seed
+        path: internal/signing-seed
+        sensitivity: secret
+        disposition: producer_private
+      - name: victim-signing-key
+        path: victim.key
+        sensitivity: secret
+      - name: workstation-signing-key
+        path: workstation.key
+        sensitivity: secret
+      - name: webapp-signing-key
+        path: webapp.key
+        sensitivity: secret
+      - name: fileshare-signing-key
+        path: fileshare.key
+        sensitivity: secret
+    consumers:
+      - node: victim
+        mount_destination: /run/techvault/flag-signing
+        access_mode: read_only
+        selected_outputs: [victim-signing-key]
+      - node: workstation
+        mount_destination: /run/techvault/flag-signing
+        access_mode: read_only
+        selected_outputs: [workstation-signing-key]
+      - node: webapp
+        mount_destination: /run/techvault/flag-signing
+        access_mode: read_only
+        selected_outputs: [webapp-signing-key]
+      - node: fileshare
+        mount_destination: /run/techvault/flag-signing
+        access_mode: read_only
+        selected_outputs: [fileshare-signing-key]
 
 persistent_volumes:
   wazuh-indexer-data:
@@ -2171,31 +2317,116 @@ content:
     target: misp-suricata-sync
     path: /app/pyproject.toml
     source:
-      name: pyproject.toml
+      name: techvault-misp-sync-pyproject
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-misp-sync-pyproject-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-misp-sync-pyproject
+          version: 0.1.0
+          digest: sha256:0e7214cdacc8f396e91360782c9aaf6d8c6523d2fb944cfcd3763c4ac996450f
+          media_type: text/x-toml
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   misp-suricata-sync-readme:
     type: file
     target: misp-suricata-sync
     path: /app/README.md
     source:
-      name: README.md
+      name: techvault-misp-sync-readme
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-misp-sync-readme-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-misp-sync-readme
+          version: 0.1.0
+          digest: sha256:07c3dee4987c47e57bc8f0333073abdc07b832a7e82136c3123577531978231b
+          media_type: text/markdown
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   misp-suricata-sync-hatch-build:
     type: file
     target: misp-suricata-sync
     path: /app/hatch_build.py
     source:
-      name: hatch_build.py
+      name: techvault-misp-sync-hatch-build
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-misp-sync-hatch-build-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-misp-sync-hatch-build
+          version: 0.1.0
+          digest: sha256:975022d60fe6f5187b169d3e20932fd6c242dc1658f59232627eab7e75bf713c
+          media_type: text/x-python
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   misp-suricata-sync-src:
     type: directory
     target: misp-suricata-sync
     destination: /app/src
     source:
-      name: src
+      name: techvault-misp-sync-src
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-misp-sync-src-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-misp-sync-src
+          version: 0.1.0
+          digest: sha256:c872e56e963934883190f7fed307116504c39d6771a528852a8b4e27682e8b91
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   webapp-app-code:
     type: directory
     target: webapp
     destination: /app
     source:
-      name: containers/webapp/app
+      name: techvault-webapp-app
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-webapp-app-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-webapp-app
+          version: 0.1.0
+          digest: sha256:521886364d4cb8bf4f6b3be05bf5598cba182b27a7ee4715ae0dc518134f4101
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   webapp-service-unit:
     type: file
     target: webapp
@@ -2277,37 +2508,122 @@ content:
     target: dns
     path: /etc/bind/named.conf
     source:
-      name: containers/dns/named.conf
+      name: techvault-dns-named-conf
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-dns-named-conf-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-dns-named-conf
+          version: 0.1.0
+          digest: sha256:3df85c5e388295b0e321598c9932a78bfb18e47315263c6990e9e36cb1b62ee7
+          media_type: text/plain
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   dns-zone-fwd:
     type: file
     target: dns
     path: /etc/bind/zones/techvault.local.zone
     source:
-      name: containers/dns/zones/techvault.local.zone
+      name: techvault-dns-forward-zone
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-dns-forward-zone-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-dns-forward-zone
+          version: 0.1.0
+          digest: sha256:d12de977f09275e342454a58ca004f7909ff808c29143b4c6d4ecb14db611a82
+          media_type: text/plain
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   dns-zone-rev:
     type: file
     target: dns
     path: /etc/bind/zones/172.20.rev
     source:
-      name: containers/dns/zones/172.20.rev
+      name: techvault-dns-reverse-zone
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-dns-reverse-zone-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-dns-reverse-zone
+          version: 0.1.0
+          digest: sha256:ceb577f74bf3841ee10dae1a35e07afb921f9136bd4f9dbbd60d4afd1a4f0a02
+          media_type: text/plain
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   fileshare-smb-conf:
     type: file
     target: fileshare
     path: /etc/samba/smb.conf
     source:
-      name: containers/fileshare/smb.conf
+      name: techvault-fileshare-smb-conf
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-fileshare-smb-conf-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-fileshare-smb-conf
+          version: 0.1.0
+          digest: sha256:847edd4733cb764eba178c933831bf1af2359cd9042674994f70b91491a289e0
+          media_type: text/plain
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   # Full TechVault file-share loot tree — #581 parity. smb.conf advertises
   # Public/Engineering/Finance/HR/IT-Backups/Shared; the red-team exercise
   # mines the planted creds (engineering/deployments/deploy.sh), PII
   # (hr/employees/directory.csv), wifi passwords (shared/wifi-passwords.txt),
-  # and a leaked deploy key (it-backups/keys/). Realized from a checked-in
-  # fixture, not baked onto an image. Keeps the onboarding + public notice.
+  # and a leaked deploy key in the IT-Backups share. The exact pack artifact
+  # carries the fixture rather than relying on a checkout path.
   fileshare-shares:
     type: directory
     target: fileshare
     destination: /srv/shares
     source:
-      name: scenarios/fixtures/techvault-content/fileshare-shares
+      name: techvault-fileshare-shares
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-fileshare-shares-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-fileshare-shares
+          version: 0.1.0
+          digest: sha256:342bc178915bd1fc8d84d2a57511175ad386eec08ac2830b9757c8dc2847e726
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   # Workstation dev-user loot home — #581 parity (WS-01..WS-05). Planted
   # credential artifacts (.bash_history, .pgpass, .config/credentials.json,
   # projects/techvault-portal/{.env,deploy.sh}, Documents/onboarding-notes.txt,
@@ -2317,56 +2633,79 @@ content:
     target: workstation
     destination: /home/dev-user
     source:
-      name: scenarios/fixtures/techvault-content/dev-user-home
+      name: techvault-workstation-dev-user-home
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-workstation-dev-user-home-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-workstation-dev-user-home
+          version: 0.1.0
+          digest: sha256:a1a4f93fe5783a0ed1caf7c7bb78c1fae1506d4ab5eef34464f43b4e4884b4b7
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   # dev-user's leaked SSH private key (loot WS-03) is the real workstation->
   # victim lateral-movement pivot: the standup-generated workstation pivot
-  # keypair (config/lab-ssh/workstation_pivot_key, ensure_workstation_pivot_key
-  # in src/aptl/core/ssh.py) whose public half victim already authorizes
+  # keypair from the `techvault-ssh-keys` generated artifact, whose public half
+  # victim already authorizes
   # (victim-authorized-keys below). Placing its private half here as dev-user's
   # ~/.ssh/id_rsa reproduces the v5.0.0 workstation entrypoint's throwaway
   # dev-user keypair, so `ssh -i ~/.ssh/id_rsa labadmin@victim` from the
-  # compromised workstation works. The key is never tracked (lab-ssh is
-  # gitignored + generated per standup), so no id_rsa/PEM secret ships in-repo.
-  workstation-dev-user-privkey:
-    type: file
-    target: workstation
-    path: /home/dev-user/.ssh/id_rsa
-    source:
-      name: config/lab-ssh/workstation_pivot_key
-    sensitive: true
-  # The matching public half, so dev-user's keypair is self-consistent. This
-  # must be the pivot key's real .pub: `ssh -i id_rsa` reads id_rsa.pub (not the
-  # private key) to pick which key to offer, so a mismatched .pub makes ssh
-  # offer the wrong key and victim rejects the pivot. Sourced from the same
-  # standup-generated keypair (not the fixture, which cannot know the per-lab
-  # key) — the fixture's stale placeholder .pub was removed for this reason.
-  workstation-dev-user-pubkey:
-    type: file
-    target: workstation
-    path: /home/dev-user/.ssh/id_rsa.pub
-    source:
-      name: config/lab-ssh/workstation_pivot_key.pub
-  # The stock `postgresql` package creates an empty cluster with no
-  # techvault database/user and no schema — the legacy compose db service
-  # got these from postgres:16-alpine's POSTGRES_DB/USER/PASSWORD
-  # auto-init plus containers/db/init/*.sql mounted at
-  # /docker-entrypoint-initdb.d, neither of which apply to a generically
-  # materialized node. db-bootstrap.service (below) reproduces both by
-  # hand: opens postgres to the network, creates the techvault role/
-  # database, then loads the same schema/seed SQL webapp's own defaults
-  # (containers/webapp/app/app.py) already expect (issue #581).
+  # compromised workstation works. The private key is generated per standup,
+  # so no id_rsa/PEM secret ships in the pack.
   db-init-schema:
     type: file
     target: db
     path: /opt/db-init/01-schema.sql
     source:
-      name: containers/db/init/01-schema.sql
+      name: techvault-db-init-schema
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-db-init-schema-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-db-init-schema
+          version: 0.1.0
+          digest: sha256:7a1748928d6222db2e3877ec8f6599ec7e1aec8c2956d2842b8e49e146c52981
+          media_type: application/sql
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   db-init-seed:
     type: file
     target: db
     path: /opt/db-init/02-seed-data.sql
     source:
-      name: containers/db/init/02-seed-data.sql
+      name: techvault-db-init-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-db-init-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-db-init-seed
+          version: 0.1.0
+          digest: sha256:c98ab23427180f604ca9ccec5a00b426dc8d883a4102bbba24e76d5cda0f03dc
+          media_type: application/sql
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   db-bootstrap-script:
     type: file
     target: db
@@ -2416,61 +2755,52 @@ content:
   # victim additionally trusts the workstation pivot key below (Prime
   # scenario lateral movement, workstation -> victim), so it gets its own
   # combined file instead of sharing target_authorized_keys with workstation.
-  victim-authorized-keys:
-    type: file
-    target: victim
-    path: /home/labadmin/.ssh/authorized_keys
-    source:
-      name: keys/victim_authorized_keys
-  workstation-authorized-keys:
-    type: file
-    target: workstation
-    path: /home/labadmin/.ssh/authorized_keys
-    source:
-      name: keys/target_authorized_keys
-  # workstation's private half of the lateral-movement pivot into victim;
-  # placed as the default identity file so `ssh labadmin@victim` from
-  # workstation needs no -i flag, matching how the legacy entrypoint's
-  # throwaway dev-user keypair was used (issue #581).
-  workstation-pivot-key:
-    type: file
-    target: workstation
-    path: /home/labadmin/.ssh/id_ed25519
-    source:
-      name: config/lab-ssh/workstation_pivot_key
-    sensitive: true
-  kali-authorized-keys:
-    type: file
-    target: kali
-    path: /home/kali/.ssh/authorized_keys
-    source:
-      name: keys/authorized_keys
-  kali-pivot-key:
-    type: file
-    target: kali
-    path: /home/kali/.ssh/kali_pivot_key
-    source:
-      name: config/lab-ssh/kali_pivot_key
-    sensitive: true
-  # OBS-003 (ADR-033/ADR-041) per-session capture wiring, restored after the
-  # SDL conversion dropped it (issue #581): sshd's ForceCommand hands every
-  # kali-user session to aptl-wrap-shell.sh, which records the PTY via
-  # script(1) and streams it to the aptl-kali-capture sidecar (a separate,
-  # still-Compose-managed node sharing kali's network namespace) instead of
-  # writing evidence inside this container, where the kali user's
-  # passwordless sudo could tamper with it.
   kali-wrap-shell-script:
     type: file
     target: kali
     path: /usr/local/bin/aptl-wrap-shell.sh
     source:
-      name: containers/kali/scripts/aptl-wrap-shell.sh
+      name: techvault-kali-wrap-shell
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-kali-wrap-shell-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-kali-wrap-shell
+          version: 0.1.0
+          digest: sha256:4c718dc0eac63a682565014fdd7168797fc90e8d5d401987f351b03806498c7e
+          media_type: text/x-shellscript
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   kali-capture-client:
     type: file
     target: kali
     path: /usr/local/bin/aptl-capture-client
     source:
-      name: containers/kali/scripts/aptl-capture-client
+      name: techvault-kali-capture-client
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-kali-capture-client-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-kali-capture-client
+          version: 0.1.0
+          digest: sha256:d9f56dac38241055fa13057261a30a9922dbc7c22bddd850f2ace8cd22176fc2
+          media_type: text/x-python
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   # Drops CAP_AUDIT_CONTROL from sshd itself — belt-and-suspenders on top of
   # kali's container capability set (which never includes AUDIT_CONTROL to
   # begin with; that capability lives only on the capture sidecar).
@@ -2498,7 +2828,7 @@ content:
         {
           echo ""
           echo "# OBS-003 / ADR-033: per-session capture wiring"
-          echo "AcceptEnv APTL_SESSION_ID APTL_RUN_ID APTL_TRACE_ID"
+          echo "AcceptEnv APTL_SESSION_ID APTL_RUN_ID APTL_TRACE_ID APTL_CAPTURE_CAPABILITY"
           echo "Match User kali"
           echo "    ForceCommand /bin/bash /usr/local/bin/aptl-wrap-shell.sh"
         } >> /etc/ssh/sshd_config
@@ -2530,32 +2860,101 @@ content:
   # oneshot systemd unit running the shared aptl-flaggen.sh. flags.py (scoring)
   # reads /home/labadmin|dev-user/user.txt, /app/user.txt,
   # /srv/shares/shared/user-flag.txt, and /root/root.txt and verifies the
-  # aptl:v1 md5 token. One script; each node's unit supplies its Environment=.
+  # aptl:v2 HMAC-SHA-256 token. One script; each node's unit selects its
+  # backend-generated signing-key file through Environment=.
   # ---------------------------------------------------------------------------
   victim-flaggen-script:
     type: file
     target: victim
     path: /usr/local/sbin/aptl-flaggen.sh
     source:
-      name: scenarios/fixtures/techvault-content/aptl-flaggen.sh
+      name: techvault-flaggen-script
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-flaggen-script-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-flaggen-script
+          version: 0.1.0
+          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
+          media_type: text/x-shellscript
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   workstation-flaggen-script:
     type: file
     target: workstation
     path: /usr/local/sbin/aptl-flaggen.sh
     source:
-      name: scenarios/fixtures/techvault-content/aptl-flaggen.sh
+      name: techvault-flaggen-script
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-flaggen-script-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-flaggen-script
+          version: 0.1.0
+          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
+          media_type: text/x-shellscript
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   webapp-flaggen-script:
     type: file
     target: webapp
     path: /usr/local/sbin/aptl-flaggen.sh
     source:
-      name: scenarios/fixtures/techvault-content/aptl-flaggen.sh
+      name: techvault-flaggen-script
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-flaggen-script-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-flaggen-script
+          version: 0.1.0
+          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
+          media_type: text/x-shellscript
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   fileshare-flaggen-script:
     type: file
     target: fileshare
     path: /usr/local/sbin/aptl-flaggen.sh
     source:
-      name: scenarios/fixtures/techvault-content/aptl-flaggen.sh
+      name: techvault-flaggen-script
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-flaggen-script-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-flaggen-script
+          version: 0.1.0
+          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
+          media_type: text/x-shellscript
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   victim-flaggen-unit:
     type: file
     target: victim
@@ -2568,6 +2967,7 @@ content:
       [Service]
       Type=oneshot
       RemainAfterExit=yes
+      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/victim.key
       Environment=APTL_FLAG_NODE=victim
       Environment=APTL_FLAG_USER_PATH=/home/labadmin/user.txt
       Environment=APTL_FLAG_USER_OWNER=labadmin:labadmin
@@ -2587,6 +2987,7 @@ content:
       [Service]
       Type=oneshot
       RemainAfterExit=yes
+      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/workstation.key
       Environment=APTL_FLAG_NODE=workstation
       Environment=APTL_FLAG_USER_PATH=/home/dev-user/user.txt
       Environment=APTL_FLAG_USER_OWNER=dev-user:dev-user
@@ -2606,6 +3007,7 @@ content:
       [Service]
       Type=oneshot
       RemainAfterExit=yes
+      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/webapp.key
       Environment=APTL_FLAG_NODE=webapp
       Environment=APTL_FLAG_USER_PATH=/app/user.txt
       Environment=APTL_FLAG_USER_OWNER=root:root
@@ -2625,6 +3027,7 @@ content:
       [Service]
       Type=oneshot
       RemainAfterExit=yes
+      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/fileshare.key
       Environment=APTL_FLAG_NODE=fileshare
       Environment=APTL_FLAG_USER_PATH=/srv/shares/shared/user-flag.txt
       Environment=APTL_FLAG_USER_OWNER=root:root

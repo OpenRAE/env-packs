@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.policy-engine-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "policy-engine",
+    "ref_version": null,
+    "ref_digest": "sha256:4562edfaeb958fef0acdc602ff50f6792770b60a57f9d10286cf3062c6a29c50",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "9e8cd5c5c350c59455a18e06bb0ef9904b386ec18d83f433b8233656f28a2263"
+      },
+      "size_bytes": 459,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.policy-engine@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "4a5073331c35a644175898befc889e3c24a1544cff43a82d3d36239e3f2b6d74"
+      },
+      "size_bytes": 504,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.policy-engine@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "458087fe69f13548da9f0cf6d85e10a48ff333a37ae0635778e80864af42254e"
+      },
+      "size_bytes": 636,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.policy-engine@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "4a5acd253fc6090a0a1a63168b7726703b1cb59e18f1a4352539eb0ceeaba383"
+      },
+      "size_bytes": 1639,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.policy-engine@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7e2cfacbb6862a424b62bd4250249b23fde225eeeb0738eaa0360c9f297365df"
+      },
+      "size_bytes": 2676,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.policy-engine@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "75dac95f1186cc1abb058df674c324d29e24dbb1a99564325cbfe902520abd78"
+      },
+      "size_bytes": 242,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.policy-engine@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:85d9827bf2d76fde3ca7f6562029795a39aa18842e6f603a4ca45f9400a56429"
+}

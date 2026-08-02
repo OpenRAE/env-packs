@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.wazuh-security-monitoring-stack-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "wazuh-security-monitoring-stack",
+    "ref_version": null,
+    "ref_digest": "sha256:5084d42bd3b8caff80c2f9489dd0b8b44c024f93213c6f92fd412ab5d2fe571b",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "ade06fc423047bb4dee7f398569d550140fa1f38359b41f2ada0f579fdf5aee0"
+      },
+      "size_bytes": 495,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.wazuh-security-monitoring-stack@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "c9973c2dcab36a6d077174486c9e43b6c2eba18969741b13d836a6a572625136"
+      },
+      "size_bytes": 563,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.wazuh-security-monitoring-stack@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "593fedc54d031ace4941eae9596fd1ea7e9588274cdfe4611720da2216c197c0"
+      },
+      "size_bytes": 675,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.wazuh-security-monitoring-stack@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "bf22dcbaf8fff6c7e1f37dc1f0a8a0ee220d3e3cd805df13cced96d6f38fc529"
+      },
+      "size_bytes": 2163,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.wazuh-security-monitoring-stack@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "2a160d7e45a92298fe2745fcaf33f4f2684a4a4c3a9cb8be2f8b2dc0a0365960"
+      },
+      "size_bytes": 4208,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.wazuh-security-monitoring-stack@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "4166b838d15d1034fa01ad6ecfc5511929125dfa7513f4030ac499b20c348311"
+      },
+      "size_bytes": 280,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.wazuh-security-monitoring-stack@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:a62c6b6d9243c144573e8eef5c14185431140f6a5c566c7efaec33c5c6f490a0"
+}

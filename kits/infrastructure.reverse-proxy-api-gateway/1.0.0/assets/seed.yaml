@@ -1,0 +1,21 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.reverse-proxy-api-gateway
+configuration:
+  route_prefix: /
+  deployment_profile: standard
+  service_label: reverse-proxy-api-gateway
+declared_objects:
+- id: listener_routes
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: upstream_bindings
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: tls_termination
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: request_limits
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Add pack-level proxy-upstream relationships to imported application services.

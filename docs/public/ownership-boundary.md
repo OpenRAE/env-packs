@@ -13,8 +13,8 @@ are meant to agree and be read together.
 | Concern | Owner |
 | --- | --- |
 | Portable scenario, workflow, capture, evidence, and inventory semantics | RAES |
-| Environment-pack format, templates, schemas, validation, release tooling, and adoption guidance | `OpenRAE/env-packs` (this repository) |
-| A particular scenario's content, experiment design, and execution choices | The downstream scenario or experiment owner |
+| Environment-pack format, templates, schemas, validation, release tooling, adoption guidance, and selected first-party pack content | `OpenRAE/env-packs` (this repository) |
+| A particular scenario's content and experiment design | Its declared pack owner, which may be this repository or an external catalog |
 | Admitted-plan realization, lab lifecycle, trusted source acquisition, backend observation, and local evidence persistence | APTL |
 
 ### RAES owns the meaning
@@ -27,24 +27,23 @@ package and defines zero extensions to them. Where a scenario needs expressivity
 RAES lacks, that gap is fixed upstream in RAES, never worked around in the pack
 format.
 
-### This repository owns the format, not a scenario
+### This repository owns the format and selected first-party scenarios
 
 `OpenRAE/env-packs` owns the environment-pack format: the layout contract,
-templates, schemas, validation, release tooling, and adoption guidance. That is
-its whole scope. It does not own — and must not encode — a particular experiment
-or scenario: no pack content, no experiment design, no chosen participants,
-targets, or execution. It ships the shape a pack takes and the gates that prove a
-pack fits that shape. Packs live in their own catalog repositories.
+templates, schemas, validation, release tooling, and adoption guidance. Under
+ADR 0036 it may also own selected first-party scenario packs under `packs/`.
+Those packs remain RAES inputs and receive no special semantics or runtime
+privileges from being colocated with the tooling.
 
 ### The downstream owner owns the scenario
 
-Whoever authors a particular scenario owns its content, its experiment design,
+Whoever owns a particular pack owns its content and experiment design,
 and the execution choices made with a pack: which RAES scenario is authored, what
 the environment contains, which capture requirements are declared, and what the
 run is meant to show. Those are RAES inputs expressed within this format. They are
 not authority over RAES semantics, and not authority over runtime detail.
 
-### APTL owns runtime realization
+### APTL owns runtime realization, not pack content
 
 APTL owns admitted-plan realization, lab lifecycle, trusted source acquisition,
 backend observation, and APTL-local evidence persistence. It lowers an admitted

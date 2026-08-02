@@ -1,0 +1,84 @@
+name: browser-workstation
+version: 1.0.0
+description: Reusable static infrastructure for Browser workstation. Configures browser_profile
+  through the kit parameter contract.
+module:
+  id: infrastructure/browser-workstation
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - browser_profile
+  exports:
+    nodes:
+    - workstation
+    content:
+    - seed_inventory
+    accounts:
+    - workstation_user
+  description: Composable Browser workstation infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: browser-workstation
+  browser_profile:
+    type: string
+    default: managed
+nodes:
+  workstation:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Browser workstation).
+      Configuration: ${browser_profile}.'
+    source:
+      name: chromium
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 3000
+      protocol: tcp
+      name: desktop
+      description: Declared desktop service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: workstation
+    description: Benign infrastructure seed inventory for ${browser_profile}.
+    items:
+    - name: browser_policy
+      display_name: Browser Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Declared browser policy for this reusable service.
+    - name: trusted_roots
+      display_name: Trusted Roots
+      tags:
+      - infrastructure
+      - seed
+      description: Declared trusted roots for this reusable service.
+    - name: bookmarks
+      display_name: Bookmarks
+      tags:
+      - infrastructure
+      - seed
+      description: Declared bookmarks for this reusable service.
+    - name: download_workspace
+      display_name: Download Workspace
+      tags:
+      - infrastructure
+      - seed
+      description: Declared download workspace for this reusable service.
+accounts:
+  workstation_user:
+    username: analyst
+    node: workstation
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

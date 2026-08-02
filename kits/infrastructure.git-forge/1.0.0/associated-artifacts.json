@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.git-forge-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "git-forge",
+    "ref_version": null,
+    "ref_digest": "sha256:93e6a82a6f12d0c400db8152b3c91fd03745200190965d449956ec84d0349833",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "8ee7b157176aed9cb520f7e6fb861ac88d0edb8b2b0a72c743fa518f06e98b00"
+      },
+      "size_bytes": 451,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.git-forge@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "b9a8092c61c21353a2bc2ce10f1c3936d74ac26f44bb9d4fb18527b862ed7d4d"
+      },
+      "size_bytes": 501,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.git-forge@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d92c8f73323aa316d4d63434248911d3af303e6518832144a71690af7345ddda"
+      },
+      "size_bytes": 621,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.git-forge@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "f32cef16c1881d7671af4faf6dfda1c14f48355f1441c152615965ea56b82167"
+      },
+      "size_bytes": 1612,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.git-forge@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "1fdd06b376954ae5955f98d5457f10f9a5a2ab8f3775b0dc87628461edaa9ca8"
+      },
+      "size_bytes": 2699,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.git-forge@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "cccbcad74d5f748914950e9760c18a43a9e8a35ef26dc756242e8308108edcea"
+      },
+      "size_bytes": 249,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.git-forge@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:b1c32d244c643fda717a4c0a934700658bb5bbc00ec8467bd8bc355484595aa2"
+}

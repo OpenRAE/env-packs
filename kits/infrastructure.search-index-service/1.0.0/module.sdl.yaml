@@ -1,0 +1,105 @@
+name: search-index-service
+version: 1.0.0
+description: Reusable static infrastructure for Search/index service. Configures index_name
+  through the kit parameter contract.
+module:
+  id: infrastructure/search-index-service
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - index_name
+  exports:
+    nodes:
+    - search
+    content:
+    - seed_inventory
+    accounts:
+    - search_operator
+  description: Composable Search/index service infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: search-index-service
+  index_name:
+    type: string
+    default: documents
+nodes:
+  search:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Search/index
+      service). Configuration: ${index_name}.'
+    source:
+      name: opensearch
+      version: '2'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 9200
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: search_surface
+        service: http
+        protocol: http
+        name: Search surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: search
+    description: Benign infrastructure seed inventory for ${index_name}.
+    items:
+    - name: index
+      display_name: Index
+      tags:
+      - infrastructure
+      - seed
+      description: Declared index for this reusable service.
+    - name: field_mapping
+      display_name: Field Mapping
+      tags:
+      - infrastructure
+      - seed
+      description: Declared field mapping for this reusable service.
+    - name: index_template
+      display_name: Index Template
+      tags:
+      - infrastructure
+      - seed
+      description: Declared index template for this reusable service.
+    - name: seed_documents
+      display_name: Seed Documents
+      tags:
+      - infrastructure
+      - seed
+      description: Declared seed documents for this reusable service.
+accounts:
+  search_operator:
+    username: search-operator
+    node: search
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

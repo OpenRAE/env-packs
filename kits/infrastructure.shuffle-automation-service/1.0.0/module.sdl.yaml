@@ -1,0 +1,142 @@
+name: shuffle-automation-service
+version: 1.0.0
+description: Reusable static infrastructure for Shuffle automation service. Configures
+  tenant_name through the kit parameter contract.
+module:
+  id: infrastructure/shuffle-automation-service
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - tenant_name
+  exports:
+    nodes:
+    - automation
+    - storage
+    content:
+    - seed_inventory
+    accounts:
+    - automation_operator
+  description: Composable Shuffle automation service infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: shuffle-automation-service
+  tenant_name:
+    type: string
+    default: operations
+nodes:
+  automation:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Shuffle automation
+      service). Configuration: ${tenant_name}.'
+    source:
+      name: shuffle
+      version: '2'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 3001
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: automation_surface
+        service: http
+        protocol: http
+        name: Automation surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+  storage:
+    type: vm
+    description: ${deployment_profile} profile for ${service_label} (Shuffle automation
+      service).
+    source:
+      name: opensearch
+      version: '2'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 9200
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: storage_surface
+        service: http
+        protocol: http
+        name: Storage surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: automation
+    description: Benign infrastructure seed inventory for ${tenant_name}.
+    items:
+    - name: tenant
+      display_name: Tenant
+      tags:
+      - infrastructure
+      - seed
+      description: Declared tenant for this reusable service.
+    - name: users
+      display_name: Users
+      tags:
+      - infrastructure
+      - seed
+      description: Declared users for this reusable service.
+    - name: application_integrations
+      display_name: Application Integrations
+      tags:
+      - infrastructure
+      - seed
+      description: Declared application integrations for this reusable service.
+    - name: storage_profile
+      display_name: Storage Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Declared storage profile for this reusable service.
+accounts:
+  automation_operator:
+    username: automation-operator
+    node: automation
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

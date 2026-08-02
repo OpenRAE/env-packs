@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: authoritative-dns-service
+  zone_name: environment.test
+variation:
+  deployment_profile: compact
+  service_label: authoritative-dns-service-alternate
+  zone_name: alternate.test
+multi_kit_group: network-shared

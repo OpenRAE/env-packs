@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: python-evaluation-worker
+  queue_name: evaluation
+variation:
+  deployment_profile: compact
+  service_label: python-evaluation-worker-alternate
+  queue_name: batch
+multi_kit_group: ai-model

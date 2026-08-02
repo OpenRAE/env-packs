@@ -1,0 +1,99 @@
+name: lab-portal
+version: 1.0.0
+description: Reusable static infrastructure for Lab portal. Configures portal_title
+  through the kit parameter contract.
+module:
+  id: infrastructure/lab-portal
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - portal_title
+  exports:
+    nodes:
+    - portal
+    content:
+    - seed_inventory
+    accounts:
+    - portal_user
+  description: Composable Lab portal infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: lab-portal
+  portal_title:
+    type: string
+    default: Environment Portal
+nodes:
+  portal:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Lab portal).
+      Configuration: ${portal_title}.'
+    source:
+      name: homepage
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 3000
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: portal_surface
+        service: http
+        protocol: http
+        name: Portal surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: portal
+    description: Benign infrastructure seed inventory for ${portal_title}.
+    items:
+    - name: service_index
+      display_name: Service Index
+      tags:
+      - infrastructure
+      - seed
+      description: Declared service index for this reusable service.
+    - name: identity_binding
+      display_name: Identity Binding
+      tags:
+      - infrastructure
+      - seed
+      description: Declared identity binding for this reusable service.
+    - name: navigation_groups
+      display_name: Navigation Groups
+      tags:
+      - infrastructure
+      - seed
+      description: Declared navigation groups for this reusable service.
+accounts:
+  portal_user:
+    username: portal-user
+    node: portal
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

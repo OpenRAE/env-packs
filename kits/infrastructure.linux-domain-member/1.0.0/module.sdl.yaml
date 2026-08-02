@@ -1,0 +1,78 @@
+name: linux-domain-member
+version: 1.0.0
+description: Reusable static infrastructure for Linux domain member. Configures computer_name
+  through the kit parameter contract.
+module:
+  id: infrastructure/linux-domain-member
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - computer_name
+  exports:
+    nodes:
+    - domain_member
+    content:
+    - seed_inventory
+    accounts:
+    - member_operator
+  description: Composable Linux domain member infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: linux-domain-member
+  computer_name:
+    type: string
+    default: linux-member-01
+nodes:
+  domain_member:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Linux domain
+      member). Configuration: ${computer_name}.'
+    source:
+      name: linux
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 22
+      protocol: tcp
+      name: ssh
+      description: Declared ssh service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: domain_member
+    description: Benign infrastructure seed inventory for ${computer_name}.
+    items:
+    - name: domain_join_profile
+      display_name: Domain Join Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Declared domain join profile for this reusable service.
+    - name: nss_mapping
+      display_name: Nss Mapping
+      tags:
+      - infrastructure
+      - seed
+      description: Declared nss mapping for this reusable service.
+    - name: sudo_policy
+      display_name: Sudo Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Declared sudo policy for this reusable service.
+accounts:
+  member_operator:
+    username: member-operator
+    node: domain_member
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

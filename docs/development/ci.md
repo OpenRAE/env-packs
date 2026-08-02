@@ -34,8 +34,10 @@ arrives first:
   authority**.
 - **`audit`** — `pip-audit` over the installed runtime + build + audit-tool
   closure, with a bounded retry for the network-backed advisory service.
-- **`content`** — `raes-pack-validate --repo .` and `raes-pack-release check
-  --all`.
+- **`content`** — the legacy external-catalog checks
+  (`raes-pack-validate --repo .`, `raes-pack-release check --all`) plus explicit
+  `raes-pack-validate --packs-root packs` and
+  `raes-pack-release check --packs-root packs` for first-party packs hosted here.
 
 Because they no longer share a job, a broken test surfaces on the `tests` check
 without waiting for the `pip-audit` network lookup, and vice versa.
@@ -87,7 +89,7 @@ the source of truth.
 | `compile` | `python -m compileall src tests` |
 | `tests` | `python -m unittest discover -s tests` (add coverage: `coverage run -m unittest discover -s tests && coverage xml`) |
 | `audit` | `python -m pip install -r requirements/pip-audit.txt && pip-audit` |
-| `content` | `raes-pack-validate --repo .` then `raes-pack-release check --all` |
+| `content` | `raes-pack-validate --repo .`, `raes-pack-release check --all`, then the equivalent explicit `--packs-root packs` gates |
 | `sonar` | runs in CI only (needs `SONAR_TOKEN`); the coverage input is the `coverage.xml` from `tests` |
 | `PR title guard` | `python tools/check_pr_title.py` (reads the PR title from the event) |
 
