@@ -1,8 +1,8 @@
 # Agent Instructions
 
 This repository is the canonical home for the RAES environment-pack definition,
-schemas, template, and authoring/validation tooling. It does not host actual
-environment packs — those live in their own catalog repositories and consume this
+schemas, template, authoring/validation tooling, and selected first-party packs
+under `packs/`. External catalog repositories remain supported consumers of the
 package.
 
 ## Repository Boundaries
@@ -15,9 +15,10 @@ easier. It defines **zero extensions** to RAES semantics
 - RAES core owns all scenario semantics — the SDL and its objectives,
   conditions, evidence, and participant/attacker behaviour. Where RAES owns a
   concept, consume it from RAES; never redefine or extend it here.
-- This repository owns only the environment-pack layout and the
-  authoring/validation/release tooling.
-- Actual environment packs live in their own catalog repos, not here.
+- This repository owns the environment-pack layout and the
+  authoring/validation/release tooling, plus the content of selected first-party
+  packs under `packs/` (ADR 0036).
+- Runtime backends consume hosted packs; they do not own the portable scenario.
 - Don't import downstream catalog names, paths, branch rules, labels, product
   assumptions, or private deployment vocabulary into the canonical docs.
 
@@ -29,6 +30,8 @@ Before declaring repository work complete, run (in a venv with `pip install -e .
 python -m unittest discover -s tests
 raes-pack-validate --repo .
 raes-pack-release check --all
+raes-pack-validate --packs-root packs
+raes-pack-release check --packs-root packs
 python3 -m compileall src tests
 ```
 

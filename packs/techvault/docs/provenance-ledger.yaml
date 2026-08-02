@@ -1,0 +1,58 @@
+schema_version: "environment-pack-provenance/v3"
+pack:
+  name: techvault
+sources:
+  - source_id: aptl-techvault
+    name: APTL TechVault scenario and tracked content
+    license: MIT
+    usage: adapted
+    attribution_required: true
+    attribution: Copyright (c) 2026 Brad Edwards
+    used: Full SDL and the tracked files represented by assets/content.
+    url: https://github.com/Brad-Edwards/aptl
+    ref: 3db5171f3e4add842efd1d81fa0d4fe078511b7e
+  - source_id: environment-pack-authorship
+    name: TechVault environment-pack metadata and artifact bindings
+    license: MIT
+    usage: generated-from
+    attribution_required: false
+    used: Pack manifests, satisfaction profile, validation, and documentation.
+artifacts:
+  - artifact_id: scenario
+    path: sdl/
+    classification: open
+    sources: [aptl-techvault]
+    description: Complete RAES TechVault scenario definition.
+  - artifact_id: content
+    path: assets/
+    classification: open
+    sources: [aptl-techvault]
+    description: Synthetic lab content bound to exact SDL artifact requirements.
+  - artifact_id: pack-contract
+    path: profiles/
+    classification: open
+    sources: [environment-pack-authorship]
+    description: Exact pack artifact satisfaction profile.
+  - artifact_id: documentation
+    path: docs/
+    classification: open
+    sources: [aptl-techvault, environment-pack-authorship]
+    description: Pack documentation, provenance, and non-golden status record.
+content_safety:
+  no_real_malware: true
+  no_real_third_party_targets: true
+  no_real_credentials: true
+  no_sensitive_data: true
+  offensive_tooling_boundary: true
+  notes: All credentials, identities, keys, and data are synthetic lab fixtures.
+review:
+  status: approved
+  gates:
+    - gate_id: licensing
+      status: approved
+    - gate_id: attribution
+      status: approved
+    - gate_id: sensitive-data
+      status: approved
+    - gate_id: offensive-tooling
+      status: approved

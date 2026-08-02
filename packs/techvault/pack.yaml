@@ -1,0 +1,18 @@
+name: techvault
+title: TechVault
+version: 0.1.0
+status: built
+description: >-
+  A complete enterprise intrusion scenario spanning a vulnerable customer
+  portal, identity, data services, attacker infrastructure, and a defensive SOC.
+authors:
+  - Brad Edwards
+license: MIT
+requirement: "OpenRAE/env-packs#234"
+contents:
+  flag_layer: false
+  reference_triangle: false
+  profile_bundles: true
+compatibility_manifest: pack.compatibility.yaml
+provenance_ledger: docs/provenance-ledger.yaml
+associated_artifact_manifest: associated-artifacts.json

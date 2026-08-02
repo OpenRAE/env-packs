@@ -1,0 +1,53 @@
+schema_version: "environment-pack-compatibility/v2"
+pack:
+  name: techvault
+  title: TechVault
+  version: 0.1.0
+  status: built
+  provenance_ledger: docs/provenance-ledger.yaml
+  source:
+    requirement: "OpenRAE/env-packs#234"
+    issues: [234, 237]
+    upstream_references:
+      - https://github.com/Brad-Edwards/aptl/commit/3db5171f3e4add842efd1d81fa0d4fe078511b7e
+artifact_boundaries:
+  participant_visible:
+    - path: README.md
+      export: public
+      description: Participant-safe pack overview.
+    - path: docs/concepts.md
+      export: public
+      description: Participant-safe scenario concepts.
+  operator_only:
+    - path: docs/golden-readiness-checklist.md
+      export: operator
+      description: Uncompleted golden-range review protocol.
+  oracle_only: []
+  commercial: []
+runtime_profiles: []
+delivery_bundles: []
+platform_features: []
+assets:
+  - asset_id: exact-content
+    path: associated-artifacts.json
+    visibility: operator
+    status: shipped
+    description: Byte-bound content and scenario inventory.
+operator_surfaces: []
+validation:
+  commands:
+    - id: pack-contract
+      command: raes-pack-validate --packs-root packs
+      validates: [manifest, pack-layout, leak-scan, sdl, associated-artifacts]
+    - id: pack-release
+      command: raes-pack-release check --packs-root packs
+      validates: [release]
+  gates:
+    - id: static-validation
+      kind: schema
+      paths:
+        - path: sdl/techvault.sdl.yaml
+    - id: exact-artifact-resolution
+      kind: unit-test
+      paths:
+        - path: validation/tests/test_pack.py

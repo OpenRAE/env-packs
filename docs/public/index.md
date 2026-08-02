@@ -9,8 +9,8 @@ build packs; consumers validate a pack before they trust it. Because the format
 and the tools ship together in one installable package, you validate a pack
 against the same version you built it against.
 
-This repository defines and validates the format. It does not host packs —
-those live in their own catalog repositories.
+This repository defines and validates the format and hosts selected first-party
+packs. External catalogs can use the same package and host additional packs.
 
 ## Start here
 

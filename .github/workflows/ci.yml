@@ -176,6 +176,12 @@ jobs:
       - name: Pack release gate
         run: raes-pack-release check --all
 
+      - name: First-party pack content gate
+        run: raes-pack-validate --packs-root packs
+
+      - name: First-party pack release gate
+        run: raes-pack-release check --packs-root packs
+
   # Documentation build. Independent of the other mandatory jobs. Builds only the
   # public source root (docs/public/) warning-strict, so a broken cross-reference
   # fails the merge instead of publishing, then asserts the built site contains no

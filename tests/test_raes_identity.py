@@ -38,6 +38,10 @@ _HISTORICAL_ALLOWLIST = {
     "docs/public/raes-migration.md",
     "requirements/recovery-v2.0.2.in",
     "requirements/recovery-v2.0.2.txt",
+    # Immutable upstream byte carrier: its internal project metadata records
+    # the historical dependency name. The artifact digest is pack-bound and
+    # rewriting it would corrupt the source payload.
+    "packs/techvault/assets/content/misp-sync-src.tar",
 }
 _IMMUTABLE_ADR_ALLOWLIST = {
     f"docs/decisions/adrs/{name}"
@@ -76,14 +80,6 @@ _BOUND_IDENTITY_LINES = {
     "sonar-project.properties": (
         f"https://sonarcloud.io/project/overview?id={_SONAR_PROJECT_KEY}",
         f"sonar.projectKey={_SONAR_PROJECT_KEY}",
-    ),
-    "packs/techvault/docs/provenance-ledger.yaml": (
-        f"  - artifact_id: aptl-{_RETIRED_PREFIX}-sdl",
-    ),
-    "packs/techvault/sdl/README.md": (
-        f"from APTL's operational TechVault SDL, captured from its "
-        f"`{_RETIRED_PREFIX}-sdl` 0.23.1",
-        f"the SDL through `{_RETIRED_PREFIX}_sdl`, not a TechVault-specific adapter.",
     ),
 }
 

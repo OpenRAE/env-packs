@@ -7,11 +7,10 @@ Read this before you build on the format, so its edges are clear up front.
 - Defines the environment-pack layout, schemas, and template.
 - Ships tools to scaffold a pack, validate one, and prepare a release.
 - Validates a pack's start state through a pinned RAES release.
+- Hosts selected first-party packs under `packs/`.
 
 ## What it does not do
 
-- **It does not host packs.** Packs live in catalog repositories that consume
-  this format. This repository holds the format and the tools, and no packs.
 - **It does not run a scenario.** Building and running a live environment belongs
   to RAES and the runtime. A valid pack is checked content, not a running range.
 - **It does not define scenario meaning.** The SDL and its semantics are

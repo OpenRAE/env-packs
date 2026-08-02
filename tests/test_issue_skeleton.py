@@ -144,12 +144,7 @@ class SkeletonTemplateTests(unittest.TestCase):
 
 
 class RepoTargetTests(unittest.TestCase):
-    """The catalog repository must be named explicitly (issue #194).
-
-    The skeleton creates pack-implementation issues, which belong in a catalog
-    repository. This tooling repo (``OpenRAE/env-packs``) owns the pack
-    format, not pack content, so it must never be a silent or explicit target.
-    """
+    """The owning repository must be named explicitly (issues #194, #234)."""
 
     def test_repo_has_no_argparse_default(self):
         args = SKELETON.parse_args(
@@ -178,24 +173,21 @@ class RepoTargetTests(unittest.TestCase):
                 self.assertEqual(
                     SKELETON.validate_target_selector(target), target)
 
-    def test_format_tooling_repo_is_rejected_case_insensitively(self):
-        for forbidden in ("OpenRAE/env-packs", "openrae/ENV-PACKS"):
-            with self.subTest(forbidden=forbidden):
-                with self.assertRaises(SystemExit):
-                    SKELETON.validate_target_selector(forbidden)
+    def test_first_party_host_is_allowed_case_insensitively(self):
+        for target in ("OpenRAE/env-packs", "openrae/ENV-PACKS"):
+            with self.subTest(target=target):
+                self.assertEqual(SKELETON.validate_target_selector(target), target)
+                self.assertEqual(SKELETON.pack_root_for_repo(target), "packs")
 
-    def test_ensure_not_tooling_repo_allows_catalogs(self):
-        SKELETON.ensure_not_tooling_repo("some-org/ok")
-        SKELETON.ensure_not_tooling_repo("example-org/first-party-packs")
-        with self.assertRaises(SystemExit):
-            SKELETON.ensure_not_tooling_repo("OpenRAE/env-packs")
+    def test_external_catalog_uses_environments_root(self):
+        self.assertEqual(
+            SKELETON.pack_root_for_repo("some-org/community-packs"),
+            "environments",
+        )
 
     def test_example_catalog_is_a_neutral_placeholder(self):
-        # Canonical tooling must stay catalog-neutral (issue #194 codex class
-        # finding): the only GitHub identity it embeds is this repo's own name
-        # (to reject it). The catalog example fed to help and error text must be
-        # an obvious placeholder, never a concrete downstream/first-party
-        # catalog such as one under the OpenRAE org.
+        # The external-catalog example fed to help and error text remains an
+        # obvious placeholder, never a concrete downstream catalog.
         self.assertRegex(SKELETON.EXAMPLE_CATALOG,
                          r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
         self.assertNotIn("openrae", SKELETON.EXAMPLE_CATALOG.lower())
@@ -205,23 +197,9 @@ class RepoTargetTests(unittest.TestCase):
         with mock.patch.object(SKELETON.subprocess, "run") as run:
             for argv in (
                 base,  # missing --repo
-                base + ["--repo", "OpenRAE/env-packs"],  # forbidden tooling repo
                 base + ["--repo", "notaslug"],  # malformed
             ):
                 with self.subTest(argv=argv):
                     with self.assertRaises(SystemExit):
                         SKELETON.main(argv)
             run.assert_not_called()
-
-    def test_main_rejects_canonical_alias_to_tooling_repo(self):
-        # gh resolves a redirected/renamed slug back to the tooling repo.
-        resolved = mock.Mock(
-            returncode=0,
-            stdout='{"nameWithOwner": "OpenRAE/env-packs"}',
-            stderr="",
-        )
-        with mock.patch.object(SKELETON.subprocess, "run", return_value=resolved):
-            with self.assertRaises(SystemExit):
-                SKELETON.main(["--pack-id", "example-pack",
-                               "--milestone-number", "1",
-                               "--repo", "OpenRAE/old-packs-alias"])
