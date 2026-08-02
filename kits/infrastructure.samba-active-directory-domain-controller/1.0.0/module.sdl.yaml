@@ -1,0 +1,120 @@
+name: samba-active-directory-domain-controller
+version: 1.0.0
+description: Reusable static infrastructure for Samba Active Directory-compatible
+  domain controller. Configures domain_name through the kit parameter contract.
+module:
+  id: infrastructure/samba-active-directory-domain-controller
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - domain_name
+  exports:
+    nodes:
+    - domain_controller
+    accounts:
+    - directory_administrator
+    identity_domains:
+    - directory
+    identity_forests:
+    - forest
+    relationships:
+    - directory_controller
+    content:
+    - seed_inventory
+  description: Composable Samba Active Directory-compatible domain controller infrastructure
+    module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: samba-active-directory-domain-controller
+  domain_name:
+    type: string
+    default: directory.example.test
+nodes:
+  domain_controller:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Samba Active
+      Directory-compatible domain controller). Configuration: ${domain_name}.'
+    source:
+      name: samba
+      version: '4'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 53
+      protocol: tcp
+      name: dns
+      description: Declared dns service surface.
+    - port: 88
+      protocol: tcp
+      name: kerberos
+      description: Declared kerberos service surface.
+    - port: 389
+      protocol: tcp
+      name: ldap
+      description: Declared ldap service surface.
+    - port: 445
+      protocol: tcp
+      name: smb
+      description: Declared smb service surface.
+accounts:
+  directory_administrator:
+    username: administrator
+    node: domain_controller
+    domain_ref: directory
+    description: Declared directory authority account; credential delivery is backend-owned.
+identity_domains:
+  directory:
+    profile: active_directory
+    dns_name: ${domain_name}
+    netbios_name: DIRECTORY
+    authority_account_ref: directory_administrator
+identity_forests:
+  forest:
+    root_domain_ref: directory
+    domain_refs:
+    - directory
+relationships:
+  directory_controller:
+    type: domain_controller_for
+    source: domain_controller
+    target: directory
+    domain_controller: {}
+content:
+  seed_inventory:
+    type: dataset
+    target: domain_controller
+    description: Benign infrastructure seed inventory for ${domain_name}.
+    items:
+    - name: organizational_units
+      display_name: Organizational Units
+      tags:
+      - infrastructure
+      - seed
+      description: Declared organizational units for this reusable service.
+    - name: directory_groups
+      display_name: Directory Groups
+      tags:
+      - infrastructure
+      - seed
+      description: Declared directory groups for this reusable service.
+    - name: dns_zone
+      display_name: Dns Zone
+      tags:
+      - infrastructure
+      - seed
+      description: Declared dns zone for this reusable service.
+    - name: administrator_identity
+      display_name: Administrator Identity
+      tags:
+      - infrastructure
+      - seed
+      description: Declared administrator identity for this reusable service.

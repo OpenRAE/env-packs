@@ -9,8 +9,9 @@ build packs; consumers validate a pack before they trust it. Because the format
 and the tools ship together in one installable package, you validate a pack
 against the same version you built it against.
 
-This repository defines and validates the format and hosts selected first-party
-packs. External catalogs can use the same package and host additional packs.
+This repository defines and validates the format, publishes the first-party kit
+collection, and hosts major example packs. Third-party catalogs use the same
+package and contracts.
 
 ## Start here
 
@@ -53,6 +54,7 @@ limitations
 
 new-pack-script
 kits
+kit-content-strategy
 pack-issue-skeleton-script
 golden-readiness
 ```

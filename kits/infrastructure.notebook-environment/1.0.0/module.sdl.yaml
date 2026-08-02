@@ -1,0 +1,105 @@
+name: notebook-environment
+version: 1.0.0
+description: Reusable static infrastructure for Notebook environment. Configures workspace_name
+  through the kit parameter contract.
+module:
+  id: infrastructure/notebook-environment
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - workspace_name
+  exports:
+    nodes:
+    - notebook
+    content:
+    - seed_inventory
+    accounts:
+    - notebook_user
+  description: Composable Notebook environment infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: notebook-environment
+  workspace_name:
+    type: string
+    default: analysis
+nodes:
+  notebook:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Notebook environment).
+      Configuration: ${workspace_name}.'
+    source:
+      name: jupyterlab
+      version: '4'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 8888
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: notebook_surface
+        service: http
+        protocol: http
+        name: Notebook surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: notebook
+    description: Benign infrastructure seed inventory for ${workspace_name}.
+    items:
+    - name: workspace
+      display_name: Workspace
+      tags:
+      - infrastructure
+      - seed
+      description: Declared workspace for this reusable service.
+    - name: kernels
+      display_name: Kernels
+      tags:
+      - infrastructure
+      - seed
+      description: Declared kernels for this reusable service.
+    - name: notebooks
+      display_name: Notebooks
+      tags:
+      - infrastructure
+      - seed
+      description: Declared notebooks for this reusable service.
+    - name: data_mounts
+      display_name: Data Mounts
+      tags:
+      - infrastructure
+      - seed
+      description: Declared data mounts for this reusable service.
+accounts:
+  notebook_user:
+    username: researcher
+    node: notebook
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

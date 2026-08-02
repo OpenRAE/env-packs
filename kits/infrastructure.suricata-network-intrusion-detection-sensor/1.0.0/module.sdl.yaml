@@ -1,0 +1,77 @@
+name: suricata-network-intrusion-detection-sensor
+version: 1.0.0
+description: Reusable static infrastructure for Suricata network intrusion-detection
+  sensor. Configures ruleset_name through the kit parameter contract.
+module:
+  id: infrastructure/suricata-network-intrusion-detection-sensor
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - ruleset_name
+  exports:
+    nodes:
+    - sensor
+    content:
+    - seed_inventory
+  description: Composable Suricata network intrusion-detection sensor infrastructure
+    module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: suricata-network-intrusion-detection-sensor
+  ruleset_name:
+    type: string
+    default: default
+nodes:
+  sensor:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Suricata network
+      intrusion-detection sensor). Configuration: ${ruleset_name}.'
+    source:
+      name: suricata
+      version: '8'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 5514
+      protocol: tcp
+      name: events
+      description: Declared events service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: sensor
+    description: Benign infrastructure seed inventory for ${ruleset_name}.
+    items:
+    - name: capture_interface
+      display_name: Capture Interface
+      tags:
+      - infrastructure
+      - seed
+      description: Declared capture interface for this reusable service.
+    - name: ruleset
+      display_name: Ruleset
+      tags:
+      - infrastructure
+      - seed
+      description: Declared ruleset for this reusable service.
+    - name: event_output
+      display_name: Event Output
+      tags:
+      - infrastructure
+      - seed
+      description: Declared event output for this reusable service.
+    - name: rotation_policy
+      display_name: Rotation Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Declared rotation policy for this reusable service.

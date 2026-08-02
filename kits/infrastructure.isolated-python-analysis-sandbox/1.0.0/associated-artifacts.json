@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.isolated-python-analysis-sandbox-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "isolated-python-analysis-sandbox",
+    "ref_version": null,
+    "ref_digest": "sha256:ed0bc670d42401208447aa85350c8cdfdd0c83b197ecfd2215bca60cb0a38452",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d3d9cfcc687058fb83f60e826c68ea9692beb45109cfc070e4a77af86baf7874"
+      },
+      "size_bytes": 497,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "a7757e2d8ee6af0fcf7de52111d8fe0789c2a47aa3811dfb56d3c126c394d3b9"
+      },
+      "size_bytes": 524,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "5d4573b1c50d1c37f1fc9d7801bb1bb6698c4ecb4463f8499313fdebbc792f18"
+      },
+      "size_bytes": 668,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "5fbac198e7145f9300eb1001205e0840c5eded0cfa4e69902faf8170f3f0a905"
+      },
+      "size_bytes": 1718,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "f665b98a952309bc336c1a91d3ea284314e473870da16f0d8a5f7b96b58337f4"
+      },
+      "size_bytes": 2226,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7529010a00b60cf4c5fa10b6ab0727c7f8ce1ecf20f4ee716fcdc835b8eccbda"
+      },
+      "size_bytes": 273,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:174fa6d5704de424ed60727174b765760a05db77a074f8ec709a0cb0fda4ef4b"
+}

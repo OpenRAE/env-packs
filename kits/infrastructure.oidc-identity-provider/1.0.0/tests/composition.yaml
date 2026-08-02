@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: oidc-identity-provider
+  realm_name: workforce
+variation:
+  deployment_profile: compact
+  service_label: oidc-identity-provider-alternate
+  realm_name: research
+multi_kit_group: identity-domain

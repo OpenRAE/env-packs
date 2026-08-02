@@ -1,0 +1,111 @@
+name: oidc-identity-provider
+version: 1.0.0
+description: Reusable static infrastructure for OIDC identity provider. Configures
+  realm_name through the kit parameter contract.
+module:
+  id: infrastructure/oidc-identity-provider
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - realm_name
+  exports:
+    nodes:
+    - identity_provider
+    identity_facades:
+    - oidc
+    content:
+    - seed_inventory
+    accounts:
+    - identity_operator
+  description: Composable OIDC identity provider infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: oidc-identity-provider
+  realm_name:
+    type: string
+    default: workforce
+nodes:
+  identity_provider:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (OIDC identity
+      provider). Configuration: ${realm_name}.'
+    source:
+      name: keycloak
+      version: '26'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 8080
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: identity_provider_surface
+        service: http
+        protocol: http
+        name: Identity Provider surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+identity_facades:
+  oidc:
+    service_ref: nodes.identity_provider.services.http
+    protocol: oidc
+content:
+  seed_inventory:
+    type: dataset
+    target: identity_provider
+    description: Benign infrastructure seed inventory for ${realm_name}.
+    items:
+    - name: realm
+      display_name: Realm
+      tags:
+      - infrastructure
+      - seed
+      description: Declared realm for this reusable service.
+    - name: users
+      display_name: Users
+      tags:
+      - infrastructure
+      - seed
+      description: Declared users for this reusable service.
+    - name: groups
+      display_name: Groups
+      tags:
+      - infrastructure
+      - seed
+      description: Declared groups for this reusable service.
+    - name: oidc_clients
+      display_name: Oidc Clients
+      tags:
+      - infrastructure
+      - seed
+      description: Declared oidc clients for this reusable service.
+accounts:
+  identity_operator:
+    username: idp-operator
+    node: identity_provider
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

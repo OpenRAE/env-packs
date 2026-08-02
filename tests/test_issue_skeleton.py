@@ -203,3 +203,22 @@ class RepoTargetTests(unittest.TestCase):
                     with self.assertRaises(SystemExit):
                         SKELETON.main(argv)
             run.assert_not_called()
+
+    def test_ensure_not_tooling_repo_allows_catalogs(self):
+        SKELETON.ensure_not_tooling_repo("some-org/ok")
+        SKELETON.ensure_not_tooling_repo("example-org/first-party-packs")
+        SKELETON.ensure_not_tooling_repo("OpenRAE/env-packs")
+
+    def test_canonical_alias_to_env_packs_is_allowed(self):
+        resolved = mock.Mock(
+            returncode=0,
+            stdout='{"nameWithOwner": "OpenRAE/env-packs"}',
+            stderr="",
+        )
+        with mock.patch.object(SKELETON.subprocess, "run", return_value=resolved):
+            canonical = SKELETON.GhClient(
+                "OpenRAE/old-packs-alias"
+            ).resolve_canonical_repo()
+
+        self.assertEqual(canonical, "OpenRAE/env-packs")
+        self.assertEqual(SKELETON.validate_target_selector(canonical), canonical)

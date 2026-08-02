@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: smb-file-service
+  share_name: shared
+variation:
+  deployment_profile: compact
+  service_label: smb-file-service-alternate
+  share_name: projects
+multi_kit_group: network-shared

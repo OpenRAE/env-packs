@@ -77,10 +77,10 @@ architecture:
         applies_to: environment-pack layout and authoring/validation/release tooling
         example_path: docs/public/environment-packs.md
     boundary_contract:
-      description: This repository is subordinate to RAES core (raes). RAES owns all scenario semantics (the SDL and its objectives, conditions, evidence, and participant/attacker behaviour); this repository owns the environment-pack layout and tooling plus selected first-party packs under packs/, and defines zero extensions to RAES semantics. See ADR 0009 and ADR 0036.
+      description: This repository is subordinate to RAES core (raes). RAES owns all scenario semantics (the SDL and its objectives, conditions, evidence, and participant/attacker behaviour); this repository owns the environment-pack layout and tooling, publishes first-party kits under kits/, hosts major example packs under packs/, and defines zero extensions to RAES semantics. See ADR 0009 and ADR 0036.
     binding_adrs:
       - id: ADR-036
-        one_liner: selected first-party packs live under packs/ while RAES owns semantics
+        one_liner: first-party kits and major example packs publish here while RAES owns semantics
     anti_recommendations:
       - Do not define or extend RAES semantics here (SDL, objectives, conditions, evidence, scoring, telemetry, oracle/validation models); consume them from RAES. See ADR 0009.
       - Do not encode downstream catalog vocabulary into canonical pack terminology.

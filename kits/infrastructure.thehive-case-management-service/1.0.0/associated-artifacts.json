@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.thehive-case-management-service-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "thehive-case-management-service",
+    "ref_version": null,
+    "ref_digest": "sha256:b145328da6d41b295ecda267c18c2902ec6bf4f70dee253b228ebd3fffee9e1e",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "73149a6598b7700ae298b497e07891e535fe01c9358c16d24106372ee8b21835"
+      },
+      "size_bytes": 495,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.thehive-case-management-service@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "79339aeb6ef8740a5c2dd80d8e8568f8ab4c0b36a011c71a99ca0147b602ecce"
+      },
+      "size_bytes": 549,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.thehive-case-management-service@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "126e20453f753e5958f4accd8f36382a021aae1cba984fcd5ac1a558c79366e2"
+      },
+      "size_bytes": 666,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.thehive-case-management-service@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "1b7fdd56f9d645a276ded221c447a45b53c44c4ac70f99a2f45ae3e46efbbc27"
+      },
+      "size_bytes": 1938,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.thehive-case-management-service@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "3489525a2fda194303bf37b25d02e002e36e7bb155e7c0a4decf8cdd3e476c3d"
+      },
+      "size_bytes": 3148,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.thehive-case-management-service@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "0b69719d99270c0862de6e9fa120ea86eb50acae397c44d9957df4918c212544"
+      },
+      "size_bytes": 288,
+      "created_at": "2026-08-01T00:00:00Z",
+      "source": "infrastructure.thehive-case-management-service@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:bdc8028d1a5c0bd559506bad74e936e0a86619b800523559c3f336dcb7224281"
+}

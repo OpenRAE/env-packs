@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.oidc-identity-provider
+configuration:
+  realm_name: workforce
+  deployment_profile: standard
+  service_label: oidc-identity-provider
+declared_objects:
+- id: realm
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: users
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: groups
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: oidc_clients
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

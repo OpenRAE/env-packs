@@ -1,0 +1,105 @@
+name: policy-engine
+version: 1.0.0
+description: Reusable static infrastructure for Policy engine. Configures policy_bundle
+  through the kit parameter contract.
+module:
+  id: infrastructure/policy-engine
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - policy_bundle
+  exports:
+    nodes:
+    - policy
+    content:
+    - seed_inventory
+    accounts:
+    - policy_operator
+  description: Composable Policy engine infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: policy-engine
+  policy_bundle:
+    type: string
+    default: baseline
+nodes:
+  policy:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Policy engine).
+      Configuration: ${policy_bundle}.'
+    source:
+      name: open-policy-agent
+      version: '1'
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 8181
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: policy_surface
+        service: http
+        protocol: http
+        name: Policy surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: policy
+    description: Benign infrastructure seed inventory for ${policy_bundle}.
+    items:
+    - name: policy_bundle
+      display_name: Policy Bundle
+      tags:
+      - infrastructure
+      - seed
+      description: Declared policy bundle for this reusable service.
+    - name: decision_route
+      display_name: Decision Route
+      tags:
+      - infrastructure
+      - seed
+      description: Declared decision route for this reusable service.
+    - name: data_documents
+      display_name: Data Documents
+      tags:
+      - infrastructure
+      - seed
+      description: Declared data documents for this reusable service.
+    - name: query_examples
+      display_name: Query Examples
+      tags:
+      - infrastructure
+      - seed
+      description: Declared query examples for this reusable service.
+accounts:
+  policy_operator:
+    username: policy-operator
+    node: policy
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

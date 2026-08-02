@@ -1,0 +1,52 @@
+schema_version: environment-pack-kit/v1
+id: infrastructure.lab-portal
+version: 1.0.0
+title: Lab portal
+summary: Reusable lab portal with domain-specific configuration, declared service
+  surfaces, seeded objects, and pack-local integration material.
+concern: collaboration-developer
+released_at: '2026-08-01T00:00:00Z'
+module:
+  path: module.sdl.yaml
+assets:
+- source: assets/integration.md
+  target: assets/kits/lab-portal/integration.md
+  visibility: operator
+  artifact_id: integration-material
+- source: assets/seed.yaml
+  target: assets/kits/lab-portal/seed.yaml
+  visibility: operator
+  artifact_id: seed-profile
+resources:
+  cpu_cores: 2
+  memory_mib: 2048
+  storage_mib: 4096
+  notes: Planning estimates only; realization sizing remains backend-owned.
+prerequisites:
+- kind: external
+  id: indexed-services
+  version: raes-3.2
+  description: Select the imported services that appear in the portal index.
+limitations:
+- Declares static infrastructure, seeded state, and integration surfaces only.
+- Does not claim launch, readiness, traffic attachment, credential delivery, or runtime
+  evidence.
+- Select the imported services that appear in the portal index.
+license:
+  expression: MIT
+  redistribution: open
+  attribution: OpenRAE contributors
+tests:
+- path: tests/composition.yaml
+  kind: validate
+- path: tests/composition.yaml
+  kind: parameter-variation
+- path: tests/composition.yaml
+  kind: multi-kit
+component_inventory:
+- scope: unresolved
+  authority: raes-source
+  ref: /nodes/portal/source
+  description: RAES carries the declared homepage stable source; immutable artifact
+    selection remains unresolved until pack publication.
+associated_artifact_manifest: associated-artifacts.json

@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: smtp-imap-mail-service
+  mail_domain: environment.test
+variation:
+  deployment_profile: compact
+  service_label: smtp-imap-mail-service-alternate
+  mail_domain: alternate.test
+multi_kit_group: network-shared

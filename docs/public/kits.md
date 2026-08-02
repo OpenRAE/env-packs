@@ -12,6 +12,9 @@ environment pack containing editable RAES SDL, ordinary assets,
 `kit.materializations.json` ownership record. A backend sees the resulting RAES
 scenario; it does not call a kit API.
 
+The complete first-party collection is published under `kits/`. Its scope and
+release quality bar are defined by the [kit content strategy](kit-content-strategy.md).
+
 ## What an author gets
 
 For each release, inspection shows:
@@ -36,22 +39,22 @@ and discovery functions print and log nothing.
 
 ## Discover and inspect
 
-Stage a catalog checkout locally and identify the exact revision you admitted.
-The CLI performs no acquisition and no network access.
+Use an `env-packs` checkout and identify the exact revision you admitted. The
+CLI performs no acquisition and no network access.
 
 ```sh
-catalog_revision=$(git -C reference-packs rev-parse HEAD)
+catalog_revision=$(git rev-parse HEAD)
 
-raes-pack-kit list reference-packs \
-  --source-id reference \
+raes-pack-kit list . \
+  --source-id openrae-env-packs \
   --source-revision "$catalog_revision"
 
-raes-pack-kit search reference-packs "domain controller" \
-  --source-id reference \
+raes-pack-kit search . "domain controller" \
+  --source-id openrae-env-packs \
   --source-revision "$catalog_revision"
 
-raes-pack-kit inspect reference-packs \
-  --source-id reference \
+raes-pack-kit inspect . \
+  --source-id openrae-env-packs \
   --source-revision "$catalog_revision" \
   infrastructure.windows-active-directory-domain-controller 1.0.0 \
   --json
@@ -70,8 +73,8 @@ associated-artifact identity if the pack has not opted into it yet.
 raes-pack-new realistic-lab --route minimal --yes
 
 printf '%s\n' '{"deployment_profile":"standard","service_label":"directory"}' |
-  raes-pack-kit add environments/realistic-lab reference-packs \
-    --source-id reference \
+  raes-pack-kit add environments/realistic-lab . \
+    --source-id openrae-env-packs \
     --source-revision "$catalog_revision" \
     infrastructure.windows-active-directory-domain-controller 1.0.0 \
     --namespace directory \
@@ -97,8 +100,8 @@ same kit identity and changes its exact release or bounded parameters:
 
 ```sh
 printf '%s\n' '{"deployment_profile":"compact","service_label":"directory"}' |
-  raes-pack-kit update environments/realistic-lab reference-packs \
-    --source-id reference \
+  raes-pack-kit update environments/realistic-lab . \
+    --source-id openrae-env-packs \
     --source-revision "$catalog_revision" \
     infrastructure.windows-active-directory-domain-controller 1.0.0 \
     directory --parameters - --preview --json
@@ -109,8 +112,8 @@ an intermediate state:
 
 ```sh
 printf '%s\n' '{"deployment_profile":"standard","service_label":"front-door"}' |
-  raes-pack-kit replace environments/realistic-lab reference-packs \
-    --source-id reference \
+  raes-pack-kit replace environments/realistic-lab . \
+    --source-id openrae-env-packs \
     --source-revision "$catalog_revision" \
     infrastructure.reverse-proxy-api-gateway 1.0.0 \
     web --namespace gateway \

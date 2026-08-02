@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: text-model-serving
+  model_name: local-text
+variation:
+  deployment_profile: compact
+  service_label: text-model-serving-alternate
+  model_name: local-chat
+multi_kit_group: ai-model

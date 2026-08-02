@@ -1,9 +1,9 @@
 # Agent Instructions
 
 This repository is the canonical home for the RAES environment-pack definition,
-schemas, template, authoring/validation tooling, and selected first-party packs
-under `packs/`. External catalog repositories remain supported consumers of the
-package.
+schemas, template, authoring/validation tooling, first-party infrastructure kits,
+and major example packs. Published kits live under `kits/`; example packs live
+under `packs/`.
 
 ## Repository Boundaries
 
@@ -15,10 +15,12 @@ easier. It defines **zero extensions** to RAES semantics
 - RAES core owns all scenario semantics — the SDL and its objectives,
   conditions, evidence, and participant/attacker behaviour. Where RAES owns a
   concept, consume it from RAES; never redefine or extend it here.
-- This repository owns the environment-pack layout and the
-  authoring/validation/release tooling, plus the content of selected first-party
-  packs under `packs/` (ADR 0036).
+- This repository owns only the environment-pack layout and the
+  authoring/validation/release tooling.
+- First-party reusable kit releases and major example packs are published here.
 - Runtime backends consume hosted packs; they do not own the portable scenario.
+- Third-party environment packs may live in their own repositories and consume
+  this package.
 - Don't import downstream catalog names, paths, branch rules, labels, product
   assumptions, or private deployment vocabulary into the canonical docs.
 

@@ -7,10 +7,12 @@ follows. It ships inside the `raes-env-packs` package alongside the schemas,
 template, and tools that enforce it, so an author always validates against the
 same contract version they build against.
 
-External catalogs conventionally place packs at `environments/<name>/`. The
-package's own selected first-party packs live at `packs/<name>/` (ADR 0036).
-`raes-pack-validate` and `raes-pack-release` accept either explicit root and
-check every pack against this same contract.
+This repository **defines and validates** the format, publishes first-party kits
+under `kits/`, and hosts major examples under `packs/`. Third-party catalog
+repositories use the same contract and conventionally place packs at
+`environments/<name>/`. `raes-pack-validate` and `raes-pack-release` accept an
+explicit `packs/` or `environments/` root and check every pack against this same
+contract.
 
 > First-pass rule of thumb: **put in what a scenario has, skip what it
 > doesn't.** A pack is a declarative bundle plus one known-good reference — it

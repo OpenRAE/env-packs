@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.s3-compatible-object-store
+configuration:
+  bucket_name: artifacts
+  deployment_profile: standard
+  service_label: s3-compatible-object-store
+declared_objects:
+- id: bucket
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: access_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: seed_objects
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: lifecycle_profile
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

@@ -1,0 +1,84 @@
+name: load-rehearsal-runner
+version: 1.0.0
+description: Reusable static infrastructure for Load/rehearsal runner. Configures
+  workload_profile through the kit parameter contract.
+module:
+  id: infrastructure/load-rehearsal-runner
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - workload_profile
+  exports:
+    nodes:
+    - runner
+    content:
+    - seed_inventory
+    accounts:
+    - runner_operator
+  description: Composable Load/rehearsal runner infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: load-rehearsal-runner
+  workload_profile:
+    type: string
+    default: smoke
+nodes:
+  runner:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Load/rehearsal
+      runner). Configuration: ${workload_profile}.'
+    source:
+      name: k6
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 6565
+      protocol: tcp
+      name: api
+      description: Declared api service surface.
+content:
+  seed_inventory:
+    type: dataset
+    target: runner
+    description: Benign infrastructure seed inventory for ${workload_profile}.
+    items:
+    - name: target_bindings
+      display_name: Target Bindings
+      tags:
+      - infrastructure
+      - seed
+      description: Declared target bindings for this reusable service.
+    - name: workload_shape
+      display_name: Workload Shape
+      tags:
+      - infrastructure
+      - seed
+      description: Declared workload shape for this reusable service.
+    - name: rate_limits
+      display_name: Rate Limits
+      tags:
+      - infrastructure
+      - seed
+      description: Declared rate limits for this reusable service.
+    - name: result_schema
+      display_name: Result Schema
+      tags:
+      - infrastructure
+      - seed
+      description: Declared result schema for this reusable service.
+accounts:
+  runner_operator:
+    username: runner-operator
+    node: runner
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

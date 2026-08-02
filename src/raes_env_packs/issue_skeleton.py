@@ -17,9 +17,11 @@ import textwrap
 from dataclasses import dataclass
 from collections.abc import Callable
 
-# ADR 0036 permits selected first-party packs in this repository while external
+# ADR 0036 permits first-party content in this repository while external
 # catalogs retain their established environments/<name> convention.
 FIRST_PARTY_PACK_REPO = "OpenRAE/env-packs"
+# The caller always names the content-owning repository explicitly. It may be
+# this first-party repository or any community/private catalog.
 EXAMPLE_CATALOG = "example-org/example-packs"
 # Minimal structural safety check for an OWNER/REPOSITORY selector. It rejects
 # URLs, query/path suffixes, extra components, whitespace, and control chars;
@@ -118,11 +120,18 @@ def pack_root_for_repo(repo: str | None) -> str:
     )
 
 
+def ensure_not_tooling_repo(repo: str) -> None:
+    """Compatibility hook retained now that this repository may host content."""
+
+    del repo
+
+
 def validate_target_selector(repo: str | None) -> str:
     """Validate the --repo selector locally, without spawning gh.
 
     Structurally requires an OWNER/REPOSITORY slug. Canonical
-    existence/access/redirect resolution is left to gh.
+    existence/access/redirect resolution is left to gh (see
+    GhClient.resolve_canonical_repo).
     """
     if not repo:
         raise SystemExit(
@@ -642,9 +651,7 @@ class GhClient(object):
         """Resolve the target to its canonical OWNER/REPOSITORY via gh.
 
         gh follows renames/redirects and canonicalizes case, and fails when the
-        repository does not exist or the caller cannot access it. This closes
-        the gap where a redirected alias could otherwise reach a forbidden
-        target that a raw string comparison would miss.
+        repository does not exist or the caller cannot access it.
         """
         row = self.run(["repo", "view", self.repo, "--json", "nameWithOwner"])
         if not isinstance(row, dict) or not row.get("nameWithOwner"):
@@ -744,7 +751,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--repo",
         help=("GitHub catalog repository (OWNER/REPOSITORY) that will own the "
               f"pack, e.g. {EXAMPLE_CATALOG}; use your own first-party, "
-              "community, private, or this repository's first-party catalog."))
+              "community, or private catalog, or OpenRAE/env-packs for "
+              "first-party content."))
     parser.add_argument("--pack-id", help="lowercase kebab-case environment pack id")
     parser.add_argument("--title", help="human-readable scenario title")
     parser.add_argument("--focus", default="TBD by the pack-design agent.",

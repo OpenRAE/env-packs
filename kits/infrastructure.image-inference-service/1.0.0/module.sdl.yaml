@@ -1,0 +1,109 @@
+name: image-inference-service
+version: 1.0.0
+description: Reusable static infrastructure for Image-inference service. Configures
+  model_name through the kit parameter contract.
+module:
+  id: infrastructure/image-inference-service
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - model_name
+  exports:
+    nodes:
+    - inference
+    content:
+    - seed_inventory
+    accounts:
+    - model_operator
+  description: Composable Image-inference service infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: image-inference-service
+  model_name:
+    type: string
+    default: local-image
+nodes:
+  inference:
+    type: vm
+    description: '${deployment_profile} profile for ${service_label} (Image-inference
+      service). Configuration: ${model_name}.'
+    source:
+      name: triton-inference-server
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 8000
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    - port: 8001
+      protocol: tcp
+      name: grpc
+      description: Declared grpc service surface.
+    runtime:
+      applications:
+      - application_id: inference_surface
+        service: http
+        protocol: http
+        name: Inference surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+content:
+  seed_inventory:
+    type: dataset
+    target: inference
+    description: Benign infrastructure seed inventory for ${model_name}.
+    items:
+    - name: model_artifact
+      display_name: Model Artifact
+      tags:
+      - infrastructure
+      - seed
+      description: Declared model artifact for this reusable service.
+    - name: input_schema
+      display_name: Input Schema
+      tags:
+      - infrastructure
+      - seed
+      description: Declared input schema for this reusable service.
+    - name: output_schema
+      display_name: Output Schema
+      tags:
+      - infrastructure
+      - seed
+      description: Declared output schema for this reusable service.
+    - name: inference_route
+      display_name: Inference Route
+      tags:
+      - infrastructure
+      - seed
+      description: Declared inference route for this reusable service.
+accounts:
+  model_operator:
+    username: model-operator
+    node: inference
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.

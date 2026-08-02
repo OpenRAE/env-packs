@@ -1,0 +1,50 @@
+schema_version: environment-pack-kit/v1
+id: infrastructure.suricata-network-intrusion-detection-sensor
+version: 1.0.0
+title: Suricata network intrusion-detection sensor
+summary: Reusable suricata network intrusion-detection sensor with domain-specific
+  configuration, declared service surfaces, seeded objects, and pack-local integration
+  material.
+concern: security-operations
+released_at: '2026-08-01T00:00:00Z'
+module:
+  path: module.sdl.yaml
+assets:
+- source: assets/integration.md
+  target: assets/kits/suricata-network-intrusion-detection-sensor/integration.md
+  visibility: operator
+  artifact_id: integration-material
+- source: assets/seed.yaml
+  target: assets/kits/suricata-network-intrusion-detection-sensor/seed.yaml
+  visibility: operator
+  artifact_id: seed-profile
+resources:
+  cpu_cores: 2
+  memory_mib: 2048
+  storage_mib: 4096
+  notes: Planning estimates only; realization sizing remains backend-owned.
+prerequisites: []
+limitations:
+- Declares static infrastructure, seeded state, and integration surfaces only.
+- Does not claim launch, readiness, traffic attachment, credential delivery, or runtime
+  evidence.
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.
+license:
+  expression: MIT
+  redistribution: open
+  attribution: OpenRAE contributors
+tests:
+- path: tests/composition.yaml
+  kind: validate
+- path: tests/composition.yaml
+  kind: parameter-variation
+- path: tests/composition.yaml
+  kind: multi-kit
+component_inventory:
+- scope: unresolved
+  authority: raes-source
+  ref: /nodes/sensor/source
+  description: RAES carries the declared suricata 8 source; immutable artifact selection
+    remains unresolved until pack publication.
+associated_artifact_manifest: associated-artifacts.json

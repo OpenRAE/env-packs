@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: browser-workstation
+  browser_profile: managed
+variation:
+  deployment_profile: compact
+  service_label: browser-workstation-alternate
+  browser_profile: kiosk
+multi_kit_group: access-workstation

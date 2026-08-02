@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: s3-compatible-object-store
+  bucket_name: artifacts
+variation:
+  deployment_profile: compact
+  service_label: s3-compatible-object-store-alternate
+  bucket_name: datasets
+multi_kit_group: data-workflow

@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: inference-api-gateway
+  route_name: inference
+variation:
+  deployment_profile: compact
+  service_label: inference-api-gateway-alternate
+  route_name: models
+multi_kit_group: ai-model
