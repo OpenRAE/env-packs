@@ -11,6 +11,18 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.6.0](https://github.com/OpenRAE/env-packs/compare/v3.5.0...v3.6.0) (2026-08-02)
+
+
+### Features
+
+* add the TechVault environment pack ([#238](https://github.com/OpenRAE/env-packs/issues/238)) ([462dc23](https://github.com/OpenRAE/env-packs/commit/462dc233f5fee801219b28296104c7eff8d7cfaa))
+
+
+### Bug Fixes
+
+* publish infrastructure kits in env-packs ([#232](https://github.com/OpenRAE/env-packs/issues/232)) ([079cb84](https://github.com/OpenRAE/env-packs/commit/079cb847f58d4da0a88f3ff5156ad1b81f72c33c))
+
 ## [3.5.0](https://github.com/OpenRAE/env-packs/compare/v3.4.0...v3.5.0) (2026-08-01)
 
 
