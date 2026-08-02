@@ -11,6 +11,13 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.6.2](https://github.com/OpenRAE/env-packs/compare/v3.6.1...v3.6.2) (2026-08-02)
+
+
+### Bug Fixes
+
+* ship TechVault in PyPI distributions ([#253](https://github.com/OpenRAE/env-packs/issues/253)) ([1b5b99c](https://github.com/OpenRAE/env-packs/commit/1b5b99c54ad236c8952ed0fa1669543b6ed4ff20))
+
 ## [3.6.1](https://github.com/OpenRAE/env-packs/compare/v3.6.0...v3.6.1) (2026-08-02)
 
 
