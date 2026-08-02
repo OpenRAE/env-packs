@@ -132,7 +132,7 @@ class TechVaultPackTests(unittest.TestCase):
 
     def test_all_original_content_obligations_are_accounted_for(self) -> None:
         content = _load_sdl()["content"]
-        self.assertTrue(_PACK_ARTIFACT_CONTENT_IDS <= set(content))
+        self.assertLessEqual(_PACK_ARTIFACT_CONTENT_IDS, set(content))
         self.assertTrue(_GENERATED_SSH_CONTENT_IDS.isdisjoint(content))
         inline = {name for name, item in content.items() if "text" in item}
         sourced = {name for name, item in content.items() if "source" in item}
