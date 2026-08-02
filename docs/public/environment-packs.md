@@ -128,6 +128,12 @@ explicitly with `raes-pack-validate --packs-root packs` and
 `raes-pack-release check --packs-root packs`. The explicit root prevents the
 legacy external-catalog default (`environments/`) from hiding hosted packs.
 
+To *publish* a release — content identity, a CycloneDX SBOM, and provenance a
+consumer can verify before install — run `raes-pack-release build --publish` and
+follow [distribute and verify](distribution.md). Publishing requires the pack to
+opt into [content identity](#content-identity); the SBOM is generated from the
+pack's component boundary and bound to that identity.
+
 ## Catalog projection
 
 `raes-pack-catalog` renders a versioned, machine-readable

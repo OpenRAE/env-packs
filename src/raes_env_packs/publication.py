@@ -45,7 +45,7 @@ from raes_contracts.backend_profiles import load_backend_profile
 
 from raes_env_packs import validation
 
-PUBLICATION_SCHEMA_VERSION = "environment-pack-publication/v1"
+PUBLICATION_SCHEMA_VERSION = "environment-pack-publication/v2"
 
 # The authored local-id selectors a publication row may carry. Absence means the
 # row supplies the requirement's own exact artifact. These are RAES-authored id
