@@ -308,7 +308,7 @@ class ReleaseTests(unittest.TestCase):
                 "cov-pack",
             )
             version, digest = REL.load_contract_version()
-            self.assertEqual(version, "6")
+            self.assertEqual(version, "7")
             self.assertRegex(digest, r"\Asha256:[0-9a-f]{64}\Z")
 
     def test_main_metadata(self):

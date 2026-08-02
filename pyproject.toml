@@ -43,6 +43,8 @@ raes-pack-new = "raes_env_packs.wizard:main"
 raes-new-pack = "raes_env_packs.wizard:main"
 raes-pack-issue-skeleton = "raes_env_packs.issue_skeleton:main"
 raes-pack-kit = "raes_env_packs.kit_cli:main"
+raes-pack-verify = "raes_env_packs.verify:main"
+raes-pack-dist = "raes_env_packs.distribution:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/raes_env_packs"]

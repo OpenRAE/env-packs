@@ -29,7 +29,8 @@ pip install raes-env-packs
   add common infrastructure from [reusable kits](kits.md).
 - **Consume a pack** — [check a pack](checking.md) you received with
   `raes-pack-check`, or call the [`validate_pack` API](validating.md), before you
-  trust its bytes.
+  trust its bytes. To install and verify a signed release, see
+  [distribute and verify](distribution.md).
 - **Publish a catalog** — render a machine-readable
   [catalog projection](catalog.md) with `raes-pack-catalog` so a static catalog,
   browser, or Hub can list your packs.
@@ -65,6 +66,7 @@ golden-readiness
 
 checking
 validating
+distribution
 catalog
 ```
 

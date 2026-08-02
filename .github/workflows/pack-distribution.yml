@@ -1,0 +1,71 @@
+# Verified pack supply-chain rehearsal (issue #191, ADR 0037).
+#
+# Manually triggered end-to-end integration for the distribution workflow. It
+# stands up an ephemeral OCI registry (registry:2), publishes TechVault with its
+# generated SBOM + provenance, signs the validated set-digest subject with
+# keyless Sigstore (the GitHub Actions OIDC identity — the one thing a developer
+# box cannot provide), then pulls, verifies signature + content, installs, and
+# checks update/rollback guidance. Nothing here is standing infrastructure: the
+# registry and the signing identity are spun up per run.
+#
+# The workflow *shape* (triggers, permissions, pinning, step order) is guarded by
+# tests/test_pack_distribution_workflow.py, and the real acceptance criterion —
+# a signed release a clean consumer can install and verify — is met by an actual
+# run of this job (the tests/test_release_workflow_attestation.py pattern).
+name: Pack distribution rehearsal
+
+on:
+  workflow_dispatch:
+    inputs:
+      pack:
+        description: Pack directory to rehearse
+        default: packs/techvault
+        required: false
+
+permissions: read-all
+
+concurrency:
+  group: pack-distribution-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rehearse:
+    name: Publish, sign, install, and verify a pack release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # read the source; no write is needed for a rehearsal
+      id-token: write # keyless Sigstore signing identity over OIDC
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    env:
+      # The registry and the trust policy are ephemeral rehearsal inputs, never
+      # pack semantics. Credentials are not needed: the local registry is
+      # unauthenticated and signing is keyless.
+      REHEARSAL_REGISTRY: localhost:5000
+      REHEARSAL_CERT_OIDC_ISSUER: https://token.actions.githubusercontent.com
+      REHEARSAL_CERT_IDENTITY_REGEXP: https://github.com/${{ github.repository }}/.+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Install oras
+        uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
+        with:
+          version: 1.3.3
+      - name: Install runtime dependencies and the package
+        run: |
+          set -euo pipefail
+          python -m pip install --require-hashes -r requirements/runtime.txt
+          python -m pip install --no-deps -e .
+      - name: Run the pack-distribution rehearsal
+        run: python tests_integration/distribution_rehearsal.py

@@ -1,6 +1,6 @@
 # Environment pack convention
 
-**Environment-pack contract version:** `6`
+**Environment-pack contract version:** `7`
 
 This document is the authoritative layout convention every RAES environment pack
 follows. It ships inside the `raes-env-packs` package alongside the schemas,
@@ -694,7 +694,7 @@ skips, never a silent partial release.
   across bundles, with operator entrypoints never resolving under a participant
   root.
 - **Publication profile.** `build` emits `release.yaml` as a schema-backed
-  `environment-pack-publication/v1` document — a consumer contract, not an
+  `environment-pack-publication/v2` document — a consumer contract, not an
   informational summary — and validates it before promotion. Its `release` block
   is the immutable identity: pack id/version, the RAES semantic parent, the
   validated associated-artifact set, and the participant/operator/restricted/
@@ -823,6 +823,65 @@ Callers must use an immutable staging area. Descriptor-anchored no-follow reads
 and before/after inventory checks fail closed during the operation, but a live
 directory walk is not atomic storage. Acquisition, atomic promotion, retention,
 permissions, and use-time verification remain consumer responsibilities.
+
+## Verified distribution
+
+A pack is *published* over an OCI, repository, or archive route with verifiable
+authenticity and provenance. Distribution composes existing authorities without
+inventing a second identity, lock, trust, or SBOM model
+([ADR 0037](../../../docs/decisions/adrs/0037-compose-verified-pack-distribution-from-existing-authorities.md)).
+See the [distribution guide](../../../docs/public/distribution.md) for the
+consumer and publisher workflows.
+
+- **The signed subject is the pack's content identity** — the validator-derived
+  RAES associated-artifact set digest. OCI manifest and layer digests are
+  transport addresses only. A selector and every result state which domain a
+  `sha256:` value belongs to.
+- **Content identity is mandatory once a version is published**, even for a
+  claim-free release. `raes-pack-release build --publish` refuses a pack that
+  declares no `associated_artifact_manifest`. A local, non-published projection
+  keeps the optional binding of ADR 0028.
+- **`release.yaml` stays the single publication carrier.** A published release
+  advances it to `environment-pack-publication/v2` with an `evidence` block that
+  references the generated SBOM and release provenance by digest. Both are staged
+  beside the views and stay *outside* the associated-artifact set they describe,
+  so an SBOM never folds into its own subject.
+- **The release SBOM is CycloneDX JSON**, generated per published version and
+  bound to the set-digest subject. It records inventory only — never a safety,
+  authenticity, or vulnerability-free claim — and preserves (references, never
+  flattens) independently scoped upstream SBOMs.
+
+### Component boundary (`publication-supply.yaml`)
+
+The SBOM is generated from a pack-controlled component boundary. Components the
+pack immutably pins are recovered from the incumbents automatically — the SDL's
+exact RAES `Source` artifacts, every `raes.lock.json` module, and each
+materialized-kit `component_inventory` (recovered through its immutable kit
+source and revision, never inferred from filenames) — so an author can never omit
+them. The optional `publication_supply` input (validated as a closed,
+schema-backed contract) *adds* the rest of the boundary and enriches the
+incumbents:
+
+```yaml
+# publication-supply.yaml
+schema_version: environment-pack-publication-supply/v1
+component_boundary:
+  - id: base-image-python
+    scope: pinned              # shipped | pinned | external | runtime-selected | opaque | unresolved
+    kind: container-image
+    authority: raes-artifact   # raes-source | raes-artifact | module-lock | kit | associated-artifact | upstream-sbom | author-declared-external
+    ref: docker.io/library/python
+    version: "3.12-slim"
+    digest: "sha256:…"        # required for shipped/pinned components
+    license: PSF-2.0
+    description: interpreter base image the golden build pins
+```
+
+A `shipped` or `pinned` component must carry a content digest and may not use the
+`author-declared-external` authority; `external`, `runtime-selected`, `opaque`,
+and `unresolved` scopes are honest, non-guessed states the generator does not
+resolve transitively. A declaration that contradicts an incumbent digest fails
+publication.
 
 ## Explicitly not in scope
 
