@@ -353,6 +353,13 @@ nodes:
             timing: backend-preparation
     services: []
     runtime:
+      container:
+        entrypoint:
+          - /bin/sh
+          - -c
+          - "exec /docker-entrypoint.sh -c /etc/suricata/suricata.yaml --pcap"
+      linux_capabilities:
+        add: [CAP_NET_ADMIN, CAP_NET_RAW, CAP_SYS_NICE]
       network_sensors:
         - network_sensor_id: suricata-sensor
           implementation: suricata
@@ -1913,6 +1920,9 @@ infrastructure:
   cortex:
     links: [security-net]
     dependencies: [thehive-es]
+  cortex-index-init:
+    links: [security-net]
+    dependencies: [thehive-es]
   shuffle-backend:
     links: [security-net]
     dependencies: [shuffle-opensearch]
@@ -2501,6 +2511,54 @@ content:
             username: wazuh-wui
             password: "WazuhPass123!"
             run_as: false
+  suricata-config:
+    type: file
+    target: suricata
+    path: /etc/suricata/suricata.yaml
+    text: |
+      %YAML 1.1
+      ---
+      vars:
+        address-groups:
+          HOME_NET: "[172.20.0.0/16]"
+          EXTERNAL_NET: "any"
+      default-log-dir: /var/log/suricata/
+      stats:
+        enabled: yes
+      outputs:
+        - eve-log:
+            enabled: yes
+            filetype: regular
+            filename: eve.json
+            types:
+              - alert
+              - dns
+              - http
+              - tls
+              - flow
+      af-packet:
+        - interface: any
+      pcap:
+        - interface: any
+      default-rule-path: /var/lib/suricata/rules
+      # MISP-derived and Suricata rules load live over the command socket
+      # (see the node's network_sensors declaration); only the local corpus is
+      # bound at boot so the engine starts cleanly.
+      rule-files:
+        - /etc/suricata/rules/local.rules
+      classification-file: /etc/suricata/classification.config
+      reference-config-file: /etc/suricata/reference.config
+      unix-command:
+        enabled: yes
+        filename: /var/run/suricata/suricata-command.socket
+  suricata-local-rules:
+    type: file
+    target: suricata
+    path: /etc/suricata/rules/local.rules
+    text: |
+      # Local Suricata rule corpus. MISP-derived rules are reloaded live over
+      # the command socket by the MISP sync agent; this file is the authored
+      # local baseline.
   cortex-index-init-script:
     type: file
     target: cortex-index-init
