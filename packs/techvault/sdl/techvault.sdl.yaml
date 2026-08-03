@@ -568,6 +568,12 @@ nodes:
           value_classification: operator_secret
           provenance: compose
         - name: MISP_VERIFY_SSL
+          # MISP serves a self-signed certificate in the lab and there is no lab
+          # CA, so the sync client must not verify TLS. This is the documented
+          # lab default (ADR-022); declaring it here makes it real range content
+          # the backend realizes and discloses, rather than leaking in from the
+          # operator .env out of band.
+          value: "false"
           value_classification: plain
           provenance: compose
         - name: MISP_CA_CERT_PATH
@@ -1016,18 +1022,24 @@ nodes:
       environment:
         - {name: WAZUH_MANAGER, value: wazuh-manager}
         - {name: AGENT_NAME, value: aptl-db-agent}
-        - {name: LOG_PATHS, value: /logs/pg_log/postgresql.log}
+        # The db node is a generic-base apt install of PostgreSQL 15 (Debian
+        # bookworm base), which logs to /var/log/postgresql/postgresql-15-main.log.
+        # The db_logs volume shares that directory into this sidecar at /logs, so
+        # the tailed file is the log postgres actually writes -- not the
+        # pre-refactor postgres-image path (pg_log/postgresql.log under PGDATA)
+        # that the apt build no longer produces.
+        - {name: LOG_PATHS, value: /logs/postgresql-15-main.log}
         - {name: LOG_FORMAT, value: syslog}
       forwarding_agents:
         - forwarding_agent_id: db-postgres-forwarder
           implementation: wazuh_agent
           agent_kind: log_forwarder
           name: aptl-db-agent
-          description: Tails the customer database's PostgreSQL log off the shared db_data volume and ships it to the Wazuh manager, so database activity reaches the SIEM.
+          description: Tails the customer database's PostgreSQL log off the shared db_logs volume and ships it to the Wazuh manager, so database activity reaches the SIEM.
           sources:
             - source_id: postgres-log
               kind: tailed_path
-              location: /logs/pg_log/postgresql.log
+              location: /logs/postgresql-15-main.log
               parse_format: syslog
           transforms:
             - transform_id: postgres-parse
@@ -2465,6 +2477,15 @@ persistent_volumes:
     access_mode: read_write_once
     consumers:
       - {node: suricata, mount_destination: /seed, access_mode: read_only}
+  db_logs:
+    lifecycle: retain
+    access_mode: read_write_once
+      # PostgreSQL writes its cluster log under /var/log/postgresql here and the
+      # Wazuh sidecar tails it read-only at /logs: the telemetry hand-off that
+      # makes database activity visible to the SIEM.
+    consumers:
+      - {node: db, mount_destination: /var/log/postgresql, access_mode: read_write}
+      - {node: wazuh-sidecar-db, mount_destination: /logs, access_mode: read_only}
   suricata_logs:
     lifecycle: retain
     access_mode: read_write_once
