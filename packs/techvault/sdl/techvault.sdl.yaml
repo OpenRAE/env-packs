@@ -2472,6 +2472,35 @@ content:
       plugins.security.system_indices.indices: [".opendistro-alerting-config", ".opendistro-alerting-alert*", ".opendistro-anomaly-results*", ".opendistro-anomaly-detector*", ".opendistro-anomaly-checkpoints", ".opendistro-anomaly-detection-state", ".opendistro-reports-*", ".opendistro-notifications-*", ".opendistro-notebooks", ".opensearch-observability", ".opendistro-asynchronous-search-response*", ".replication-metadata-store"]
       plugins.security.allow_default_init_securityindex: true
       cluster.routing.allocation.disk.threshold_enabled: false
+  wazuh-dashboard-opensearch-config:
+    type: file
+    target: wazuh-dashboard
+    path: /usr/share/wazuh-dashboard/config/opensearch_dashboards.yml
+    text: |
+      server.host: 0.0.0.0
+      server.port: 5601
+      opensearch.hosts: https://wazuh-indexer:9200
+      opensearch.ssl.verificationMode: certificate
+      opensearch.requestHeadersWhitelist: ["securitytenant","Authorization"]
+      opensearch_security.multitenancy.enabled: false
+      opensearch_security.readonly_mode.roles: ["kibana_read_only"]
+      server.ssl.enabled: true
+      server.ssl.key: "/usr/share/wazuh-dashboard/certs/wazuh.dashboard-key.pem"
+      server.ssl.certificate: "/usr/share/wazuh-dashboard/certs/wazuh.dashboard.pem"
+      opensearch.ssl.certificateAuthorities: ["/usr/share/wazuh-dashboard/certs/root-ca.pem"]
+      uiSettings.overrides.defaultRoute: /app/wz-home
+  wazuh-dashboard-app-config:
+    type: file
+    target: wazuh-dashboard
+    path: /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+    text: |
+      hosts:
+        - default:
+            url: "https://wazuh-manager"
+            port: 55000
+            username: wazuh-wui
+            password: "WazuhPass123!"
+            run_as: false
   cortex-index-init-script:
     type: file
     target: cortex-index-init
