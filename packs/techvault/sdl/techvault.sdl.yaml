@@ -692,6 +692,17 @@ nodes:
     services:
       - {name: elasticsearch, port: 9200, protocol: tcp}
     runtime:
+      environment:
+        - name: discovery.type
+          value: single-node
+        - name: xpack.security.enabled
+          value: "false"
+        - name: cluster.routing.allocation.disk.threshold_enabled
+          value: "false"
+        # Cap the JVM heap: Elasticsearch otherwise auto-sizes to ~1/4 of host
+        # RAM (31 GB on a 125 GB host), which destabilizes the lab under load.
+        - name: ES_JAVA_OPTS
+          value: "-Xms512m -Xmx512m"
       datastore_services:
         - datastore_service_id: thehive-es
           engine: elasticsearch
