@@ -53,6 +53,29 @@ nodes:
       - {name: agent-enrollment, port: 1515, protocol: tcp}
       - {name: syslog, port: 514, protocol: udp}
     runtime:
+      environment:
+        - name: INDEXER_URL
+          value: "https://wazuh-indexer:9200"
+        - name: INDEXER_USERNAME
+          value: ""
+          value_classification: operator_secret
+        - name: INDEXER_PASSWORD
+          value: ""
+          value_classification: operator_secret
+        - name: FILEBEAT_SSL_VERIFICATION_MODE
+          value: "full"
+        - name: SSL_CERTIFICATE_AUTHORITIES
+          value: "/etc/ssl/wazuh/root-ca-manager.pem"
+        - name: SSL_CERTIFICATE
+          value: "/etc/ssl/wazuh/wazuh.manager.pem"
+        - name: SSL_KEY
+          value: "/etc/ssl/wazuh/wazuh.manager-key.pem"
+        - name: API_USERNAME
+          value: ""
+          value_classification: operator_secret
+        - name: API_PASSWORD
+          value: ""
+          value_classification: operator_secret
       security_monitoring_managers:
         - security_monitoring_manager_id: wazuh-manager
           implementation: wazuh
@@ -218,6 +241,9 @@ nodes:
     services:
       - {name: indexer-api, port: 9200, protocol: tcp}
     runtime:
+      environment:
+        - name: OPENSEARCH_JAVA_OPTS
+          value: "-Xms1g -Xmx1g"
       datastore_services:
         - datastore_service_id: wazuh-indexer
           engine: opensearch
@@ -280,6 +306,28 @@ nodes:
             timing: backend-preparation
     services:
       - {name: dashboard, port: 5601, protocol: tcp}
+    runtime:
+      environment:
+        - name: INDEXER_USERNAME
+          value: ""
+          value_classification: operator_secret
+        - name: INDEXER_PASSWORD
+          value: ""
+          value_classification: operator_secret
+        - name: DASHBOARD_USERNAME
+          value: ""
+          value_classification: operator_secret
+        - name: DASHBOARD_PASSWORD
+          value: ""
+          value_classification: operator_secret
+        - name: API_USERNAME
+          value: ""
+          value_classification: operator_secret
+        - name: API_PASSWORD
+          value: ""
+          value_classification: operator_secret
+        - name: WAZUH_API_URL
+          value: "https://wazuh-manager"
 
   suricata:
     type: vm
