@@ -354,10 +354,14 @@ nodes:
     services: []
     runtime:
       container:
+        # Run suricata directly rather than through the image's
+        # docker-entrypoint.sh: that wrapper chowns /etc/suricata/* on start,
+        # which fails on the read-only config content mount. suricata itself
+        # only reads the config, so a direct exec starts cleanly (issue #875).
         entrypoint:
           - /bin/sh
           - -c
-          - "exec /docker-entrypoint.sh -c /etc/suricata/suricata.yaml --pcap"
+          - "exec suricata -c /etc/suricata/suricata.yaml --pcap"
       linux_capabilities:
         add: [CAP_NET_ADMIN, CAP_NET_RAW, CAP_SYS_NICE]
       network_sensors:
@@ -1298,6 +1302,13 @@ nodes:
       - {name: ldap, port: 389, protocol: tcp}
       - {name: kerberos, port: 88, protocol: tcp}
       - {name: smb, port: 445, protocol: tcp}
+    runtime:
+      # Samba AD DC provisioning sets NT ACLs (security.NTACL xattrs) on the
+      # sysvol during `samba-tool domain provision`, which needs CAP_SYS_ADMIN;
+      # NET_ADMIN is for the DC's own network setup. Without them provisioning
+      # fails with NT_STATUS_ACCESS_DENIED (issue #875 / #259).
+      linux_capabilities:
+        add: [CAP_SYS_ADMIN, CAP_NET_ADMIN]
   db:
     type: vm
     os: linux
@@ -2572,6 +2583,14 @@ content:
       ES_URL="${CORTEX_ES_URL:-http://thehive-es:9200}"
       INDEX="${CORTEX_INDEX:-cortex_6}"
       MAPPING='{"mappings":{"properties":{"relations":{"type":"keyword"},"status":{"type":"keyword"},"key":{"type":"keyword"}}}}'
+
+      # Elasticsearch takes time to accept connections after its container
+      # starts; wait for it rather than relying on the container restart policy
+      # to retry (a one-shot depends_on only orders start, not readiness).
+      for _ in $(seq 1 60); do
+          if curl -sf "${ES_URL}" >/dev/null 2>&1; then break; fi
+          sleep 5
+      done
 
       if curl -sf "${ES_URL}/${INDEX}" >/dev/null; then
           mapping="$(curl -sf "${ES_URL}/${INDEX}/_mapping")"
