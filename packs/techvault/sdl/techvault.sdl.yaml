@@ -1837,6 +1837,9 @@ nodes:
     services: []
     runtime:
       container:
+        # One-shot: creates the Cortex ES index and exits. Marked ephemeral so
+        # the backend does not restart the finished job (issue #875 / #259).
+        autoremove: true
         entrypoint:
           - "/bin/sh"
           - "/usr/local/bin/cortex-index-init.sh"
