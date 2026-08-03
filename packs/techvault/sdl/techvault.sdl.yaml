@@ -2667,6 +2667,57 @@ content:
       plugins.security.system_indices.indices: [".opendistro-alerting-config", ".opendistro-alerting-alert*", ".opendistro-anomaly-results*", ".opendistro-anomaly-detector*", ".opendistro-anomaly-checkpoints", ".opendistro-anomaly-detection-state", ".opendistro-reports-*", ".opendistro-notifications-*", ".opendistro-notebooks", ".opensearch-observability", ".opendistro-asynchronous-search-response*", ".replication-metadata-store"]
       plugins.security.allow_default_init_securityindex: true
       cluster.routing.allocation.disk.threshold_enabled: false
+  wazuh-indexer-internal-users:
+    # The indexer initializes its security index from this file on first boot
+    # (opensearch.yml sets allow_default_init_securityindex: true). The admin
+    # bcrypt hash below is for the password APTL hydrates into INDEXER_PASSWORD
+    # ('SecretPassword', from config/wazuh_cluster/filebeat_wazuh_module.yml);
+    # without this file the indexer falls back to its bundled demo users and
+    # rejects the operator credentials, so the authenticated readiness gate and
+    # every SIEM consumer (manager filebeat, dashboard) fail auth.
+    type: file
+    target: wazuh-indexer
+    path: /usr/share/wazuh-indexer/opensearch-security/internal_users.yml
+    text: |
+      ---
+      _meta:
+        type: "internalusers"
+        config_version: 2
+      admin:
+        hash: "$2y$12$K/SpwjtB.wOHJ/Nc6GVRDuc1h0rM1DfvziFRNPtk27P.c4yDr9njO"
+        reserved: true
+        backend_roles:
+        - "admin"
+        description: "Demo admin user"
+      kibanaserver:
+        hash: "$2a$12$4AcgAt3xwOWadA5s5blL6ev39OXDNhmOesEoo33eZtrq2N0YrU3H."
+        reserved: true
+        description: "Demo kibanaserver user"
+      kibanaro:
+        hash: "$2a$12$JJSXNfTowz7Uu5ttXfeYpeYE0arACvcwlPBStB1F.MI7f0U9Z4DGC"
+        reserved: false
+        backend_roles:
+        - "kibanauser"
+        - "readall"
+        description: "Demo kibanaro user"
+      logstash:
+        hash: "$2a$12$u1ShR4l4uBS3Uv59Pa2y5.1uQuZBrZtmNfqB3iM/.jL0XoV9sghS2"
+        reserved: false
+        backend_roles:
+        - "logstash"
+        description: "Demo logstash user"
+      readall:
+        hash: "$2a$12$ae4ycwzwvLtZxwZ82RmiEunBbIPiAmGZduBAjKN0TXdwQFtCwARz2"
+        reserved: false
+        backend_roles:
+        - "readall"
+        description: "Demo readall user"
+      snapshotrestore:
+        hash: "$2y$12$DpwmetHKwgYnorbgdvORCenv4NAK8cPUg8AI6pxLCuWf/ALc0.v7W"
+        reserved: false
+        backend_roles:
+        - "snapshotrestore"
+        description: "Demo snapshotrestore user"
   wazuh-dashboard-opensearch-config:
     type: file
     target: wazuh-dashboard
