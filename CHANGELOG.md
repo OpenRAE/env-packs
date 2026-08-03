@@ -11,6 +11,13 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.7.0](https://github.com/OpenRAE/env-packs/compare/v3.6.2...v3.7.0) (2026-08-02)
+
+
+### Features
+
+* **distribution:** add verified pack supply-chain workflows ([#257](https://github.com/OpenRAE/env-packs/issues/257)) ([759ec95](https://github.com/OpenRAE/env-packs/commit/759ec95ccc8d505fd67259701f4a35bedf6674bd))
+
 ## [3.6.2](https://github.com/OpenRAE/env-packs/compare/v3.6.1...v3.6.2) (2026-08-02)
 
 
