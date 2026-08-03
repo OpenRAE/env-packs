@@ -440,6 +440,12 @@ nodes:
             timing: backend-preparation
     services:
       - {name: mysql, port: 3306, protocol: tcp}
+    runtime:
+      environment:
+        - {name: MYSQL_DATABASE, value: misp}
+        - {name: MYSQL_USER, value: misp}
+        - {name: MYSQL_PASSWORD, value: misp_db_password}
+        - {name: MYSQL_ROOT_PASSWORD, value: misp_root_password}
   misp-redis:
     type: vm
     os: linux
@@ -794,6 +800,11 @@ nodes:
       - {name: opensearch-rest, port: 9200, protocol: tcp}
       - {name: opensearch-transport, port: 9300, protocol: tcp}
     runtime:
+      environment:
+        - {name: OPENSEARCH_JAVA_OPTS, value: "-Xms512m -Xmx512m"}
+        - {name: discovery.type, value: single-node}
+        - {name: cluster.routing.allocation.disk.threshold_enabled, value: "false"}
+        - {name: OPENSEARCH_INITIAL_ADMIN_PASSWORD, value: "StrongPassword123!"}
       datastore_services:
         - datastore_service_id: shuffle-opensearch
           engine: opensearch

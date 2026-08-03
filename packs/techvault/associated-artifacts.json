@@ -419,9 +419,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "9f04f3e6eab2e1a656fd1431e2288bdad76e8476fd0526d04c40fd8eee34f9f7"
+        "value": "4b7ab83940409bda96794cd60d68c3fa0e68cbef9c5286f78c12e9c9478cf86f"
       },
-      "size_bytes": 122274,
+      "size_bytes": 122821,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
       "satisfies_refs": [],
@@ -461,5 +461,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:247b591dcdbe2a08c2fbc014966cfa3f545149e491d91c59d46a37d90ac9d812"
+  "set_digest": "sha256:fb4a043c28443f31247f4dfdabbda514adcd121681da2aa18c4993e1863b4d70"
 }
