@@ -53,6 +53,17 @@ nodes:
       - {name: agent-enrollment, port: 1515, protocol: tcp}
       - {name: syslog, port: 514, protocol: udp}
     runtime:
+      # Loopback-published on the host exactly as the pre-refactor range did:
+      # agent enrollment (1514/1515), syslog (514/udp), and the manager API
+      # (55000). The authenticated readiness gate probes the API over the
+      # published 55000 binding, so this is required for a clean boot, not just
+      # operator convenience.
+      network:
+        published_ports:
+          - {container_port: 1514, protocol: tcp, host_port: 1514, host_ip: "127.0.0.1"}
+          - {container_port: 1515, protocol: tcp, host_port: 1515, host_ip: "127.0.0.1"}
+          - {container_port: 514, protocol: udp, host_port: 514, host_ip: "127.0.0.1"}
+          - {container_port: 55000, protocol: tcp, host_port: 55000, host_ip: "127.0.0.1"}
       environment:
         - name: INDEXER_URL
           value: "https://wazuh-indexer:9200"
@@ -241,6 +252,11 @@ nodes:
     services:
       - {name: indexer-api, port: 9200, protocol: tcp}
     runtime:
+      # Loopback-published on the host as the pre-refactor range did. The
+      # authenticated readiness gate probes the indexer over this 9200 binding.
+      network:
+        published_ports:
+          - {container_port: 9200, protocol: tcp, host_port: 9200, host_ip: "127.0.0.1"}
       environment:
         - name: OPENSEARCH_JAVA_OPTS
           value: "-Xms1g -Xmx1g"
@@ -307,6 +323,11 @@ nodes:
     services:
       - {name: dashboard, port: 5601, protocol: tcp}
     runtime:
+      # The SOC dashboard is the operator-facing Wazuh UI; the pre-refactor
+      # range published it on loopback 443 (host) -> 5601 (container).
+      network:
+        published_ports:
+          - {container_port: 5601, protocol: tcp, host_port: 443, host_ip: "127.0.0.1"}
       environment:
         - name: INDEXER_USERNAME
           value: ""
