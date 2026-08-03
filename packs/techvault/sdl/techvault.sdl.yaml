@@ -1789,25 +1789,132 @@ nodes:
   kali-capture:
     type: vm
     os: linux
+    description: >-
+      OBS-003 per-session capture sidecar (ADR-041 / issue #305). Shares Kali's
+      network namespace so the abstract capture-control socket the Kali workload
+      connects to is mutually visible, and owns the kali_captures volume
+      read-write so the Kali user (even after sudo) cannot tamper with recorded
+      evidence.
     services: []
+    source:
+      name: "aptl-kali-capture"
+      version: local
+      artifact_requirement:
+        requirement_id: kali-capture-image
+        explicitness: constrained
+        materialization_specifications:
+          - specification_id: kali-capture
+            profile:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            digest: "sha256:996cc24689da0ad977c3c4dc2522dd8463a06c7e40ca4a80f075d1427e8ec610"
+            locked_input_ids: []
+        permitted_routes:
+          - mechanism:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            acquisition: none
+            timing: backend-preparation
+    runtime:
+      container:
+        # OBS-003: share Kali's network namespace so the abstract control
+        # socket (\0aptl-capture-ctrl, a per-netns kernel object) is visible to
+        # both the Kali workload and this sidecar.
+        namespaces:
+          network:
+            target_node_ref: kali
+      # The sidecar (NOT the Kali workload) holds the capture capabilities:
+      # AUDIT_CONTROL/AUDIT_WRITE for auditd, SYS_PACCT for process accounting,
+      # NET_RAW for per-session tcpdump.
+      linux_capabilities:
+        add: [CAP_AUDIT_CONTROL, CAP_AUDIT_WRITE, CAP_SYS_PACCT, CAP_NET_RAW]
+      # The kali_captures volume mount is authored under persistent_volumes
+      # (that consumer entry carries the containment + read_write intent); a
+      # runtime mount here would double-declare the same target.
   kali-ssh-proxy:
     type: vm
     os: linux
     description: >-
       Operator SSH entry point into the red-team network. Bridges the control
       network to Kali's SSH service so the range's SSH port is reachable without
-      attaching the operator's host to the red-team network directly.
+      attaching the operator's host to the red-team network directly. The image
+      defaults target Kali (172.20.4.30:22) and listen on 2023, so no runtime
+      environment override is required.
     services:
       - {name: ssh, port: 2023, protocol: tcp}
+    source:
+      name: "aptl-kali-ssh-proxy"
+      version: local
+      artifact_requirement:
+        requirement_id: kali-ssh-proxy-image
+        explicitness: constrained
+        materialization_specifications:
+          - specification_id: kali-ssh-proxy
+            profile:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            digest: "sha256:4fba11764cb3831703d1cc28484ad678a9dbe0e856873a603dbc8d09a3e47621"
+            locked_input_ids: []
+        permitted_routes:
+          - mechanism:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            acquisition: none
+            timing: backend-preparation
+    runtime:
+      network:
+        published_ports:
+          - {container_port: 2023, protocol: tcp, host_port: 2023, host_ip: "127.0.0.1"}
   webapp-proxy:
     type: vm
     os: linux
     description: >-
       Operator HTTP entry point to the customer portal. Bridges the control
       network to the webapp's service port on the DMZ so the portal is reachable
-      from the host while the DMZ itself stays internal.
+      from the host while the DMZ itself stays internal. Reuses the SSH-proxy's
+      TCP-forwarder image (same contained build context) with an environment
+      override pointing at the webapp (172.20.1.20:8080).
     services:
       - {name: http, port: 8080, protocol: tcp}
+    source:
+      name: "aptl-webapp-proxy"
+      version: local
+      artifact_requirement:
+        requirement_id: webapp-proxy-image
+        explicitness: constrained
+        materialization_specifications:
+          - specification_id: kali-ssh-proxy
+            profile:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            digest: "sha256:4fba11764cb3831703d1cc28484ad678a9dbe0e856873a603dbc8d09a3e47621"
+            locked_input_ids: []
+        permitted_routes:
+          - mechanism:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            acquisition: none
+            timing: backend-preparation
+    runtime:
+      network:
+        published_ports:
+          - {container_port: 8080, protocol: tcp, host_port: 8080, host_ip: "127.0.0.1"}
+      environment:
+        - {name: APTL_PROXY_LISTEN_PORT, value: "8080", value_classification: plain, provenance: compose}
+        - {name: APTL_PROXY_TARGET_HOST, value: "172.20.1.20", value_classification: plain, provenance: compose}
+        - {name: APTL_PROXY_TARGET_PORT, value: "8080", value_classification: plain, provenance: compose}
   cortex-index-init:
     type: vm
     os: linux
@@ -2042,6 +2149,12 @@ infrastructure:
       - {internal-net: 172.20.2.35}
   kali-capture:
     dependencies: [kali]
+  kali-ssh-proxy:
+    links: [control-net, redteam-net]
+    dependencies: [kali]
+  webapp-proxy:
+    links: [control-net, dmz-net]
+    dependencies: [webapp]
 
   aptl-otel-collector:
     links: [security-net]
