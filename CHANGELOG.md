@@ -11,6 +11,34 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.8.0](https://github.com/OpenRAE/env-packs/compare/v3.7.0...v3.8.0) (2026-08-03)
+
+
+### Features
+
+* **techvault:** author operator-access proxies + capture sidecar as component builds ([7cf97fb](https://github.com/OpenRAE/env-packs/commit/7cf97fbb5cf2a9c0d28d2c98a33cedd53d7dbabb))
+* **techvault:** author the indexer internal_users.yml ([58e79a9](https://github.com/OpenRAE/env-packs/commit/58e79a977997bdae76518e503675010ffe7e1417))
+* **techvault:** declare aptl-tempo config and startup command ([18d2f10](https://github.com/OpenRAE/env-packs/commit/18d2f101f9102d05e94f78e1600461287c8a2a47))
+* **techvault:** declare misp-db and shuffle-opensearch runtime environment ([a1a1211](https://github.com/OpenRAE/env-packs/commit/a1a12111a5ee86bfba9ed32ce2ec2cb2dc8adcdd))
+* **techvault:** declare SOC app configs (otel, grafana, cortex, thehive) ([#259](https://github.com/OpenRAE/env-packs/issues/259)) ([d448316](https://github.com/OpenRAE/env-packs/commit/d4483165d59d2df0d9979460b19f3c582dc2887d))
+* **techvault:** declare suricata run config + cortex-index-init placement ([#259](https://github.com/OpenRAE/env-packs/issues/259)) ([02314a8](https://github.com/OpenRAE/env-packs/commit/02314a868096cd47fdd3922495972e4b69517c14))
+* **techvault:** declare wazuh cluster env desired-state ([#259](https://github.com/OpenRAE/env-packs/issues/259)) ([4ef0569](https://github.com/OpenRAE/env-packs/commit/4ef0569ac35945a6e12452c05a7c51171fdb7988))
+* **techvault:** declare wazuh loopback published ports ([c318349](https://github.com/OpenRAE/env-packs/commit/c31834971c30a7659e099422debe1b1cac8f6179))
+* **techvault:** declare wazuh sidecar agent environment ([6abf245](https://github.com/OpenRAE/env-packs/commit/6abf245473bb4d9c1fe2697acfefecdc3df34956))
+* **techvault:** declare wazuh-dashboard config content ([#259](https://github.com/OpenRAE/env-packs/issues/259)) ([a2a2ddc](https://github.com/OpenRAE/env-packs/commit/a2a2ddc6a11e94b84960233bbf789065e60cc38a))
+* **techvault:** declare wazuh-indexer opensearch.yml security config ([#259](https://github.com/OpenRAE/env-packs/issues/259)) ([499bd04](https://github.com/OpenRAE/env-packs/commit/499bd04b72252c67b9891c81a03825bfbae7c62e))
+* **techvault:** fully declare cortex-index-init (image, entrypoint, script) ([99973e7](https://github.com/OpenRAE/env-packs/commit/99973e75d311bd5e0131e428326b8d49bfa23cd5))
+
+
+### Bug Fixes
+
+* **techvault:** align soc-certificate output paths with the issued layout ([f4444a9](https://github.com/OpenRAE/env-packs/commit/f4444a9c605e9882de8b22b59c510e3f4af11fdf))
+* **techvault:** declare thehive-es ES env (single-node, security off, 512m heap) ([#259](https://github.com/OpenRAE/env-packs/issues/259)) ([8601f71](https://github.com/OpenRAE/env-packs/commit/8601f71bdccf06994a3e4c434efc42cd8a2f6cc3))
+* **techvault:** mark cortex-index-init as one-shot (autoremove) ([#259](https://github.com/OpenRAE/env-packs/issues/259)) ([09ff951](https://github.com/OpenRAE/env-packs/commit/09ff9517cc4ea5b8db505c3c6dc7b63d80230281))
+* **techvault:** realize the misp-sync TLS flag and the db-log forwarding source ([74ba39d](https://github.com/OpenRAE/env-packs/commit/74ba39deeb02ff6a89a9e7394905c24112f7f599))
+* **techvault:** suricata direct exec, cortex-init ES wait, ad samba caps ([#259](https://github.com/OpenRAE/env-packs/issues/259)) ([32857a9](https://github.com/OpenRAE/env-packs/commit/32857a96c756492ffd8282fb252f0f9027cbe7e0))
+* **techvault:** update proxy component-build spec digests ([1d842ce](https://github.com/OpenRAE/env-packs/commit/1d842ce2d7d1a6f7f33ab3621e65b2ccb5293ef3))
+
 ## [3.7.0](https://github.com/OpenRAE/env-packs/compare/v3.6.2...v3.7.0) (2026-08-02)
 
 
