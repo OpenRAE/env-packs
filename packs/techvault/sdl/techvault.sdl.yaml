@@ -896,6 +896,11 @@ nodes:
             timing: backend-preparation
     services: []
     runtime:
+      environment:
+        - {name: WAZUH_MANAGER, value: wazuh-manager}
+        - {name: AGENT_NAME, value: aptl-db-agent}
+        - {name: LOG_PATHS, value: /logs/pg_log/postgresql.log}
+        - {name: LOG_FORMAT, value: syslog}
       forwarding_agents:
         - forwarding_agent_id: db-postgres-forwarder
           implementation: wazuh_agent
@@ -948,6 +953,11 @@ nodes:
             timing: backend-preparation
     services: []
     runtime:
+      environment:
+        - {name: WAZUH_MANAGER, value: wazuh-manager}
+        - {name: AGENT_NAME, value: aptl-suricata-agent}
+        - {name: LOG_PATHS, value: /logs/eve.json}
+        - {name: LOG_FORMAT, value: json}
       forwarding_agents:
         - forwarding_agent_id: suricata-eve-forwarder
           implementation: wazuh_agent
