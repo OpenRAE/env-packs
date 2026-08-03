@@ -630,6 +630,32 @@ nodes:
             timing: backend-preparation
     services:
       - {name: thehive-api, port: 9000, protocol: tcp}
+    runtime:
+      environment:
+        - name: JVM_OPTS
+          value: "-Xms512m -Xmx512m"
+      container:
+        # TheHive's backends are selected on the command line: Cassandra for the
+        # graph store, local Lucene index over Elasticsearch, and Cortex for
+        # analyzers -- all reached by their hyphenated service DNS names. The
+        # --secret is a planted lab fixture. HTTPS termination + the Cortex API
+        # key arrive via env_file from generated secrets (keystore password,
+        # cortex-apikey), a refinement tracked for the env_file affordance.
+        command:
+          - "--secret"
+          - "aptl-thehive-lab-secret-key-2024-purple"
+          - "--cql-hostnames"
+          - "thehive-cassandra"
+          - "--index-backend"
+          - "lucene"
+          - "--es-hostnames"
+          - "thehive-es"
+          - "--cortex-proto"
+          - "http"
+          - "--cortex-hostnames"
+          - "cortex"
+          - "--cortex-port"
+          - "9001"
   thehive-cassandra:
     type: vm
     os: linux
@@ -2581,6 +2607,64 @@ content:
       # Local Suricata rule corpus. MISP-derived rules are reloaded live over
       # the command socket by the MISP sync agent; this file is the authored
       # local baseline.
+  otel-collector-config:
+    type: file
+    target: aptl-otel-collector
+    path: /etc/otelcol-contrib/config.yaml
+    text: |
+      extensions:
+        health_check:
+          endpoint: 0.0.0.0:13133
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+      processors:
+        batch:
+          timeout: 5s
+          send_batch_size: 1024
+      exporters:
+        otlp/tempo:
+          endpoint: aptl-tempo:4317
+          tls:
+            insecure: true
+        debug:
+          verbosity: basic
+      service:
+        extensions: [health_check]
+        pipelines:
+          traces:
+            receivers: [otlp]
+            processors: [batch]
+            exporters: [otlp/tempo, debug]
+  grafana-datasources-config:
+    type: file
+    target: aptl-grafana-otel
+    path: /etc/grafana/provisioning/datasources/tempo.yaml
+    text: |
+      apiVersion: 1
+      datasources:
+        - name: Tempo
+          type: tempo
+          access: proxy
+          url: http://aptl-tempo:3200
+          isDefault: true
+          editable: false
+  cortex-app-config:
+    type: file
+    target: cortex
+    path: /etc/cortex/application.conf
+    text: |
+      # Elasticsearch backend (thehive-es on the security network). Cortex
+      # 3.1.8 expects search.uri; HTTP-only in-network on aptl-security.
+      search {
+        index = "cortex"
+        uri = "http://thehive-es:9200"
+      }
+      auth.provider = ["local", "key"]
   cortex-index-init-script:
     type: file
     target: cortex-index-init
