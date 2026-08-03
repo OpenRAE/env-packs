@@ -53,6 +53,40 @@ nodes:
       - {name: agent-enrollment, port: 1515, protocol: tcp}
       - {name: syslog, port: 514, protocol: udp}
     runtime:
+      # Loopback-published on the host exactly as the pre-refactor range did:
+      # agent enrollment (1514/1515), syslog (514/udp), and the manager API
+      # (55000). The authenticated readiness gate probes the API over the
+      # published 55000 binding, so this is required for a clean boot, not just
+      # operator convenience.
+      network:
+        published_ports:
+          - {container_port: 1514, protocol: tcp, host_port: 1514, host_ip: "127.0.0.1"}
+          - {container_port: 1515, protocol: tcp, host_port: 1515, host_ip: "127.0.0.1"}
+          - {container_port: 514, protocol: udp, host_port: 514, host_ip: "127.0.0.1"}
+          - {container_port: 55000, protocol: tcp, host_port: 55000, host_ip: "127.0.0.1"}
+      environment:
+        - name: INDEXER_URL
+          value: "https://wazuh-indexer:9200"
+        - name: INDEXER_USERNAME
+          value: ""
+          value_classification: operator_secret
+        - name: INDEXER_PASSWORD
+          value: ""
+          value_classification: operator_secret
+        - name: FILEBEAT_SSL_VERIFICATION_MODE
+          value: "full"
+        - name: SSL_CERTIFICATE_AUTHORITIES
+          value: "/etc/ssl/wazuh/root-ca-manager.pem"
+        - name: SSL_CERTIFICATE
+          value: "/etc/ssl/wazuh/wazuh.manager.pem"
+        - name: SSL_KEY
+          value: "/etc/ssl/wazuh/wazuh.manager-key.pem"
+        - name: API_USERNAME
+          value: ""
+          value_classification: operator_secret
+        - name: API_PASSWORD
+          value: ""
+          value_classification: operator_secret
       security_monitoring_managers:
         - security_monitoring_manager_id: wazuh-manager
           implementation: wazuh
@@ -218,6 +252,14 @@ nodes:
     services:
       - {name: indexer-api, port: 9200, protocol: tcp}
     runtime:
+      # Loopback-published on the host as the pre-refactor range did. The
+      # authenticated readiness gate probes the indexer over this 9200 binding.
+      network:
+        published_ports:
+          - {container_port: 9200, protocol: tcp, host_port: 9200, host_ip: "127.0.0.1"}
+      environment:
+        - name: OPENSEARCH_JAVA_OPTS
+          value: "-Xms1g -Xmx1g"
       datastore_services:
         - datastore_service_id: wazuh-indexer
           engine: opensearch
@@ -280,6 +322,33 @@ nodes:
             timing: backend-preparation
     services:
       - {name: dashboard, port: 5601, protocol: tcp}
+    runtime:
+      # The SOC dashboard is the operator-facing Wazuh UI; the pre-refactor
+      # range published it on loopback 443 (host) -> 5601 (container).
+      network:
+        published_ports:
+          - {container_port: 5601, protocol: tcp, host_port: 443, host_ip: "127.0.0.1"}
+      environment:
+        - name: INDEXER_USERNAME
+          value: ""
+          value_classification: operator_secret
+        - name: INDEXER_PASSWORD
+          value: ""
+          value_classification: operator_secret
+        - name: DASHBOARD_USERNAME
+          value: ""
+          value_classification: operator_secret
+        - name: DASHBOARD_PASSWORD
+          value: ""
+          value_classification: operator_secret
+        - name: API_USERNAME
+          value: ""
+          value_classification: operator_secret
+        - name: API_PASSWORD
+          value: ""
+          value_classification: operator_secret
+        - name: WAZUH_API_URL
+          value: "https://wazuh-manager"
 
   suricata:
     type: vm
@@ -305,6 +374,17 @@ nodes:
             timing: backend-preparation
     services: []
     runtime:
+      container:
+        # Run suricata directly rather than through the image's
+        # docker-entrypoint.sh: that wrapper chowns /etc/suricata/* on start,
+        # which fails on the read-only config content mount. suricata itself
+        # only reads the config, so a direct exec starts cleanly (issue #875).
+        entrypoint:
+          - /bin/sh
+          - -c
+          - "exec suricata -c /etc/suricata/suricata.yaml --pcap"
+      linux_capabilities:
+        add: [CAP_NET_ADMIN, CAP_NET_RAW, CAP_SYS_NICE]
       network_sensors:
         - network_sensor_id: suricata-sensor
           implementation: suricata
@@ -440,6 +520,12 @@ nodes:
             timing: backend-preparation
     services:
       - {name: mysql, port: 3306, protocol: tcp}
+    runtime:
+      environment:
+        - {name: MYSQL_DATABASE, value: misp}
+        - {name: MYSQL_USER, value: misp}
+        - {name: MYSQL_PASSWORD, value: misp_db_password}
+        - {name: MYSQL_ROOT_PASSWORD, value: misp_root_password}
   misp-redis:
     type: vm
     os: linux
@@ -482,6 +568,12 @@ nodes:
           value_classification: operator_secret
           provenance: compose
         - name: MISP_VERIFY_SSL
+          # MISP serves a self-signed certificate in the lab and there is no lab
+          # CA, so the sync client must not verify TLS. This is the documented
+          # lab default (ADR-022); declaring it here makes it real range content
+          # the backend realizes and discloses, rather than leaking in from the
+          # operator .env out of band.
+          value: "false"
           value_classification: plain
           provenance: compose
         - name: MISP_CA_CERT_PATH
@@ -565,6 +657,32 @@ nodes:
             timing: backend-preparation
     services:
       - {name: thehive-api, port: 9000, protocol: tcp}
+    runtime:
+      environment:
+        - name: JVM_OPTS
+          value: "-Xms512m -Xmx512m"
+      container:
+        # TheHive's backends are selected on the command line: Cassandra for the
+        # graph store, local Lucene index over Elasticsearch, and Cortex for
+        # analyzers -- all reached by their hyphenated service DNS names. The
+        # --secret is a planted lab fixture. HTTPS termination + the Cortex API
+        # key arrive via env_file from generated secrets (keystore password,
+        # cortex-apikey), a refinement tracked for the env_file affordance.
+        command:
+          - "--secret"
+          - "aptl-thehive-lab-secret-key-2024-purple"
+          - "--cql-hostnames"
+          - "thehive-cassandra"
+          - "--index-backend"
+          - "lucene"
+          - "--es-hostnames"
+          - "thehive-es"
+          - "--cortex-proto"
+          - "http"
+          - "--cortex-hostnames"
+          - "cortex"
+          - "--cortex-port"
+          - "9001"
   thehive-cassandra:
     type: vm
     os: linux
@@ -627,6 +745,17 @@ nodes:
     services:
       - {name: elasticsearch, port: 9200, protocol: tcp}
     runtime:
+      environment:
+        - name: discovery.type
+          value: single-node
+        - name: xpack.security.enabled
+          value: "false"
+        - name: cluster.routing.allocation.disk.threshold_enabled
+          value: "false"
+        # Cap the JVM heap: Elasticsearch otherwise auto-sizes to ~1/4 of host
+        # RAM (31 GB on a 125 GB host), which destabilizes the lab under load.
+        - name: ES_JAVA_OPTS
+          value: "-Xms512m -Xmx512m"
       datastore_services:
         - datastore_service_id: thehive-es
           engine: elasticsearch
@@ -794,6 +923,11 @@ nodes:
       - {name: opensearch-rest, port: 9200, protocol: tcp}
       - {name: opensearch-transport, port: 9300, protocol: tcp}
     runtime:
+      environment:
+        - {name: OPENSEARCH_JAVA_OPTS, value: "-Xms512m -Xmx512m"}
+        - {name: discovery.type, value: single-node}
+        - {name: cluster.routing.allocation.disk.threshold_enabled, value: "false"}
+        - {name: OPENSEARCH_INITIAL_ADMIN_PASSWORD, value: "StrongPassword123!"}
       datastore_services:
         - datastore_service_id: shuffle-opensearch
           engine: opensearch
@@ -885,16 +1019,27 @@ nodes:
             timing: backend-preparation
     services: []
     runtime:
+      environment:
+        - {name: WAZUH_MANAGER, value: wazuh-manager}
+        - {name: AGENT_NAME, value: aptl-db-agent}
+        # The db node is a generic-base apt install of PostgreSQL 15 (Debian
+        # bookworm base), which logs to /var/log/postgresql/postgresql-15-main.log.
+        # The db_logs volume shares that directory into this sidecar at /logs, so
+        # the tailed file is the log postgres actually writes -- not the
+        # pre-refactor postgres-image path (pg_log/postgresql.log under PGDATA)
+        # that the apt build no longer produces.
+        - {name: LOG_PATHS, value: /logs/postgresql-15-main.log}
+        - {name: LOG_FORMAT, value: syslog}
       forwarding_agents:
         - forwarding_agent_id: db-postgres-forwarder
           implementation: wazuh_agent
           agent_kind: log_forwarder
           name: aptl-db-agent
-          description: Tails the customer database's PostgreSQL log off the shared db_data volume and ships it to the Wazuh manager, so database activity reaches the SIEM.
+          description: Tails the customer database's PostgreSQL log off the shared db_logs volume and ships it to the Wazuh manager, so database activity reaches the SIEM.
           sources:
             - source_id: postgres-log
               kind: tailed_path
-              location: /logs/pg_log/postgresql.log
+              location: /logs/postgresql-15-main.log
               parse_format: syslog
           transforms:
             - transform_id: postgres-parse
@@ -937,6 +1082,11 @@ nodes:
             timing: backend-preparation
     services: []
     runtime:
+      environment:
+        - {name: WAZUH_MANAGER, value: wazuh-manager}
+        - {name: AGENT_NAME, value: aptl-suricata-agent}
+        - {name: LOG_PATHS, value: /logs/eve.json}
+        - {name: LOG_FORMAT, value: json}
       forwarding_agents:
         - forwarding_agent_id: suricata-eve-forwarder
           implementation: wazuh_agent
@@ -1222,6 +1372,13 @@ nodes:
       - {name: ldap, port: 389, protocol: tcp}
       - {name: kerberos, port: 88, protocol: tcp}
       - {name: smb, port: 445, protocol: tcp}
+    runtime:
+      # Samba AD DC provisioning sets NT ACLs (security.NTACL xattrs) on the
+      # sysvol during `samba-tool domain provision`, which needs CAP_SYS_ADMIN;
+      # NET_ADMIN is for the DC's own network setup. Without them provisioning
+      # fails with NT_STATUS_ACCESS_DENIED (issue #875 / #259).
+      linux_capabilities:
+        add: [CAP_SYS_ADMIN, CAP_NET_ADMIN]
   db:
     type: vm
     os: linux
@@ -1665,25 +1822,132 @@ nodes:
   kali-capture:
     type: vm
     os: linux
+    description: >-
+      OBS-003 per-session capture sidecar (ADR-041 / issue #305). Shares Kali's
+      network namespace so the abstract capture-control socket the Kali workload
+      connects to is mutually visible, and owns the kali_captures volume
+      read-write so the Kali user (even after sudo) cannot tamper with recorded
+      evidence.
     services: []
+    source:
+      name: "aptl-kali-capture"
+      version: local
+      artifact_requirement:
+        requirement_id: kali-capture-image
+        explicitness: constrained
+        materialization_specifications:
+          - specification_id: kali-capture
+            profile:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            digest: "sha256:29fe82a449d4b1afa79b3be15aa1f06d19fb3b2c8fc0fe56b803ef8b29484d42"
+            locked_input_ids: []
+        permitted_routes:
+          - mechanism:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            acquisition: none
+            timing: backend-preparation
+    runtime:
+      container:
+        # OBS-003: share Kali's network namespace so the abstract control
+        # socket (\0aptl-capture-ctrl, a per-netns kernel object) is visible to
+        # both the Kali workload and this sidecar.
+        namespaces:
+          network:
+            target_node_ref: kali
+      # The sidecar (NOT the Kali workload) holds the capture capabilities:
+      # AUDIT_CONTROL/AUDIT_WRITE for auditd, SYS_PACCT for process accounting,
+      # NET_RAW for per-session tcpdump.
+      linux_capabilities:
+        add: [CAP_AUDIT_CONTROL, CAP_AUDIT_WRITE, CAP_SYS_PACCT, CAP_NET_RAW]
+      # The kali_captures volume mount is authored under persistent_volumes
+      # (that consumer entry carries the containment + read_write intent); a
+      # runtime mount here would double-declare the same target.
   kali-ssh-proxy:
     type: vm
     os: linux
     description: >-
       Operator SSH entry point into the red-team network. Bridges the control
       network to Kali's SSH service so the range's SSH port is reachable without
-      attaching the operator's host to the red-team network directly.
+      attaching the operator's host to the red-team network directly. The image
+      defaults target Kali (172.20.4.30:22) and listen on 2023, so no runtime
+      environment override is required.
     services:
       - {name: ssh, port: 2023, protocol: tcp}
+    source:
+      name: "aptl-kali-ssh-proxy"
+      version: local
+      artifact_requirement:
+        requirement_id: kali-ssh-proxy-image
+        explicitness: constrained
+        materialization_specifications:
+          - specification_id: kali-ssh-proxy
+            profile:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            digest: "sha256:b09043cf4d4f192488aed48c23f68d260144579c53861ae7dd3dfb4810b73e97"
+            locked_input_ids: []
+        permitted_routes:
+          - mechanism:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            acquisition: none
+            timing: backend-preparation
+    runtime:
+      network:
+        published_ports:
+          - {container_port: 2023, protocol: tcp, host_port: 2023, host_ip: "127.0.0.1"}
   webapp-proxy:
     type: vm
     os: linux
     description: >-
       Operator HTTP entry point to the customer portal. Bridges the control
       network to the webapp's service port on the DMZ so the portal is reachable
-      from the host while the DMZ itself stays internal.
+      from the host while the DMZ itself stays internal. Reuses the SSH-proxy's
+      TCP-forwarder image (same contained build context) with an environment
+      override pointing at the webapp (172.20.1.20:8080).
     services:
       - {name: http, port: 8080, protocol: tcp}
+    source:
+      name: "aptl-webapp-proxy"
+      version: local
+      artifact_requirement:
+        requirement_id: webapp-proxy-image
+        explicitness: constrained
+        materialization_specifications:
+          - specification_id: kali-ssh-proxy
+            profile:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            digest: "sha256:b09043cf4d4f192488aed48c23f68d260144579c53861ae7dd3dfb4810b73e97"
+            locked_input_ids: []
+        permitted_routes:
+          - mechanism:
+              mechanism: "materialization-specification"
+              profile: "aptl-contained-component-build"
+              version: "1"
+              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
+            acquisition: none
+            timing: backend-preparation
+    runtime:
+      network:
+        published_ports:
+          - {container_port: 8080, protocol: tcp, host_port: 8080, host_ip: "127.0.0.1"}
+      environment:
+        - {name: APTL_PROXY_LISTEN_PORT, value: "8080", value_classification: plain, provenance: compose}
+        - {name: APTL_PROXY_TARGET_HOST, value: "172.20.1.20", value_classification: plain, provenance: compose}
+        - {name: APTL_PROXY_TARGET_PORT, value: "8080", value_classification: plain, provenance: compose}
   cortex-index-init:
     type: vm
     os: linux
@@ -1691,7 +1955,34 @@ nodes:
       One-shot initializer that creates Cortex's Elasticsearch index against
       thehive-es before Cortex starts, then exits. It is a short-lived member of
       the range, not a long-running host, and is declared because it starts.
+    source:
+      name: "docker.elastic.co/elasticsearch/elasticsearch"
+      version: "sha256:f2ce8a4c644a35762e6e115c9a373c5cd20df03c2dd75cb0a570011934cdffd1"
+      artifact_requirement:
+        requirement_id: cortex-index-init-image
+        explicitness: exact
+        exact_artifact:
+          artifact_id: "docker.elastic.co/elasticsearch/elasticsearch"
+          version: "sha256:f2ce8a4c644a35762e6e115c9a373c5cd20df03c2dd75cb0a570011934cdffd1"
+          digest: "sha256:f2ce8a4c644a35762e6e115c9a373c5cd20df03c2dd75cb0a570011934cdffd1"
+          media_type: "application/vnd.docker.distribution.manifest.list.v2+json"
+        permitted_routes:
+          - mechanism:
+              mechanism: "exact-artifact"
+              profile: "aptl-oci-exact-pull"
+              version: "1"
+              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
+            acquisition: pull
+            timing: backend-preparation
     services: []
+    runtime:
+      container:
+        # One-shot: creates the Cortex ES index and exits. Marked ephemeral so
+        # the backend does not restart the finished job (issue #875 / #259).
+        autoremove: true
+        entrypoint:
+          - "/bin/sh"
+          - "/usr/local/bin/cortex-index-init.sh"
 
   aptl-otel-collector:
     type: vm
@@ -1742,6 +2033,10 @@ nodes:
             timing: backend-preparation
     services:
       - {name: tempo-http, port: 3200, protocol: tcp}
+    runtime:
+      container:
+        command:
+          - "-config.file=/etc/tempo/tempo.yaml"
   aptl-grafana-otel:
     type: vm
     os: linux
@@ -1816,6 +2111,9 @@ infrastructure:
   cortex:
     links: [security-net]
     dependencies: [thehive-es]
+  cortex-index-init:
+    links: [security-net]
+    dependencies: [thehive-es]
   shuffle-backend:
     links: [security-net]
     dependencies: [shuffle-opensearch]
@@ -1884,6 +2182,12 @@ infrastructure:
       - {internal-net: 172.20.2.35}
   kali-capture:
     dependencies: [kali]
+  kali-ssh-proxy:
+    links: [control-net, redteam-net]
+    dependencies: [kali]
+  webapp-proxy:
+    links: [control-net, dmz-net]
+    dependencies: [webapp]
 
   aptl-otel-collector:
     links: [security-net]
@@ -2008,29 +2312,29 @@ generated_artifacts:
     provenance: techvault:soc-certificate-profile/v1
     outputs:
       - name: ca-private-key
-        path: ca/lab-ca.key
+        path: lab-ca.key
         sensitivity: secret
         disposition: producer_private
       - name: ca-certificate
-        path: ca/lab-ca.crt
+        path: lab-ca.pem
         sensitivity: public
       - name: misp-certificate
-        path: misp/server.crt
+        path: misp/server.pem
         sensitivity: public
       - name: misp-private-key
         path: misp/server.key
         sensitivity: secret
       - name: thehive-keystore
-        path: thehive/thehive.p12
+        path: thehive/keystore.p12
         sensitivity: restricted
       - name: thehive-keystore-password
-        path: thehive/keystore-password
+        path: thehive/keystore.p12.password
         sensitivity: secret
       - name: shuffle-certificate
-        path: shuffle/server.crt
+        path: shuffle-frontend/server.pem
         sensitivity: public
       - name: shuffle-private-key
-        path: shuffle/server.key
+        path: shuffle-frontend/server.key
         sensitivity: secret
     consumers:
       - node: misp
@@ -2173,6 +2477,15 @@ persistent_volumes:
     access_mode: read_write_once
     consumers:
       - {node: suricata, mount_destination: /seed, access_mode: read_only}
+  db_logs:
+    lifecycle: retain
+    access_mode: read_write_once
+      # PostgreSQL writes its cluster log under /var/log/postgresql here and the
+      # Wazuh sidecar tails it read-only at /logs: the telemetry hand-off that
+      # makes database activity visible to the SIEM.
+    consumers:
+      - {node: db, mount_destination: /var/log/postgresql, access_mode: read_write}
+      - {node: wazuh-sidecar-db, mount_destination: /logs, access_mode: read_only}
   suricata_logs:
     lifecycle: retain
     access_mode: read_write_once
@@ -2312,6 +2625,296 @@ vulnerabilities:
     technical: true
     class: CWE-209
 content:
+  aptl-tempo-config:
+    type: file
+    target: aptl-tempo
+    path: /etc/tempo/tempo.yaml
+    text: |
+      server:
+        http_listen_port: 3200
+
+      distributor:
+        receivers:
+          otlp:
+            protocols:
+              grpc:
+
+      ingester:
+        max_block_duration: 5m
+
+      compactor:
+        compaction:
+          block_retention: 72h
+
+      storage:
+        trace:
+          backend: local
+          wal:
+            path: /var/tempo/wal
+          local:
+            path: /var/tempo/blocks
+  wazuh-indexer-opensearch-config:
+    type: file
+    target: wazuh-indexer
+    path: /usr/share/wazuh-indexer/opensearch.yml
+    text: |
+      network.host: "0.0.0.0"
+      node.name: "wazuh.indexer"
+      path.data: /var/lib/wazuh-indexer
+      path.logs: /var/log/wazuh-indexer
+      discovery.type: single-node
+      http.port: 9200-9299
+      transport.tcp.port: 9300-9399
+      compatibility.override_main_response_version: true
+      plugins.security.ssl.http.pemcert_filepath: /usr/share/wazuh-indexer/certs/wazuh.indexer.pem
+      plugins.security.ssl.http.pemkey_filepath: /usr/share/wazuh-indexer/certs/wazuh.indexer-key.pem
+      plugins.security.ssl.http.pemtrustedcas_filepath: /usr/share/wazuh-indexer/certs/root-ca.pem
+      plugins.security.ssl.transport.pemcert_filepath: /usr/share/wazuh-indexer/certs/wazuh.indexer.pem
+      plugins.security.ssl.transport.pemkey_filepath: /usr/share/wazuh-indexer/certs/wazuh.indexer-key.pem
+      plugins.security.ssl.transport.pemtrustedcas_filepath: /usr/share/wazuh-indexer/certs/root-ca.pem
+      plugins.security.ssl.http.enabled: true
+      plugins.security.ssl.transport.enforce_hostname_verification: false
+      plugins.security.ssl.transport.resolve_hostname: false
+      plugins.security.authcz.admin_dn:
+      - "CN=admin,OU=Wazuh,O=Wazuh,L=California,C=US"
+      plugins.security.check_snapshot_restore_write_privileges: true
+      plugins.security.enable_snapshot_restore_privilege: true
+      plugins.security.nodes_dn:
+      - "CN=wazuh.indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
+      plugins.security.restapi.roles_enabled:
+      - "all_access"
+      - "security_rest_api_access"
+      plugins.security.system_indices.enabled: true
+      plugins.security.system_indices.indices: [".opendistro-alerting-config", ".opendistro-alerting-alert*", ".opendistro-anomaly-results*", ".opendistro-anomaly-detector*", ".opendistro-anomaly-checkpoints", ".opendistro-anomaly-detection-state", ".opendistro-reports-*", ".opendistro-notifications-*", ".opendistro-notebooks", ".opensearch-observability", ".opendistro-asynchronous-search-response*", ".replication-metadata-store"]
+      plugins.security.allow_default_init_securityindex: true
+      cluster.routing.allocation.disk.threshold_enabled: false
+  wazuh-indexer-internal-users:
+    # The indexer initializes its security index from this file on first boot
+    # (opensearch.yml sets allow_default_init_securityindex: true). The admin
+    # bcrypt hash below is for the password APTL hydrates into INDEXER_PASSWORD
+    # ('SecretPassword', from config/wazuh_cluster/filebeat_wazuh_module.yml);
+    # without this file the indexer falls back to its bundled demo users and
+    # rejects the operator credentials, so the authenticated readiness gate and
+    # every SIEM consumer (manager filebeat, dashboard) fail auth.
+    type: file
+    target: wazuh-indexer
+    path: /usr/share/wazuh-indexer/opensearch-security/internal_users.yml
+    text: |
+      ---
+      _meta:
+        type: "internalusers"
+        config_version: 2
+      admin:
+        hash: "$2y$12$K/SpwjtB.wOHJ/Nc6GVRDuc1h0rM1DfvziFRNPtk27P.c4yDr9njO"
+        reserved: true
+        backend_roles:
+        - "admin"
+        description: "Demo admin user"
+      kibanaserver:
+        hash: "$2a$12$4AcgAt3xwOWadA5s5blL6ev39OXDNhmOesEoo33eZtrq2N0YrU3H."
+        reserved: true
+        description: "Demo kibanaserver user"
+      kibanaro:
+        hash: "$2a$12$JJSXNfTowz7Uu5ttXfeYpeYE0arACvcwlPBStB1F.MI7f0U9Z4DGC"
+        reserved: false
+        backend_roles:
+        - "kibanauser"
+        - "readall"
+        description: "Demo kibanaro user"
+      logstash:
+        hash: "$2a$12$u1ShR4l4uBS3Uv59Pa2y5.1uQuZBrZtmNfqB3iM/.jL0XoV9sghS2"
+        reserved: false
+        backend_roles:
+        - "logstash"
+        description: "Demo logstash user"
+      readall:
+        hash: "$2a$12$ae4ycwzwvLtZxwZ82RmiEunBbIPiAmGZduBAjKN0TXdwQFtCwARz2"
+        reserved: false
+        backend_roles:
+        - "readall"
+        description: "Demo readall user"
+      snapshotrestore:
+        hash: "$2y$12$DpwmetHKwgYnorbgdvORCenv4NAK8cPUg8AI6pxLCuWf/ALc0.v7W"
+        reserved: false
+        backend_roles:
+        - "snapshotrestore"
+        description: "Demo snapshotrestore user"
+  wazuh-dashboard-opensearch-config:
+    type: file
+    target: wazuh-dashboard
+    path: /usr/share/wazuh-dashboard/config/opensearch_dashboards.yml
+    text: |
+      server.host: 0.0.0.0
+      server.port: 5601
+      opensearch.hosts: https://wazuh-indexer:9200
+      opensearch.ssl.verificationMode: certificate
+      opensearch.requestHeadersWhitelist: ["securitytenant","Authorization"]
+      opensearch_security.multitenancy.enabled: false
+      opensearch_security.readonly_mode.roles: ["kibana_read_only"]
+      server.ssl.enabled: true
+      server.ssl.key: "/usr/share/wazuh-dashboard/certs/wazuh.dashboard-key.pem"
+      server.ssl.certificate: "/usr/share/wazuh-dashboard/certs/wazuh.dashboard.pem"
+      opensearch.ssl.certificateAuthorities: ["/usr/share/wazuh-dashboard/certs/root-ca.pem"]
+      uiSettings.overrides.defaultRoute: /app/wz-home
+  wazuh-dashboard-app-config:
+    type: file
+    target: wazuh-dashboard
+    path: /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+    text: |
+      hosts:
+        - default:
+            url: "https://wazuh-manager"
+            port: 55000
+            username: wazuh-wui
+            password: "WazuhPass123!"
+            run_as: false
+  suricata-config:
+    type: file
+    target: suricata
+    path: /etc/suricata/suricata.yaml
+    text: |
+      %YAML 1.1
+      ---
+      vars:
+        address-groups:
+          HOME_NET: "[172.20.0.0/16]"
+          EXTERNAL_NET: "any"
+      default-log-dir: /var/log/suricata/
+      stats:
+        enabled: yes
+      outputs:
+        - eve-log:
+            enabled: yes
+            filetype: regular
+            filename: eve.json
+            types:
+              - alert
+              - dns
+              - http
+              - tls
+              - flow
+      af-packet:
+        - interface: any
+      pcap:
+        - interface: any
+      default-rule-path: /var/lib/suricata/rules
+      # MISP-derived and Suricata rules load live over the command socket
+      # (see the node's network_sensors declaration); only the local corpus is
+      # bound at boot so the engine starts cleanly.
+      rule-files:
+        - /etc/suricata/rules/local.rules
+      classification-file: /etc/suricata/classification.config
+      reference-config-file: /etc/suricata/reference.config
+      unix-command:
+        enabled: yes
+        filename: /var/run/suricata/suricata-command.socket
+  suricata-local-rules:
+    type: file
+    target: suricata
+    path: /etc/suricata/rules/local.rules
+    text: |
+      # Local Suricata rule corpus. MISP-derived rules are reloaded live over
+      # the command socket by the MISP sync agent; this file is the authored
+      # local baseline.
+  otel-collector-config:
+    type: file
+    target: aptl-otel-collector
+    path: /etc/otelcol-contrib/config.yaml
+    text: |
+      extensions:
+        health_check:
+          endpoint: 0.0.0.0:13133
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+      processors:
+        batch:
+          timeout: 5s
+          send_batch_size: 1024
+      exporters:
+        otlp/tempo:
+          endpoint: aptl-tempo:4317
+          tls:
+            insecure: true
+        debug:
+          verbosity: basic
+      service:
+        extensions: [health_check]
+        pipelines:
+          traces:
+            receivers: [otlp]
+            processors: [batch]
+            exporters: [otlp/tempo, debug]
+  grafana-datasources-config:
+    type: file
+    target: aptl-grafana-otel
+    path: /etc/grafana/provisioning/datasources/tempo.yaml
+    text: |
+      apiVersion: 1
+      datasources:
+        - name: Tempo
+          type: tempo
+          access: proxy
+          url: http://aptl-tempo:3200
+          isDefault: true
+          editable: false
+  cortex-app-config:
+    type: file
+    target: cortex
+    path: /etc/cortex/application.conf
+    text: |
+      # Elasticsearch backend (thehive-es on the security network). Cortex
+      # 3.1.8 expects search.uri; HTTP-only in-network on aptl-security.
+      search {
+        index = "cortex"
+        uri = "http://thehive-es:9200"
+      }
+      auth.provider = ["local", "key"]
+  cortex-index-init-script:
+    type: file
+    target: cortex-index-init
+    path: /usr/local/bin/cortex-index-init.sh
+    text: |
+      #!/bin/sh
+      set -eu
+
+      # Cortex 3.1.8 key auth performs exact Elasticsearch term queries against
+      # these fields. Pre-create the index so dynamic mappings do not make them text.
+      ES_URL="${CORTEX_ES_URL:-http://thehive-es:9200}"
+      INDEX="${CORTEX_INDEX:-cortex_6}"
+      MAPPING='{"mappings":{"properties":{"relations":{"type":"keyword"},"status":{"type":"keyword"},"key":{"type":"keyword"}}}}'
+
+      # Elasticsearch takes time to accept connections after its container
+      # starts; wait for it rather than relying on the container restart policy
+      # to retry (a one-shot depends_on only orders start, not readiness).
+      for _ in $(seq 1 60); do
+          if curl -sf "${ES_URL}" >/dev/null 2>&1; then break; fi
+          sleep 5
+      done
+
+      if curl -sf "${ES_URL}/${INDEX}" >/dev/null; then
+          mapping="$(curl -sf "${ES_URL}/${INDEX}/_mapping")"
+          if printf '%s' "$mapping" | grep -q '"relations":{"type":"keyword"}' \
+              && printf '%s' "$mapping" | grep -q '"status":{"type":"keyword"}' \
+              && printf '%s' "$mapping" | grep -q '"key":{"type":"keyword"}'; then
+              exit 0
+          fi
+
+          count="$(curl -sf "${ES_URL}/${INDEX}/_count" \
+              | sed -n 's/.*"count":\([0-9][0-9]*\).*/\1/p')"
+          if [ "${count:-0}" != "0" ]; then
+              echo "ERROR: ${INDEX} already has documents but lacks keyword key-auth mappings" >&2
+              exit 1
+          fi
+
+          curl -sf -X DELETE "${ES_URL}/${INDEX}" >/dev/null
+      fi
+
+      curl -sf -H "Content-Type: application/json" -X PUT "${ES_URL}/${INDEX}" -d "$MAPPING" >/dev/null
   misp-suricata-sync-pyproject:
     type: file
     target: misp-suricata-sync

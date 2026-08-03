@@ -114,8 +114,8 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(sdl["name"], "techvault")
         expected_counts = {
             "nodes": 38,
-            "infrastructure": 35,
-            "persistent_volumes": 22,
+            "infrastructure": 38,
+            "persistent_volumes": 23,
             "features": 2,
             "vulnerabilities": 14,
             "identity_domains": 1,
@@ -137,9 +137,9 @@ class TechVaultPackTests(unittest.TestCase):
         inline = {name for name, item in content.items() if "text" in item}
         sourced = {name for name, item in content.items() if "source" in item}
         self.assertEqual(inline, set(content) - sourced)
-        self.assertEqual(len(inline), 15)
+        self.assertEqual(len(inline), 26)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 41)
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 52)
 
     def test_content_sources_are_exact_resolvable_pack_artifacts(self) -> None:
         profile = json.loads(_PROFILE.read_text(encoding="utf-8"))
