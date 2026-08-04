@@ -35,6 +35,14 @@ _PROFILE = _PACK / "profiles" / "exact-artifact-copy-v1.json"
 
 _PACK_ARTIFACT_CONTENT_IDS = frozenset(
     {
+        "webapp-rules",
+        "suricata-rules",
+        "ad-rules",
+        "database-rules",
+        "falco-rules",
+        "postgresql-decoders",
+        "samba-decoders",
+        "wazuh-integrations",
         "misp-suricata-sync-pyproject",
         "misp-suricata-sync-readme",
         "misp-suricata-sync-hatch-build",
@@ -154,7 +162,45 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(len(inline), 25)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
         self.assertEqual(materialized, {"cortex-job-index-schema"})
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 52)
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 60)
+
+    def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
+        sdl = _load_sdl()
+        manager = sdl["nodes"]["wazuh-manager"]
+        (monitoring_manager,) = manager["runtime"]["security_monitoring_managers"]
+        content = sdl["content"]
+
+        for content_set in monitoring_manager["content_sets"]:
+            with self.subTest(content_id=content_set["content_id"]):
+                self.assertTrue(content_set["loaded"])
+                placement = content[content_set["content_id"]]
+                self.assertEqual(placement["target"], "wazuh-manager")
+                self.assertEqual(
+                    pathlib.PurePosixPath(placement["path"]).name,
+                    content_set["name"],
+                )
+
+    def test_operator_soc_surfaces_are_loopback_published(self) -> None:
+        nodes = _load_sdl()["nodes"]
+        expected = {
+            "misp": {(443, 8443)},
+            "thehive": {(9000, 9000)},
+            "cortex": {(9001, 9001)},
+            "shuffle-frontend": {(443, 3443), (80, 3001)},
+        }
+
+        for node_name, expected_ports in expected.items():
+            with self.subTest(node=node_name):
+                published = nodes[node_name]["runtime"]["network"][
+                    "published_ports"
+                ]
+                self.assertEqual(
+                    {(item["container_port"], item["host_port"]) for item in published},
+                    expected_ports,
+                )
+                self.assertTrue(
+                    all(item["host_ip"] == "127.0.0.1" for item in published)
+                )
 
     def test_cortex_job_index_schema_is_adr088_initial_service_state(self) -> None:
         sdl = _load_sdl()
@@ -260,6 +306,7 @@ class TechVaultPackTests(unittest.TestCase):
             "techvault-webapp-app": "app.py",
             "techvault-fileshare-shares": "engineering/deployments/deploy.sh",
             "techvault-workstation-dev-user-home": ".bash_history",
+            "techvault-wazuh-integrations": "custom-shuffle",
         }
         for artifact_id, required_member in required_members.items():
             with self.subTest(artifact_id=artifact_id):
@@ -274,6 +321,13 @@ class TechVaultPackTests(unittest.TestCase):
                     self.assertNotIn("..", path.parts)
                     self.assertFalse(member.issym() or member.islnk())
                     self.assertTrue(member.isfile() or member.isdir())
+
+        integrations = resolve_pack_artifact(
+            _PACK, "techvault-wazuh-integrations"
+        ).data
+        with tarfile.open(fileobj=io.BytesIO(integrations), mode="r:") as archive:
+            integration = archive.getmember("custom-shuffle")
+            self.assertEqual(integration.mode & 0o111, 0o111)
 
         workstation = resolve_pack_artifact(
             _PACK, "techvault-workstation-dev-user-home"
