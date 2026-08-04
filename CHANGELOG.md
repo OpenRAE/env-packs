@@ -11,6 +11,13 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [4.0.1](https://github.com/OpenRAE/env-packs/compare/v4.0.0...v4.0.1) (2026-08-04)
+
+
+### Bug Fixes
+
+* **techvault:** materialize detection content and SOC ports ([#275](https://github.com/OpenRAE/env-packs/issues/275)) ([9e9509e](https://github.com/OpenRAE/env-packs/commit/9e9509e2bb0eb06e73f9f6054d8dd039241b75d0))
+
 ## [4.0.0](https://github.com/OpenRAE/env-packs/compare/v3.9.0...v4.0.0) (2026-08-04)
 
 
