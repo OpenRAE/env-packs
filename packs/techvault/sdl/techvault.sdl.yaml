@@ -495,7 +495,10 @@ nodes:
             timing: backend-preparation
     services:
       - {name: https, port: 443, protocol: tcp}
-    runtime: {}
+    runtime:
+      network:
+        published_ports:
+          - {container_port: 443, protocol: tcp, host_port: 8443, host_ip: "127.0.0.1"}
   misp-db:
     type: vm
     os: linux
@@ -658,6 +661,9 @@ nodes:
     services:
       - {name: thehive-api, port: 9000, protocol: tcp}
     runtime:
+      network:
+        published_ports:
+          - {container_port: 9000, protocol: tcp, host_port: 9000, host_ip: "127.0.0.1"}
       environment:
         - name: JVM_OPTS
           value: "-Xms512m -Xmx512m"
@@ -803,6 +809,10 @@ nodes:
             timing: backend-preparation
     services:
       - {name: cortex-api, port: 9001, protocol: tcp}
+    runtime:
+      network:
+        published_ports:
+          - {container_port: 9001, protocol: tcp, host_port: 9001, host_ip: "127.0.0.1"}
   shuffle-backend:
     type: vm
     os: linux
@@ -852,6 +862,11 @@ nodes:
     services:
       - {name: https, port: 443, protocol: tcp}
       - {name: http, port: 80, protocol: tcp}
+    runtime:
+      network:
+        published_ports:
+          - {container_port: 443, protocol: tcp, host_port: 3443, host_ip: "127.0.0.1"}
+          - {container_port: 80, protocol: tcp, host_port: 3001, host_ip: "127.0.0.1"}
   shuffle-orborus:
     type: vm
     os: linux
@@ -2729,6 +2744,162 @@ content:
             username: wazuh-wui
             password: "WazuhPass123!"
             run_as: false
+  webapp-rules:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/rules/webapp_rules.xml
+    source:
+      name: techvault-wazuh-webapp-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-webapp-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-webapp-rules
+          version: 0.1.0
+          digest: sha256:67db59b11e89ee2fca6515ce6ae2c433793a12aea5510355af0858e66cc2a844
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: &wazuh-content-copy
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-rules:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/rules/suricata_rules.xml
+    source:
+      name: techvault-wazuh-suricata-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-suricata-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-suricata-rules
+          version: 0.1.0
+          digest: sha256:b1fdf64371c5ea24f8e1ce47ea2d0aba185f2f6697702c4bb092c2f3d696547c
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  ad-rules:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/rules/ad_rules.xml
+    source:
+      name: techvault-wazuh-ad-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-ad-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-ad-rules
+          version: 0.1.0
+          digest: sha256:8fdb8953d8e774c928adc6cef1a2eb06ef219b6feedc519092c0f1ca33cdc10b
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  database-rules:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/rules/database_rules.xml
+    source:
+      name: techvault-wazuh-database-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-database-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-database-rules
+          version: 0.1.0
+          digest: sha256:3799f8319eaf0da79c2c2a6e9468750122e6afcc715ee8095870ce750e366e15
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  falco-rules:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/rules/falco_rules.xml
+    source:
+      name: techvault-wazuh-falco-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-falco-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-falco-rules
+          version: 0.1.0
+          digest: sha256:b5bfba268ac98b2046322c5b363d628083bf4f935aa56daa2f6264fbf93ffeb4
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  postgresql-decoders:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/decoders/postgresql_decoders.xml
+    source:
+      name: techvault-wazuh-postgresql-decoders
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-postgresql-decoders-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-postgresql-decoders
+          version: 0.1.0
+          digest: sha256:dd72b3d2a2912a0fca61b2d3c69e08deafce6821b357106ad90023965de1757a
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  samba-decoders:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/decoders/samba_decoders.xml
+    source:
+      name: techvault-wazuh-samba-decoders
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-samba-decoders-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-samba-decoders
+          version: 0.1.0
+          digest: sha256:acf2c9fd0d6f0816c7791544c2a580ad0124039105f37c4fffc494ae04f7ffe7
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  wazuh-integrations:
+    type: directory
+    target: wazuh-manager
+    destination: /var/ossec/integrations
+    source:
+      name: techvault-wazuh-integrations
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-integrations-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-integrations
+          version: 0.1.0
+          digest: sha256:7c6afe833433bd6674b390cf09d23808bd7b0427927bcb533b067d674d08e417
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
   suricata-config:
     type: file
     target: suricata
