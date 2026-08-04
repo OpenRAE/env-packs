@@ -252,6 +252,134 @@
       "sensitivity": "internal",
       "description": null
     },
+    "techvault-wazuh-webapp-rules": {
+      "artifact_id": "techvault-wazuh-webapp-rules",
+      "role": "other",
+      "media_type": "application/xml",
+      "uri": "raes-environment-pack:/assets/content/webapp_rules.xml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "67db59b11e89ee2fca6515ce6ae2c433793a12aea5510355af0858e66cc2a844"
+      },
+      "size_bytes": 3318,
+      "created_at": "2026-08-04T00:00:00Z",
+      "source": "aptl@9320c7af3d03debdd3d1b558af466f8d7262884c",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-wazuh-suricata-rules": {
+      "artifact_id": "techvault-wazuh-suricata-rules",
+      "role": "other",
+      "media_type": "application/xml",
+      "uri": "raes-environment-pack:/assets/content/suricata_rules.xml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "b1fdf64371c5ea24f8e1ce47ea2d0aba185f2f6697702c4bb092c2f3d696547c"
+      },
+      "size_bytes": 3442,
+      "created_at": "2026-08-04T00:00:00Z",
+      "source": "aptl@9320c7af3d03debdd3d1b558af466f8d7262884c",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-wazuh-ad-rules": {
+      "artifact_id": "techvault-wazuh-ad-rules",
+      "role": "other",
+      "media_type": "application/xml",
+      "uri": "raes-environment-pack:/assets/content/ad_rules.xml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "8fdb8953d8e774c928adc6cef1a2eb06ef219b6feedc519092c0f1ca33cdc10b"
+      },
+      "size_bytes": 3115,
+      "created_at": "2026-08-04T00:00:00Z",
+      "source": "aptl@9320c7af3d03debdd3d1b558af466f8d7262884c",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-wazuh-database-rules": {
+      "artifact_id": "techvault-wazuh-database-rules",
+      "role": "other",
+      "media_type": "application/xml",
+      "uri": "raes-environment-pack:/assets/content/database_rules.xml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "3799f8319eaf0da79c2c2a6e9468750122e6afcc715ee8095870ce750e366e15"
+      },
+      "size_bytes": 2341,
+      "created_at": "2026-08-04T00:00:00Z",
+      "source": "aptl@9320c7af3d03debdd3d1b558af466f8d7262884c",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-wazuh-falco-rules": {
+      "artifact_id": "techvault-wazuh-falco-rules",
+      "role": "other",
+      "media_type": "application/xml",
+      "uri": "raes-environment-pack:/assets/content/falco_rules.xml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "b5bfba268ac98b2046322c5b363d628083bf4f935aa56daa2f6264fbf93ffeb4"
+      },
+      "size_bytes": 1883,
+      "created_at": "2026-08-04T00:00:00Z",
+      "source": "aptl@9320c7af3d03debdd3d1b558af466f8d7262884c",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-wazuh-postgresql-decoders": {
+      "artifact_id": "techvault-wazuh-postgresql-decoders",
+      "role": "other",
+      "media_type": "application/xml",
+      "uri": "raes-environment-pack:/assets/content/postgresql_decoders.xml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "dd72b3d2a2912a0fca61b2d3c69e08deafce6821b357106ad90023965de1757a"
+      },
+      "size_bytes": 381,
+      "created_at": "2026-08-04T00:00:00Z",
+      "source": "aptl@9320c7af3d03debdd3d1b558af466f8d7262884c",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-wazuh-samba-decoders": {
+      "artifact_id": "techvault-wazuh-samba-decoders",
+      "role": "other",
+      "media_type": "application/xml",
+      "uri": "raes-environment-pack:/assets/content/samba_decoders.xml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "acf2c9fd0d6f0816c7791544c2a580ad0124039105f37c4fffc494ae04f7ffe7"
+      },
+      "size_bytes": 349,
+      "created_at": "2026-08-04T00:00:00Z",
+      "source": "aptl@9320c7af3d03debdd3d1b558af466f8d7262884c",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "techvault-wazuh-integrations": {
+      "artifact_id": "techvault-wazuh-integrations",
+      "role": "other",
+      "media_type": "application/x-tar",
+      "uri": "raes-environment-pack:/assets/content/wazuh-integrations.tar",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7c6afe833433bd6674b390cf09d23808bd7b0427927bcb533b067d674d08e417"
+      },
+      "size_bytes": 10240,
+      "created_at": "2026-08-04T00:00:00Z",
+      "source": "aptl@9320c7af3d03debdd3d1b558af466f8d7262884c",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
     "techvault-webapp-app": {
       "artifact_id": "techvault-webapp-app",
       "role": "other",
@@ -419,9 +547,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "efb6e878d9c77e0ac7d21b109a0d7aaa03313eb42ba121b42d3cd19818fe5065"
+        "value": "c3c093082b01ab15867c47675fed35b4d670a67c984cf7e467fce29da0be89a8"
       },
-      "size_bytes": 146773,
+      "size_bytes": 152962,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
       "satisfies_refs": [],
@@ -461,5 +589,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:f1c807f70540ca68c640cde72e8b5606b928f4ec40cc00a44d7fd37d6bbfd55f"
+  "set_digest": "sha256:e25cad59ead64affe26dce67d65f99a4c875581ec2d1f59fcd04de31ba3b351d"
 }
