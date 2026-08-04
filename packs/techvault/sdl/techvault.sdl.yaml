@@ -1948,42 +1948,6 @@ nodes:
         - {name: APTL_PROXY_LISTEN_PORT, value: "8080", value_classification: plain, provenance: compose}
         - {name: APTL_PROXY_TARGET_HOST, value: "172.20.1.20", value_classification: plain, provenance: compose}
         - {name: APTL_PROXY_TARGET_PORT, value: "8080", value_classification: plain, provenance: compose}
-  cortex-index-init:
-    type: vm
-    os: linux
-    description: >-
-      One-shot initializer that creates Cortex's Elasticsearch index against
-      thehive-es before Cortex starts, then exits. It is a short-lived member of
-      the range, not a long-running host, and is declared because it starts.
-    source:
-      name: "docker.elastic.co/elasticsearch/elasticsearch"
-      version: "sha256:f2ce8a4c644a35762e6e115c9a373c5cd20df03c2dd75cb0a570011934cdffd1"
-      artifact_requirement:
-        requirement_id: cortex-index-init-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "docker.elastic.co/elasticsearch/elasticsearch"
-          version: "sha256:f2ce8a4c644a35762e6e115c9a373c5cd20df03c2dd75cb0a570011934cdffd1"
-          digest: "sha256:f2ce8a4c644a35762e6e115c9a373c5cd20df03c2dd75cb0a570011934cdffd1"
-          media_type: "application/vnd.docker.distribution.manifest.list.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
-    services: []
-    runtime:
-      container:
-        # One-shot: creates the Cortex ES index and exits. Marked ephemeral so
-        # the backend does not restart the finished job (issue #875 / #259).
-        autoremove: true
-        entrypoint:
-          - "/bin/sh"
-          - "/usr/local/bin/cortex-index-init.sh"
-
   aptl-otel-collector:
     type: vm
     os: linux
@@ -2109,9 +2073,6 @@ infrastructure:
   thehive-es:
     links: [security-net]
   cortex:
-    links: [security-net]
-    dependencies: [thehive-es]
-  cortex-index-init:
     links: [security-net]
     dependencies: [thehive-es]
   shuffle-backend:
@@ -2874,47 +2835,32 @@ content:
         uri = "http://thehive-es:9200"
       }
       auth.provider = ["local", "key"]
-  cortex-index-init-script:
-    type: file
-    target: cortex-index-init
-    path: /usr/local/bin/cortex-index-init.sh
-    text: |
-      #!/bin/sh
-      set -eu
-
-      # Cortex 3.1.8 key auth performs exact Elasticsearch term queries against
-      # these fields. Pre-create the index so dynamic mappings do not make them text.
-      ES_URL="${CORTEX_ES_URL:-http://thehive-es:9200}"
-      INDEX="${CORTEX_INDEX:-cortex_6}"
-      MAPPING='{"mappings":{"properties":{"relations":{"type":"keyword"},"status":{"type":"keyword"},"key":{"type":"keyword"}}}}'
-
-      # Elasticsearch takes time to accept connections after its container
-      # starts; wait for it rather than relying on the container restart policy
-      # to retry (a one-shot depends_on only orders start, not readiness).
-      for _ in $(seq 1 60); do
-          if curl -sf "${ES_URL}" >/dev/null 2>&1; then break; fi
-          sleep 5
-      done
-
-      if curl -sf "${ES_URL}/${INDEX}" >/dev/null; then
-          mapping="$(curl -sf "${ES_URL}/${INDEX}/_mapping")"
-          if printf '%s' "$mapping" | grep -q '"relations":{"type":"keyword"}' \
-              && printf '%s' "$mapping" | grep -q '"status":{"type":"keyword"}' \
-              && printf '%s' "$mapping" | grep -q '"key":{"type":"keyword"}'; then
-              exit 0
-          fi
-
-          count="$(curl -sf "${ES_URL}/${INDEX}/_count" \
-              | sed -n 's/.*"count":\([0-9][0-9]*\).*/\1/p')"
-          if [ "${count:-0}" != "0" ]; then
-              echo "ERROR: ${INDEX} already has documents but lacks keyword key-auth mappings" >&2
-              exit 1
-          fi
-
-          curl -sf -X DELETE "${ES_URL}/${INDEX}" >/dev/null
-      fi
-
-      curl -sf -H "Content-Type: application/json" -X PUT "${ES_URL}/${INDEX}" -d "$MAPPING" >/dev/null
+  cortex-job-index-schema:
+    type: dataset
+    target: thehive-es
+    description: >-
+      Cortex key-auth performs exact term queries against the job index's key,
+      status, and relations fields; they are declared as exact-match portable
+      initial service state so the backend materializes and proves them before
+      Cortex starts. Replaces the former cortex-index-init one-shot node: the
+      backend's native ES materializer establishes this state (ADR-088), no
+      separate init container. Only portable field semantics live here; the
+      native index name and vendor ES types stay in the backend adapter.
+    service_materialization:
+      target_service_ref: nodes.thehive-es.services.elasticsearch
+      interface_profile: service-search-index-schema
+      profile_version: "1"
+      requirements:
+        operation: ensure-search-index-field-schema
+        conflict_policy: reject-unowned-collision
+        readback: canonical-portable-field-schema-digest
+        field_semantics:
+          key: exact-token
+          status: exact-token
+          relations: exact-token
+      readback_assertion_refs: [cortex-job-index-schema-visible]
+      evidence_requirement_refs: [cortex-job-index-schema-readback]
+      observation_boundary_refs: [participant-cortex-search-view]
   misp-suricata-sync-pyproject:
     type: file
     target: misp-suricata-sync
@@ -3659,6 +3605,48 @@ content:
 
       [Install]
       WantedBy=multi-user.target
+
+# ADR-088 initial service state readback scaffolding for the Cortex job index.
+# The service_materialization on content.cortex-job-index-schema binds these
+# refs: the backend materializes the field schema into thehive-es natively and
+# proves it via a fresh portable readback before Cortex is admitted.
+propositions:
+  cortex-job-index-schema-visible:
+    description: The declared Cortex job-index fields have exact portable semantics.
+    subjects: [content.cortex-job-index-schema]
+    basis: observed_state
+    predicate:
+      kind: boolean
+      property: service-search-index-schema-visible
+      semantic_ref: urn:raes:observable:service-search-index-schema-visible
+      expected: true
+    evidence_requirements: [cortex-job-index-schema-readback]
+
+assertions:
+  cortex-job-index-schema-visible:
+    proposition: cortex-job-index-schema-visible
+    role: postcondition
+
+observation_boundaries:
+  participant-cortex-search-view:
+    projection_basis: ordinary participant access through the named search service
+    observable_refs: [content.cortex-job-index-schema]
+    redaction_policy: preserve declared portable field semantics
+    latency_profile: available before participant admission
+
+evidence_requirements:
+  cortex-job-index-schema-readback:
+    source_refs: [content.cortex-job-index-schema]
+    scope: fresh native schema readback projected to portable field semantics
+    boundary_kind: participant_equivalent
+    channel: api_response
+    artifact_role: service_materialization_readback
+    media_types: [application/json]
+    sensitivity: plain
+    redaction: redact_secrets
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
 
 # Realizable accounts (ADR-046 Account and Identity Realization Addendum,
 # #577): the deployment backend's realize_accounts operation ensures these
