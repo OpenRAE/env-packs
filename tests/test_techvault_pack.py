@@ -113,11 +113,15 @@ class TechVaultPackTests(unittest.TestCase):
         sdl = _load_sdl()
         self.assertEqual(sdl["name"], "techvault")
         expected_counts = {
-            "nodes": 38,
-            "infrastructure": 38,
+            "nodes": 37,
+            "infrastructure": 37,
             "persistent_volumes": 23,
             "features": 2,
             "vulnerabilities": 14,
+            "propositions": 1,
+            "assertions": 1,
+            "observation_boundaries": 1,
+            "evidence_requirements": 1,
             "identity_domains": 1,
             "relationships": 1,
             "accounts": 4,
@@ -136,10 +140,87 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertTrue(_GENERATED_SSH_CONTENT_IDS.isdisjoint(content))
         inline = {name for name, item in content.items() if "text" in item}
         sourced = {name for name, item in content.items() if "source" in item}
-        self.assertEqual(inline, set(content) - sourced)
-        self.assertEqual(len(inline), 26)
+        # ADR-088 service-materialized content declares desired service state and
+        # carries neither an inline `text` body nor a `source` package.
+        materialized = {
+            name
+            for name, item in content.items()
+            if "service_materialization" in item
+        }
+        self.assertEqual(inline & sourced, set())
+        self.assertEqual(inline & materialized, set())
+        self.assertEqual(sourced & materialized, set())
+        self.assertEqual(inline | sourced | materialized, set(content))
+        self.assertEqual(len(inline), 25)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
+        self.assertEqual(materialized, {"cortex-job-index-schema"})
         self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 52)
+
+    def test_cortex_job_index_schema_is_adr088_initial_service_state(self) -> None:
+        sdl = _load_sdl()
+
+        # The one-shot init node, its inline script, and its topology row are gone.
+        self.assertNotIn("cortex-index-init", sdl["nodes"])
+        self.assertNotIn("cortex-index-init", sdl["infrastructure"])
+        self.assertNotIn("cortex-index-init-script", sdl["content"])
+
+        entry = sdl["content"]["cortex-job-index-schema"]
+        self.assertEqual(entry["type"], "dataset")
+        self.assertEqual(entry["target"], "thehive-es")
+        # Materialization-only: no inline body, source package, or item list.
+        self.assertNotIn("text", entry)
+        self.assertNotIn("source", entry)
+        self.assertNotIn("items", entry)
+
+        materialization = entry["service_materialization"]
+        self.assertEqual(
+            materialization["interface_profile"], "service-search-index-schema"
+        )
+        self.assertEqual(materialization["profile_version"], "1")
+        self.assertEqual(
+            materialization["target_service_ref"],
+            "nodes.thehive-es.services.elasticsearch",
+        )
+        requirements = materialization["requirements"]
+        self.assertEqual(requirements["operation"], "ensure-search-index-field-schema")
+        self.assertEqual(requirements["conflict_policy"], "reject-unowned-collision")
+        self.assertEqual(
+            requirements["readback"], "canonical-portable-field-schema-digest"
+        )
+        self.assertEqual(
+            requirements["field_semantics"],
+            {
+                "key": "exact-token",
+                "status": "exact-token",
+                "relations": "exact-token",
+            },
+        )
+
+        # The readback scaffolding cross-refs resolve to a postcondition assertion
+        # over an observed-state proposition whose subject is this content, plus a
+        # bound evidence requirement and an observation boundary that exposes it.
+        (assertion_ref,) = materialization["readback_assertion_refs"]
+        (evidence_ref,) = materialization["evidence_requirement_refs"]
+        (boundary_ref,) = materialization["observation_boundary_refs"]
+
+        assertion = sdl["assertions"][assertion_ref]
+        self.assertEqual(assertion["role"], "postcondition")
+        proposition = sdl["propositions"][assertion["proposition"]]
+        self.assertEqual(proposition["basis"], "observed_state")
+        self.assertIn("content.cortex-job-index-schema", proposition["subjects"])
+        self.assertIn(evidence_ref, proposition["evidence_requirements"])
+
+        evidence = sdl["evidence_requirements"][evidence_ref]
+        self.assertIn("content.cortex-job-index-schema", evidence["source_refs"])
+
+        boundary = sdl["observation_boundaries"][boundary_ref]
+        self.assertIn("content.cortex-job-index-schema", boundary["observable_refs"])
+
+        # ADR-088 forbids leaking the backend index name or vendor ES literals into
+        # the portable declaration; only portable field semantics belong here.
+        declaration = yaml.safe_dump(entry)
+        for forbidden in ("cortex_6", "keyword", "_mapping", "http://", "https://"):
+            self.assertNotIn(forbidden, declaration)
 
     def test_content_sources_are_exact_resolvable_pack_artifacts(self) -> None:
         profile = json.loads(_PROFILE.read_text(encoding="utf-8"))
