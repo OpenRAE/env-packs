@@ -11,6 +11,13 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [3.9.0](https://github.com/OpenRAE/env-packs/compare/v3.8.0...v3.9.0) (2026-08-04)
+
+
+### Features
+
+* **techvault:** declare Cortex job index as ADR-088 initial service state ([#269](https://github.com/OpenRAE/env-packs/issues/269)) ([d5385f8](https://github.com/OpenRAE/env-packs/commit/d5385f810157a0b64f23e9718529fd54c5066ba0))
+
 ## [3.8.0](https://github.com/OpenRAE/env-packs/compare/v3.7.0...v3.8.0) (2026-08-03)
 
 
