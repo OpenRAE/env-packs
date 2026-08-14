@@ -183,7 +183,7 @@
       },
       "size_bytes": 6708,
       "created_at": "2026-08-02T00:00:00Z",
-      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "source": "environment-pack-author",
       "satisfies_refs": [],
       "sensitivity": "internal",
       "description": null
@@ -589,5 +589,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:88341359cee45a17c04a98b82e13f06785256d7afbc2e929893646429c99c03a"
+  "set_digest": "sha256:3c36b602806424b672366a25bcadf9abcc293aa24c3bf9adebdf00857e8f2ecf"
 }

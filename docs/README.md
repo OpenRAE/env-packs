@@ -20,6 +20,8 @@ User-facing documentation is under [`public/`](public/index.md).
   from another source into this repository without leaking private vocabulary.
 - [Documentation style guide](development/documentation-style-guide.md) — how the
   public docs are written, so a change reads like the rest.
+- [TechVault integration endpoint preflight](development/techvault-integration-endpoint-preflight.md)
+  — the issue #294 ownership classification and implementation gate.
 
 ## Manual integration walkthroughs
 
