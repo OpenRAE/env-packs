@@ -36,11 +36,16 @@ carriers whose members are materialized at the declared directory destination.
 
 ## Capture consumer contract
 
-The Kali capture client uses protocol version 2 and fails closed. Before an SSH
-session, the consuming control plane must pre-authorize an opaque, single-use
-capability bound to the run and session identifiers, then supply it as
-`APTL_CAPTURE_CAPABILITY`. The sidecar must reject absent, invalid, expired,
-replayed, or identifier-mismatched capabilities and return matching
+The Kali capture client uses protocol version 2 and capture is best-effort:
+SSH authentication is the only access boundary, and a session is never denied
+for a capture-availability reason. Before an SSH session, the consuming
+control plane may pre-authorize an opaque, single-use capability bound to the
+run and session identifiers and supply it as `APTL_CAPTURE_CAPABILITY`;
+capture activates only when that capability, the sidecar, and `script(1)` are
+all available, and any missing prerequisite degrades the session to
+unrecorded instead of denying it. The sidecar must reject absent, invalid,
+expired, replayed, or identifier-mismatched capabilities and return matching
 `session_accepted` and `session_finalized` acknowledgements. The client never
-treats an unacknowledged or partial stream as valid evidence, and it removes the
-capability from the participant command environment after starting capture.
+treats an unacknowledged or partial stream as valid evidence, and the
+capability is removed from the participant command environment on every
+path, whether or not capture starts.

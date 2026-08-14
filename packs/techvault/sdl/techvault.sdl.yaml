@@ -3488,7 +3488,7 @@ content:
         exact_artifact:
           artifact_id: techvault-kali-wrap-shell
           version: 0.1.0
-          digest: sha256:4c718dc0eac63a682565014fdd7168797fc90e8d5d401987f351b03806498c7e
+          digest: sha256:9d38d8d692deb3e9360635e3f98821a5755db740683d117cebee4fa827b27487
           media_type: text/x-shellscript
         permitted_routes:
           - mechanism:

@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "2758d2f794032a515a6238187d95af9e4889462974aba6102e307c4fe3b4dddd"
+        "value": "3f02f04d655f27f7fd6af2f3d94ef1dd9b3bbb1948dc122deef9220c2357e0d0"
       },
-      "size_bytes": 2082,
+      "size_bytes": 2404,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -179,9 +179,9 @@
       "uri": "raes-environment-pack:/assets/content/kali-wrap-shell.sh",
       "checksum": {
         "algorithm": "sha256",
-        "value": "4c718dc0eac63a682565014fdd7168797fc90e8d5d401987f351b03806498c7e"
+        "value": "9d38d8d692deb3e9360635e3f98821a5755db740683d117cebee4fa827b27487"
       },
-      "size_bytes": 4979,
+      "size_bytes": 6708,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
       "satisfies_refs": [],
@@ -547,7 +547,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "c3c093082b01ab15867c47675fed35b4d670a67c984cf7e467fce29da0be89a8"
+        "value": "970445ac3dff392e1cbb9637c9e82ff805df3a15c9cf837cc222226342646680"
       },
       "size_bytes": 152962,
       "created_at": "2026-08-02T00:00:00Z",
@@ -589,5 +589,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:e25cad59ead64affe26dce67d65f99a4c875581ec2d1f59fcd04de31ba3b351d"
+  "set_digest": "sha256:88341359cee45a17c04a98b82e13f06785256d7afbc2e929893646429c99c03a"
 }

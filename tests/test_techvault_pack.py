@@ -89,6 +89,46 @@ def _canonical_json_digest(document: object) -> str:
     return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
+def _write_fake_capture_tools(tools: pathlib.Path, *, client_stream_exit: int) -> None:
+    """Fake aptl-capture-client + script(1) stand-ins for wrapper subprocess tests.
+
+    The fake client answers ``ping`` with success and, on ``stream``, drains the
+    FIFO to EOF before exiting with ``client_stream_exit`` (mirrors the real
+    client's obligation to keep reading even on failure). The fake ``script``
+    actually runs the wrapped command via ``sh -c`` so its real stdout and exit
+    status are observable, then closes the spool FIFO the way ``script
+    --log-io`` would on exit.
+    """
+    client = tools / "aptl-capture-client"
+    client.write_text(
+        "#!/bin/sh\n"
+        "if [ \"${1:-}\" = ping ]; then exit 0; fi\n"
+        "cat >/dev/null\n"
+        f"exit {client_stream_exit}\n",
+        encoding="utf-8",
+    )
+    client.chmod(0o755)
+    script = tools / "script"
+    script.write_text(
+        "#!/bin/sh\n"
+        "spool=\n"
+        "cmd=\n"
+        "while [ \"$#\" -gt 0 ]; do\n"
+        "  case \"$1\" in\n"
+        "    --log-io) shift; spool=$1 ;;\n"
+        "    --command) shift; cmd=$1 ;;\n"
+        "  esac\n"
+        "  shift\n"
+        "done\n"
+        "sh -c \"$cmd\"\n"
+        "rc=$?\n"
+        ": >\"$spool\"\n"
+        "exit \"$rc\"\n",
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+
+
 class TechVaultPackTests(unittest.TestCase):
     def test_pack_and_byte_manifest_validate(self) -> None:
         result = validate_pack(_PACK)
@@ -397,12 +437,14 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertNotIn(b"aptl-flag-key-2024", flaggen)
         self.assertNotIn(b"md5sum", flaggen)
 
-    def test_capture_wrapper_rejects_missing_capability_and_unreachable_sidecar(
+    def test_capture_wrapper_continues_uncaptured_on_missing_capability_and_unreachable_sidecar(
         self,
     ) -> None:
+        """Issue #282: capture availability must never deny an authenticated session."""
         wrapper = _PACK / "assets" / "content" / "kali-wrap-shell.sh"
         env = os.environ.copy()
         env.pop("APTL_CAPTURE_CAPABILITY", None)
+        env["SSH_ORIGINAL_COMMAND"] = "exit 7"
         missing = subprocess.run(
             ["/bin/bash", str(wrapper)],
             env=env,
@@ -411,8 +453,9 @@ class TechVaultPackTests(unittest.TestCase):
             timeout=10,
             check=False,
         )
-        self.assertEqual(missing.returncode, 70)
-        self.assertIn("capture capability missing; access denied", missing.stderr)
+        self.assertEqual(missing.returncode, 7)
+        self.assertIn("capture capability missing", missing.stderr)
+        self.assertNotIn("access denied", missing.stderr)
 
         with tempfile.TemporaryDirectory() as directory:
             tools = pathlib.Path(directory)
@@ -433,8 +476,57 @@ class TechVaultPackTests(unittest.TestCase):
                 timeout=10,
                 check=False,
             )
-        self.assertEqual(unavailable.returncode, 70)
-        self.assertIn("capture sidecar unavailable; access denied", unavailable.stderr)
+        self.assertEqual(unavailable.returncode, 7)
+        self.assertIn("capture sidecar unavailable", unavailable.stderr)
+        self.assertNotIn("access denied", unavailable.stderr)
+
+    def test_capture_wrapper_uncaptured_fallback_runs_command_exactly_once(self) -> None:
+        """Degrading to an unrecorded shell must never re-run the participant command."""
+        wrapper = _PACK / "assets" / "content" / "kali-wrap-shell.sh"
+        with tempfile.TemporaryDirectory() as directory:
+            marker = pathlib.Path(directory) / "ran"
+            env = os.environ.copy()
+            env.pop("APTL_CAPTURE_CAPABILITY", None)
+            env["SSH_ORIGINAL_COMMAND"] = f"echo x >> {marker}; exit 3"
+            result = subprocess.run(
+                ["/bin/bash", str(wrapper)],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 3)
+            self.assertEqual(marker.read_text(encoding="utf-8"), "x\n")
+
+    def test_capture_wrapper_omits_capability_from_participant_environment(self) -> None:
+        """The capability must never reach the participant's own command environment."""
+        wrapper = _PACK / "assets" / "content" / "kali-wrap-shell.sh"
+        with tempfile.TemporaryDirectory() as directory:
+            tools = pathlib.Path(directory)
+            _write_fake_capture_tools(tools, client_stream_exit=0)
+            env = os.environ.copy()
+            env.update(
+                {
+                    "PATH": f"{tools}:/usr/bin:/bin",
+                    "APTL_CAPTURE_CAPABILITY": "opaque-one-use-capability",
+                    "APTL_RUN_ID": "run-1",
+                    "APTL_SESSION_ID": "session-1",
+                    "SSH_ORIGINAL_COMMAND": "env",
+                }
+            )
+            result = subprocess.run(
+                ["/bin/bash", str(wrapper)],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("APTL_CAPTURE_CAPABILITY", result.stdout)
+        self.assertIn("SSH_ORIGINAL_COMMAND=env", result.stdout)
+        self.assertNotIn("WARNING", result.stderr)
 
     def test_capture_client_sends_and_validates_authenticated_protocol(self) -> None:
         path = _PACK / "assets" / "content" / "kali-capture-client"
@@ -547,32 +639,13 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(raised.exception.code, 1)
         self.assertEqual(source.tell(), len(source.getvalue()))
 
-    def test_capture_wrapper_rejects_failed_stream_after_fifo_is_drained(self) -> None:
+    def test_capture_wrapper_continues_after_failed_capture_stream(self) -> None:
+        """A capture stream that fails after the command starts must not deny
+        or re-run it - only degrade the session to unrecorded (issue #282)."""
         wrapper = _PACK / "assets" / "content" / "kali-wrap-shell.sh"
         with tempfile.TemporaryDirectory() as directory:
             tools = pathlib.Path(directory)
-            client = tools / "aptl-capture-client"
-            script = tools / "script"
-            client.write_text(
-                "#!/bin/sh\n"
-                "if [ \"${1:-}\" = ping ]; then exit 0; fi\n"
-                "cat >/dev/null\n"
-                "exit 1\n",
-                encoding="utf-8",
-            )
-            script.write_text(
-                "#!/bin/sh\n"
-                "spool=\n"
-                "while [ \"$#\" -gt 0 ]; do\n"
-                "  if [ \"$1\" = --log-io ]; then shift; spool=$1; fi\n"
-                "  shift\n"
-                "done\n"
-                "printf 'fully drained transcript' >\"$spool\"\n"
-                "exit 0\n",
-                encoding="utf-8",
-            )
-            client.chmod(0o755)
-            script.chmod(0o755)
+            _write_fake_capture_tools(tools, client_stream_exit=1)
             env = os.environ.copy()
             env.update(
                 {
@@ -580,7 +653,7 @@ class TechVaultPackTests(unittest.TestCase):
                     "APTL_CAPTURE_CAPABILITY": "opaque-one-use-capability",
                     "APTL_RUN_ID": "run-1",
                     "APTL_SESSION_ID": "session-1",
-                    "SSH_ORIGINAL_COMMAND": "true",
+                    "SSH_ORIGINAL_COMMAND": "exit 9",
                 }
             )
             result = subprocess.run(
@@ -592,8 +665,9 @@ class TechVaultPackTests(unittest.TestCase):
                 check=False,
             )
 
-        self.assertEqual(result.returncode, 70)
-        self.assertIn("capture stream failed; session invalid", result.stderr)
+        self.assertEqual(result.returncode, 9)
+        self.assertIn("capture stream failed", result.stderr)
+        self.assertIn("continuing unrecorded", result.stderr)
 
     def test_flag_generator_requires_key_and_emits_verifiable_hmac_tokens(self) -> None:
         flaggen = _PACK / "assets" / "content" / "flaggen.sh"

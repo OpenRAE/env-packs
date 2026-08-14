@@ -1,14 +1,25 @@
 #!/bin/bash
-# OBS-003 / ADR-033 / ADR-041 per-session shell wrapper invoked by sshd's
-# ForceCommand.  Delegates all capture file writes to the aptl-kali-capture
-# sidecar daemon via `aptl-capture-client` so the kali user (passwordless
-# sudo) cannot delete or modify capture evidence.
+# OBS-003 (APTL ADR-033 / ADR-041 — this repository's own ADR 0033 is
+# unrelated: "resolve pack artifacts through one bounded open") per-session
+# shell wrapper invoked by sshd's ForceCommand. Delegates all capture file
+# writes to the aptl-kali-capture sidecar daemon via `aptl-capture-client` so
+# the kali user (passwordless sudo) cannot delete or modify capture evidence.
 #
-# Capture lifecycle (single owning connection — codex pre-push F1/F3):
-#   1. Require the control-plane-issued, single-use session capability.
-#   2. aptl-capture-client ping
-#      → mandatory reachability probe; denies access when capture is unavailable.
-#   3. aptl-capture-client stream RUN_ID SESSION_ID (one connection)
+# Capture is best-effort (issue #282): an authenticated SSH session is never
+# denied for a capture-availability reason. Capture activates only when the
+# control-plane-issued, single-use session capability is present AND the
+# sidecar, script(1), and the private spool FIFO are all available; any
+# missing prerequisite degrades the session to unrecorded instead of denying
+# access. A capture attempt that starts but fails after the command begins
+# still returns the participant command's real exit status — it never
+# re-runs the command, and a failed/partial stream is never reported as valid
+# evidence.
+#
+# Capture lifecycle when active (single owning connection — codex pre-push F1/F3):
+#   1. aptl-capture-client ping
+#      → best-effort reachability probe; capture is skipped, not denied, when
+#        the sidecar is unreachable.
+#   2. aptl-capture-client stream RUN_ID SESSION_ID (one connection)
 #      → sends session_start, forwards script(1)'s --log-io transcript as
 #        pty_chunk frames, then session_end on EOF. The sidecar binds the
 #        capability to the declared run/session and this connection, rejects
@@ -19,9 +30,6 @@
 # share the sidecar's PID namespace: all writes happen in the sidecar, so a
 # sudo-capable agent cannot read, delete, or alter any session's evidence.
 # This wrapper never touches a capture file directly.
-#
-# If any capture prerequisite is unavailable, the ForceCommand denies the
-# session. An authenticated participant must never receive an unrecorded shell.
 #
 # ID validation:
 #   Canonical rule: `^[A-Za-z0-9_][A-Za-z0-9._-]*$` AND no `..`.
@@ -48,32 +56,67 @@ safe_id() {
   fi
 }
 
+warn() {
+  echo "[aptl-wrap-shell] WARNING: $1; continuing unrecorded" >&2
+}
+
+# Run the participant's command (or login shell) with no capture wrapping.
+# `exec` replaces this process outright, so sshd sees the command's own exit
+# status directly and there is no path back into this script afterward.
+exec_uncaptured_shell() {
+  if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
+    exec /bin/bash --login -c "$SSH_ORIGINAL_COMMAND"
+  else
+    exec /bin/bash --login
+  fi
+}
+
 SESSION_ID="$(safe_id "${APTL_SESSION_ID:-}")"
 RUN_ID="$(safe_id "${APTL_RUN_ID:-_unbound}")"
 
-if [ -z "${APTL_CAPTURE_CAPABILITY:-}" ]; then
-  echo "[aptl-wrap-shell] capture capability missing; access denied" >&2
-  exit 70
+# The capability authorizes a sidecar capture *attempt*; it is never
+# authorization for the shell itself, and it must never reach the
+# participant's own command environment on any path below.
+CAPABILITY="${APTL_CAPTURE_CAPABILITY:-}"
+unset APTL_CAPTURE_CAPABILITY
+
+if [ -z "$CAPABILITY" ]; then
+  warn "capture capability missing"
+  exec_uncaptured_shell
 fi
 
-# Reachability is a hard admission gate. This runs before either an interactive
-# shell or SSH_ORIGINAL_COMMAND is executed.
+# Reachability is a best-effort check, not an admission gate: an unreachable
+# sidecar degrades to an unrecorded shell instead of denying access.
 if ! aptl-capture-client ping 2>/dev/null; then
-  echo "[aptl-wrap-shell] capture sidecar unavailable; access denied" >&2
-  exit 70
+  warn "capture sidecar unavailable"
+  exec_uncaptured_shell
 fi
 
-# Clean up the spool FIFO on every exit path.
-SPOOL=""
+if ! command -v script >/dev/null 2>&1; then
+  warn "script(1) missing"
+  exec_uncaptured_shell
+fi
+
+# Clean up the private spool directory on every exit path.
+SPOOL_DIR=""
 cleanup() {
-  [ -n "$SPOOL" ] && rm -f "$SPOOL" 2>/dev/null
+  [ -n "$SPOOL_DIR" ] && rm -rf "$SPOOL_DIR" 2>/dev/null
   return 0
 }
 trap cleanup EXIT TERM INT
 
-if ! command -v script >/dev/null 2>&1; then
-  echo "[aptl-wrap-shell] script(1) missing; access denied" >&2
-  exit 70
+# A private, race-free temporary directory (rather than a `mktemp -u` path)
+# so the FIFO name cannot be pre-created or swapped by another local process
+# between naming and creation.
+SPOOL_DIR="$(mktemp -d "${TMPDIR:-/tmp}/aptl-cap-XXXXXX" 2>/dev/null)"
+if [ -z "$SPOOL_DIR" ]; then
+  warn "could not create capture spool"
+  exec_uncaptured_shell
+fi
+SPOOL="$SPOOL_DIR/spool"
+if ! mkfifo -m 0600 "$SPOOL" 2>/dev/null; then
+  warn "could not create capture spool"
+  exec_uncaptured_shell
 fi
 
 # Route script(1)'s --log-io transcript to the sidecar through a private FIFO.
@@ -94,19 +137,12 @@ fi
 # propagates the wrapped command's exit status (correct result semantics + OCSF
 # outcome); `--log-io` records combined input+output (non-echoed input such as
 # `read -s` passwords included).
-SPOOL="$(mktemp -u "${TMPDIR:-/tmp}/aptl-cap-XXXXXX")"
-if ! mkfifo -m 0600 "$SPOOL" 2>/dev/null; then
-  echo "[aptl-wrap-shell] could not create capture spool; access denied" >&2
-  exit 70
-fi
-
 # Start the reader (stream client) first so script's open-for-write rendezvous
-# on the FIFO succeeds; it forwards FIFO bytes to the sidecar until EOF.
-aptl-capture-client stream "$RUN_ID" "$SESSION_ID" < "$SPOOL" &
+# on the FIFO succeeds; it forwards FIFO bytes to the sidecar until EOF. The
+# capability is passed only to this command's environment, never exported to
+# the current shell, so the participant shell/command below cannot see it.
+APTL_CAPTURE_CAPABILITY="$CAPABILITY" aptl-capture-client stream "$RUN_ID" "$SESSION_ID" < "$SPOOL" &
 CLIENT_PID=$!
-# The capability is only needed by the already-started capture client. Do not
-# expose it to the participant shell or command environment.
-unset APTL_CAPTURE_CAPABILITY
 
 SCRIPT_ARGS=( -q -f --return --log-io "$SPOOL" )
 if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
@@ -118,9 +154,11 @@ RC=$?
 
 # script closed the FIFO write end on exit → the client sees EOF, flushes the
 # tail, sends session_end, and exits. Wait so finalization completes before we
-# return the command's exit status to sshd.
+# return the command's exit status to sshd. A failed/partial stream degrades
+# the session to unrecorded — it never re-runs the command or invalidates an
+# otherwise-successful participant result, and it is never reported as valid
+# evidence.
 if ! wait "$CLIENT_PID" 2>/dev/null; then
-  echo "[aptl-wrap-shell] capture stream failed; session invalid" >&2
-  exit 70
+  warn "capture stream failed after session start"
 fi
 exit "$RC"
