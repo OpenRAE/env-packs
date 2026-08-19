@@ -3,7 +3,7 @@ pack:
   name: techvault
 sources:
   - source_id: aptl-techvault
-    name: APTL TechVault scenario and tracked content
+    name: APTL-era TechVault scenario and tracked content
     license: MIT
     usage: adapted
     attribution_required: true
@@ -21,7 +21,7 @@ artifacts:
   - artifact_id: scenario
     path: sdl/
     classification: open
-    sources: [aptl-techvault]
+    sources: [aptl-techvault, environment-pack-authorship]
     description: Complete RAES TechVault scenario definition.
   - artifact_id: content
     path: assets/

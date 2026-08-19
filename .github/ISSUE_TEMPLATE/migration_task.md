@@ -29,6 +29,6 @@ category:
 - [ ] Source-specific denylist kept private (not pasted into this issue or canonical docs).
 - [ ] Ran the leak/scrub scanner against that private denylist and resolved findings.
 
-## RAES Or APTL Follow-Ups
+## RAES or LilRAE Follow-Ups
 
 ## Acceptance Criteria
