@@ -22,6 +22,7 @@ import yaml
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _CONFIG = _ROOT / ".ground-control.yaml"
+_PLAN_RULES = _ROOT / ".gc" / "plan-rules.md"
 
 
 def _workflow() -> dict:
@@ -132,6 +133,14 @@ class ReviewConfigPlacementTests(unittest.TestCase):
                     f"{key} must be nested under `workflow:`, not declared at the "
                     "top level where Ground Control will not read it (#140)",
                 )
+
+
+class RepositoryBoundaryPlanRuleTests(unittest.TestCase):
+    def test_plan_rules_include_first_party_content_charter(self) -> None:
+        text = " ".join(_PLAN_RULES.read_text(encoding="utf-8").split())
+        self.assertIn("publishes first-party infrastructure kits", text)
+        self.assertIn("major example packs", text)
+        self.assertNotIn("does not host actual environment packs", text)
 
 
 if __name__ == "__main__":

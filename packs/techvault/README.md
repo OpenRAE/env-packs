@@ -12,6 +12,11 @@ manifest, then resolves each SDL `content.source` by opaque artifact id. No
 consumer is expected to recover content from this repository's checkout paths
 or from the former APTL source tree.
 
+APTL is being renamed to LilRAE. They are the same backend project across that
+rename, not separate layers around TechVault. The `aptl` repository, CLI/package
+names, and `APTL_*` environment variables in this pack are current compatibility
+identifiers; they do not make TechVault anything other than a scenario pack.
+
 ## Maturity
 
 The pack is `built`: the complete scenario definition and byte-bound content

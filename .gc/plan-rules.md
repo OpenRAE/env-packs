@@ -32,6 +32,9 @@ See [ADR 0008](../docs/decisions/adrs/0008-adopt-release-please.md).
 
 ## Repository boundary
 
-- This repo **defines and validates** the environment-pack format; it does not host
-  actual environment packs. Keep changes within that boundary (see
-  [`environment-packs.md`](../docs/public/environment-packs.md) and ADR 0001).
+- This repo **defines and validates** the environment-pack format, publishes
+  first-party infrastructure kits under `kits/`, and publishes major example
+  packs under `packs/`. Co-location gives those packs no runtime role and no
+  authority over RAES semantics. Keep changes within that boundary (see
+  [`environment-packs.md`](../docs/public/environment-packs.md), ADR 0009, and
+  ADR 0036).
