@@ -8,6 +8,7 @@ of RAES scenario semantics.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import hmac
 import io
@@ -89,6 +90,189 @@ def _canonical_json_digest(document: object) -> str:
     return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
+def _assert_shuffle_runtime_contract(test: unittest.TestCase, sdl: dict) -> None:
+    """Assert the exact closed Shuffle-to-OpenSearch authored contract."""
+    nodes = sdl["nodes"]
+    backend = nodes["shuffle-backend"]
+    opensearch = nodes["shuffle-opensearch"]
+
+    environment = {
+        item["name"]: item for item in backend["runtime"]["environment"]
+    }
+    expected_environment = {
+        "SHUFFLE_APP_SDK_TIMEOUT": {
+            "name": "SHUFFLE_APP_SDK_TIMEOUT",
+            "value": "120",
+            "value_classification": "plain",
+            "provenance": "compose",
+        },
+        "SHUFFLE_DEFAULT_APIKEY": {
+            "name": "SHUFFLE_DEFAULT_APIKEY",
+            "value": "31a211c4-ea5c-4a49-b022-5e2434e758a7",
+            "value_classification": "secret_fixture",
+            "provenance": "compose",
+        },
+        "SHUFFLE_DEFAULT_PASSWORD": {
+            "name": "SHUFFLE_DEFAULT_PASSWORD",
+            "value": "ShuffleAdmin2024!",
+            "value_classification": "secret_fixture",
+            "provenance": "compose",
+        },
+        "SHUFFLE_DEFAULT_USERNAME": {
+            "name": "SHUFFLE_DEFAULT_USERNAME",
+            "value": "admin",
+            "value_classification": "plain",
+            "provenance": "compose",
+        },
+        "SHUFFLE_OPENSEARCH_PASSWORD": {
+            "name": "SHUFFLE_OPENSEARCH_PASSWORD",
+            "value": "StrongPassword123!",
+            "value_classification": "secret_fixture",
+            "provenance": "compose",
+        },
+        "SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY": {
+            "name": "SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY",
+            "value": "true",
+            "value_classification": "plain",
+            "provenance": "compose",
+        },
+        "SHUFFLE_OPENSEARCH_URL": {
+            "name": "SHUFFLE_OPENSEARCH_URL",
+            "value": "https://shuffle-opensearch:9200",
+            "value_classification": "plain",
+            "provenance": "compose",
+        },
+        "SHUFFLE_OPENSEARCH_USERNAME": {
+            "name": "SHUFFLE_OPENSEARCH_USERNAME",
+            "value": "admin",
+            "value_classification": "plain",
+            "provenance": "compose",
+        },
+    }
+    test.assertEqual(environment, expected_environment)
+
+    opensearch_environment = {
+        item["name"]: item for item in opensearch["runtime"]["environment"]
+    }
+    bootstrap_password = opensearch_environment[
+        "OPENSEARCH_INITIAL_ADMIN_PASSWORD"
+    ]
+    test.assertEqual(bootstrap_password["value_classification"], "secret_fixture")
+    test.assertEqual(bootstrap_password["provenance"], "compose")
+    test.assertEqual(
+        environment["SHUFFLE_OPENSEARCH_PASSWORD"]["value"],
+        bootstrap_password["value"],
+    )
+
+    (datastore,) = opensearch["runtime"]["datastore_services"]
+    test.assertEqual(datastore["service"], "opensearch-rest")
+    test.assertEqual(datastore["protocol"], "https")
+    test.assertEqual(
+        datastore["nodes"],
+        [
+            {
+                "node_id": "shuffle-opensearch-node",
+                "name": "shuffle-opensearch",
+                "roles": ["data", "cluster_manager"],
+                "is_coordinator": True,
+                "endpoints": [
+                    {
+                        "endpoint_id": "shuffle-opensearch-client",
+                        "role": "client",
+                        "protocol": "https",
+                        "address": "shuffle-opensearch",
+                        "port": 9200,
+                    }
+                ],
+            }
+        ],
+    )
+    test.assertEqual(
+        datastore["transport_security"],
+        {
+            "transport_security_id": "shuffle-opensearch-tls",
+            "mode": "tls",
+            "client_verification": False,
+            "node_verification": False,
+            "description": (
+                "The disposable single-node datastore uses the selected image's "
+                "demo TLS material; Shuffle deliberately does not verify that "
+                "certificate on this internal hop."
+            ),
+        },
+    )
+
+    endpoint = datastore["nodes"][0]["endpoints"][0]
+    expected_url = f'{endpoint["protocol"]}://{endpoint["address"]}:{endpoint["port"]}'
+    test.assertEqual(environment["SHUFFLE_OPENSEARCH_URL"]["value"], expected_url)
+    test.assertEqual(
+        environment["SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY"]["value"],
+        str(not datastore["transport_security"]["client_verification"]).lower(),
+    )
+
+    (application,) = backend["runtime"]["platform_applications"]
+    test.assertEqual(application["platform_application_id"], "shuffle-soar")
+    test.assertEqual(application["service"], "shuffle-api")
+    test.assertEqual(application["product"], "Shuffle")
+    test.assertEqual(
+        application["capabilities"],
+        [
+            {
+                "capability_id": "workflow-automation",
+                "kind": "workflow_automation",
+            }
+        ],
+    )
+    test.assertEqual(
+        application["upstream_bindings"],
+        [
+            {
+                "binding_id": "shuffle-index-backend",
+                "role": "index_backend",
+                "target_node_ref": "shuffle-opensearch",
+                "target_service_ref": "opensearch-rest",
+            }
+        ],
+    )
+
+    (listener,) = backend["runtime"]["service_listeners"]
+    test.assertEqual(listener["service"], "shuffle-api")
+    test.assertEqual(listener["address"], "0.0.0.0")
+    test.assertEqual(listener["port"], 5001)
+    test.assertEqual(listener["protocol"], "tcp")
+    test.assertEqual(listener["scope"], "wildcard")
+    test.assertEqual(listener["provenance"], "operator")
+    readiness = listener["readiness"]
+    test.assertIn("authenticated Shuffle API", readiness["criteria"])
+    test.assertIn("write", readiness["criteria"])
+    test.assertIn("read", readiness["criteria"])
+    test.assertIn("OpenSearch", readiness["criteria"])
+
+    volumes = sdl["persistent_volumes"]
+    test.assertEqual(volumes["shuffle_data"]["lifecycle"], "retain")
+    test.assertEqual(volumes["shuffle_opensearch_data"]["lifecycle"], "retain")
+    test.assertEqual(
+        volumes["shuffle_data"]["consumers"],
+        [
+            {
+                "node": "shuffle-backend",
+                "mount_destination": "/shuffle-database",
+                "access_mode": "read_write",
+            }
+        ],
+    )
+    test.assertEqual(
+        volumes["shuffle_opensearch_data"]["consumers"],
+        [
+            {
+                "node": "shuffle-opensearch",
+                "mount_destination": "/usr/share/opensearch/data",
+                "access_mode": "read_write",
+            }
+        ],
+    )
+
+
 class TechVaultPackTests(unittest.TestCase):
     def test_pack_and_byte_manifest_validate(self) -> None:
         result = validate_pack(_PACK)
@@ -141,6 +325,42 @@ class TechVaultPackTests(unittest.TestCase):
         # This runtime-authority declaration is intentionally not a content
         # acquisition path and must survive the pack migration.
         self.assertIn("/var/run/docker.sock", _SDL.read_text(encoding="utf-8"))
+
+    def test_shuffle_runtime_contract_is_complete_and_consistent(self) -> None:
+        _assert_shuffle_runtime_contract(self, _load_sdl())
+
+    def test_shuffle_runtime_contract_rejects_closed_state_drift(self) -> None:
+        mutations = {
+            "missing environment": lambda sdl: sdl["nodes"]["shuffle-backend"][
+                "runtime"
+            ]["environment"].pop(),
+            "excess environment": lambda sdl: sdl["nodes"]["shuffle-backend"][
+                "runtime"
+            ]["environment"].append({"name": "UNDECLARED", "value": "true"}),
+            "substituted endpoint": lambda sdl: sdl["nodes"]["shuffle-backend"][
+                "runtime"
+            ]["environment"][0].update({"value": "https://other:9200"}),
+            "credential mismatch": lambda sdl: next(
+                item
+                for item in sdl["nodes"]["shuffle-opensearch"]["runtime"][
+                    "environment"
+                ]
+                if item["name"] == "OPENSEARCH_INITIAL_ADMIN_PASSWORD"
+            ).update({"value": "different-fixture"}),
+            "verification mismatch": lambda sdl: sdl["nodes"][
+                "shuffle-opensearch"
+            ]["runtime"]["datastore_services"][0]["transport_security"].update(
+                {"client_verification": True}
+            ),
+        }
+
+        original = _load_sdl()
+        for name, mutate in mutations.items():
+            with self.subTest(mutation=name):
+                candidate = copy.deepcopy(original)
+                mutate(candidate)
+                with self.assertRaises((AssertionError, KeyError)):
+                    _assert_shuffle_runtime_contract(self, candidate)
 
     def test_all_original_content_obligations_are_accounted_for(self) -> None:
         content = _load_sdl()["content"]
