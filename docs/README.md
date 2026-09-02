@@ -19,6 +19,9 @@ User-facing documentation is under [`public/`](public/index.md).
 - [TechVault Kali capture and shell-access preflight](development/techvault-kali-capture-shell-preflight.md)
   — SDL authoring, runtime realization, evidence, and capability-handling
   guardrails for issue #282.
+- [TechVault Shuffle runtime-contract preflight](development/techvault-shuffle-runtime-contract-preflight.md)
+  — application/datastore, trust, secret, readiness, and realization guardrails
+  for issue #281.
 - [Migration scrub policy](development/scrub-policy.md) — how to adapt material
   from another source into this repository without leaking private vocabulary.
 - [Documentation style guide](development/documentation-style-guide.md) — how the
