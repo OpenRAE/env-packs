@@ -10,6 +10,7 @@ OpenRAE/env-packs#237 and is not part of issue #234.
 - [ ] The complete RAES participant behavior succeeds end to end.
 - [ ] Negative gates demonstrate objectives are not reachable prematurely.
 - [ ] Automated rehearsal passes and produces durable evidence.
+- [ ] A fresh Kali-to-webapp `POST /login` SQL-injection probe records exact Suricata SID `1000010` and Wazuh rule `303020` from pack-owned inputs.
 - [ ] Teardown is verified and leaves no range resources behind.
 - [ ] `pack.yaml.status` is changed to `golden` only after the evidence exists.
 
