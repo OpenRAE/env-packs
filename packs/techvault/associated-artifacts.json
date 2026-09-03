@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "62da9df8edcc5ec2d31d2ff56c76f3c5b064027e5875c792b6a4f646e3882c57"
+        "value": "0570eaaec7bc6026ee42072e2480520b8942d9b72649aba2689c0c6b87474abc"
       },
-      "size_bytes": 4009,
+      "size_bytes": 4949,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -531,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/concepts.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "fc8cca821601779633d87922d6e54d7c73a0f1e9a60d23e0940023475815e1ff"
+        "value": "ddbe94f9f112493079a9c5ba636c7bec0ef0e29910d8893fff7c5a9dc7530e65"
       },
-      "size_bytes": 668,
+      "size_bytes": 840,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -643,9 +643,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "8583ea5aaff88ef64d307191a40d4b23a7819ca7785ce81e52e027a3435a9696"
+        "value": "716c9159491de28453476dc121795ed602f0aa99be0ff7f6cbd70ee3affe9495"
       },
-      "size_bytes": 164434,
+      "size_bytes": 164243,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -685,5 +685,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:cfc6686321b6e07bbb464144c9d6c4caba1d2cc4fb6a6efb30af3212a6d73a72"
+  "set_digest": "sha256:ca3ebed436c133df39449160601df2ede86a40f24b84e1c568678098e277d4f6"
 }

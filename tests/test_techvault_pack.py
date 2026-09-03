@@ -955,6 +955,50 @@ class TechVaultPackTests(unittest.TestCase):
                     all(item["host_ip"] == "127.0.0.1" for item in published)
                 )
 
+    def test_cortex_is_status_only_without_a_thehive_connector(self) -> None:
+        sdl = _load_sdl()
+        thehive = sdl["nodes"]["thehive"]
+
+        command = thehive["runtime"]["container"]["command"]
+        self.assertFalse(
+            any(argument.startswith("--cortex-") for argument in command),
+            "status-only Cortex must not advertise a nonfunctional TheHive connector",
+        )
+        self.assertNotIn("cortex", sdl["infrastructure"]["thehive"]["dependencies"])
+
+        cortex = sdl["nodes"]["cortex"]
+        self.assertEqual(
+            cortex["services"],
+            [{"name": "cortex-api", "port": 9001, "protocol": "tcp"}],
+        )
+
+        for application in cortex["runtime"].get("platform_applications", []):
+            self.assertNotEqual(application.get("platform_kind"), "analyzer_engine")
+            self.assertNotIn(
+                "analysis_execution",
+                {
+                    capability["kind"]
+                    for capability in application.get("capabilities", [])
+                },
+            )
+            self.assertNotIn(
+                "analyzer",
+                {item["kind"] for item in application.get("content_objects", [])},
+            )
+
+        for application in thehive["runtime"].get("platform_applications", []):
+            self.assertNotIn(
+                "analyzer_engine",
+                {connector["kind"] for connector in application.get("connectors", [])},
+            )
+
+        for relationship in sdl.get("relationships", {}).values():
+            integration = relationship.get("service_integration")
+            if integration is not None:
+                self.assertNotIn(
+                    integration["integration_kind"], {"analyzer", "enrichment"}
+                )
+
     def test_cortex_job_index_schema_is_adr088_initial_service_state(self) -> None:
         sdl = _load_sdl()
 
