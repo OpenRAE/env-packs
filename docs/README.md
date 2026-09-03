@@ -20,6 +20,9 @@ User-facing documentation is under [`public/`](public/index.md).
   from another source into this repository without leaking private vocabulary.
 - [Documentation style guide](development/documentation-style-guide.md) — how the
   public docs are written, so a change reads like the rest.
+- [TechVault Kali capture and access preflight](development/techvault-kali-capture-contract.md)
+  — ownership, security, evidence, and readiness guardrails for the
+  cross-repository capture boundary.
 
 ## Manual integration walkthroughs
 
