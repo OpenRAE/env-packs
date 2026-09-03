@@ -22,6 +22,9 @@ User-facing documentation is under [`public/`](public/index.md).
 - [TechVault Shuffle runtime-contract preflight](development/techvault-shuffle-runtime-contract-preflight.md)
   — application/datastore, trust, secret, readiness, and realization guardrails
   for issue #281.
+- [TechVault Shuffle Orborus offline-runtime preflight](development/techvault-shuffle-orborus-offline-runtime-preflight.md)
+  — Docker control-authority, offline child-image, readiness, and realization
+  guardrails for issue #285.
 - [Migration scrub policy](development/scrub-policy.md) — how to adapt material
   from another source into this repository without leaking private vocabulary.
 - [Documentation style guide](development/documentation-style-guide.md) — how the
