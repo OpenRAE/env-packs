@@ -11,6 +11,16 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [4.0.2](https://github.com/OpenRAE/env-packs/compare/v4.0.1...v4.0.2) (2026-09-03)
+
+
+### Bug Fixes
+
+* complete TechVault Shuffle runtime contract ([#306](https://github.com/OpenRAE/env-packs/issues/306)) ([1f3643a](https://github.com/OpenRAE/env-packs/commit/1f3643afdb18577f6748c1585305b74ccebdef27))
+* correct APTL and LilRAE boundary ([#297](https://github.com/OpenRAE/env-packs/issues/297)) ([7661bd8](https://github.com/OpenRAE/env-packs/commit/7661bd8dcd895aa1f8e2146868060fb333e2a0f3))
+* **deps:** bump cffi from 2.1.0 to 2.1.1 ([#291](https://github.com/OpenRAE/env-packs/issues/291)) ([44a6ece](https://github.com/OpenRAE/env-packs/commit/44a6ecec853eb58a7428263f13bcfce352c3810f))
+* **deps:** bump uvicorn from 0.52.0 to 0.52.1 ([#290](https://github.com/OpenRAE/env-packs/issues/290)) ([778d2cd](https://github.com/OpenRAE/env-packs/commit/778d2cd1537285709f2e0d18d740d83001ea7176))
+
 ## [4.0.1](https://github.com/OpenRAE/env-packs/compare/v4.0.0...v4.0.1) (2026-08-04)
 
 
