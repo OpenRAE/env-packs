@@ -39,6 +39,22 @@ The pack-local satisfaction profile in
 by every exact content requirement. Tar assets are deterministic POSIX tar
 carriers whose members are materialized at the declared directory destination.
 
+## Cortex status-only contract
+
+TechVault includes the exact Cortex image, its Elasticsearch configuration and
+job-index schema, and a loopback-published API for status inspection. Cortex is
+not an enrichment service in this pack: no analyzer catalog or organization
+enablement is declared, and TheHive has no Cortex connector. A healthy Cortex
+API therefore proves only service status; it does not prove that an analyzer is
+installed, enabled, executable, or reachable through TheHive.
+
+Consumers must not synthesize that connector from service co-location or add a
+post-realization bootstrap script. Operational enrichment requires a governed
+RAES initial-service-state contract, a typed secret reference joining a
+least-privilege Cortex identity to TheHive, exact offline analyzer artifacts,
+and readback through a benign TheHive enrichment. Until those contracts exist,
+TechVault intentionally exposes no Cortex enrichment affordance.
+
 ## Suricata content contract
 
 The Suricata configuration and 16-rule TechVault local corpus are exact pack

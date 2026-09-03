@@ -712,12 +712,12 @@ nodes:
         - name: JVM_OPTS
           value: "-Xms512m -Xmx512m"
       container:
-        # TheHive's backends are selected on the command line: Cassandra for the
-        # graph store, local Lucene index over Elasticsearch, and Cortex for
-        # analyzers -- all reached by their hyphenated service DNS names. The
-        # --secret is a planted lab fixture. HTTPS termination + the Cortex API
-        # key arrive via env_file from generated secrets (keystore password,
-        # cortex-apikey), a refinement tracked for the env_file affordance.
+        # TheHive's declared backends are Cassandra for the graph store and local
+        # Lucene indexing over Elasticsearch. Cortex is intentionally not wired
+        # as an analyzer connector: the pinned RAES contract cannot express the
+        # required analyzer enablement and typed API-key handoff. Cortex remains
+        # an independently reachable status/API surface. The --secret value is a
+        # planted lab fixture.
         command:
           - "--secret"
           - "aptl-thehive-lab-secret-key-2024-purple"
@@ -727,12 +727,6 @@ nodes:
           - "lucene"
           - "--es-hostnames"
           - "thehive-es"
-          - "--cortex-proto"
-          - "http"
-          - "--cortex-hostnames"
-          - "cortex"
-          - "--cortex-port"
-          - "9001"
   thehive-cassandra:
     type: vm
     os: linux
@@ -2179,7 +2173,7 @@ infrastructure:
     dependencies: [misp, suricata]
   thehive:
     links: [security-net]
-    dependencies: [thehive-cassandra, thehive-es, cortex]
+    dependencies: [thehive-cassandra, thehive-es]
   thehive-cassandra:
     links: [security-net]
   thehive-es:
