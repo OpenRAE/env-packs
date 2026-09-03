@@ -15,6 +15,7 @@ import io
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tarfile
@@ -33,6 +34,18 @@ _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _PACK = _ROOT / "packs" / "techvault"
 _SDL = _PACK / "sdl" / "techvault.sdl.yaml"
 _PROFILE = _PACK / "profiles" / "exact-artifact-copy-v1.json"
+_VALIDATOR = _PACK / "validation" / "validate_techvault.py"
+
+
+def _load_pack_validator() -> types.ModuleType:
+    module = types.ModuleType("techvault_pack_validator")
+    module.__file__ = str(_VALIDATOR)
+    source = _VALIDATOR.read_text(encoding="utf-8")
+    exec(compile(source, str(_VALIDATOR), "exec"), module.__dict__)
+    return module
+
+
+_PACK_VALIDATOR = _load_pack_validator()
 
 _PACK_ARTIFACT_CONTENT_IDS = frozenset(
     {
@@ -48,6 +61,12 @@ _PACK_ARTIFACT_CONTENT_IDS = frozenset(
         "misp-suricata-sync-readme",
         "misp-suricata-sync-hatch-build",
         "misp-suricata-sync-src",
+        "suricata-config",
+        "suricata-local-rules",
+        "suricata-misp-ioc-rules-seed",
+        "suricata-misp-md5-seed",
+        "suricata-misp-sha1-seed",
+        "suricata-misp-sha256-seed",
         "webapp-app-code",
         "dns-named-conf",
         "dns-zone-fwd",
@@ -307,13 +326,13 @@ class TechVaultPackTests(unittest.TestCase):
         expected_counts = {
             "nodes": 37,
             "infrastructure": 37,
-            "persistent_volumes": 23,
+            "persistent_volumes": 24,
             "features": 2,
             "vulnerabilities": 14,
-            "propositions": 1,
-            "assertions": 1,
+            "propositions": 3,
+            "assertions": 3,
             "observation_boundaries": 1,
-            "evidence_requirements": 1,
+            "evidence_requirements": 3,
             "identity_domains": 1,
             "relationships": 1,
             "accounts": 4,
@@ -379,10 +398,10 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline & materialized, set())
         self.assertEqual(sourced & materialized, set())
         self.assertEqual(inline | sourced | materialized, set(content))
-        self.assertEqual(len(inline), 25)
+        self.assertEqual(len(inline), 23)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
         self.assertEqual(materialized, {"cortex-job-index-schema"})
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 60)
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 64)
 
     def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
         sdl = _load_sdl()
@@ -399,6 +418,520 @@ class TechVaultPackTests(unittest.TestCase):
                     pathlib.PurePosixPath(placement["path"]).name,
                     content_set["name"],
                 )
+
+    def test_suricata_content_contract_is_complete(self) -> None:
+        errors = _PACK_VALIDATOR.validate_suricata_contract(_PACK, _load_sdl())
+        self.assertEqual(errors, [])
+
+        local = resolve_pack_artifact(
+            _PACK, "techvault-suricata-local-rules"
+        ).data.decode("utf-8")
+        active = [
+            line
+            for line in local.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        self.assertEqual(len(active), 16)
+        self.assertEqual(
+            tuple(int(value) for value in re.findall(r"\bsid:(\d+);", local)),
+            (
+                1000001,
+                1000002,
+                1000010,
+                1000011,
+                1000012,
+                1000020,
+                1000030,
+                1000031,
+                1000040,
+                1000050,
+                1000060,
+                1000061,
+                1000070,
+                1000080,
+                1000090,
+                1000091,
+            ),
+        )
+        self.assertIn(
+            'content:"UNION"; nocase; content:"SELECT"',
+            next(line for line in active if "sid:1000010;" in line),
+        )
+
+        manifest = json.loads(
+            (_PACK / "associated-artifacts.json").read_text(encoding="utf-8")
+        )["artifacts"]
+        pinned_source = "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e"
+        for artifact_id in (
+            "techvault-suricata-local-rules",
+            "techvault-suricata-misp-ioc-rules-seed",
+            "techvault-suricata-misp-md5-seed",
+            "techvault-suricata-misp-sha1-seed",
+            "techvault-suricata-misp-sha256-seed",
+        ):
+            self.assertEqual(manifest[artifact_id]["source"], pinned_source)
+        self.assertIn(pinned_source, manifest["techvault-suricata-config"]["source"])
+
+    def test_suricata_content_contract_rejects_broken_variants(self) -> None:
+        original = _load_sdl()
+        local_artifact = "techvault-suricata-local-rules"
+        config_artifact = "techvault-suricata-config"
+        wazuh_artifact = "techvault-wazuh-suricata-rules"
+
+        def resolve_path(sdl, path):
+            target = sdl
+            for key in path:
+                target = target[key]
+            return target
+
+        def set_path(path, value):
+            def mutate(sdl, assets):
+                target = resolve_path(sdl, path[:-1])
+                target[path[-1]] = value
+
+            return mutate
+
+        def update_named(path, identity_key, identity, updates):
+            def mutate(sdl, assets):
+                item = next(
+                    candidate
+                    for candidate in resolve_path(sdl, path)
+                    if candidate.get(identity_key) == identity
+                )
+                item.update(updates)
+
+            return mutate
+
+        def replace_artifact(artifact_id, before, after):
+            return lambda sdl, assets: assets.update(
+                {artifact_id: assets[artifact_id].replace(before, after)}
+            )
+
+        def replace_local(before: bytes, after: bytes):
+            return replace_artifact(local_artifact, before, after)
+
+        def null_rule_files(sdl, assets):
+            config = yaml.safe_load(assets[config_artifact].decode("utf-8"))
+            config["rule-files"] = None
+            assets[config_artifact] = yaml.safe_dump(config).encode("utf-8")
+
+        cases = {
+            "empty local corpus": (
+                lambda sdl, assets: assets.update({local_artifact: b""}),
+                "suricata.local-rules-empty",
+            ),
+            "header-only local corpus": (
+                lambda sdl, assets: assets.update(
+                    {local_artifact: b"# no active local rules\n"}
+                ),
+                "suricata.local-rules-zero-effective",
+            ),
+            "undefined rule variable": (
+                replace_local(b"$HTTP_SERVERS", b"$UNDEFINED_SERVERS"),
+                "suricata.rule-variable-undefined",
+            ),
+            "selected rule file missing": (
+                lambda sdl, assets: assets.update(
+                    {
+                        config_artifact: assets[config_artifact].replace(
+                            b"/etc/suricata/rules/local.rules",
+                            b"/etc/suricata/rules/missing.rules",
+                        )
+                    }
+                ),
+                "suricata.rule-file-unresolved",
+            ),
+            "malformed rule file list": (
+                null_rule_files,
+                "suricata.rule-files-invalid",
+            ),
+            "content provenance mismatch": (
+                lambda sdl, assets: sdl["content"]["suricata-local-rules"][
+                    "source"
+                ]["artifact_requirement"]["exact_artifact"].update(
+                    {"digest": "sha256:" + "0" * 64}
+                ),
+                "suricata.content-identity-mismatch",
+            ),
+            "declared zero effective rules": (
+                lambda sdl, assets: next(
+                    source
+                    for source in sdl["nodes"]["suricata"]["runtime"][
+                        "network_detection_engines"
+                    ][0]["rule_sources"]
+                    if source["source_id"] == "techvault-local"
+                ).update({"rule_count": 0}),
+                "suricata.local-rule-count-mismatch",
+            ),
+            "reload target mismatch": (
+                lambda sdl, assets: sdl["nodes"]["misp-suricata-sync"][
+                    "runtime"
+                ]["forwarding_agents"][0]["reload_channels"][0].update(
+                    {"target_ref": "suricata"}
+                ),
+                "suricata.reload-target-mismatch",
+            ),
+            "content placement mismatch": (
+                set_path(("content", "suricata-config", "path"), "/tmp/suricata.yaml"),
+                "suricata.content-placement-mismatch: suricata-config",
+            ),
+            "invalid configuration bytes": (
+                lambda sdl, assets: assets.update({config_artifact: b"["}),
+                "suricata.config-invalid: suricata-config",
+            ),
+            "invalid local rule encoding": (
+                lambda sdl, assets: assets.update({local_artifact: b"\xff"}),
+                "suricata.local-rules-invalid: suricata-local-rules",
+            ),
+            "non-alert local action": (
+                replace_local(b"alert http", b"drop http"),
+                "suricata.local-rule-action-invalid: all local rules must be alert rules",
+            ),
+            "local SID corpus mismatch": (
+                replace_local(b"sid:1000091;", b"sid:1000092;"),
+                "suricata.local-rule-sids-mismatch: expected the authoritative 16-SID corpus",
+            ),
+            "nonzero MISP seed": (
+                replace_artifact(
+                    "techvault-suricata-misp-ioc-rules-seed",
+                    b"# ioc_count=0",
+                    b"# ioc_count=1",
+                ),
+                "suricata.misp-seed-invalid: the initial generated source must declare zero indicators",
+            ),
+            "missing engine identity": (
+                set_path(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "network_detection_engine_id",
+                    ),
+                    "other-engine",
+                ),
+                "suricata.engine-missing: suricata-engine",
+            ),
+            "configuration reference mismatch": (
+                set_path(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "configuration_file_refs",
+                    ),
+                    [],
+                ),
+                "suricata.configuration-ref-mismatch: suricata-engine",
+            ),
+            "log reference mismatch": (
+                set_path(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "log_file_refs",
+                    ),
+                    [],
+                ),
+                "suricata.output-ref-mismatch: suricata-engine",
+            ),
+            "rule source mismatch": (
+                update_named(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "rule_sources",
+                    ),
+                    "source_id",
+                    "techvault-local",
+                    {"loaded": False},
+                ),
+                "suricata.rule-source-mismatch: techvault-local",
+            ),
+            "EVE output mismatch": (
+                update_named(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "output_streams",
+                    ),
+                    "stream_id",
+                    "eve-json",
+                    {"path": "/tmp/eve.json"},
+                ),
+                "suricata.output-ref-mismatch: eve-json",
+            ),
+            "generated source mismatch": (
+                update_named(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "rule_sources",
+                    ),
+                    "source_id",
+                    "misp-iocs",
+                    {"generated_by": "other"},
+                ),
+                "suricata.generated-source-mismatch: misp-iocs",
+            ),
+            "generated output mismatch": (
+                update_named(
+                    ("nodes", "misp-suricata-sync", "runtime", "environment"),
+                    "name",
+                    "RULES_OUT_PATH",
+                    {"value": "/tmp/misp.rules"},
+                ),
+                "suricata.generated-output-mismatch: RULES_OUT_PATH",
+            ),
+            "SID namespace mismatch": (
+                update_named(
+                    ("nodes", "misp-suricata-sync", "runtime", "environment"),
+                    "name",
+                    "SID_BASE",
+                    {"value": "98000000"},
+                ),
+                "suricata.sid-namespace-mismatch: SID_BASE",
+            ),
+            "control channel path mismatch": (
+                update_named(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "control_channels",
+                    ),
+                    "channel_id",
+                    "command-socket",
+                    {"path": "/tmp/suricata-command.socket"},
+                ),
+                "suricata.control-channel-mismatch: command-socket",
+            ),
+            "control channel capability mismatch": (
+                update_named(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "control_channels",
+                    ),
+                    "channel_id",
+                    "command-socket",
+                    {"capabilities": []},
+                ),
+                "suricata.control-channel-mismatch: command-socket",
+            ),
+            "forwarder socket mismatch": (
+                update_named(
+                    ("nodes", "misp-suricata-sync", "runtime", "environment"),
+                    "name",
+                    "SURICATA_SOCKET_PATH",
+                    {"value": "/tmp/suricata-command.socket"},
+                ),
+                "suricata.control-channel-mismatch: SURICATA_SOCKET_PATH",
+            ),
+            "duplicate shared runtime mount": (
+                lambda sdl, assets: sdl["nodes"]["suricata"]["runtime"].setdefault(
+                    "mounts", []
+                ).append(
+                    {
+                        "source": "suricata_command_socket",
+                        "destination": "/var/run/suricata",
+                    }
+                ),
+                "suricata.shared-volume-mismatch: duplicate runtime mount on suricata",
+            ),
+            "stale config seed": (
+                lambda sdl, assets: sdl["persistent_volumes"].update(
+                    {"suricata_config_seed": {}}
+                ),
+                "suricata.stale-config-seed: suricata_config_seed",
+            ),
+            "shared volume access mismatch": (
+                set_path(
+                    ("persistent_volumes", "suricata_command_socket", "access_mode"),
+                    "read_write_once",
+                ),
+                "suricata.shared-volume-mismatch: suricata_command_socket",
+            ),
+            "shared volume consumers mismatch": (
+                set_path(
+                    ("persistent_volumes", "suricata_misp_rules", "consumers"),
+                    [],
+                ),
+                "suricata.shared-volume-mismatch: suricata_misp_rules",
+            ),
+            "readiness proposition mismatch": (
+                set_path(
+                    ("propositions", "suricata-local-rules-ready", "subjects"), []
+                ),
+                "suricata.readiness-evidence-mismatch: suricata-local-rules-ready",
+            ),
+            "detection proposition mismatch": (
+                set_path(
+                    (
+                        "propositions",
+                        "suricata-login-sqli-detected",
+                        "evidence_requirements",
+                    ),
+                    [],
+                ),
+                "suricata.detection-evidence-mismatch: suricata-login-sqli-detected",
+            ),
+            "detection assertion mismatch": (
+                set_path(
+                    ("assertions", "suricata-login-sqli-detected", "role"),
+                    "invariant",
+                ),
+                "suricata.detection-evidence-mismatch: suricata-login-sqli-detected",
+            ),
+            "readiness evidence sources mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-local-rule-readiness",
+                        "source_refs",
+                    ),
+                    [],
+                ),
+                "suricata.readiness-evidence-mismatch: suricata-local-rule-readiness",
+            ),
+            "readiness evidence scope mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-local-rule-readiness",
+                        "scope_refs",
+                    ),
+                    [],
+                ),
+                "suricata.readiness-evidence-mismatch: suricata-local-rule-readiness",
+            ),
+            "alert evidence sources mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-login-sqli-alert",
+                        "source_refs",
+                    ),
+                    [],
+                ),
+                "suricata.detection-evidence-mismatch: suricata-login-sqli-alert sources",
+            ),
+            "alert trigger mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-login-sqli-alert",
+                        "trigger_ref",
+                    ),
+                    "nodes.other",
+                ),
+                "suricata.detection-evidence-mismatch: suricata-login-sqli-alert path",
+            ),
+            "alert scope refs mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-login-sqli-alert",
+                        "scope_refs",
+                    ),
+                    [],
+                ),
+                "suricata.detection-evidence-mismatch: suricata-login-sqli-alert path",
+            ),
+            "alert identity scope mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-login-sqli-alert",
+                        "scope",
+                    ),
+                    "unrelated alert",
+                ),
+                "suricata.detection-evidence-mismatch: expected alert identities",
+            ),
+            "login route vulnerability mismatch": (
+                set_path(
+                    (
+                        "nodes",
+                        "webapp",
+                        "runtime",
+                        "applications",
+                        0,
+                        "routes",
+                        1,
+                        "vulnerability_refs",
+                    ),
+                    [],
+                ),
+                "suricata.detection-path-mismatch: webapp login vulnerability",
+            ),
+            "Wazuh detection rule mismatch": (
+                lambda sdl, assets: assets.update({wazuh_artifact: b"<group/>"}),
+                "suricata.detection-path-mismatch: Wazuh rule 303020",
+            ),
+        }
+
+        artifact_ids = (
+            local_artifact,
+            config_artifact,
+            "techvault-suricata-misp-ioc-rules-seed",
+            "techvault-suricata-misp-md5-seed",
+            "techvault-suricata-misp-sha1-seed",
+            "techvault-suricata-misp-sha256-seed",
+            wazuh_artifact,
+        )
+        resolved_artifacts = {
+            artifact_id: resolve_pack_artifact(_PACK, artifact_id)
+            for artifact_id in artifact_ids
+        }
+        base_assets = {
+            artifact_id: resolved.data
+            for artifact_id, resolved in resolved_artifacts.items()
+        }
+
+        # The canonical resolver is tested independently and above supplies
+        # real byte-bound results. Reuse those immutable results so this
+        # mutation matrix isolates every validator branch without revalidating
+        # the complete pack artifact set hundreds of times.
+        with mock.patch.object(
+            _PACK_VALIDATOR,
+            "resolve_pack_artifact",
+            side_effect=lambda pack_root, artifact_id: resolved_artifacts[artifact_id],
+        ):
+            for name, (mutate, expected_code) in cases.items():
+                with self.subTest(mutation=name):
+                    candidate = copy.deepcopy(original)
+                    assets = dict(base_assets)
+                    mutate(candidate, assets)
+                    errors = _PACK_VALIDATOR.validate_suricata_contract(
+                        _PACK,
+                        candidate,
+                        artifact_overrides=assets,
+                    )
+                    self.assertTrue(
+                        any(expected_code in error for error in errors),
+                        errors,
+                    )
 
     def test_operator_soc_surfaces_are_loopback_published(self) -> None:
         nodes = _load_sdl()["nodes"]

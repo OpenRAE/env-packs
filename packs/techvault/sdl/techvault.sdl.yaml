@@ -409,6 +409,13 @@ nodes:
           sensor_ref: suricata-sensor
           name: TechVault detection engine
           description: Evaluates captured traffic against its rule sources and writes EVE events. MISP-derived rules are reloaded here over the command socket.
+          configuration_file_refs:
+            - /etc/suricata/suricata.yaml
+          log_file_refs:
+            - /var/log/suricata/eve.json
+            - /var/log/suricata/fast.log
+          evidence_refs:
+            - /var/log/suricata/eve.json
           app_layer_protocols:
             - http
             - tls
@@ -422,19 +429,25 @@ nodes:
               kind: built_in
               format: suricata_rule
               name: suricata.rules
+              file_refs:
+                - /var/lib/suricata/rules/suricata.rules
               loaded: true
-              description: Ruleset shipped with the engine image.
+              description: Image-owned ruleset from the node's exact Suricata artifact; the native author gate verifies this file in that digest.
             - source_id: techvault-local
               kind: local
               format: suricata_rule
               name: local.rules
               rule_count: 16
+              file_refs:
+                - /etc/suricata/rules/local.rules
               loaded: true
               description: Scenario-authored rules for TechVault-specific activity.
             - source_id: misp-iocs
               kind: ioc
               format: suricata_rule
               name: misp/misp-iocs.rules
+              file_refs:
+                - /var/lib/suricata/rules/misp/misp-iocs.rules
               loaded: true
               generated_by: nodes.misp-suricata-sync.runtime.forwarding_agents.misp-ioc-to-suricata
               description: Written by the MISP sync agent, not authored here. This is the threat-intelligence feed becoming live detection content.
@@ -451,6 +464,33 @@ nodes:
                 - redteam-net
                 - control-net
               description: The range itself; everything outside it is EXTERNAL_NET.
+            - set_id: external-net
+              kind: external_net
+              name: EXTERNAL_NET
+              selector_values:
+                - "!172.20.0.0/16"
+              description: Addresses outside the TechVault range.
+            - set_id: dmz-net
+              kind: dmz_net
+              name: DMZ_NET
+              selector_values:
+                - 172.20.1.0/24
+              network_refs:
+                - dmz-net
+            - set_id: internal-net
+              kind: internal_net
+              name: INTERNAL_NET
+              selector_values:
+                - 172.20.2.0/24
+              network_refs:
+                - internal-net
+            - set_id: http-servers
+              kind: service_group
+              name: HTTP_SERVERS
+              selector_values:
+                - 172.20.1.20
+              network_refs:
+                - dmz-net
           output_streams:
             - stream_id: eve-json
               format: eve_json
@@ -465,6 +505,13 @@ nodes:
                 - stats
               enabled: true
               description: The file the Wazuh sidecar tails off the shared suricata_logs volume. This path is the detection-to-SIEM hand-off.
+            - stream_id: fast-log
+              format: fast_log
+              path: /var/log/suricata/fast.log
+              event_types:
+                - alert
+              enabled: true
+              description: Bounded human-readable alert output used with native engine readiness diagnostics.
           control_channels:
             - channel_id: command-socket
               kind: unix_socket
@@ -612,13 +659,8 @@ nodes:
         - {manager: apt, name: python3-pip, version: "*"}
       dependency_manifests:
         - {ecosystem: pip, path: /app/pyproject.toml, name: aptl-labs}
-      # Shares suricata's rules volume (ADR-043): this service writes
-      # misp-iocs.rules here for suricata to load, and the command socket to
-      # trigger its reload. Both are Compose-managed named volumes suricata
-      # (still Compose-realized) already mounts at the same paths.
-      mounts:
-        - {target: /var/run/suricata, source: suricata_command_socket, source_kind: volume}
-        - {target: /var/lib/suricata/rules/misp, source: suricata_misp_rules, source_kind: volume}
+      # The persistent-volume declarations below are the single mount
+      # authority for the generated rules and private command socket.
       forwarding_agents:
         - forwarding_agent_id: misp-ioc-to-suricata
           implementation: misp_suricata_sync
@@ -633,10 +675,10 @@ nodes:
           transforms:
             - transform_id: ioc-to-suricata-rules
               kind: ioc_to_rule
-              sid_namespace: '3000000'
+              sid_namespace: '99000000'
           reload_channels:
             - reload_channel_id: suricata-command-socket
-              target_ref: suricata
+              target_ref: nodes.suricata.runtime.network_detection_engines.suricata-engine.control_channels.command-socket
               kind: unix_socket
   thehive:
     type: vm
@@ -2503,11 +2545,18 @@ persistent_volumes:
     access_mode: read_write_once
     consumers:
       - {node: shuffle-opensearch, mount_destination: /usr/share/opensearch/data, access_mode: read_write}
-  suricata_config_seed:
-    lifecycle: retain
-    access_mode: read_write_once
+  suricata_command_socket:
+    lifecycle: ephemeral
+    access_mode: read_write_many
     consumers:
-      - {node: suricata, mount_destination: /seed, access_mode: read_only}
+      - {node: suricata, mount_destination: /var/run/suricata, access_mode: read_write}
+      - {node: misp-suricata-sync, mount_destination: /var/run/suricata, access_mode: read_write}
+  suricata_misp_rules:
+    lifecycle: ephemeral
+    access_mode: read_write_many
+    consumers:
+      - {node: suricata, mount_destination: /var/lib/suricata/rules/misp, access_mode: read_only}
+      - {node: misp-suricata-sync, mount_destination: /var/lib/suricata/rules/misp, access_mode: read_write}
   db_logs:
     lifecycle: retain
     access_mode: read_write_once
@@ -2959,50 +3008,120 @@ content:
     type: file
     target: suricata
     path: /etc/suricata/suricata.yaml
-    text: |
-      %YAML 1.1
-      ---
-      vars:
-        address-groups:
-          HOME_NET: "[172.20.0.0/16]"
-          EXTERNAL_NET: "any"
-      default-log-dir: /var/log/suricata/
-      stats:
-        enabled: yes
-      outputs:
-        - eve-log:
-            enabled: yes
-            filetype: regular
-            filename: eve.json
-            types:
-              - alert
-              - dns
-              - http
-              - tls
-              - flow
-      af-packet:
-        - interface: any
-      pcap:
-        - interface: any
-      default-rule-path: /var/lib/suricata/rules
-      # MISP-derived and Suricata rules load live over the command socket
-      # (see the node's network_sensors declaration); only the local corpus is
-      # bound at boot so the engine starts cleanly.
-      rule-files:
-        - /etc/suricata/rules/local.rules
-      classification-file: /etc/suricata/classification.config
-      reference-config-file: /etc/suricata/reference.config
-      unix-command:
-        enabled: yes
-        filename: /var/run/suricata/suricata-command.socket
+    source:
+      name: techvault-suricata-config
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-config-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-config
+          version: 0.1.0
+          digest: sha256:37cbb226360af33f01ec4806ebbbb59fc318c6912472845831e954c0a324d471
+          media_type: application/yaml
+        permitted_routes:
+          - mechanism: &suricata-content-copy
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   suricata-local-rules:
     type: file
     target: suricata
     path: /etc/suricata/rules/local.rules
-    text: |
-      # Local Suricata rule corpus. MISP-derived rules are reloaded live over
-      # the command socket by the MISP sync agent; this file is the authored
-      # local baseline.
+    source:
+      name: techvault-suricata-local-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-local-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-local-rules
+          version: 0.1.0
+          digest: sha256:c453a657ff6aba3bc756432c2300bffb6602532f6099236ddfbd17d091d2add4
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-ioc-rules-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-iocs.rules
+    source:
+      name: techvault-suricata-misp-ioc-rules-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-ioc-rules-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-ioc-rules-seed
+          version: 0.1.0
+          digest: sha256:462aecd67796a9ff9acd80e2bb2e9e597f05bfb05892c0766110bca933a30ede
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-md5-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-md5.list
+    source:
+      name: techvault-suricata-misp-md5-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-md5-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-md5-seed
+          version: 0.1.0
+          digest: sha256:66be1ef4237386fd2e34a978fc245bb2030641fd76409062d72919954830f376
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-sha1-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-sha1.list
+    source:
+      name: techvault-suricata-misp-sha1-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-sha1-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-sha1-seed
+          version: 0.1.0
+          digest: sha256:d91e7c095d162c8efb5ff55389043cf429809899df45f32f931f5d2eae381f0c
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-sha256-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-sha256.list
+    source:
+      name: techvault-suricata-misp-sha256-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-sha256-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-sha256-seed
+          version: 0.1.0
+          digest: sha256:b059ca012bd1345811fb9aae5e7a758498b33063887b092956bd083e41fa85dd
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
   otel-collector-config:
     type: file
     target: aptl-otel-collector
@@ -3847,10 +3966,36 @@ propositions:
       semantic_ref: urn:raes:observable:service-search-index-schema-visible
       expected: true
     evidence_requirements: [cortex-job-index-schema-readback]
+  suricata-local-rules-ready:
+    description: The exact TechVault local corpus passes native configuration validation and all 16 declared SIDs are loaded.
+    subjects: [nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local]
+    basis: observed_state
+    predicate:
+      kind: boolean
+      property: network-detection-rule-source-ready
+      semantic_ref: urn:raes:observable:network-detection-rule-source-ready
+      expected: true
+    evidence_requirements: [suricata-local-rule-readiness]
+  suricata-login-sqli-detected:
+    description: A participant-equivalent SQL-injection request to the declared login route produces local SID 1000010 and Wazuh web-attack alert 303020.
+    subjects: [nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local]
+    basis: observed_state
+    predicate:
+      kind: boolean
+      property: network-detection-alert-sid-1000010-observed
+      semantic_ref: urn:raes:observable:network-detection-alert-observed
+      expected: true
+    evidence_requirements: [suricata-login-sqli-alert]
 
 assertions:
   cortex-job-index-schema-visible:
     proposition: cortex-job-index-schema-visible
+    role: postcondition
+  suricata-local-rules-ready:
+    proposition: suricata-local-rules-ready
+    role: postcondition
+  suricata-login-sqli-detected:
+    proposition: suricata-login-sqli-detected
     role: postcondition
 
 observation_boundaries:
@@ -3870,6 +4015,45 @@ evidence_requirements:
     media_types: [application/json]
     sensitivity: plain
     redaction: redact_secrets
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+  suricata-local-rule-readiness:
+    description: Records admitted content identities, native configuration success, selected files, and the loaded 16-SID local corpus without recording rule bodies or host paths.
+    source_refs:
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.suricata-builtin
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local
+    scope_refs:
+      - nodes.suricata
+      - content.suricata-config
+      - content.suricata-local-rules
+    scope: Exact image and content identities and realized-byte digests, native Suricata configuration result, selected source paths, and active local SIDs and count.
+    boundary_kind: system_under_test
+    channel: log
+    artifact_role: network_detection_rule_readiness
+    media_types: [text/plain]
+    sensitivity: plain
+    redaction: redact_sensitive
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+  suricata-login-sqli-alert:
+    description: Captures the exact EVE alert for local SID 1000010 and its Wazuh 303020 correlation after a participant-equivalent login SQL-injection request.
+    source_refs:
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.output_streams.eve-json
+      - nodes.wazuh-manager.runtime.security_monitoring_managers.wazuh-manager.content_sets.suricata-rules
+    scope_refs:
+      - nodes.webapp.runtime.applications.techvault-portal
+      - vulnerabilities.webapp-sqli-login
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local
+    scope: A fresh Kali-to-webapp POST /login containing UNION SELECT must yield Suricata signature_id 1000010 and Wazuh rule id 303020; unrelated alerts and aggregate counts do not satisfy this requirement.
+    trigger_ref: nodes.webapp.runtime.applications.techvault-portal
+    boundary_kind: participant_equivalent
+    channel: log
+    artifact_role: network_detection_alert
+    media_types: [application/x-ndjson]
+    sensitivity: plain
+    redaction: redact_sensitive
     integrity: checksum
     retention: run_lifetime
     loss_disclosure: required

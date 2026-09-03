@@ -7,6 +7,15 @@ products or layers. LilRAE remains a backend consumer, while TechVault is only a
 scenario pack and this repository is the editable authority for its
 distributable content.
 
+The Suricata local corpus is the byte-identical 16-rule file from that pinned
+migration source. Its configuration preserves the source's variables,
+rule-file selection, outputs, application parsers, and command channel while
+retaining the environment pack's existing packet-acquisition stanza; capture
+and interface realization are governed separately by issue #284. The initial
+zero-indicator MISP rule file and three hash-list sidecars are also copied from
+the pinned source, then become mutable runtime state under the declared sync
+agent.
+
 Directory-valued sources were captured as deterministic uncompressed tar
 artifacts. Generated SSH keys and SOC certificates were deliberately not copied
 from runtime state: RAES generated-artifact declarations retain that lifecycle
