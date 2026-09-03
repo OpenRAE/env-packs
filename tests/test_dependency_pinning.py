@@ -314,6 +314,10 @@ class WorkflowPipPinningTests(unittest.TestCase):
 class LockFileIntegrityTests(unittest.TestCase):
     """The committed locks must be fully hashed and mutually consistent."""
 
+    def test_audit_lock_excludes_pip_affected_by_pysec_2026_3721(self) -> None:
+        pins = _parse_lock(_REQ_DIR / "pip-audit.txt")
+        self.assertGreaterEqual(Version(pins["pip"]), Version("26.2"))
+
     def test_every_requirement_is_exactly_pinned_and_hashed(self) -> None:
         for path in _lock_files():
             text = path.read_text(encoding="utf-8")

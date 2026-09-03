@@ -1,11 +1,12 @@
 """Static contract for the ownership-boundary guidance (issue #138).
 
 The four-way boundary — RAES semantics, this repository's format, the downstream
-scenario or experiment owner, and APTL runtime realization — is a cross-repo
-agreement recorded here and in APTL's issue #589 ownership note. Prose drifts
-silently: an edit that collapses two owners into one, drops the rule that a pack
-never selects runtime implementation, or lets the APTL reference go stale would
-leave both sides claiming a boundary they no longer state.
+scenario or experiment owner, and LilRAE runtime realization — is a cross-repo
+agreement recorded here and in the APTL-era issue #589 ownership note. Prose
+drifts silently: an edit that collapses two owners into one, treats APTL and
+LilRAE as separate products, drops the rule that a pack never selects runtime
+implementation, or lets the ownership reference go stale would leave both sides
+claiming a boundary they no longer state.
 
 Mirrors the existing documentation-contract tests
 (tests/test_readthedocs_config.py) and reuses the same unittest stack rather than
@@ -22,11 +23,12 @@ import unittest
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _DOC = _ROOT / "docs" / "public" / "ownership-boundary.md"
 _PACKS_DOC = _ROOT / "docs" / "public" / "environment-packs.md"
+_TECHVAULT_README = _ROOT / "packs" / "techvault" / "README.md"
 
-# The APTL-side record this guidance agrees with. Both halves are load-bearing:
-# the issue is the decision, the note is its durable statement.
-_APTL_ISSUE = "https://github.com/Brad-Edwards/aptl/issues/589"
-_APTL_NOTE = "issue-589-environment-pack-capture-ownership-preflight.md"
+# The LilRAE project's APTL-era record this guidance agrees with. Both halves
+# are load-bearing: the issue is the decision, the note is its durable statement.
+_LILRAE_ISSUE = "https://github.com/Brad-Edwards/aptl/issues/589"
+_LILRAE_NOTE = "issue-589-environment-pack-capture-ownership-preflight.md"
 
 # One responsibility phrase per owner. Each must survive independently; losing
 # one is how a four-way boundary quietly becomes a three-way one.
@@ -37,9 +39,9 @@ _OWNER_RESPONSIBILITIES = {
         "adoption guidance"
     ),
     "downstream": "experiment design, and the execution choices made with a pack",
-    "APTL": (
+    "LilRAE": (
         "admitted-plan realization, lab lifecycle, trusted source acquisition, "
-        "backend observation, and APTL-local evidence persistence"
+        "backend observation, and LilRAE-local evidence persistence"
     ),
 }
 
@@ -71,7 +73,7 @@ class OwnershipBoundaryDocTests(unittest.TestCase):
         self.assertTrue(_DOC.is_file(), "docs/public/ownership-boundary.md must exist (#138)")
 
     def test_names_four_distinct_owners(self) -> None:
-        for owner in ("RAES", "OpenRAE/env-packs", "APTL"):
+        for owner in ("RAES", "OpenRAE/env-packs", "LilRAE"):
             with self.subTest(owner=owner):
                 self.assertIn(owner, self.text, f"the boundary must name {owner}")
         self.assertIn(
@@ -88,6 +90,13 @@ class OwnershipBoundaryDocTests(unittest.TestCase):
                     phrase, self.text,
                     f"the guidance must still state what {owner} owns (#138)",
                 )
+
+    def test_aptl_and_lilrae_are_one_project_across_a_rename(self) -> None:
+        self.assertIn(
+            "APTL is being renamed to LilRAE",
+            self.text,
+            "the boundary must state rename continuity, not imply two products",
+        )
 
     def test_format_owner_can_host_selected_packs_without_owning_semantics(self) -> None:
         # ADR 0036 permits first-party content here without collapsing the RAES
@@ -111,15 +120,22 @@ class OwnershipBoundaryDocTests(unittest.TestCase):
                     "(#138)",
                 )
 
-    def test_links_the_aptl_ownership_record(self) -> None:
+    def test_links_the_lilrae_projects_aptl_era_ownership_record(self) -> None:
         self.assertIn(
-            _APTL_ISSUE, self.text,
-            "the guidance must link APTL issue #589's ownership record (#138)",
+            _LILRAE_ISSUE, self.text,
+            "the guidance must link the LilRAE project's APTL-era issue #589 record",
         )
         self.assertIn(
-            _APTL_NOTE, self.text,
-            "the guidance must link the note APTL #589 produced, not just the "
-            "issue (#138)",
+            _LILRAE_NOTE, self.text,
+            "the guidance must link the APTL-era note, not just the issue",
+        )
+
+    def test_techvault_is_only_a_scenario_pack(self) -> None:
+        text = _flat(_TECHVAULT_README)
+        self.assertIn("TechVault is the first-party RAES environment pack", text)
+        self.assertIn(
+            "backend and deployment product names are not part of its identity",
+            text,
         )
 
     def test_reachable_from_the_pack_definition(self) -> None:

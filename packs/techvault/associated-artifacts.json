@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "2758d2f794032a515a6238187d95af9e4889462974aba6102e307c4fe3b4dddd"
+        "value": "9886c98798f3673334be5829f42f4781dbffabb79a4d6cfbf72fc1c4dc8e63d2"
       },
-      "size_bytes": 2082,
+      "size_bytes": 2401,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -467,9 +467,9 @@
       "uri": "raes-environment-pack:/docs/lineage.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "81c2e10bf8591d3b1e5be0510fe96d21c87847d0912a4158c7f1a40adb7569d7"
+        "value": "7e4afa21cf04fd261501a092d1d96398ace7d70a022933e3ebac2851394d7dff"
       },
-      "size_bytes": 944,
+      "size_bytes": 1095,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -483,9 +483,9 @@
       "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "9d2df8c5301716df6f6f15532463a9d3aede22ac1b3daf49e733ad52dc0be877"
+        "value": "0ec455befceccd1042f1ca9bf060eae185b97986931c8fb6e9d9326accf16dc5"
       },
-      "size_bytes": 1940,
+      "size_bytes": 1973,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -547,11 +547,11 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "c3c093082b01ab15867c47675fed35b4d670a67c984cf7e467fce29da0be89a8"
+        "value": "dd18219ba5009d464df1828529db4a562a9b7ffe1410029b0cbb1ff51015fa5c"
       },
-      "size_bytes": 152962,
+      "size_bytes": 156225,
       "created_at": "2026-08-02T00:00:00Z",
-      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "source": "environment-pack-author",
       "satisfies_refs": [],
       "sensitivity": "public",
       "description": null
@@ -589,5 +589,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:e25cad59ead64affe26dce67d65f99a4c875581ec2d1f59fcd04de31ba3b351d"
+  "set_digest": "sha256:c532775575d99438f4b4890d49a4fdb7354921f0405afdaa9f370ea4fe3f5a20"
 }

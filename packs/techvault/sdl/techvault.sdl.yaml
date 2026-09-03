@@ -2,8 +2,10 @@ name: techvault
 description: >
   Operational RAES projection for the TechVault range. This SDL is the public
   startup contract: it names the steady-state Compose services and networks
-  that `aptl lab start` realizes. There is no separate captured deep
-  per-asset inventory behind it (ADR-046).
+  that the LilRAE backend realizes through the current `aptl lab start` command.
+  APTL is being renamed to LilRAE; they are one backend project, not separate
+  products or layers. There is no separate captured deep per-asset inventory
+  behind this scenario pack (ADR-046).
 
 nodes:
   security-net:
@@ -837,6 +839,40 @@ nodes:
             timing: backend-preparation
     services:
       - {name: shuffle-api, port: 5001, protocol: tcp}
+    runtime:
+      environment:
+        - {name: SHUFFLE_OPENSEARCH_URL, value: "https://shuffle-opensearch:9200", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_OPENSEARCH_USERNAME, value: admin, value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_OPENSEARCH_PASSWORD, value: "StrongPassword123!", value_classification: secret_fixture, provenance: compose}
+        - {name: SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY, value: "true", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_DEFAULT_USERNAME, value: admin, value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_DEFAULT_PASSWORD, value: "ShuffleAdmin2024!", value_classification: secret_fixture, provenance: compose}
+        - {name: SHUFFLE_DEFAULT_APIKEY, value: "31a211c4-ea5c-4a49-b022-5e2434e758a7", value_classification: secret_fixture, provenance: compose}
+        - {name: SHUFFLE_APP_SDK_TIMEOUT, value: "120", value_classification: plain, provenance: compose}
+      service_listeners:
+        - service_listener_id: shuffle-api-listener
+          service: shuffle-api
+          address: 0.0.0.0
+          port: 5001
+          protocol: tcp
+          scope: wildcard
+          readiness:
+            probe: shuffle-authenticated-datastore-operation
+            criteria: An authenticated Shuffle API write and read through OpenSearch succeeds.
+            description: Application readiness requires an authenticated operation backed by the declared datastore, not only a listening port.
+          provenance: operator
+      platform_applications:
+        - platform_application_id: shuffle-soar
+          service: shuffle-api
+          product: Shuffle
+          capabilities:
+            - capability_id: workflow-automation
+              kind: workflow_automation
+          upstream_bindings:
+            - binding_id: shuffle-index-backend
+              role: index_backend
+              target_node_ref: shuffle-opensearch
+              target_service_ref: opensearch-rest
   shuffle-frontend:
     type: vm
     os: linux
@@ -939,16 +975,35 @@ nodes:
       - {name: opensearch-transport, port: 9300, protocol: tcp}
     runtime:
       environment:
-        - {name: OPENSEARCH_JAVA_OPTS, value: "-Xms512m -Xmx512m"}
-        - {name: discovery.type, value: single-node}
-        - {name: cluster.routing.allocation.disk.threshold_enabled, value: "false"}
-        - {name: OPENSEARCH_INITIAL_ADMIN_PASSWORD, value: "StrongPassword123!"}
+        - {name: OPENSEARCH_JAVA_OPTS, value: "-Xms512m -Xmx512m", value_classification: plain, provenance: compose}
+        - {name: discovery.type, value: single-node, value_classification: plain, provenance: compose}
+        - {name: cluster.routing.allocation.disk.threshold_enabled, value: "false", value_classification: plain, provenance: compose}
+        - {name: OPENSEARCH_INITIAL_ADMIN_PASSWORD, value: "StrongPassword123!", value_classification: secret_fixture, provenance: compose}
       datastore_services:
         - datastore_service_id: shuffle-opensearch
+          service: opensearch-rest
           engine: opensearch
           data_model: search_index
+          protocol: https
           version: 2.14.0
           description: Backing store for SOAR workflows, environments, and execution state.
+          nodes:
+            - node_id: shuffle-opensearch-node
+              name: shuffle-opensearch
+              roles: [data, cluster_manager]
+              is_coordinator: true
+              endpoints:
+                - endpoint_id: shuffle-opensearch-client
+                  role: client
+                  protocol: https
+                  address: shuffle-opensearch
+                  port: 9200
+          transport_security:
+            transport_security_id: shuffle-opensearch-tls
+            mode: tls
+            client_verification: false
+            node_verification: false
+            description: The disposable single-node datastore uses the selected image's demo TLS material; Shuffle deliberately does not verify that certificate on this internal hop.
           partitions:
             - partition_id: workflowqueue
               kind: index
@@ -2529,11 +2584,11 @@ vulnerabilities:
 # Realizable content (ADR-046 TechVault Operational Standup Addendum,
 # issue #689): every entry here is either bounded inline text or a
 # project-contained, checked-in source. No runtime-observed:, dataset, or
-# captured-filesystem content is authored here — APTL does not carry a
-# separate captured inventory as review evidence (ADR-046 Capture Inventory
-# and Parity-Inventory Removal Addendum). Both entries land on the
+# captured-filesystem content is authored here — the LilRAE runtime does not
+# carry a separate captured inventory as review evidence (ADR-046 Capture
+# Inventory and Parity-Inventory Removal Addendum). Both entries land on the
 # `fileshare` node, whose Compose service mounts the `fileshare_data`
-# named volume the APTL content realization backend seeds at
+# named volume the LilRAE content realization backend seeds through
 # `aptl lab start`.
   webapp-sqli-search:
     name: SQL injection in search
@@ -2667,7 +2722,7 @@ content:
   wazuh-indexer-internal-users:
     # The indexer initializes its security index from this file on first boot
     # (opensearch.yml sets allow_default_init_securityindex: true). The admin
-    # bcrypt hash below is for the password APTL hydrates into INDEXER_PASSWORD
+    # bcrypt hash below is for the password LilRAE hydrates into INDEXER_PASSWORD
     # ('SecretPassword', from config/wazuh_cluster/filebeat_wazuh_module.yml);
     # without this file the indexer falls back to its bundled demo users and
     # rejects the operator credentials, so the authenticated readiness gate and

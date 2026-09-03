@@ -120,7 +120,7 @@ class CodeqlWorkflowContractTests(unittest.TestCase):
         self.assertIsNotNone(entry, "matrix must analyze the python language")
         self.assertEqual(entry.get("build-mode"), "none")
 
-    def test_intentional_techvault_runtime_surfaces_are_excluded(self) -> None:
+    def test_codeql_scans_the_complete_repository(self) -> None:
         init_step = next(
             step
             for step in self.steps
@@ -131,13 +131,10 @@ class CodeqlWorkflowContractTests(unittest.TestCase):
             "./.github/codeql/codeql-config.yml",
         )
         config = yaml.safe_load(_CONFIG.read_text(encoding="utf-8"))
-        self.assertEqual(
-            config["paths-ignore"],
-            [
-                "packs/techvault/build/aptl-runtime/containers/webapp/**",
-                "packs/techvault/build/aptl-runtime/src/aptl/core/host_ports.py",
-                "packs/techvault/build/render_runtime.py",
-            ],
+        self.assertNotIn(
+            "paths-ignore",
+            config,
+            "TechVault is a scenario pack, not a runtime layer to exclude from SAST",
         )
 
     # --- actions: pinned + ordered --------------------------------------
