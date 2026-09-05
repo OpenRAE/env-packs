@@ -34,7 +34,7 @@ variables:
     default: lab
 nodes:
   manager:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Wazuh security
       monitoring stack). Configuration: ${enrollment_group}.'
     source:
@@ -53,7 +53,7 @@ nodes:
       name: api
       description: Declared api service surface.
   indexer:
-    type: vm
+    type: compute
     description: ${deployment_profile} profile for ${service_label} (Wazuh security
       monitoring stack).
     source:
@@ -89,7 +89,7 @@ nodes:
           - status_code: 200
             description: Declared health response.
   dashboard:
-    type: vm
+    type: compute
     description: ${deployment_profile} profile for ${service_label} (Wazuh security
       monitoring stack).
     source:
@@ -160,3 +160,23 @@ accounts:
     node: manager
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/manager
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine
+  - field_pointer: /nodes/indexer
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine
+  - field_pointer: /nodes/dashboard
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

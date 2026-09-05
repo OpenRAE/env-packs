@@ -32,7 +32,7 @@ variables:
     default: local-image
 nodes:
   inference:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Image-inference
       service). Configuration: ${model_name}.'
     source:
@@ -107,3 +107,11 @@ accounts:
     node: inference
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/inference
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

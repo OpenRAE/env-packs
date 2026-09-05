@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "s3-compatible-object-store",
     "ref_version": null,
-    "ref_digest": "sha256:507732383d62941c43ea220f48531a20be8ac4f472a7c06e2b10ff08077f2e41",
+    "ref_digest": "sha256:6d0c601881d2c8d49a07f351e1a07ac880158154b7298720762c21ed23700649",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "a47327251a82ad40c0fc56e0618cbe682e397bee5377914ec45b87023623b346"
+        "value": "906207715f3f179f1fd2740162dfca9990d054ac519a333b45350344ba33c874"
       },
-      "size_bytes": 2325,
+      "size_bytes": 2506,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.s3-compatible-object-store@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:6a12355e1b665101f4ed33181fe75f8d31e1a040cfc66fb6d925646cb5e41768"
+  "set_digest": "sha256:7f57384c266eeeaf09b8ad0a969a660269346ea58b44fcda4add419fb64677fa"
 }

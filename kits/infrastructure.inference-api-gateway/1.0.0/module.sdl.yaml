@@ -32,7 +32,7 @@ variables:
     default: inference
 nodes:
   gateway:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Inference API
       gateway). Configuration: ${route_name}.'
     source:
@@ -103,3 +103,11 @@ accounts:
     node: gateway
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/gateway
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

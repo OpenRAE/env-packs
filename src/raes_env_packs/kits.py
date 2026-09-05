@@ -643,7 +643,9 @@ def _load_release_scenario(
     raw_module = _strict_yaml(_read_member(root_fd, module_rel, limits), limits=limits)
     _validate_raw_module(raw_module)
     try:
-        scenario = parse_sdl_file(Path(root, *module_rel.split("/")))
+        scenario = parse_sdl_file(
+            Path(root, *module_rel.split("/")), migration_policy="accept"
+        )
     except (SDLError, OSError, ValueError) as exc:
         raise KitError("kit module is not valid RAES SDL") from exc
     descriptor = getattr(scenario, "module", None)
@@ -1265,7 +1267,12 @@ def _pack_parent(
     """Resolve the RAES semantic parent and its originally parsed form."""
 
     paths = _direct_sdl_paths(files)
-    parsed = [parse_sdl_file(candidate.joinpath(*rel.split("/"))) for rel in paths]
+    parsed = [
+        parse_sdl_file(
+            candidate.joinpath(*rel.split("/")), migration_policy="accept"
+        )
+        for rel in paths
+    ]
     parent_index = next(
         (index for index, scenario in enumerate(parsed) if scenario.name == name),
         None,

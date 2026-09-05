@@ -39,6 +39,26 @@ The pack-local satisfaction profile in
 by every exact content requirement. Tar assets are deterministic POSIX tar
 carriers whose members are materialized at the declared directory destination.
 
+## Cortex enrichment contract
+
+TechVault ships one exact, dependency-free offline analyzer for scenario IP
+context. A one-shot initializer uses Cortex's supported API to migrate a clean
+database, create separate initializer and least-privilege TheHive identities,
+and enable the analyzer idempotently. TheHive then connects with the dedicated
+`read`/`analyze` identity. Both API keys are backend-generated artifact outputs
+injected by RAES `value_from` bindings; their bytes never appear in the SDL,
+pack, or evidence. Cortex owns its native Elasticsearch mapping; the portable
+scenario does not reproduce that vendor-internal schema.
+
+The native gate proves a clean start, analyzer execution for the scenario
+attacker IP, the returned attacker classification, and TheHive connector status
+`OK` using the exact declared images:
+
+```sh
+TECHVAULT_NATIVE_CORTEX=1 .venv/bin/python -m unittest \
+  tests.test_techvault_cortex_native.NativeCortexContractTests.test_exact_images_execute_enrichment_and_connect_thehive
+```
+
 ## Suricata content contract
 
 The Suricata configuration and 16-rule TechVault local corpus are exact pack

@@ -32,7 +32,7 @@ variables:
     default: analysis
 nodes:
   notebook:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Notebook environment).
       Configuration: ${workspace_name}.'
     source:
@@ -103,3 +103,11 @@ accounts:
     node: notebook
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/notebook
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

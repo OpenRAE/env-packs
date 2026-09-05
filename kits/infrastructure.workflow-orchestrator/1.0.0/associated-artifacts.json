@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "workflow-orchestrator",
     "ref_version": null,
-    "ref_digest": "sha256:787be891b292a95ebf8c15bb5af792ff451be9e805c3a50c38be93d055111f9a",
+    "ref_digest": "sha256:8e091a8d945e4372993bf9734420a4af5ae74d0d0b8a99e32f9a25f2e414575d",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "97d8542c9b0b0c5b8272c90269679d39c9d972bc488d4c11c2b9a20db72a3d4b"
+        "value": "d17a70bc04d468918729583cd1b8aeaa450583e137122119429d37ddc4bc4bb0"
       },
-      "size_bytes": 2706,
+      "size_bytes": 2887,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.workflow-orchestrator@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:0bc901fd51609166d7960eea05221c9832484457de3bec4b0d0c4209bcbb0129"
+  "set_digest": "sha256:26b0a4e66c6a95edfc48b0ad9dc3bbdfdb2141a97dcbfa46a276e1d0a1369c62"
 }

@@ -32,7 +32,7 @@ variables:
     default: daily_ingest
 nodes:
   orchestrator:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Workflow orchestrator).
       Configuration: ${workflow_name}.'
     source:
@@ -103,3 +103,11 @@ accounts:
     node: orchestrator
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/orchestrator
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "smtp-imap-mail-service",
     "ref_version": null,
-    "ref_digest": "sha256:4093cb8d6655376a9069cede691d20889826f4a8405379c04a1d568d85202120",
+    "ref_digest": "sha256:aaddf9465effcdae6cf17683733b9a94478adc896f0a8f53139e66ba59173175",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "b5364d6d118748bb9bd76d3c89b83afb6b96f214549c27d7ceea6b248c5ac17e"
+        "value": "a0be1df822d14569781ef188764d30ebe9d7a08a843270e8a58104304858cfde"
       },
-      "size_bytes": 2977,
+      "size_bytes": 3150,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.smtp-imap-mail-service@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:0af9ece1b489dcece4bedf0677b52e6b776da3b39eec68447d64f6e62b4e1547"
+  "set_digest": "sha256:4f0b684a95f9ff04ed46fe72bd109af237d2fdd0359841ba81661c5dff99ec60"
 }

@@ -778,11 +778,12 @@ wheels = [
 
 [[package]]
 name = "raes"
-version = "3.3.0"
+version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asyncssh" },
     { name = "blake3" },
+    { name = "click" },
     { name = "cryptography" },
     { name = "defusedxml" },
     { name = "fastapi" },
@@ -797,14 +798,14 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "z3-solver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1d/ad/2c9a895516bb8a6c5cc72e13d3203ac6ab5f5a79b2c6e438fb7046b9acb8/raes-3.3.0.tar.gz", hash = "sha256:2a99a48a22a1c800f91d003d4089d7d4b73b1e0d32e57715ceb610f908274c74", size = 2928408, upload-time = "2026-08-02T03:01:03.02Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/e3/75e1625269903b7de47b79918105db28d67710256da769cd2636b7e5dd0a/raes-3.5.0.tar.gz", hash = "sha256:69975a5ae0cc5aad2036a06e8ff435150e158036ecd1e2f8111e885353fe8dc4", size = 3354723, upload-time = "2026-09-04T05:12:33.328Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/ab/c743ead99fbf68f1bbcfc0a588bebb8cfbee2b79e6431ebead6333dac4dc/raes-3.3.0-py3-none-any.whl", hash = "sha256:037cee182983121f330a2812a07a6f905bbf54d5d0be2c8799ecaa5535844e65", size = 2831463, upload-time = "2026-08-02T03:01:01.244Z" },
+    { url = "https://files.pythonhosted.org/packages/33/22/3275b3b61f1e033a817ad47602998d521e5da12d24a6a37dadd54f09ec03/raes-3.5.0-py3-none-any.whl", hash = "sha256:0d0580d358cd4f1c8690b07af15e0bdd66760bde1ccf3da7729d2af753cea564", size = 3172192, upload-time = "2026-09-04T05:12:31.259Z" },
 ]
 
 [[package]]
 name = "raes-env-packs"
-version = "3.9.0"
+version = "4.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "pyyaml" },
@@ -814,7 +815,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "pyyaml", specifier = ">=6" },
-    { name = "raes", specifier = "==3.3.0" },
+    { name = "raes", specifier = "==3.5.0" },
 ]
 
 [[package]]

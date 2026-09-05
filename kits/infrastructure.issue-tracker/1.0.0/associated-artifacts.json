@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "issue-tracker",
     "ref_version": null,
-    "ref_digest": "sha256:3293dff8102774a3a36ee1bff290505ddb6ea697aa68f15ba4c4cce51e0a4b6c",
+    "ref_digest": "sha256:ebf3089388a7ea05241c13d4c8392efa027a2a258a020ebedc9fa4a2edff2b68",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "11ce99312f706acf298c47c7777cf55180181671de46ddf9fd45229f7041b82e"
+        "value": "de196a487f45df78412d5488127305f543bac8895f51ac3b9b0d3d42382b99f7"
       },
-      "size_bytes": 2592,
+      "size_bytes": 2768,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.issue-tracker@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:207cd3c40f9b8bb0a650ce3118b4e2116a09df92e7d65e8bcb6fcb95496fa2ba"
+  "set_digest": "sha256:ae2e58ca7159afb7707b1656d315526b774866115871e8ee26201db1016da8e4"
 }

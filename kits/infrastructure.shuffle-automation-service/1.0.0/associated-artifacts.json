@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "shuffle-automation-service",
     "ref_version": null,
-    "ref_digest": "sha256:f66b99bb73e919e3e007cd4f6d42993ac2452b5e2db70a880dbbe2750f536c0d",
+    "ref_digest": "sha256:f186e48ae1ab251b29415a41925f0960f4429a85d4f6a2473f3150cbc7bbd53b",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "7aed574d1dbed4ebbb49baf0d9ac707846d5fa00e259f16399debc3b9eb03738"
+        "value": "ce20ba2473cb40cfcee158143285cd9b5ec51f0d36d26b36a4a469454a45415c"
       },
-      "size_bytes": 3650,
+      "size_bytes": 3977,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.shuffle-automation-service@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:5b584e077ee0639be2bfb9628fb6652425ab65697802b60015fc0b878853e41b"
+  "set_digest": "sha256:0aaca05f1d6960fb9925b238b45e0d700e98f6149468d0e4313bfc8fc23508d1"
 }

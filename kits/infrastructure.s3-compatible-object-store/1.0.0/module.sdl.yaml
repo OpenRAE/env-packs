@@ -32,7 +32,7 @@ variables:
     default: artifacts
 nodes:
   object_store:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (S3-compatible
       object store). Configuration: ${bucket_name}.'
     source:
@@ -86,3 +86,11 @@ accounts:
     node: object_store
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/object_store
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

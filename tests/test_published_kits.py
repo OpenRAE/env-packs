@@ -77,7 +77,9 @@ class PublishedKitTests(unittest.TestCase):
                     (root / "scenario.sdl.yaml").write_text(
                         yaml.safe_dump(document, sort_keys=False), encoding="utf-8"
                     )
-                    parse_sdl_file(root / "scenario.sdl.yaml")
+                    parse_sdl_file(
+                        root / "scenario.sdl.yaml", migration_policy="accept"
+                    )
 
     def test_every_release_has_substantive_authoring_material(self) -> None:
         for manifest in sorted(ROOT.glob("kits/*/*/kit.yaml")):
@@ -130,7 +132,9 @@ class PublishedKitTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            scenario = parse_sdl_file(root / "scenario.sdl.yaml")
+            scenario = parse_sdl_file(
+                root / "scenario.sdl.yaml", migration_policy="accept"
+            )
             self.assertGreaterEqual(len(scenario.nodes), 9)
 
 

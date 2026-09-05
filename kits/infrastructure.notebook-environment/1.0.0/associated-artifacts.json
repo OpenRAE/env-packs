@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "notebook-environment",
     "ref_version": null,
-    "ref_digest": "sha256:6a0b77fc6d06c2ba5dc6b25c2de29bf21a09d62e9d49cfd3f94d2f6027227aee",
+    "ref_digest": "sha256:31bc95d47c4175c2faf6e7a24ccb24b85c5d55603ab9347f36570b6d6de80ca7",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "20be4d0f83588b514317773832b0889be6b20384323430dd2b3be5b9f4ae1049"
+        "value": "3e16afc65400bc9eb9d31620ccd9203e952466c1ed887b28e42481876fa4d1a7"
       },
-      "size_bytes": 2662,
+      "size_bytes": 2839,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.notebook-environment@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:9d7d13855f9824f41b2e269d6ecb9988b09b4ab05c0c1d7b79b6770fc2af185f"
+  "set_digest": "sha256:1de99945af9b8c38fe3abe335e69b5c977c67b74142b38f361bb8e99799f58a6"
 }

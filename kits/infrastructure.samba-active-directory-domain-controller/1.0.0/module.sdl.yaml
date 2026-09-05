@@ -39,7 +39,7 @@ variables:
     default: directory.example.test
 nodes:
   domain_controller:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Samba Active
       Directory-compatible domain controller). Configuration: ${domain_name}.'
     source:
@@ -118,3 +118,11 @@ content:
       - infrastructure
       - seed
       description: Declared administrator identity for this reusable service.
+realization:
+  constraints:
+  - field_pointer: /nodes/domain_controller
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

@@ -32,7 +32,7 @@ variables:
     default: LAB
 nodes:
   tracker:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Issue tracker).
       Configuration: ${project_key}.'
     source:
@@ -103,3 +103,11 @@ accounts:
     node: tracker
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/tracker
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

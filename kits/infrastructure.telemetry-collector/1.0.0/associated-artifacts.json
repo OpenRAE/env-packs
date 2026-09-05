@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "telemetry-collector",
     "ref_version": null,
-    "ref_digest": "sha256:1f246a7d9db948bf804995c10aa598834d2b2bc857ee1c41a0ebb1cecc9f9c8e",
+    "ref_digest": "sha256:4694665df5f8eb07b140000cd08472bcc09ef1218929a661697614050bcc6463",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "ddd88bd019ade94a8656ec2c8016651b183d74befb3a03989d44f182fbea55af"
+        "value": "ba58afb8129050a62fc4e9514033bee75defa7674dbe8e7fcdec2b05adf2295e"
       },
-      "size_bytes": 2077,
+      "size_bytes": 2255,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.telemetry-collector@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:e9c28c00d9659c69ea8863db30a2af9842fd82dea55443982556cf8cbe09e201"
+  "set_digest": "sha256:3af2f7b7fdf27163d29a1a3da371152022752effcd1ee06ed8df8b38b4740fd2"
 }

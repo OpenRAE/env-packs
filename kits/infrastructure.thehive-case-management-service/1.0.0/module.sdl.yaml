@@ -33,7 +33,7 @@ variables:
     default: operations
 nodes:
   case_manager:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (TheHive case-management
       service). Configuration: ${organization_name}.'
     source:
@@ -69,7 +69,7 @@ nodes:
           - status_code: 200
             description: Declared health response.
   storage:
-    type: vm
+    type: compute
     description: ${deployment_profile} profile for ${service_label} (TheHive case-management
       service).
     source:
@@ -119,3 +119,17 @@ accounts:
     node: case_manager
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/case_manager
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine
+  - field_pointer: /nodes/storage
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

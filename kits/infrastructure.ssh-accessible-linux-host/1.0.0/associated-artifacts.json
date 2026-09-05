@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "ssh-accessible-linux-host",
     "ref_version": null,
-    "ref_digest": "sha256:dbcfca1151202f5738b287173ee463139b4be13751a15454754ff1ede8bb1dec",
+    "ref_digest": "sha256:290daa55a7106c409a14e928539e039a271da05015e3d5ba6744a01032a72f62",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "f90eacd44af253f85629a1953dae297624f4d777cc94cd92248589fbf915fae9"
+        "value": "4c56f09eece037955d510386a23c65d4ac7487e16367b127aa4b277f2480e5c5"
       },
-      "size_bytes": 2015,
+      "size_bytes": 2192,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.ssh-accessible-linux-host@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:5065784e615d433470efb1540b80366251c026d28f6effad1beec2255c405da1"
+  "set_digest": "sha256:bd0ecfaa15a145b74b41adc8635264b3d8af23e5d469708e6cb4ea5e56fd04c1"
 }
