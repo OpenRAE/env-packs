@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "reverse-proxy-api-gateway",
     "ref_version": null,
-    "ref_digest": "sha256:c81e0c2649517aa107cbf4adf7278011fe85f4689ba61157307923c192d76d88",
+    "ref_digest": "sha256:356587c2c74431ccc617722cd370249102be6e0fd955bf9d1392b71399597f96",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "f7ee047693a0ed688d5e7a7ccaaf084d8018e642f0287248715d89e0c2116c03"
+        "value": "80b10cad61d5e4312ea7e90834f6daa3ecbd5b59356e3d9a89d436a36ad1a174"
       },
-      "size_bytes": 2870,
+      "size_bytes": 3046,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.reverse-proxy-api-gateway@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:f781f7113c5248a2170329af034c8a53a41c656d641ee0b780fdc9b342c0eda1"
+  "set_digest": "sha256:425bb2c95e410fe0feeb335e99b8c5ec730e979d71a3bd7eb740315f3ba61339"
 }

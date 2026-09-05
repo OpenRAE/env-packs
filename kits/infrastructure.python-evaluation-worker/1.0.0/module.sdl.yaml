@@ -32,7 +32,7 @@ variables:
     default: evaluation
 nodes:
   worker:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Python evaluation
       worker). Configuration: ${queue_name}.'
     source:
@@ -82,3 +82,11 @@ accounts:
     node: worker
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/worker
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

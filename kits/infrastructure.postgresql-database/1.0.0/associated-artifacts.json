@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "postgresql-database",
     "ref_version": null,
-    "ref_digest": "sha256:b0c23681b3039637091f956fc7ea34a8c26eab50a5d8fad42d9f8d9ade70e3f3",
+    "ref_digest": "sha256:6ed88470223dcc216936b7fa07916c0d2979bb9719dba9f79f33a66cb0713d44",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "d57659c3b0ffa6309e358a16eff96bda164beccbc7a1f2adffe240e222442c22"
+        "value": "d694028798dc736a9f96b32a95e9110a804750f93ab405344ee8776a92c789a8"
       },
-      "size_bytes": 3322,
+      "size_bytes": 3499,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.postgresql-database@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:3f923fdc7fc40383131494cd0a0f5d417e1dd13217d16c936cc81d92f159e26c"
+  "set_digest": "sha256:fc40a0c3bf7c5ab45aba8227a19393eeb3036c4ca7ee022954dc06c28e7e42de"
 }

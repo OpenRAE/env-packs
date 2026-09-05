@@ -33,7 +33,7 @@ variables:
     default: standard
 nodes:
   metrics:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Observability/evidence
       store). Configuration: ${retention_profile}.'
     source:
@@ -69,7 +69,7 @@ nodes:
           - status_code: 200
             description: Declared health response.
   traces:
-    type: vm
+    type: compute
     description: ${deployment_profile} profile for ${service_label} (Observability/evidence
       store).
     source:
@@ -140,3 +140,17 @@ accounts:
     node: metrics
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/metrics
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine
+  - field_pointer: /nodes/traces
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

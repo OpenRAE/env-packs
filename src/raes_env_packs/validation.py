@@ -1268,9 +1268,15 @@ def _parse_sdl_document(
         )
         text = raw.decode("utf-8", errors="strict")
         if author_sdl:
-            scenario = parse_sdl_file(Path(root, *rel.split("/")), limits=limits.sdl)
+            scenario = parse_sdl_file(
+                Path(root, *rel.split("/")),
+                limits=limits.sdl,
+                migration_policy="accept",
+            )
         else:
-            scenario = parse_sdl(text, limits=limits.sdl)
+            scenario = parse_sdl(
+                text, limits=limits.sdl, migration_policy="accept"
+            )
     except UnicodeDecodeError:
         errors.add("sdl.invalid-utf8", rel)
     except SDLError as exc:

@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "policy-engine",
     "ref_version": null,
-    "ref_digest": "sha256:4562edfaeb958fef0acdc602ff50f6792770b60a57f9d10286cf3062c6a29c50",
+    "ref_digest": "sha256:010f5c2c93eee047de5f1e1f5fba8eac7277899921f2a30ec0cf0529b19458e5",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "7e2cfacbb6862a424b62bd4250249b23fde225eeeb0738eaa0360c9f297365df"
+        "value": "2ab94588393df0f6306a74022fecd6665579a22a93d7b1d488b7c28daa855624"
       },
-      "size_bytes": 2676,
+      "size_bytes": 2851,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.policy-engine@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:85d9827bf2d76fde3ca7f6562029795a39aa18842e6f603a4ca45f9400a56429"
+  "set_digest": "sha256:a7e43634c9c6d6fc1205925ee747dd32ad3f02ac49af90d4cdd8d626a41b82fc"
 }

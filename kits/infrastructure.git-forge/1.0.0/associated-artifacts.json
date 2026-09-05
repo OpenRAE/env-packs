@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "git-forge",
     "ref_version": null,
-    "ref_digest": "sha256:93e6a82a6f12d0c400db8152b3c91fd03745200190965d449956ec84d0349833",
+    "ref_digest": "sha256:a3f5593f21a4e2dcfbee9345ee563efee0dc8d552164a2e45cb3c8def0d9809e",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "1fdd06b376954ae5955f98d5457f10f9a5a2ab8f3775b0dc87628461edaa9ca8"
+        "value": "5fefac2153e7245129dfbe72287004732b4928c4cf653c8c842d002714670d7d"
       },
-      "size_bytes": 2699,
+      "size_bytes": 2873,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.git-forge@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:b1c32d244c643fda717a4c0a934700658bb5bbc00ec8467bd8bc355484595aa2"
+  "set_digest": "sha256:a22007bcab3bea58c884bf00db43611cd70b612e8686929aa99d69b1d72d3e48"
 }

@@ -291,7 +291,7 @@ def _parse_parent_candidates(root: str, inventory: tuple[str, ...]) -> tuple[obj
     for rel in sdl_docs:
         try:
             path = Path(root, *rel.split("/"))
-            expanded = parse_sdl_file(path)
+            expanded = parse_sdl_file(path, migration_policy="accept")
             if isinstance(expanded, Scenario):
                 candidates.append(expanded)
             else:
@@ -535,7 +535,9 @@ def _consumer_parent_candidates(
         except UnicodeDecodeError as exc:
             raise PackDigestError("pack SDL parent is not valid UTF-8") from exc
         try:
-            candidates.append(parse_sdl(text, limits=limits.sdl))
+            candidates.append(
+                parse_sdl(text, limits=limits.sdl, migration_policy="accept")
+            )
         except SDLError as exc:
             raise PackDigestError("pack SDL parent is invalid") from exc
     return tuple(candidates)

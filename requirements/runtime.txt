@@ -241,7 +241,9 @@ cffi==2.1.1 \
 click==8.4.2 \
     --hash=sha256:9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6 \
     --hash=sha256:e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76
-    # via uvicorn
+    # via
+    #   raes
+    #   uvicorn
 cryptography==50.0.0 \
     --hash=sha256:031e2d5dd4bb9caa3ca9c82e5a197fd8ae680232cee62603d1a813f3f07e3d03 \
     --hash=sha256:06a32a980526a6ab9a4b9bf8f7385800791e2bb960903cb6b530e4817509a3b7 \
@@ -633,9 +635,9 @@ pyyaml==6.0.3 \
     #   raes-env-packs (pyproject.toml)
     #   raes
     #   uvicorn
-raes==3.3.0 \
-    --hash=sha256:037cee182983121f330a2812a07a6f905bbf54d5d0be2c8799ecaa5535844e65 \
-    --hash=sha256:2a99a48a22a1c800f91d003d4089d7d4b73b1e0d32e57715ceb610f908274c74
+raes==3.5.0 \
+    --hash=sha256:0d0580d358cd4f1c8690b07af15e0bdd66760bde1ccf3da7729d2af753cea564 \
+    --hash=sha256:69975a5ae0cc5aad2036a06e8ff435150e158036ecd1e2f8111e885353fe8dc4
     # via raes-env-packs (pyproject.toml)
 referencing==0.37.0 \
     --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231 \

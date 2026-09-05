@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "thehive-case-management-service",
     "ref_version": null,
-    "ref_digest": "sha256:b145328da6d41b295ecda267c18c2902ec6bf4f70dee253b228ebd3fffee9e1e",
+    "ref_digest": "sha256:3df4c7b8ffe5502470dda49a9c86226dd9ecdc6ac7c8236c29e6c59270e35673",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "3489525a2fda194303bf37b25d02e002e36e7bb155e7c0a4decf8cdd3e476c3d"
+        "value": "8f2edbd288bd5edc562abd89c5a8c349cf9c48e417948db9001a58668e101a6b"
       },
-      "size_bytes": 3148,
+      "size_bytes": 3477,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.thehive-case-management-service@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:bdc8028d1a5c0bd559506bad74e936e0a86619b800523559c3f336dcb7224281"
+  "set_digest": "sha256:4ba0b11ddbcd8219987c99ff06e8500712698dec2b13156d0763ae6be126744a"
 }

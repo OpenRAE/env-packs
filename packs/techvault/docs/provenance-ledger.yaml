@@ -26,8 +26,8 @@ artifacts:
   - artifact_id: content
     path: assets/
     classification: open
-    sources: [aptl-techvault]
-    description: Synthetic lab content bound to exact SDL artifact requirements.
+    sources: [aptl-techvault, environment-pack-authorship]
+    description: Synthetic lab content and pack-authored offline Cortex analyzer bound to exact SDL artifact requirements.
   - artifact_id: pack-contract
     path: profiles/
     classification: open

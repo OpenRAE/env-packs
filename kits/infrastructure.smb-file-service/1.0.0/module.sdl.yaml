@@ -32,7 +32,7 @@ variables:
     default: shared
 nodes:
   file_service:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (SMB file service).
       Configuration: ${share_name}.'
     source:
@@ -82,3 +82,11 @@ accounts:
     node: file_service
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/file_service
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

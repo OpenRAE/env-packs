@@ -61,7 +61,7 @@ def _write_content_identified_pack(parent: Path) -> Path:
     pack_path.write_text(yaml.safe_dump(pack, sort_keys=False), encoding="utf-8")
 
     scenario_path = root / "sdl" / "example-pack.sdl.yaml"
-    scenario = parse_sdl_file(scenario_path)
+    scenario = parse_sdl_file(scenario_path, migration_policy="accept")
     artifacts: dict[str, object] = {}
     for index, path in enumerate(
         sorted(item for item in root.rglob("*") if item.is_file())

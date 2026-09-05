@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "oidc-identity-provider",
     "ref_version": null,
-    "ref_digest": "sha256:653b1dae1fe7e4c93b32b16d0be5b111544807bb74041bea6ce475336f15644d",
+    "ref_digest": "sha256:cddce3f60b5cb46382e070af2137aeb9d0a4b1e19353aa0d71a8d7f781c0ec4d",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "2755e2b9819f700fbdcbc73d6d69b5e24a91a9074f453ea757b5fff952b94593"
+        "value": "50bc6a8f68d0b9c89e8857133cf74040d5a529dc0bb56c1bf6ee674e3ff48a65"
       },
-      "size_bytes": 2827,
+      "size_bytes": 3013,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.oidc-identity-provider@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:6a1a797ae1d895eba5f85f97354e1e7a1e30e2adc1cc5cbcb1948cafea577db6"
+  "set_digest": "sha256:aae3fb9f78f5862dc11d1aebf730f53f68d90951f73ff03c514738197aa2cc0a"
 }

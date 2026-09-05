@@ -532,7 +532,8 @@ class AuthoredRequirementCollectionTests(unittest.TestCase):
         return parse_sdl(
             _REQUIREMENT_SDL.format(
                 digest=_digest("a"), media=_MEDIA, mech=_digest("c")
-            )
+            ),
+            migration_policy="accept",
         )
 
     def test_requirements_are_recovered_from_a_parsed_scenario(self) -> None:
@@ -545,7 +546,10 @@ class AuthoredRequirementCollectionTests(unittest.TestCase):
     def test_scenario_without_artifact_requirements_yields_nothing(self) -> None:
         from raes import parse_sdl
 
-        scenario = parse_sdl("name: example-pack\nnodes:\n  target:\n    type: vm\n")
+        scenario = parse_sdl(
+            "name: example-pack\nnodes:\n  target:\n    type: vm\n",
+            migration_policy="accept",
+        )
         self.assertEqual(publication.authored_artifact_requirements([scenario]), {})
 
     def test_collection_walks_every_source_owner_not_just_nodes(self) -> None:
@@ -716,7 +720,10 @@ class CompiledAddressAuthorityTests(unittest.TestCase):
             digest=_digest("a"), media=_MEDIA, mech=_digest("c"))
         # A second node declaring the *same* local requirement id.
         node_block = one_node.split("nodes:\n", 1)[1]
-        scenario = parse_sdl(one_node + node_block.replace("  target:", "  other:", 1))
+        scenario = parse_sdl(
+            one_node + node_block.replace("  target:", "  other:", 1),
+            migration_policy="accept",
+        )
 
         found = publication.authored_artifact_requirements([scenario])
         self.assertEqual(len(found), 2, "a duplicate local id overwrote another owner")
@@ -729,10 +736,18 @@ class CompiledAddressAuthorityTests(unittest.TestCase):
         """Two SDL documents can share an owner trail; resolving must not guess."""
         from raes import parse_sdl
 
-        first = parse_sdl(_REQUIREMENT_SDL.format(
-            digest=_digest("a"), media=_MEDIA, mech=_digest("c")))
-        second = parse_sdl(_REQUIREMENT_SDL.format(
-            digest=_digest("b"), media=_MEDIA, mech=_digest("c")))
+        first = parse_sdl(
+            _REQUIREMENT_SDL.format(
+                digest=_digest("a"), media=_MEDIA, mech=_digest("c")
+            ),
+            migration_policy="accept",
+        )
+        second = parse_sdl(
+            _REQUIREMENT_SDL.format(
+                digest=_digest("b"), media=_MEDIA, mech=_digest("c")
+            ),
+            migration_policy="accept",
+        )
         found = publication.authored_artifact_requirements([first, second])
         address = publication.compiled_requirement_address(("nodes", "target", "source"))
         self.assertIsNone(found[address], "an ambiguous address silently resolved")

@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "inference-api-gateway",
     "ref_version": null,
-    "ref_digest": "sha256:1c8ba9203deaaa5f5050e7f09607dce4016ab1db0f44c564367cded7a04d6855",
+    "ref_digest": "sha256:1abf1c47801396244e28b84f5cce97d51f1c6cb841e723fe68d337cba3f64845",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "f12a164ba9a6598fe76264e6ac4b25a085e1fad40e7ed8bbd00c9b3463f38a4e"
+        "value": "e46997b1721ed38aeb6d4ad2bf0d97441bf5c8f9bd120bcb6ee3fd901040a8c6"
       },
-      "size_bytes": 2714,
+      "size_bytes": 2890,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.inference-api-gateway@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:ce5f48409553c539e5ecdefacd2c3e2c461e5b795f8317ab160dec8428d1b722"
+  "set_digest": "sha256:b74bada690d37b8c86d5643eb700e308d4bd77d7d75dfe578d1d392661071424"
 }

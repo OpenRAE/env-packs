@@ -61,6 +61,9 @@ _PACK_ARTIFACT_CONTENT_IDS = frozenset(
         "misp-suricata-sync-readme",
         "misp-suricata-sync-hatch-build",
         "misp-suricata-sync-src",
+        "cortex-analyzer-executable",
+        "cortex-analyzer-definition",
+        "cortex-initializer-script",
         "suricata-config",
         "suricata-local-rules",
         "suricata-misp-ioc-rules-seed",
@@ -324,8 +327,8 @@ class TechVaultPackTests(unittest.TestCase):
         sdl = _load_sdl()
         self.assertEqual(sdl["name"], "techvault")
         expected_counts = {
-            "nodes": 37,
-            "infrastructure": 37,
+            "nodes": 38,
+            "infrastructure": 38,
             "persistent_volumes": 24,
             "features": 2,
             "vulnerabilities": 14,
@@ -334,7 +337,7 @@ class TechVaultPackTests(unittest.TestCase):
             "observation_boundaries": 1,
             "evidence_requirements": 3,
             "identity_domains": 1,
-            "relationships": 1,
+            "relationships": 2,
             "accounts": 4,
         }
         for section, expected in expected_counts.items():
@@ -387,8 +390,6 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertTrue(_GENERATED_SSH_CONTENT_IDS.isdisjoint(content))
         inline = {name for name, item in content.items() if "text" in item}
         sourced = {name for name, item in content.items() if "source" in item}
-        # ADR-088 service-materialized content declares desired service state and
-        # carries neither an inline `text` body nor a `source` package.
         materialized = {
             name
             for name, item in content.items()
@@ -400,8 +401,8 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline | sourced | materialized, set(content))
         self.assertEqual(len(inline), 23)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
-        self.assertEqual(materialized, {"cortex-job-index-schema"})
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 64)
+        self.assertEqual(materialized, set())
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 66)
 
     def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
         sdl = _load_sdl()
@@ -955,115 +956,261 @@ class TechVaultPackTests(unittest.TestCase):
                     all(item["host_ip"] == "127.0.0.1" for item in published)
                 )
 
-    def test_cortex_is_status_only_without_a_thehive_connector(self) -> None:
+    def test_cortex_provides_case_driven_offline_enrichment(self) -> None:
         sdl = _load_sdl()
         thehive = sdl["nodes"]["thehive"]
-
         command = thehive["runtime"]["container"]["command"]
-        self.assertFalse(
-            any(argument.startswith("--cortex-") for argument in command),
-            "status-only Cortex must not advertise a nonfunctional TheHive connector",
+        self.assertEqual(
+            command[command.index("--cortex-proto") + 1], "http"
         )
-        self.assertNotIn("cortex", sdl["infrastructure"]["thehive"]["dependencies"])
+        self.assertEqual(
+            command[command.index("--cortex-hostnames") + 1], "cortex"
+        )
+        self.assertEqual(command[command.index("--cortex-port") + 1], "9001")
+
+        thehive_environment = {
+            item["name"]: item for item in thehive["runtime"]["environment"]
+        }
+        connector_key = thehive_environment["TH_CORTEX_KEYS"]
+        self.assertEqual(connector_key["value_classification"], "redacted")
+        self.assertNotIn("value", connector_key)
+        self.assertEqual(
+            connector_key["value_from"],
+            {
+                "generated_artifact": "cortex-service-credentials",
+                "output": "connector-api-key",
+            },
+        )
 
         cortex = sdl["nodes"]["cortex"]
         self.assertEqual(
             cortex["services"],
             [{"name": "cortex-api", "port": 9001, "protocol": "tcp"}],
         )
+        cortex_config = sdl["content"]["cortex-app-config"]["text"]
+        self.assertIn('job.runners = ["process"]', cortex_config)
+        self.assertIn(
+            'analyzer.urls = ["/opt/techvault/cortex-analyzers"]', cortex_config
+        )
+        self.assertNotIn("docker.sock", yaml.safe_dump(cortex))
+        cortex_app = cortex["runtime"]["platform_applications"][0]
+        self.assertEqual(cortex_app["platform_application_id"], "cortex-enrichment")
+        self.assertEqual(cortex_app["authorization_ref"], "cortex-rbac")
+        self.assertEqual(
+            {item["kind"] for item in cortex_app["capabilities"]},
+            {"analysis_execution"},
+        )
+        analyzers = {
+            item["content_object_id"]: item
+            for item in cortex_app["content_objects"]
+            if item["kind"] == "analyzer"
+        }
+        self.assertIn("techvault-scenario-context", analyzers)
+        self.assertEqual(
+            analyzers["techvault-scenario-context"]["attributes"]["data_types"],
+            ["ip"],
+        )
 
-        for application in cortex["runtime"].get("platform_applications", []):
-            self.assertNotEqual(application.get("platform_kind"), "analyzer_engine")
-            self.assertNotIn(
-                "analysis_execution",
-                {
-                    capability["kind"]
-                    for capability in application.get("capabilities", [])
-                },
+        authorization = cortex["runtime"]["app_authorizations"][0]
+        self.assertEqual(authorization["app_authorization_id"], "cortex-rbac")
+        principals = {
+            item["principal_id"]: item for item in authorization["principals"]
+        }
+        connector = principals["thehive-cortex-connector"]
+        self.assertEqual(connector["kind"], "service_account")
+        self.assertEqual(connector["credential_classification"], "redacted")
+        self.assertEqual(connector["backend_roles"], ["read", "analyze"])
+        self.assertNotIn("orgadmin", connector["backend_roles"])
+        initializer_principal = principals["cortex-initializer-admin"]
+        self.assertEqual(initializer_principal["credential_classification"], "redacted")
+        self.assertEqual(
+            initializer_principal["backend_roles"], ["read", "analyze", "orgadmin"]
+        )
+
+        initializer = sdl["nodes"]["cortex-initializer"]
+        self.assertTrue(initializer["runtime"]["container"]["autoremove"])
+        initializer_environment = {
+            item["name"]: item for item in initializer["runtime"]["environment"]
+        }
+        self.assertEqual(
+            initializer_environment["CORTEX_CONNECTOR_KEY"]["value_from"],
+            connector_key["value_from"],
+        )
+        self.assertEqual(
+            initializer_environment["CORTEX_CONNECTOR_KEY"]["value_classification"],
+            "redacted",
+        )
+        self.assertNotEqual(
+            initializer_environment["CORTEX_ADMIN_KEY"]["value_from"],
+            connector_key["value_from"],
+        )
+        self.assertNotIn("value", initializer_environment["CORTEX_ADMIN_KEY"])
+
+        credential_artifact = sdl["generated_artifacts"][
+            "cortex-service-credentials"
+        ]
+        self.assertEqual(credential_artifact["generator"], "rendered_config")
+        self.assertEqual(credential_artifact["lifecycle"], "reuse_valid")
+        self.assertEqual(
+            {output["name"] for output in credential_artifact["outputs"]},
+            {"initializer-api-key", "connector-api-key"},
+        )
+        self.assertTrue(
+            all(
+                output["sensitivity"] == "secret"
+                for output in credential_artifact["outputs"]
             )
-            self.assertNotIn(
-                "analyzer",
-                {item["kind"] for item in application.get("content_objects", [])},
+        )
+
+        self.assertIn(
+            "cortex-initializer", sdl["infrastructure"]["thehive"]["dependencies"]
+        )
+        self.assertEqual(
+            sdl["infrastructure"]["cortex-initializer"]["dependencies"],
+            ["cortex"],
+        )
+
+        integrations = [
+            relationship["service_integration"]
+            for relationship in sdl["relationships"].values()
+            if relationship.get("service_integration", {}).get("engine_ref")
+            == "cortex-enrichment"
+        ]
+        self.assertEqual(len(integrations), 1)
+        integration = integrations[0]
+        self.assertEqual(integration["consumer_ref"], "thehive-case-management")
+        self.assertEqual(integration["integration_kind"], "enrichment")
+        self.assertEqual(integration["auth_principal_ref"], "thehive-cortex-connector")
+        self.assertTrue(integration["enabled"])
+
+        for content_id in (
+            "cortex-analyzer-definition",
+            "cortex-analyzer-executable",
+            "cortex-initializer-script",
+        ):
+            content = sdl["content"][content_id]
+            requirement = content["source"]["artifact_requirement"]
+            self.assertEqual(requirement["explicitness"], "exact")
+            self.assertEqual(
+                resolve_pack_artifact(_PACK, content["source"]["name"]).identity.digest,
+                requirement["exact_artifact"]["digest"],
             )
 
-        for application in thehive["runtime"].get("platform_applications", []):
-            self.assertNotIn(
-                "analyzer_engine",
-                {connector["kind"] for connector in application.get("connectors", [])},
-            )
+        proposition = sdl["propositions"]["cortex-enrichment-ready"]
+        self.assertEqual(proposition["basis"], "observed_state")
+        self.assertIn("cortex-enrichment-readback", proposition["evidence_requirements"])
+        evidence = sdl["evidence_requirements"]["cortex-enrichment-readback"]
+        self.assertIn("nodes.cortex", evidence["scope_refs"])
+        self.assertIn("nodes.thehive", evidence["scope_refs"])
 
-        for relationship in sdl.get("relationships", {}).values():
-            integration = relationship.get("service_integration")
-            if integration is not None:
-                self.assertNotIn(
-                    integration["integration_kind"], {"analyzer", "enrichment"}
-                )
-
-    def test_cortex_job_index_schema_is_adr088_initial_service_state(self) -> None:
+    def test_cortex_owns_its_native_job_index_schema(self) -> None:
         sdl = _load_sdl()
 
-        # The one-shot init node, its inline script, and its topology row are gone.
         self.assertNotIn("cortex-index-init", sdl["nodes"])
         self.assertNotIn("cortex-index-init", sdl["infrastructure"])
         self.assertNotIn("cortex-index-init-script", sdl["content"])
+        self.assertNotIn("cortex-job-index-schema", sdl["content"])
 
-        entry = sdl["content"]["cortex-job-index-schema"]
-        self.assertEqual(entry["type"], "dataset")
-        self.assertEqual(entry["target"], "thehive-es")
-        # Materialization-only: no inline body, source package, or item list.
-        self.assertNotIn("text", entry)
-        self.assertNotIn("source", entry)
-        self.assertNotIn("items", entry)
-
-        materialization = entry["service_materialization"]
-        self.assertEqual(
-            materialization["interface_profile"], "service-search-index-schema"
-        )
-        self.assertEqual(materialization["profile_version"], "1")
-        self.assertEqual(
-            materialization["target_service_ref"],
-            "nodes.thehive-es.services.elasticsearch",
-        )
-        requirements = materialization["requirements"]
-        self.assertEqual(requirements["operation"], "ensure-search-index-field-schema")
-        self.assertEqual(requirements["conflict_policy"], "reject-unowned-collision")
-        self.assertEqual(
-            requirements["readback"], "canonical-portable-field-schema-digest"
-        )
-        self.assertEqual(
-            requirements["field_semantics"],
-            {
-                "key": "exact-token",
-                "status": "exact-token",
-                "relations": "exact-token",
-            },
+        self.assertNotIn(
+            "datastore_services", sdl["nodes"]["thehive-es"]["runtime"]
         )
 
-        # The readback scaffolding cross-refs resolve to a postcondition assertion
-        # over an observed-state proposition whose subject is this content, plus a
-        # bound evidence requirement and an observation boundary that exposes it.
-        (assertion_ref,) = materialization["readback_assertion_refs"]
-        (evidence_ref,) = materialization["evidence_requirement_refs"]
-        (boundary_ref,) = materialization["observation_boundary_refs"]
+        initializer = (
+            _PACK / "assets" / "content" / "cortex-initializer.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("/api/maintenance/migrate", initializer)
+        self.assertNotIn("cortex_6", initializer)
+        self.assertNotIn("_mapping", initializer)
 
-        assertion = sdl["assertions"][assertion_ref]
-        self.assertEqual(assertion["role"], "postcondition")
-        proposition = sdl["propositions"][assertion["proposition"]]
-        self.assertEqual(proposition["basis"], "observed_state")
-        self.assertIn("content.cortex-job-index-schema", proposition["subjects"])
-        self.assertIn(evidence_ref, proposition["evidence_requirements"])
+    def test_cortex_pack_validator_rejects_contract_mutations(self) -> None:
+        original = _load_sdl()
+        self.assertEqual(
+            _PACK_VALIDATOR.validate_cortex_contract(_PACK, original), []
+        )
 
-        evidence = sdl["evidence_requirements"][evidence_ref]
-        self.assertIn("content.cortex-job-index-schema", evidence["source_refs"])
+        def environments(candidate):
+            return {
+                node: {
+                    item["name"]: item
+                    for item in candidate["nodes"][node]["runtime"]["environment"]
+                }
+                for node in ("thehive", "cortex-initializer")
+            }
 
-        boundary = sdl["observation_boundaries"][boundary_ref]
-        self.assertIn("content.cortex-job-index-schema", boundary["observable_refs"])
+        def principals(candidate):
+            return {
+                item["principal_id"]: item
+                for item in candidate["nodes"]["cortex"]["runtime"]
+                ["app_authorizations"][0]["principals"]
+            }
 
-        # ADR-088 forbids leaking the backend index name or vendor ES literals into
-        # the portable declaration; only portable field semantics belong here.
-        declaration = yaml.safe_dump(entry)
-        for forbidden in ("cortex_6", "keyword", "_mapping", "http://", "https://"):
-            self.assertNotIn(forbidden, declaration)
+        def mutate(candidate, code):
+            env = environments(candidate)
+            cortex_runtime = candidate["nodes"]["cortex"]["runtime"]
+            if code == "connector-key-mismatch":
+                env["thehive"]["TH_CORTEX_KEYS"]["value_from"]["output"] = "initializer-api-key"
+            elif code == "initializer-key-invalid":
+                env["cortex-initializer"]["CORTEX_ADMIN_KEY"]["value_from"]["output"] = "connector-api-key"
+            elif code == "generated-credentials-invalid":
+                candidate["generated_artifacts"]["cortex-service-credentials"]["outputs"][0]["sensitivity"] = "public"
+            elif code == "application-missing":
+                cortex_runtime["platform_applications"][0]["platform_application_id"] = "other"
+            elif code == "capability-missing":
+                cortex_runtime["platform_applications"][0]["capabilities"] = []
+            elif code == "connector-principal-invalid":
+                principals(candidate)["thehive-cortex-connector"]["backend_roles"].append("orgadmin")
+            elif code == "initializer-principal-invalid":
+                principals(candidate)["cortex-initializer-admin"]["backend_roles"] = ["read"]
+            elif code == "initializer-not-oneshot":
+                candidate["nodes"]["cortex-initializer"]["runtime"]["container"]["autoremove"] = False
+            elif code == "docker-socket-forbidden":
+                candidate["nodes"]["cortex-initializer"]["runtime"]["container"]["mounts"] = ["/var/run/docker.sock"]
+            elif code == "native-schema-leaked":
+                candidate["content"]["cortex-job-index-schema"] = {}
+            elif code == "content-placement-mismatch":
+                candidate["content"]["cortex-initializer-script"]["path"] = "/tmp/initializer.py"
+            elif code == "content-identity-mismatch":
+                candidate["content"]["cortex-initializer-script"]["source"]["artifact_requirement"]["exact_artifact"]["digest"] = "sha256:" + "0" * 64
+
+        codes = (
+            "connector-key-mismatch",
+            "initializer-key-invalid",
+            "generated-credentials-invalid",
+            "application-missing",
+            "capability-missing",
+            "connector-principal-invalid",
+            "initializer-principal-invalid",
+            "initializer-not-oneshot",
+            "docker-socket-forbidden",
+            "native-schema-leaked",
+            "content-placement-mismatch",
+            "content-identity-mismatch",
+        )
+        for code in codes:
+            with self.subTest(code=code):
+                candidate = copy.deepcopy(original)
+                mutate(candidate, code)
+                errors = _PACK_VALIDATOR.validate_cortex_contract(_PACK, candidate)
+                self.assertTrue(
+                    any(f"cortex.{code}" in error for error in errors), errors
+                )
+
+        real_resolve = _PACK_VALIDATOR.resolve_pack_artifact
+
+        def invalid_definition(pack_root, artifact_id):
+            artifact = real_resolve(pack_root, artifact_id)
+            if artifact_id == "techvault-cortex-analyzer-definition":
+                return types.SimpleNamespace(identity=artifact.identity, data=b"{}")
+            return artifact
+
+        with mock.patch.object(
+            _PACK_VALIDATOR, "resolve_pack_artifact", side_effect=invalid_definition
+        ):
+            errors = _PACK_VALIDATOR.validate_cortex_contract(_PACK, original)
+        self.assertTrue(
+            any("cortex.analyzer-definition-invalid" in error for error in errors),
+            errors,
+        )
 
     def test_content_sources_are_exact_resolvable_pack_artifacts(self) -> None:
         profile = json.loads(_PROFILE.read_text(encoding="utf-8"))
@@ -1140,7 +1287,7 @@ class TechVaultPackTests(unittest.TestCase):
 
     def test_generated_keys_and_certificates_enforce_output_boundaries(self) -> None:
         generated = _load_sdl()["generated_artifacts"]
-        self.assertEqual(len(generated), 7)
+        self.assertEqual(len(generated), 8)
 
         ssh = generated["techvault-ssh-keys"]
         self.assertEqual(ssh["generator"], "ssh_key_bundle")

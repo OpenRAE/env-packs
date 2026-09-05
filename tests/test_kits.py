@@ -51,11 +51,19 @@ variables:
     default: {node_name}
 nodes:
   {node_name}:
-    type: vm
+    type: compute
     description: ${{{parameter}}}
     resources:
       cpu: 1
       ram: 256 MiB
+realization:
+  constraints:
+  - field_pointer: /nodes/{node_name}
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine
 """,
         encoding="utf-8",
     )

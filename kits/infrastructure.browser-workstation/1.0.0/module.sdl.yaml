@@ -32,7 +32,7 @@ variables:
     default: managed
 nodes:
   workstation:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Browser workstation).
       Configuration: ${browser_profile}.'
     source:
@@ -82,3 +82,11 @@ accounts:
     node: workstation
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/workstation
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

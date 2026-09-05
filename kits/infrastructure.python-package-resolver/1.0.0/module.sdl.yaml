@@ -32,7 +32,7 @@ variables:
     default: packages
 nodes:
   resolver:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Python package
       resolver). Configuration: ${index_name}.'
     source:
@@ -103,3 +103,11 @@ accounts:
     node: resolver
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/resolver
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

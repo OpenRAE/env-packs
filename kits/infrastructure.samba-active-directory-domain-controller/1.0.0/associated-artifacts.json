@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "samba-active-directory-domain-controller",
     "ref_version": null,
-    "ref_digest": "sha256:59812570d2fd0281fd732a5038fba2b9bea56031bb21aa2121330ffab628987a",
+    "ref_digest": "sha256:11ad5f8883b16fbd136add3876946cf2990162b0ce2bb46e8f7fdfb12fba1925",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "296e3fec88829c4736fec3ce09b8229b644e0eb020feb6dd43197808a23b192a"
+        "value": "e8944eacacdb6f402e376209f7a19f6806750e8a27a766d7f54b102211dc75c2"
       },
-      "size_bytes": 3264,
+      "size_bytes": 3450,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.samba-active-directory-domain-controller@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:155e448158ee1bc1267365b7073531cdf6be4cd2f7d3247cd1e9ac695cad868f"
+  "set_digest": "sha256:f2cb97237c36453817ba74e4f334373b0683cf1e6378462657f82661278191f4"
 }

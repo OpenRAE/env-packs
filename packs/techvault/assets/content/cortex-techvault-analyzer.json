@@ -1,0 +1,14 @@
+{
+  "name": "TechVaultScenarioContext",
+  "version": "1.0",
+  "author": "OpenRAE",
+  "url": "https://github.com/OpenRAE/env-packs",
+  "license": "Apache-2.0",
+  "description": "Deterministic offline context for TechVault scenario IP observables.",
+  "dataTypeList": [
+    "ip"
+  ],
+  "baseConfig": "TechVaultScenarioContext",
+  "command": "/opt/techvault/cortex-analyzers/TechVaultScenarioContext/techvault_scenario_context.py",
+  "configurationItems": []
+}

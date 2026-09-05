@@ -32,7 +32,7 @@ variables:
     default: environment.test
 nodes:
   mail:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (SMTP/IMAP mail
       service). Configuration: ${mail_domain}.'
     source:
@@ -110,3 +110,11 @@ accounts:
     node: mail
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/mail
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

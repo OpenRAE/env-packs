@@ -34,7 +34,7 @@ variables:
     default: workforce
 nodes:
   identity_provider:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (OIDC identity
       provider). Configuration: ${realm_name}.'
     source:
@@ -109,3 +109,11 @@ accounts:
     node: identity_provider
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/identity_provider
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

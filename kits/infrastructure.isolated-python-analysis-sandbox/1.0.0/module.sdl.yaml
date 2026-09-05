@@ -32,7 +32,7 @@ variables:
     default: inspection
 nodes:
   sandbox:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Isolated Python
       analysis sandbox). Configuration: ${workspace_name}.'
     source:
@@ -82,3 +82,11 @@ accounts:
     node: sandbox
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/sandbox
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

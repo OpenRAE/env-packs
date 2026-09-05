@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "smb-file-service",
     "ref_version": null,
-    "ref_digest": "sha256:e543e2d02bf01ce501be5659f2c4339f455e924b90d3afa6318bf4191e3ea9a2",
+    "ref_digest": "sha256:710d396b9cae96355998f54ba0ced576f8a1a9e1f366b3d91f017be564785a21",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "00af7a72d126dc052c33006f6d8c58bf6cec2cf208ef29769cfb970dc8f42cc2"
+        "value": "d836fa656d3c9602d5c0cdcf5a572646004ea4c9fe732787bc3349aa5da671a9"
       },
-      "size_bytes": 2109,
+      "size_bytes": 2290,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.smb-file-service@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:4059f960a3910a38b6fb9d9723c9e6f1e9ee9a94899aa248cee8c5989adb1bd6"
+  "set_digest": "sha256:858316cd5b4508fe048a48ec9421b30647b99c57f655777b4090623aa5f6e825"
 }

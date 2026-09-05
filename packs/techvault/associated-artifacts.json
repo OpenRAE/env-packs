@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "0570eaaec7bc6026ee42072e2480520b8942d9b72649aba2689c0c6b87474abc"
+        "value": "b07d3a67d4bbba0e08797dcc52e8cec6f5d8fe4a531770d67a6a5ea98ee790cc"
       },
-      "size_bytes": 4949,
+      "size_bytes": 5026,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -531,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/concepts.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "ddbe94f9f112493079a9c5ba636c7bec0ef0e29910d8893fff7c5a9dc7530e65"
+        "value": "78926adc1a74de23dbe3cd1e8e2e1aecac3b8b4767f5674ae36d6bcdf3b902ea"
       },
-      "size_bytes": 840,
+      "size_bytes": 1002,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -579,9 +579,9 @@
       "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "0ec455befceccd1042f1ca9bf060eae185b97986931c8fb6e9d9326accf16dc5"
+        "value": "afe40414ad63f712d6b02474c92a6f6e5584e0fbbd1e37605275c44b6b9068c4"
       },
-      "size_bytes": 1973,
+      "size_bytes": 2044,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -643,9 +643,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "716c9159491de28453476dc121795ed602f0aa99be0ff7f6cbd70ee3affe9495"
+        "value": "f60ee1a6c862334ab51f75812d29cc08694e5526acf7ffe2f8831fdb3aaafd25"
       },
-      "size_bytes": 164243,
+      "size_bytes": 170367,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -675,15 +675,63 @@
       "uri": "raes-environment-pack:/validation/validate_techvault.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "aaa9921dc1825b16fe0884618a65e1209f7c720a37bf712b528f8a0d18f51b65"
+        "value": "f636eebcbe887b2338be747e213dacdbfa09864be6bb2a8495c20a3fbe76a7c4"
       },
-      "size_bytes": 19737,
+      "size_bytes": 27183,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
       "sensitivity": "public",
       "description": null
+    },
+    "techvault-cortex-analyzer-definition": {
+      "artifact_id": "techvault-cortex-analyzer-definition",
+      "role": "other",
+      "media_type": "application/json",
+      "uri": "raes-environment-pack:/assets/content/cortex-techvault-analyzer.json",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "9c8bfce7a9b41ed10f549e1d841879ec350a3ea1b4b03b6658313255ef435970"
+      },
+      "size_bytes": 458,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Exact offline Cortex analyzer definition for TechVault scenario IP context."
+    },
+    "techvault-cortex-analyzer-executable": {
+      "artifact_id": "techvault-cortex-analyzer-executable",
+      "role": "other",
+      "media_type": "text/x-python",
+      "uri": "raes-environment-pack:/assets/content/cortex-techvault-analyzer.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "ce6962465bc7bdd6394b4df3785685a8cf32f22689671dfda644540ffc51f152"
+      },
+      "size_bytes": 1953,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Exact dependency-free offline Cortex analyzer executable."
+    },
+    "techvault-cortex-initializer": {
+      "artifact_id": "techvault-cortex-initializer",
+      "role": "other",
+      "media_type": "text/x-python",
+      "uri": "raes-environment-pack:/assets/content/cortex-initializer.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7ad7cb07259da52fbb7dfe5ea77b02874273d84d37b6abdb000858237a5ed96c"
+      },
+      "size_bytes": 9452,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Idempotent bounded initializer for TechVault Cortex application state."
     }
   },
-  "set_digest": "sha256:ca3ebed436c133df39449160601df2ede86a40f24b84e1c568678098e277d4f6"
+  "set_digest": "sha256:a66799c1def3cf3c805e51f7e0af041d1f2924297b8c6373d6238c92bfa9949f"
 }

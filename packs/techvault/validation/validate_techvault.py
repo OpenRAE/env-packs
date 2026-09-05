@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import pathlib
 import re
 import sys
@@ -94,6 +95,10 @@ _SID = re.compile(r"(?:^|;)\s*sid\s*:\s*(\d+)\s*;")
 
 def _error(errors: list[str], code: str, detail: str) -> None:
     errors.append(f"suricata.{code}: {detail}")
+
+
+def _cortex_error(errors: list[str], code: str, detail: str) -> None:
+    errors.append(f"cortex.{code}: {detail}")
 
 
 def _as_mapping(value: object) -> Mapping[str, Any]:
@@ -483,6 +488,171 @@ def validate_suricata_contract(
     return errors
 
 
+def validate_cortex_contract(
+    pack_root: pathlib.Path, sdl: Mapping[str, Any]
+) -> list[str]:
+    """Validate the closed joins that make TechVault's Cortex useful."""
+
+    errors: list[str] = []
+    nodes = _as_mapping(sdl.get("nodes"))
+    content = _as_mapping(sdl.get("content"))
+    cortex = _as_mapping(nodes.get("cortex"))
+    thehive = _as_mapping(nodes.get("thehive"))
+    initializer = _as_mapping(nodes.get("cortex-initializer"))
+
+    def environment(node: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+        runtime = _as_mapping(node.get("runtime"))
+        return {
+            str(item.get("name")): item
+            for item in runtime.get("environment", [])
+            if isinstance(item, Mapping)
+        }
+
+    thehive_env = environment(thehive)
+    initializer_env = environment(initializer)
+    connector_key = _as_mapping(thehive_env.get("TH_CORTEX_KEYS"))
+    initializer_connector = _as_mapping(
+        initializer_env.get("CORTEX_CONNECTOR_KEY")
+    )
+    admin_key = _as_mapping(initializer_env.get("CORTEX_ADMIN_KEY"))
+
+    def generated_value_ref(value: Mapping[str, Any]) -> tuple[object, object]:
+        value_from = _as_mapping(value.get("value_from"))
+        return value_from.get("generated_artifact"), value_from.get("output")
+
+    connector_ref = ("cortex-service-credentials", "connector-api-key")
+    if (
+        connector_key.get("value")
+        or initializer_connector.get("value")
+        or generated_value_ref(connector_key) != connector_ref
+        or generated_value_ref(initializer_connector) != connector_ref
+        or connector_key.get("value_classification") != "redacted"
+        or initializer_connector.get("value_classification") != "redacted"
+    ):
+        _cortex_error(errors, "connector-key-mismatch", "TheHive connector")
+    if (
+        admin_key.get("value")
+        or generated_value_ref(admin_key)
+        != ("cortex-service-credentials", "initializer-api-key")
+        or admin_key.get("value_classification") != "redacted"
+        or generated_value_ref(admin_key) == connector_ref
+    ):
+        _cortex_error(errors, "initializer-key-invalid", "bootstrap authority")
+
+    generated = _as_mapping(sdl.get("generated_artifacts"))
+    credential_artifact = _as_mapping(generated.get("cortex-service-credentials"))
+    outputs = {
+        item.get("name"): item
+        for item in credential_artifact.get("outputs", [])
+        if isinstance(item, Mapping)
+    }
+    if (
+        credential_artifact.get("generator") != "rendered_config"
+        or credential_artifact.get("lifecycle") != "reuse_valid"
+        or set(outputs) != {"initializer-api-key", "connector-api-key"}
+        or any(
+            item.get("sensitivity") != "secret"
+            or item.get("disposition", "consumer_selected")
+            != "consumer_selected"
+            for item in outputs.values()
+        )
+    ):
+        _cortex_error(errors, "generated-credentials-invalid", "credential outputs")
+
+    cortex_runtime = _as_mapping(cortex.get("runtime"))
+    applications = cortex_runtime.get("platform_applications", [])
+    application = applications[0] if isinstance(applications, list) and applications else {}
+    application = _as_mapping(application)
+    if application.get("platform_application_id") != "cortex-enrichment":
+        _cortex_error(errors, "application-missing", "cortex-enrichment")
+    capabilities = {
+        item.get("kind")
+        for item in application.get("capabilities", [])
+        if isinstance(item, Mapping)
+    }
+    if "analysis_execution" not in capabilities:
+        _cortex_error(errors, "capability-missing", "analysis_execution")
+
+    authorizations = cortex_runtime.get("app_authorizations", [])
+    authorization = (
+        authorizations[0]
+        if isinstance(authorizations, list) and authorizations
+        else {}
+    )
+    principals = {
+        item.get("principal_id"): item
+        for item in _as_mapping(authorization).get("principals", [])
+        if isinstance(item, Mapping)
+    }
+    principal = _as_mapping(principals.get("thehive-cortex-connector"))
+    if (
+        principal.get("kind") != "service_account"
+        or principal.get("credential_classification") != "redacted"
+        or principal.get("backend_roles") != ["read", "analyze"]
+    ):
+        _cortex_error(errors, "connector-principal-invalid", "least privilege")
+    initializer_principal = _as_mapping(principals.get("cortex-initializer-admin"))
+    if (
+        initializer_principal.get("kind") != "service_account"
+        or initializer_principal.get("credential_classification") != "redacted"
+        or initializer_principal.get("backend_roles")
+        != ["read", "analyze", "orgadmin"]
+    ):
+        _cortex_error(errors, "initializer-principal-invalid", "bootstrap authority")
+
+    container = _as_mapping(_as_mapping(initializer.get("runtime")).get("container"))
+    if container.get("autoremove") is not True:
+        _cortex_error(errors, "initializer-not-oneshot", "cortex-initializer")
+    if "docker.sock" in yaml.safe_dump({"cortex": cortex, "initializer": initializer}):
+        _cortex_error(errors, "docker-socket-forbidden", "Cortex runtime")
+    if "cortex-job-index-schema" in content:
+        _cortex_error(errors, "native-schema-leaked", "Cortex owns its index mapping")
+
+    expected_content = {
+        "cortex-analyzer-definition": (
+            "techvault-cortex-analyzer-definition",
+            "/opt/techvault/cortex-analyzers/TechVaultScenarioContext/analyzer.json",
+        ),
+        "cortex-analyzer-executable": (
+            "techvault-cortex-analyzer-executable",
+            "/opt/techvault/cortex-analyzers/TechVaultScenarioContext/techvault_scenario_context.py",
+        ),
+        "cortex-initializer-script": (
+            "techvault-cortex-initializer",
+            "/opt/techvault/cortex-initializer.py",
+        ),
+    }
+    resolved: dict[str, bytes] = {}
+    for content_id, (artifact_id, path) in expected_content.items():
+        item = _as_mapping(content.get(content_id))
+        source = _as_mapping(item.get("source"))
+        exact = _as_mapping(_as_mapping(source.get("artifact_requirement")).get("exact_artifact"))
+        if item.get("path") != path or source.get("name") != artifact_id:
+            _cortex_error(errors, "content-placement-mismatch", content_id)
+            continue
+        try:
+            artifact = resolve_pack_artifact(pack_root, artifact_id)
+        except (PackDigestError, OSError, ValueError):
+            _cortex_error(errors, "content-identity-mismatch", content_id)
+            continue
+        if artifact.identity.digest != exact.get("digest"):
+            _cortex_error(errors, "content-identity-mismatch", content_id)
+        resolved[content_id] = artifact.data
+
+    try:
+        definition = json.loads(resolved.get("cortex-analyzer-definition", b"{}"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        definition = {}
+    if (
+        definition.get("name") != "TechVaultScenarioContext"
+        or definition.get("version") != "1.0"
+        or definition.get("dataTypeList") != ["ip"]
+        or not definition.get("command")
+    ):
+        _cortex_error(errors, "analyzer-definition-invalid", "TechVaultScenarioContext_1_0")
+    return errors
+
+
 def validate() -> list[str]:
     root = pathlib.Path(__file__).resolve().parents[1]
     result = validate_pack(root)
@@ -496,6 +666,7 @@ def validate() -> list[str]:
         sdl_path = next((root / "sdl").glob("*.sdl.yaml"))
         sdl = yaml.safe_load(sdl_path.read_text(encoding="utf-8"))
         errors.extend(validate_suricata_contract(root, sdl))
+        errors.extend(validate_cortex_contract(root, sdl))
     return errors
 
 
