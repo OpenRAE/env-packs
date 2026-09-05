@@ -295,6 +295,120 @@ def _assert_shuffle_runtime_contract(test: unittest.TestCase, sdl: dict) -> None
     )
 
 
+def _assert_shuffle_orborus_contract(test: unittest.TestCase, sdl: dict) -> None:
+    """Assert the portable Orborus configuration and runtime-image inventory."""
+    orborus = sdl["nodes"]["shuffle-orborus"]
+    runtime = orborus["runtime"]
+
+    expected_worker = (
+        "ghcr.io/shuffle/shuffle-worker@"
+        "sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd"
+    )
+    expected_http_app = (
+        "frikky/shuffle:http_1.4.0@"
+        "sha256:0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c"
+    )
+
+    environment = {item["name"]: item for item in runtime["environment"]}
+    expected_values = {
+        "BASE_URL": "http://shuffle-backend:5001",
+        "CLEANUP": "false",
+        "DOCKER_API_VERSION": "1.44",
+        "ENVIRONMENT_NAME": "Shuffle",
+        "SHUFFLE_APP_SDK_TIMEOUT": "300",
+        "SHUFFLE_AUTO_IMAGE_DOWNLOAD": "false",
+        "SHUFFLE_BASE_IMAGE_NAME": "frikky/shuffle",
+        "SHUFFLE_ORBORUS_EXECUTION_TIMEOUT": "600",
+        "SHUFFLE_WORKER_IMAGE": expected_worker,
+    }
+    test.assertEqual(set(environment), set(expected_values))
+    for name, value in expected_values.items():
+        test.assertEqual(
+            environment[name],
+            {
+                "name": name,
+                "value": value,
+                "value_classification": "plain",
+                "provenance": "compose",
+            },
+        )
+
+    (authority,) = runtime["orchestration_authorities"]
+    test.assertEqual(authority["engine"], "docker")
+    test.assertEqual(authority["privilege_class"], "host_root_equivalent")
+    test.assertEqual(authority["control_interface_ref"], "docker-sock")
+    test.assertNotIn("realized_children", authority)
+    test.assertEqual(
+        environment["DOCKER_API_VERSION"]["value"],
+        authority["engine_api_version"],
+    )
+    test.assertEqual(
+        environment["ENVIRONMENT_NAME"]["value"],
+        authority["scope"]["environment_name"],
+    )
+
+    templates = {
+        item["template_id"]: item for item in authority["spawn_templates"]
+    }
+    test.assertEqual(
+        templates,
+        {
+            "shuffle-http-1-4-0": {
+                "template_id": "shuffle-http-1-4-0",
+                "image_ref": expected_http_app,
+                "purpose": "seeded HTTP workflow app execution",
+            },
+            "shuffle-worker": {
+                "template_id": "shuffle-worker",
+                "image_ref": expected_worker,
+                "purpose": "workflow execution",
+            },
+        },
+    )
+    test.assertEqual(
+        environment["SHUFFLE_WORKER_IMAGE"]["value"],
+        templates["shuffle-worker"]["image_ref"],
+    )
+    test.assertTrue(
+        templates["shuffle-http-1-4-0"]["image_ref"].startswith(
+            environment["SHUFFLE_BASE_IMAGE_NAME"]["value"] + ":"
+        )
+    )
+    test.assertEqual(
+        environment["SHUFFLE_ORBORUS_EXECUTION_TIMEOUT"]["value"],
+        authority["lifecycle_policy"]["execution_timeout"],
+    )
+    test.assertEqual(
+        environment["CLEANUP"]["value"],
+        authority["lifecycle_policy"]["cleanup"],
+    )
+
+    shuffle_api = next(
+        service
+        for service in sdl["nodes"]["shuffle-backend"]["services"]
+        if service["name"] == "shuffle-api"
+    )
+    test.assertEqual(
+        environment["BASE_URL"]["value"],
+        f'http://shuffle-backend:{shuffle_api["port"]}',
+    )
+
+    (control_interface,) = runtime["local_control_interfaces"]
+    test.assertEqual(
+        control_interface,
+        {
+            "control_interface_id": "docker-sock",
+            "path": "/var/run/docker.sock",
+            "kind": "unix_socket",
+            "access": "read_write",
+            "description": (
+                "The in-world Docker control endpoint used by Shuffle to "
+                "create workflow workloads."
+            ),
+        },
+    )
+
+
 class TechVaultPackTests(unittest.TestCase):
     def test_pack_and_byte_manifest_validate(self) -> None:
         result = validate_pack(_PACK)
@@ -350,6 +464,46 @@ class TechVaultPackTests(unittest.TestCase):
 
     def test_shuffle_runtime_contract_is_complete_and_consistent(self) -> None:
         _assert_shuffle_runtime_contract(self, _load_sdl())
+
+    def test_shuffle_orborus_contract_is_complete_and_consistent(self) -> None:
+        _assert_shuffle_orborus_contract(self, _load_sdl())
+
+    def test_shuffle_orborus_contract_rejects_content_and_backend_drift(self) -> None:
+        mutations = {
+            "missing environment": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ].pop("environment"),
+            "mutable worker": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["orchestration_authorities"][0]["spawn_templates"][0].update(
+                image_ref="ghcr.io/shuffle/shuffle-worker:latest"
+            ),
+            "missing app image": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["orchestration_authorities"][0]["spawn_templates"].pop(),
+            "mismatched timeout": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["orchestration_authorities"][0]["lifecycle_policy"].update(
+                execution_timeout="601"
+            ),
+            "host bind source": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["local_control_interfaces"][0].update(
+                bind_source="/var/run/docker.sock"
+            ),
+            "predicted child": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["orchestration_authorities"][0].update(
+                realized_children=[{"workload_id": "expected-worker"}]
+            ),
+        }
+
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                candidate = _load_sdl()
+                mutate(candidate)
+                with self.assertRaises((AssertionError, KeyError)):
+                    _assert_shuffle_orborus_contract(self, candidate)
 
     def test_shuffle_runtime_contract_rejects_closed_state_drift(self) -> None:
         mutations = {

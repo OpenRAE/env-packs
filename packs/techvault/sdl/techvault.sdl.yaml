@@ -1039,18 +1039,36 @@ nodes:
             timing: backend-preparation
     services: []
     runtime:
+      environment:
+        - {name: BASE_URL, value: "http://shuffle-backend:5001", value_classification: plain, provenance: compose}
+        - {name: CLEANUP, value: "false", value_classification: plain, provenance: compose}
+        - {name: DOCKER_API_VERSION, value: "1.44", value_classification: plain, provenance: compose}
+        - {name: ENVIRONMENT_NAME, value: "Shuffle", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_APP_SDK_TIMEOUT, value: "300", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_AUTO_IMAGE_DOWNLOAD, value: "false", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_BASE_IMAGE_NAME, value: "frikky/shuffle", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_ORBORUS_EXECUTION_TIMEOUT, value: "600", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_WORKER_IMAGE, value: "ghcr.io/shuffle/shuffle-worker@sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd", value_classification: plain, provenance: compose}
       orchestration_authorities:
         - orchestration_authority_id: shuffle-orborus
           engine: docker
+          engine_api_version: '1.44'
           name: Shuffle worker orchestrator
           privilege_class: host_root_equivalent
-          description: Spawns SOAR worker containers on demand. It mounts the host Docker socket, so it can create workloads outside the declared node set; that authority is stated here rather than left implicit.
+          description: Authorizes Shuffle workflow workers and seeded app workloads through the declared in-world Docker control endpoint.
+          scope:
+            environment_name: Shuffle
+            description: The TechVault Shuffle workflow environment.
           spawn_templates:
             - template_id: shuffle-worker
-              image_ref: ghcr.io/shuffle/shuffle-worker:latest
+              image_ref: ghcr.io/shuffle/shuffle-worker@sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd
               purpose: workflow execution
+            - template_id: shuffle-http-1-4-0
+              image_ref: frikky/shuffle:http_1.4.0@sha256:0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c
+              purpose: seeded HTTP workflow app execution
           lifecycle_policy:
             execution_timeout: '600'
+            cleanup: 'false'
             description: Per-execution ceiling from SHUFFLE_ORBORUS_EXECUTION_TIMEOUT.
           control_interface_ref: docker-sock
       local_control_interfaces:
@@ -1058,8 +1076,7 @@ nodes:
           path: /var/run/docker.sock
           kind: unix_socket
           access: read_write
-          bind_source: /var/run/docker.sock
-          description: The host Docker socket, mounted read-write. Holding it is what lets this node create containers outside the declared range.
+          description: The in-world Docker control endpoint used by Shuffle to create workflow workloads.
   shuffle-opensearch:
     type: vm
     os: linux
