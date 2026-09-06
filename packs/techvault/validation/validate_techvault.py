@@ -91,6 +91,7 @@ _WAZUH_RULES_REF = (
 )
 _VARIABLE_REF = re.compile(r"\$([A-Z][A-Z0-9_]*)")
 _SID = re.compile(r"(?:^|;)\s*sid\s*:\s*(\d+)\s*;")
+_CONTAINER_SUBSTRATE = "operating-system-container"
 
 
 def _error(errors: list[str], code: str, detail: str) -> None:
@@ -653,6 +654,60 @@ def validate_cortex_contract(
     return errors
 
 
+def validate_compute_substrate_contract(sdl: Mapping[str, Any]) -> list[str]:
+    """Bind every non-switch TechVault node to its container realization."""
+
+    errors: list[str] = []
+    nodes = _as_mapping(sdl.get("nodes"))
+    compute_nodes: set[str] = set()
+    for node_id, value in nodes.items():
+        node = _as_mapping(value)
+        if node.get("type") == "switch":
+            continue
+        compute_nodes.add(str(node_id))
+        if node.get("type") != "compute":
+            errors.append(
+                f"compute.legacy-node-type: /nodes/{node_id} legacy node type"
+            )
+
+    realization = _as_mapping(sdl.get("realization"))
+    raw_constraints = realization.get("constraints")
+    constraints = raw_constraints if isinstance(raw_constraints, list) else []
+    expected_pointers = {f"/nodes/{node_id}" for node_id in compute_nodes}
+    substrate_constraints = [
+        _as_mapping(item)
+        for item in constraints
+        if _as_mapping(item).get("concern") == "compute-substrate"
+    ]
+
+    for pointer in sorted(expected_pointers):
+        matches = [
+            constraint
+            for constraint in substrate_constraints
+            if constraint.get("field_pointer") == pointer
+        ]
+        if not matches:
+            errors.append(f"compute.constraint-missing: {pointer} missing constraint")
+            continue
+        if len(matches) != 1:
+            errors.append(f"compute.constraint-duplicate: {pointer}")
+            continue
+        constraint = matches[0]
+        domain = _as_mapping(constraint.get("domain"))
+        if (
+            constraint.get("posture") != "exact"
+            or domain.get("kind") != "exact"
+            or domain.get("value") != _CONTAINER_SUBSTRATE
+        ):
+            errors.append(f"compute.substrate-mismatch: {pointer} wrong substrate")
+
+    for constraint in substrate_constraints:
+        pointer = constraint.get("field_pointer")
+        if pointer not in expected_pointers:
+            errors.append(f"compute.constraint-unexpected: {pointer}")
+    return errors
+
+
 def validate() -> list[str]:
     root = pathlib.Path(__file__).resolve().parents[1]
     result = validate_pack(root)
@@ -665,6 +720,7 @@ def validate() -> list[str]:
     if not errors:
         sdl_path = next((root / "sdl").glob("*.sdl.yaml"))
         sdl = yaml.safe_load(sdl_path.read_text(encoding="utf-8"))
+        errors.extend(validate_compute_substrate_contract(sdl))
         errors.extend(validate_suricata_contract(root, sdl))
         errors.extend(validate_cortex_contract(root, sdl))
     return errors
