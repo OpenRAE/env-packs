@@ -11,6 +11,20 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [4.0.3](https://github.com/OpenRAE/env-packs/compare/v4.0.2...v4.0.3) (2026-09-06)
+
+
+### Bug Fixes
+
+* close TechVault Shuffle runtime image inventory ([#315](https://github.com/OpenRAE/env-packs/issues/315)) ([b51f9e7](https://github.com/OpenRAE/env-packs/commit/b51f9e793f72c7ae90588566529f97b5f56e77ca))
+* enable TechVault Cortex enrichment ([#313](https://github.com/OpenRAE/env-packs/issues/313)) ([05d2d60](https://github.com/OpenRAE/env-packs/commit/05d2d60540030ed1e5ea9661626fffabba34b451))
+* restore TechVault Suricata detection content ([#311](https://github.com/OpenRAE/env-packs/issues/311)) ([effec1b](https://github.com/OpenRAE/env-packs/commit/effec1b2b3c50c911d2ea7061ca363e60bc5a783))
+
+
+### Documentation
+
+* record TechVault Wazuh cert ownership boundary ([#310](https://github.com/OpenRAE/env-packs/issues/310)) ([c3b5743](https://github.com/OpenRAE/env-packs/commit/c3b5743023079c4801d9a9400d84761cfd5f944c))
+
 ## [4.0.2](https://github.com/OpenRAE/env-packs/compare/v4.0.1...v4.0.2) (2026-09-03)
 
 

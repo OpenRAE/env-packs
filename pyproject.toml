@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "raes-env-packs"
 # Static version, bumped by release-please on release (ADR 0008).
-version = "4.0.2"
+version = "4.0.3"
 description = "RAES environment-pack definition, schemas, template, and authoring/validation tooling."
 readme = "README.md"
 # Floor follows the pinned raes runtime dependency, which requires >=3.11
