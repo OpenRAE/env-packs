@@ -808,12 +808,18 @@ name = "raes-env-packs"
 version = "4.0.2"
 source = { editable = "." }
 dependencies = [
+    { name = "anyio" },
+    { name = "jsonschema" },
+    { name = "mcp" },
     { name = "pyyaml" },
     { name = "raes" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", specifier = ">=4,<5" },
+    { name = "jsonschema", specifier = ">=4" },
+    { name = "mcp", specifier = ">=2,<3" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "raes", specifier = "==3.5.0" },
 ]

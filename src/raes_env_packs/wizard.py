@@ -700,6 +700,14 @@ def machine_document(proposal: Proposal) -> dict[str, object]:
     }
 
 
+def review_document(proposal: Proposal, target: str) -> dict[str, object]:
+    """Extend the shared preview with its target and complete content changes."""
+    from ._proposal_review import changes
+
+    return {**machine_document(proposal), "target": target,
+            "changes": changes({}, {p: t.encode("utf-8") for p, t in proposal.files.items()})}
+
+
 # --------------------------------------------------------------------------- #
 # Writing (one guarded, atomic transaction)
 # --------------------------------------------------------------------------- #

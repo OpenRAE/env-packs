@@ -28,7 +28,7 @@ classifiers = [
 # compatibility tests against this package's validator and template, so a
 # downstream consumer resolves exactly the RAES runtime this release was
 # validated against.
-dependencies = ["PyYAML>=6", "raes==3.5.0"]
+dependencies = ["PyYAML>=6", "raes==3.5.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
 
 [project.urls]
 Homepage = "https://github.com/OpenRAE/env-packs"
@@ -36,6 +36,7 @@ Repository = "https://github.com/OpenRAE/env-packs"
 
 [project.scripts]
 raes-pack-check = "raes_env_packs.check:main"
+raes-pack-mcp = "raes_env_packs.mcp_server:main"
 raes-pack-catalog = "raes_env_packs.catalog:main"
 raes-pack-validate = "raes_env_packs.content_ci:main"
 raes-pack-release = "raes_env_packs.release:main"

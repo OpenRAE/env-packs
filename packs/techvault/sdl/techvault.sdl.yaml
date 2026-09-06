@@ -28,7 +28,7 @@ nodes:
       networks. Not internal, so the host can reach the published proxy ports.
 
   wazuh-manager:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "wazuh/wazuh-manager"
@@ -230,7 +230,7 @@ nodes:
                 - sqli
                 - web_attack
   wazuh-indexer:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "wazuh/wazuh-indexer"
@@ -301,7 +301,7 @@ nodes:
               top_level_field_count: 28
               description: Saved-object mapping for the dashboard tier.
   wazuh-dashboard:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "wazuh/wazuh-dashboard"
@@ -353,7 +353,7 @@ nodes:
           value: "https://wazuh-manager"
 
   suricata:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "jasonish/suricata"
@@ -521,7 +521,7 @@ nodes:
               auth_required: false
               description: Where the MISP sync agent drives a reload after writing rules.
   misp:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "ghcr.io/misp/misp-docker/misp-core"
@@ -549,7 +549,7 @@ nodes:
         published_ports:
           - {container_port: 443, protocol: tcp, host_port: 8443, host_ip: "127.0.0.1"}
   misp-db:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "mariadb"
@@ -579,7 +579,7 @@ nodes:
         - {name: MYSQL_PASSWORD, value: misp_db_password}
         - {name: MYSQL_ROOT_PASSWORD, value: misp_root_password}
   misp-redis:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "redis"
@@ -603,7 +603,7 @@ nodes:
     services:
       - {name: redis, port: 6379, protocol: tcp}
   misp-suricata-sync:
-    type: vm
+    type: compute
     os: linux
     services: []
     runtime:
@@ -681,7 +681,7 @@ nodes:
               target_ref: nodes.suricata.runtime.network_detection_engines.suricata-engine.control_channels.command-socket
               kind: unix_socket
   thehive:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "strangebee/thehive"
@@ -750,7 +750,7 @@ nodes:
           - "--cortex-port"
           - "9001"
   thehive-cassandra:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "cassandra"
@@ -787,7 +787,7 @@ nodes:
               replication_strategy: simple_strategy
               replication_factor: 1
   thehive-es:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "docker.elastic.co/elasticsearch/elasticsearch"
@@ -823,7 +823,7 @@ nodes:
         - name: ES_JAVA_OPTS
           value: "-Xms512m -Xmx512m"
   cortex:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "thehiveproject/cortex"
@@ -884,7 +884,7 @@ nodes:
               backend_roles: [read, analyze]
               description: Dedicated least-privilege identity used by TheHive.
   cortex-initializer:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "thehiveproject/cortex"
@@ -928,7 +928,7 @@ nodes:
         entrypoint: [python3, /opt/techvault/cortex-initializer.py]
         autoremove: true
   shuffle-backend:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "ghcr.io/shuffle/shuffle-backend"
@@ -986,7 +986,7 @@ nodes:
               target_node_ref: shuffle-opensearch
               target_service_ref: opensearch-rest
   shuffle-frontend:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "ghcr.io/shuffle/shuffle-frontend"
@@ -1016,7 +1016,7 @@ nodes:
           - {container_port: 443, protocol: tcp, host_port: 3443, host_ip: "127.0.0.1"}
           - {container_port: 80, protocol: tcp, host_port: 3001, host_ip: "127.0.0.1"}
   shuffle-orborus:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "ghcr.io/shuffle/shuffle-orborus"
@@ -1078,7 +1078,7 @@ nodes:
           access: read_write
           description: The in-world Docker control endpoint used by Shuffle to create workflow workloads.
   shuffle-opensearch:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "opensearchproject/opensearch"
@@ -1191,7 +1191,7 @@ nodes:
               top_level_field_count: 30
               description: SOAR user record mapping.
   wazuh-sidecar-db:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "aptl-wazuh-sidecar"
@@ -1254,7 +1254,7 @@ nodes:
               protocol: tcp
               enrollment_identity_classification: operator_secret
   wazuh-sidecar-suricata:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "aptl-wazuh-sidecar"
@@ -1312,7 +1312,7 @@ nodes:
               enrollment_identity_classification: operator_secret
 
   webapp:
-    type: vm
+    type: compute
     os: linux
     services:
       - {name: http, port: 8080, protocol: tcp}
@@ -1542,7 +1542,7 @@ nodes:
               auth_required: false
               description: Robots file.
   ad:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "aptl-ad"
@@ -1579,7 +1579,7 @@ nodes:
       linux_capabilities:
         add: [CAP_SYS_ADMIN, CAP_NET_ADMIN]
   db:
-    type: vm
+    type: compute
     os: linux
     services:
       - {name: postgres, port: 5432, protocol: tcp}
@@ -1654,7 +1654,7 @@ nodes:
               can_login: true
               description: Application login the web tier authenticates as.
   workstation:
-    type: vm
+    type: compute
     os: linux
     services:
       - {name: ssh, port: 22, protocol: tcp}
@@ -1708,7 +1708,7 @@ nodes:
         # ignored by psql, and dev-user's home should be dev-user-owned).
         - {unit_id: aptl-workstation-loot, unit_name: aptl-workstation-loot.service, enabled_state: enabled, active_state: active}
   fileshare:
-    type: vm
+    type: compute
     os: linux
     services:
       - {name: smb, port: 445, protocol: tcp}
@@ -1833,7 +1833,7 @@ nodes:
               name: IT-Admins
               origin: provisioned
   dns:
-    type: vm
+    type: compute
     os: linux
     services:
       - {name: dns, port: 53, protocol: udp}
@@ -1913,7 +1913,7 @@ nodes:
               provenance: zone_file
               description: Reverse zone for the range address space.
   victim:
-    type: vm
+    type: compute
     os: linux
     services:
       - {name: ssh, port: 22, protocol: tcp}
@@ -1957,7 +1957,7 @@ nodes:
         - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
 
   kali:
-    type: vm
+    type: compute
     os: linux
     services:
       - {name: ssh, port: 22, protocol: tcp}
@@ -2019,7 +2019,7 @@ nodes:
         - {unit_id: ssh, unit_name: ssh.service, enabled_state: enabled, active_state: active}
         - {unit_id: kali-capture-bootstrap, unit_name: kali-capture-bootstrap.service, enabled_state: enabled, active_state: active}
   kali-capture:
-    type: vm
+    type: compute
     os: linux
     description: >-
       OBS-003 per-session capture sidecar (ADR-041 / issue #305). Shares Kali's
@@ -2068,7 +2068,7 @@ nodes:
       # (that consumer entry carries the containment + read_write intent); a
       # runtime mount here would double-declare the same target.
   kali-ssh-proxy:
-    type: vm
+    type: compute
     os: linux
     description: >-
       Operator SSH entry point into the red-team network. Bridges the control
@@ -2106,7 +2106,7 @@ nodes:
         published_ports:
           - {container_port: 2023, protocol: tcp, host_port: 2023, host_ip: "127.0.0.1"}
   webapp-proxy:
-    type: vm
+    type: compute
     os: linux
     description: >-
       Operator HTTP entry point to the customer portal. Bridges the control
@@ -2148,7 +2148,7 @@ nodes:
         - {name: APTL_PROXY_TARGET_HOST, value: "172.20.1.20", value_classification: plain, provenance: compose}
         - {name: APTL_PROXY_TARGET_PORT, value: "8080", value_classification: plain, provenance: compose}
   aptl-otel-collector:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "otel/opentelemetry-collector-contrib"
@@ -2173,7 +2173,7 @@ nodes:
       - {name: otlp-grpc, port: 4317, protocol: tcp}
       - {name: otlp-http, port: 4318, protocol: tcp}
   aptl-tempo:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "grafana/tempo"
@@ -2201,7 +2201,7 @@ nodes:
         command:
           - "-config.file=/etc/tempo/tempo.yaml"
   aptl-grafana-otel:
-    type: vm
+    type: compute
     os: linux
     source:
       name: "grafana/grafana"
@@ -2224,6 +2224,141 @@ nodes:
             timing: backend-preparation
     services:
       - {name: grafana, port: 3000, protocol: tcp}
+
+realization:
+  constraints:
+    - field_pointer: /nodes/wazuh-manager
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/wazuh-indexer
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/wazuh-dashboard
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/suricata
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/misp
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/misp-db
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/misp-redis
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/misp-suricata-sync
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/thehive
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/thehive-cassandra
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/thehive-es
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/cortex
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/cortex-initializer
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/shuffle-backend
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/shuffle-frontend
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/shuffle-orborus
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/shuffle-opensearch
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/wazuh-sidecar-db
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/wazuh-sidecar-suricata
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/webapp
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/ad
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/db
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/workstation
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/fileshare
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/dns
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/victim
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/kali
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/kali-capture
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/kali-ssh-proxy
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/webapp-proxy
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/aptl-otel-collector
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/aptl-tempo
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
+    - field_pointer: /nodes/aptl-grafana-otel
+      concern: compute-substrate
+      posture: exact
+      domain: {kind: exact, value: operating-system-container}
 
 infrastructure:
   security-net:

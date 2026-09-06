@@ -48,6 +48,7 @@ pip install raes-env-packs
 That installs the command-line tools and the importable library:
 
 - `raes-pack-new` — scaffold a new pack with a progressive wizard.
+- `raes-pack-mcp` — expose local, host-scoped [pack authoring tools](docs/public/mcp.md).
 - `raes-pack-validate` — the author-CI check for a catalog checkout.
 - `raes-pack-release` — build, lint, and release-gate a pack.
 - `raes-pack-kit` — discover, inspect, preview, add, update, replace, and remove

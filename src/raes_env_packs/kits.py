@@ -27,10 +27,11 @@ from raes import (
     Scenario,
     canonical_sdl_digest,
     load_sdl_fragment,
+    parse_sdl,
     parse_sdl_file,
 )
 from raes.language_service import apply_structured_edit
-from raes.module_registry import resolve_lock_records
+from raes.module_registry import TrustPolicy, resolve_lock_records
 from raes_contracts.associated_artifacts import (
     associated_artifact_set_digest,
     load_associated_artifact_manifest_json,
@@ -39,6 +40,7 @@ from raes_contracts.associated_artifacts import (
 from raes_contracts.contracts import AssociatedArtifactManifestModel
 
 from . import _pack_fs, _transactions, validation
+from ._authoring_safety import admit_members
 from .digest import (
     PackDigestError,
     authored_sdl_parent,
@@ -215,6 +217,7 @@ class KitProposal(object):
     _base_digest: str
     _successor: tuple[_SnapshotFile, ...]
     _successor_digest: str
+    _base_files: tuple[_SnapshotFile, ...] = ()
 
 
 def _schema_violations(document: object, schema_path: Path) -> list[str]:
@@ -632,7 +635,6 @@ def _secret_parameter_name(parameters: object) -> bool:
 
 
 def _load_release_scenario(
-    root: str,
     root_fd: int,
     module_rel: str,
     document: Mapping[str, object],
@@ -640,11 +642,12 @@ def _load_release_scenario(
 ) -> object:
     """Parse and validate the RAES-owned infrastructure module."""
 
-    raw_module = _strict_yaml(_read_member(root_fd, module_rel, limits), limits=limits)
+    module_bytes = _read_member(root_fd, module_rel, limits)
+    raw_module = _strict_yaml(module_bytes, limits=limits)
     _validate_raw_module(raw_module)
     try:
-        scenario = parse_sdl_file(
-            Path(root, *module_rel.split("/")), migration_policy="accept"
+        scenario = parse_sdl(
+            module_bytes.decode("utf-8"), migration_policy="accept"
         )
     except (SDLError, OSError, ValueError) as exc:
         raise KitError("kit module is not valid RAES SDL") from exc
@@ -751,12 +754,13 @@ def load_kit_release(
         inventory = _pack_fs.inventory(
             root_fd, max_members=active.max_members, error_type=KitError
         )
+        admit_members(inventory, error_type=KitError)
         document = _load_release_document(root_fd, inventory, active)
         module_rel = _module_document(document)
         manifest_rel = _manifest_document(document)
         if not _required_release_paths(document).issubset(set(inventory)):
             raise KitError("kit references a missing member")
-        scenario = _load_release_scenario(root, root_fd, module_rel, document, active)
+        scenario = _load_release_scenario(root_fd, module_rel, document, active)
         manifest = _load_release_manifest(
             root_fd, inventory, manifest_rel, document, scenario, active
         )
@@ -994,6 +998,7 @@ def _capture_pack(pack_root: str | os.PathLike[str]) -> _PackSnapshot:
             excluded_prefixes=_CACHE_PREFIX,
             error_type=KitError,
         )
+        admit_members(inventory, error_type=KitError)
         files: list[_SnapshotFile] = []
         total = 0
         for rel in inventory:
@@ -1555,7 +1560,9 @@ def _lock_bytes(candidate: Path, target_sdl: str) -> bytes:
     """Resolve and serialize RAES's exact module lock for one target SDL."""
 
     try:
-        lock = resolve_lock_records(candidate.joinpath(*target_sdl.split("/")))
+        lock = resolve_lock_records(
+            candidate.joinpath(*target_sdl.split("/")), trust_policy=TrustPolicy()
+        )
     except (SDLError, OSError, ValueError) as exc:
         raise KitError("RAES could not resolve the exact module lock") from exc
     return (
@@ -1652,6 +1659,7 @@ def _blocked_proposal(
         _base_digest=base.digest,
         _successor=base.files,
         _successor_digest=base.digest,
+        _base_files=base.files,
     )
 
 
@@ -2111,6 +2119,7 @@ def _propose_add(
         _base_digest=admission.base.digest,
         _successor=successor.files,
         _successor_digest=successor.digest,
+        _base_files=admission.base.files,
     )
 
 
@@ -2327,6 +2336,7 @@ def _propose_remove(
         _base_digest=base.digest,
         _successor=successor.files,
         _successor_digest=successor.digest,
+        _base_files=base.files,
     )
 
 
@@ -2539,6 +2549,7 @@ def _replacement_proposal(
         _base_digest=admission.original.digest,
         _successor=successor.files,
         _successor_digest=successor.digest,
+        _base_files=admission.original.files,
     )
 
 
@@ -2615,6 +2626,19 @@ def proposal_document(proposal: KitProposal) -> dict[str, object]:
     }
 
 
+def review_document(proposal: KitProposal) -> dict[str, object]:
+    """Return an author-authorized review, including exact before/after bytes.
+
+    The historical value-free projection remains available as proposal_document.
+    Unlike that projection this view is intended only for the pack's author.
+    """
+    from ._proposal_review import changes
+
+    return {**proposal_document(proposal), "target": proposal.pack_root,
+            "changes": changes({f.path: f.content for f in proposal._base_files},
+                               {f.path: f.content for f in proposal._successor})}
+
+
 def apply_proposal(proposal: KitProposal) -> str:
     """Validate and atomically exchange the exact proposed successor tree."""
 
@@ -2681,6 +2705,7 @@ __all__ = [
     "inspect_kit",
     "load_kit_release",
     "proposal_document",
+    "review_document",
     "propose_add",
     "propose_remove",
     "propose_replace",
