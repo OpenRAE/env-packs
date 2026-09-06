@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "webmail-service",
     "ref_version": null,
-    "ref_digest": "sha256:bb4515e773a6f94cea550ce0223d0c31682f8ca6a92077a5101a2b8020befd1c",
+    "ref_digest": "sha256:b3f3621ff4fd3b454aee44b7c91c33a968660ba471d5e77c1201dfcf4dfd8ce2",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "feac5ade6a84415d4b12067f765fbdc8c1a73ef30f9a564dec3d451f3166b9a1"
+        "value": "fb9fe0ea0ffd7bdb7b20289af3d9f9628a4e764395a5527abbf111363fe27edf"
       },
-      "size_bytes": 2509,
+      "size_bytes": 2685,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.webmail-service@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:07ac0b022f07dfe78311a5a73e23450c826a5b39b9a1b63caf7821ad63ad819f"
+  "set_digest": "sha256:995aaf497c400cd8d498436d1722b0d07e00c91641afbac3dac4e94a5b07e13c"
 }

@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "windows-domain-member",
     "ref_version": null,
-    "ref_digest": "sha256:13bb7404f42f8c54974cb2f0377176dcee01bc3ea9b16703e7dcb5eee164942a",
+    "ref_digest": "sha256:7f23244590d09d84092e290d4f11dea8769f21034814bf0d09a3942cf2676337",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "0d1b9b4c4be719bf49aee8d0d9cf561a1797cd88b28ccfd4996b4f7f72307a8e"
+        "value": "d411350b505c217207525c492a0ee6a37dc630528f7e57f847bb584792fa1088"
       },
-      "size_bytes": 2067,
+      "size_bytes": 2249,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.windows-domain-member@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:0e34481dae7bdb49cd328821b4b4ae95bbb60552c9c377d451e34b9e69f31df3"
+  "set_digest": "sha256:b7777b0388ec38093850b20d860605a81299ec537f35286f895c83f5beab59b6"
 }

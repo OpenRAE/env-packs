@@ -409,6 +409,13 @@ nodes:
           sensor_ref: suricata-sensor
           name: TechVault detection engine
           description: Evaluates captured traffic against its rule sources and writes EVE events. MISP-derived rules are reloaded here over the command socket.
+          configuration_file_refs:
+            - /etc/suricata/suricata.yaml
+          log_file_refs:
+            - /var/log/suricata/eve.json
+            - /var/log/suricata/fast.log
+          evidence_refs:
+            - /var/log/suricata/eve.json
           app_layer_protocols:
             - http
             - tls
@@ -422,19 +429,25 @@ nodes:
               kind: built_in
               format: suricata_rule
               name: suricata.rules
+              file_refs:
+                - /var/lib/suricata/rules/suricata.rules
               loaded: true
-              description: Ruleset shipped with the engine image.
+              description: Image-owned ruleset from the node's exact Suricata artifact; the native author gate verifies this file in that digest.
             - source_id: techvault-local
               kind: local
               format: suricata_rule
               name: local.rules
               rule_count: 16
+              file_refs:
+                - /etc/suricata/rules/local.rules
               loaded: true
               description: Scenario-authored rules for TechVault-specific activity.
             - source_id: misp-iocs
               kind: ioc
               format: suricata_rule
               name: misp/misp-iocs.rules
+              file_refs:
+                - /var/lib/suricata/rules/misp/misp-iocs.rules
               loaded: true
               generated_by: nodes.misp-suricata-sync.runtime.forwarding_agents.misp-ioc-to-suricata
               description: Written by the MISP sync agent, not authored here. This is the threat-intelligence feed becoming live detection content.
@@ -451,6 +464,33 @@ nodes:
                 - redteam-net
                 - control-net
               description: The range itself; everything outside it is EXTERNAL_NET.
+            - set_id: external-net
+              kind: external_net
+              name: EXTERNAL_NET
+              selector_values:
+                - "!172.20.0.0/16"
+              description: Addresses outside the TechVault range.
+            - set_id: dmz-net
+              kind: dmz_net
+              name: DMZ_NET
+              selector_values:
+                - 172.20.1.0/24
+              network_refs:
+                - dmz-net
+            - set_id: internal-net
+              kind: internal_net
+              name: INTERNAL_NET
+              selector_values:
+                - 172.20.2.0/24
+              network_refs:
+                - internal-net
+            - set_id: http-servers
+              kind: service_group
+              name: HTTP_SERVERS
+              selector_values:
+                - 172.20.1.20
+              network_refs:
+                - dmz-net
           output_streams:
             - stream_id: eve-json
               format: eve_json
@@ -465,6 +505,13 @@ nodes:
                 - stats
               enabled: true
               description: The file the Wazuh sidecar tails off the shared suricata_logs volume. This path is the detection-to-SIEM hand-off.
+            - stream_id: fast-log
+              format: fast_log
+              path: /var/log/suricata/fast.log
+              event_types:
+                - alert
+              enabled: true
+              description: Bounded human-readable alert output used with native engine readiness diagnostics.
           control_channels:
             - channel_id: command-socket
               kind: unix_socket
@@ -612,13 +659,8 @@ nodes:
         - {manager: apt, name: python3-pip, version: "*"}
       dependency_manifests:
         - {ecosystem: pip, path: /app/pyproject.toml, name: aptl-labs}
-      # Shares suricata's rules volume (ADR-043): this service writes
-      # misp-iocs.rules here for suricata to load, and the command socket to
-      # trigger its reload. Both are Compose-managed named volumes suricata
-      # (still Compose-realized) already mounts at the same paths.
-      mounts:
-        - {target: /var/run/suricata, source: suricata_command_socket, source_kind: volume}
-        - {target: /var/lib/suricata/rules/misp, source: suricata_misp_rules, source_kind: volume}
+      # The persistent-volume declarations below are the single mount
+      # authority for the generated rules and private command socket.
       forwarding_agents:
         - forwarding_agent_id: misp-ioc-to-suricata
           implementation: misp_suricata_sync
@@ -633,10 +675,10 @@ nodes:
           transforms:
             - transform_id: ioc-to-suricata-rules
               kind: ioc_to_rule
-              sid_namespace: '3000000'
+              sid_namespace: '99000000'
           reload_channels:
             - reload_channel_id: suricata-command-socket
-              target_ref: suricata
+              target_ref: nodes.suricata.runtime.network_detection_engines.suricata-engine.control_channels.command-socket
               kind: unix_socket
   thehive:
     type: vm
@@ -669,13 +711,29 @@ nodes:
       environment:
         - name: JVM_OPTS
           value: "-Xms512m -Xmx512m"
+        - name: TH_CORTEX_KEYS
+          value_from:
+            generated_artifact: cortex-service-credentials
+            output: connector-api-key
+          value_classification: redacted
+          provenance: runtime
+      platform_applications:
+        - platform_application_id: thehive-case-management
+          service: thehive-api
+          product: TheHive
+          capabilities:
+            - capability_id: case-management
+              kind: case_management
+          connectors:
+            - connector_id: cortex-analyzer-engine
+              kind: analyzer_engine
+              enabled: true
+              credential_classification: redacted
       container:
-        # TheHive's backends are selected on the command line: Cassandra for the
-        # graph store, local Lucene index over Elasticsearch, and Cortex for
-        # analyzers -- all reached by their hyphenated service DNS names. The
-        # --secret is a planted lab fixture. HTTPS termination + the Cortex API
-        # key arrive via env_file from generated secrets (keystore password,
-        # cortex-apikey), a refinement tracked for the env_file affordance.
+        # TheHive's declared backends are Cassandra for the graph store and
+        # local Lucene indexing over Elasticsearch. Cortex is admitted only
+        # after its one-shot initializer has enabled the exact offline analyzer
+        # and provisioned this connector's dedicated fixture identity.
         command:
           - "--secret"
           - "aptl-thehive-lab-secret-key-2024-purple"
@@ -764,29 +822,6 @@ nodes:
         # RAM (31 GB on a 125 GB host), which destabilizes the lab under load.
         - name: ES_JAVA_OPTS
           value: "-Xms512m -Xmx512m"
-      datastore_services:
-        - datastore_service_id: thehive-es
-          engine: elasticsearch
-          data_model: search_index
-          version: 7.17.2
-          description: Search backend for case management, and host of the Cortex job index.
-          partitions:
-            - partition_id: cortex
-              kind: index
-              name: cortex_6
-              shard_count: 1
-              replica_count: 1
-            - partition_id: geoip
-              kind: index
-              name: .geoip_databases
-              shard_count: 1
-              replica_count: 0
-          mappings:
-            - mapping_id: cortex-jobs
-              name: cortex_6
-              partition_ref: cortex
-              top_level_field_count: 3
-              description: Job index mapping pre-created so key, relations, and status stay keyword-typed.
   cortex:
     type: vm
     os: linux
@@ -812,9 +847,86 @@ nodes:
     services:
       - {name: cortex-api, port: 9001, protocol: tcp}
     runtime:
+      environment:
+        - {name: job_directory, value: /opt/cortex/jobs, value_classification: plain, provenance: compose}
       network:
         published_ports:
           - {container_port: 9001, protocol: tcp, host_port: 9001, host_ip: "127.0.0.1"}
+      platform_applications:
+        - platform_application_id: cortex-enrichment
+          service: cortex-api
+          product: Cortex
+          capabilities:
+            - capability_id: analysis-execution
+              kind: analysis_execution
+              evidence_refs: [cortex-enrichment-readback]
+          content_objects:
+            - content_object_id: techvault-scenario-context
+              kind: analyzer
+              name: TechVaultScenarioContext_1_0
+              attributes:
+                data_types: [ip]
+                execution: offline
+              evidence_refs: [cortex-enrichment-readback]
+          authorization_ref: cortex-rbac
+      app_authorizations:
+        - app_authorization_id: cortex-rbac
+          auth_enabled: true
+          principals:
+            - principal_id: cortex-initializer-admin
+              kind: service_account
+              credential_classification: redacted
+              backend_roles: [read, analyze, orgadmin]
+              description: Dedicated bootstrap identity used only by the one-shot initializer.
+            - principal_id: thehive-cortex-connector
+              kind: service_account
+              credential_classification: redacted
+              backend_roles: [read, analyze]
+              description: Dedicated least-privilege identity used by TheHive.
+  cortex-initializer:
+    type: vm
+    os: linux
+    source:
+      name: "thehiveproject/cortex"
+      version: "sha256:ae8b3d72eb5de785513bc33492d93278c32b79d9ff89401463c3a9c577e0bc0b"
+      artifact_requirement:
+        requirement_id: cortex-initializer-image
+        explicitness: exact
+        exact_artifact:
+          artifact_id: "thehiveproject/cortex"
+          version: "sha256:ae8b3d72eb5de785513bc33492d93278c32b79d9ff89401463c3a9c577e0bc0b"
+          digest: "sha256:ae8b3d72eb5de785513bc33492d93278c32b79d9ff89401463c3a9c577e0bc0b"
+          media_type: "application/vnd.docker.distribution.manifest.v2+json"
+        permitted_routes:
+          - mechanism:
+              mechanism: "exact-artifact"
+              profile: "aptl-oci-exact-pull"
+              version: "1"
+              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
+            acquisition: pull
+            timing: backend-preparation
+    services: []
+    runtime:
+      environment:
+        - {name: CORTEX_URL, value: "http://cortex:9001", value_classification: plain, provenance: compose}
+        - {name: CORTEX_ORGANIZATION, value: TechVault, value_classification: plain, provenance: compose}
+        - {name: CORTEX_ANALYZER_DEFINITION_ID, value: TechVaultScenarioContext_1_0, value_classification: plain, provenance: compose}
+        - {name: CORTEX_READY_TIMEOUT, value: "300", value_classification: plain, provenance: compose}
+        - name: CORTEX_ADMIN_KEY
+          value_from:
+            generated_artifact: cortex-service-credentials
+            output: initializer-api-key
+          value_classification: redacted
+          provenance: runtime
+        - name: CORTEX_CONNECTOR_KEY
+          value_from:
+            generated_artifact: cortex-service-credentials
+            output: connector-api-key
+          value_classification: redacted
+          provenance: runtime
+      container:
+        entrypoint: [python3, /opt/techvault/cortex-initializer.py]
+        autoremove: true
   shuffle-backend:
     type: vm
     os: linux
@@ -927,18 +1039,36 @@ nodes:
             timing: backend-preparation
     services: []
     runtime:
+      environment:
+        - {name: BASE_URL, value: "http://shuffle-backend:5001", value_classification: plain, provenance: compose}
+        - {name: CLEANUP, value: "false", value_classification: plain, provenance: compose}
+        - {name: DOCKER_API_VERSION, value: "1.44", value_classification: plain, provenance: compose}
+        - {name: ENVIRONMENT_NAME, value: "Shuffle", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_APP_SDK_TIMEOUT, value: "300", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_AUTO_IMAGE_DOWNLOAD, value: "false", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_BASE_IMAGE_NAME, value: "frikky/shuffle", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_ORBORUS_EXECUTION_TIMEOUT, value: "600", value_classification: plain, provenance: compose}
+        - {name: SHUFFLE_WORKER_IMAGE, value: "ghcr.io/shuffle/shuffle-worker@sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd", value_classification: plain, provenance: compose}
       orchestration_authorities:
         - orchestration_authority_id: shuffle-orborus
           engine: docker
+          engine_api_version: '1.44'
           name: Shuffle worker orchestrator
           privilege_class: host_root_equivalent
-          description: Spawns SOAR worker containers on demand. It mounts the host Docker socket, so it can create workloads outside the declared node set; that authority is stated here rather than left implicit.
+          description: Authorizes Shuffle workflow workers and seeded app workloads through the declared in-world Docker control endpoint.
+          scope:
+            environment_name: Shuffle
+            description: The TechVault Shuffle workflow environment.
           spawn_templates:
             - template_id: shuffle-worker
-              image_ref: ghcr.io/shuffle/shuffle-worker:latest
+              image_ref: ghcr.io/shuffle/shuffle-worker@sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd
               purpose: workflow execution
+            - template_id: shuffle-http-1-4-0
+              image_ref: frikky/shuffle:http_1.4.0@sha256:0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c
+              purpose: seeded HTTP workflow app execution
           lifecycle_policy:
             execution_timeout: '600'
+            cleanup: 'false'
             description: Per-execution ceiling from SHUFFLE_ORBORUS_EXECUTION_TIMEOUT.
           control_interface_ref: docker-sock
       local_control_interfaces:
@@ -946,8 +1076,7 @@ nodes:
           path: /var/run/docker.sock
           kind: unix_socket
           access: read_write
-          bind_source: /var/run/docker.sock
-          description: The host Docker socket, mounted read-write. Holding it is what lets this node create containers outside the declared range.
+          description: The in-world Docker control endpoint used by Shuffle to create workflow workloads.
   shuffle-opensearch:
     type: vm
     os: linux
@@ -2137,7 +2266,7 @@ infrastructure:
     dependencies: [misp, suricata]
   thehive:
     links: [security-net]
-    dependencies: [thehive-cassandra, thehive-es, cortex]
+    dependencies: [thehive-cassandra, thehive-es, cortex-initializer]
   thehive-cassandra:
     links: [security-net]
   thehive-es:
@@ -2145,6 +2274,9 @@ infrastructure:
   cortex:
     links: [security-net]
     dependencies: [thehive-es]
+  cortex-initializer:
+    links: [security-net]
+    dependencies: [cortex]
   shuffle-backend:
     links: [security-net]
     dependencies: [shuffle-opensearch]
@@ -2233,6 +2365,16 @@ infrastructure:
 # checked-in Compose service definitions are provider bindings, not the source
 # of artifact, volume, or dependency intent.
 generated_artifacts:
+  # A backend generates and retains these values, then injects the selected
+  # outputs directly into the initializer and TheHive environments. Raw API
+  # keys never enter the portable SDL, compiled observations, or pack bytes.
+  cortex-service-credentials:
+    generator: rendered_config
+    lifecycle: reuse_valid
+    provenance: techvault:cortex-service-credentials/v1
+    outputs:
+      - {name: initializer-api-key, path: cortex/initializer-api-key, sensitivity: secret}
+      - {name: connector-api-key, path: cortex/connector-api-key, sensitivity: secret}
   wazuh-indexer-certs:
     generator: certificate_bundle
     lifecycle: reuse_valid
@@ -2503,11 +2645,18 @@ persistent_volumes:
     access_mode: read_write_once
     consumers:
       - {node: shuffle-opensearch, mount_destination: /usr/share/opensearch/data, access_mode: read_write}
-  suricata_config_seed:
-    lifecycle: retain
-    access_mode: read_write_once
+  suricata_command_socket:
+    lifecycle: ephemeral
+    access_mode: read_write_many
     consumers:
-      - {node: suricata, mount_destination: /seed, access_mode: read_only}
+      - {node: suricata, mount_destination: /var/run/suricata, access_mode: read_write}
+      - {node: misp-suricata-sync, mount_destination: /var/run/suricata, access_mode: read_write}
+  suricata_misp_rules:
+    lifecycle: ephemeral
+    access_mode: read_write_many
+    consumers:
+      - {node: suricata, mount_destination: /var/lib/suricata/rules/misp, access_mode: read_only}
+      - {node: misp-suricata-sync, mount_destination: /var/lib/suricata/rules/misp, access_mode: read_write}
   db_logs:
     lifecycle: retain
     access_mode: read_write_once
@@ -2959,50 +3108,120 @@ content:
     type: file
     target: suricata
     path: /etc/suricata/suricata.yaml
-    text: |
-      %YAML 1.1
-      ---
-      vars:
-        address-groups:
-          HOME_NET: "[172.20.0.0/16]"
-          EXTERNAL_NET: "any"
-      default-log-dir: /var/log/suricata/
-      stats:
-        enabled: yes
-      outputs:
-        - eve-log:
-            enabled: yes
-            filetype: regular
-            filename: eve.json
-            types:
-              - alert
-              - dns
-              - http
-              - tls
-              - flow
-      af-packet:
-        - interface: any
-      pcap:
-        - interface: any
-      default-rule-path: /var/lib/suricata/rules
-      # MISP-derived and Suricata rules load live over the command socket
-      # (see the node's network_sensors declaration); only the local corpus is
-      # bound at boot so the engine starts cleanly.
-      rule-files:
-        - /etc/suricata/rules/local.rules
-      classification-file: /etc/suricata/classification.config
-      reference-config-file: /etc/suricata/reference.config
-      unix-command:
-        enabled: yes
-        filename: /var/run/suricata/suricata-command.socket
+    source:
+      name: techvault-suricata-config
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-config-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-config
+          version: 0.1.0
+          digest: sha256:37cbb226360af33f01ec4806ebbbb59fc318c6912472845831e954c0a324d471
+          media_type: application/yaml
+        permitted_routes:
+          - mechanism: &suricata-content-copy
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   suricata-local-rules:
     type: file
     target: suricata
     path: /etc/suricata/rules/local.rules
-    text: |
-      # Local Suricata rule corpus. MISP-derived rules are reloaded live over
-      # the command socket by the MISP sync agent; this file is the authored
-      # local baseline.
+    source:
+      name: techvault-suricata-local-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-local-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-local-rules
+          version: 0.1.0
+          digest: sha256:c453a657ff6aba3bc756432c2300bffb6602532f6099236ddfbd17d091d2add4
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-ioc-rules-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-iocs.rules
+    source:
+      name: techvault-suricata-misp-ioc-rules-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-ioc-rules-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-ioc-rules-seed
+          version: 0.1.0
+          digest: sha256:462aecd67796a9ff9acd80e2bb2e9e597f05bfb05892c0766110bca933a30ede
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-md5-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-md5.list
+    source:
+      name: techvault-suricata-misp-md5-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-md5-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-md5-seed
+          version: 0.1.0
+          digest: sha256:66be1ef4237386fd2e34a978fc245bb2030641fd76409062d72919954830f376
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-sha1-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-sha1.list
+    source:
+      name: techvault-suricata-misp-sha1-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-sha1-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-sha1-seed
+          version: 0.1.0
+          digest: sha256:d91e7c095d162c8efb5ff55389043cf429809899df45f32f931f5d2eae381f0c
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-sha256-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-sha256.list
+    source:
+      name: techvault-suricata-misp-sha256-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-sha256-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-sha256-seed
+          version: 0.1.0
+          digest: sha256:b059ca012bd1345811fb9aae5e7a758498b33063887b092956bd083e41fa85dd
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
   otel-collector-config:
     type: file
     target: aptl-otel-collector
@@ -3061,32 +3280,78 @@ content:
         uri = "http://thehive-es:9200"
       }
       auth.provider = ["local", "key"]
-  cortex-job-index-schema:
-    type: dataset
-    target: thehive-es
-    description: >-
-      Cortex key-auth performs exact term queries against the job index's key,
-      status, and relations fields; they are declared as exact-match portable
-      initial service state so the backend materializes and proves them before
-      Cortex starts. Replaces the former cortex-index-init one-shot node: the
-      backend's native ES materializer establishes this state (ADR-088), no
-      separate init container. Only portable field semantics live here; the
-      native index name and vendor ES types stay in the backend adapter.
-    service_materialization:
-      target_service_ref: nodes.thehive-es.services.elasticsearch
-      interface_profile: service-search-index-schema
-      profile_version: "1"
-      requirements:
-        operation: ensure-search-index-field-schema
-        conflict_policy: reject-unowned-collision
-        readback: canonical-portable-field-schema-digest
-        field_semantics:
-          key: exact-token
-          status: exact-token
-          relations: exact-token
-      readback_assertion_refs: [cortex-job-index-schema-visible]
-      evidence_requirement_refs: [cortex-job-index-schema-readback]
-      observation_boundary_refs: [participant-cortex-search-view]
+      job.directory = "/opt/cortex/jobs"
+      job.runners = ["process"]
+      analyzer.urls = ["/opt/techvault/cortex-analyzers"]
+  cortex-analyzer-definition:
+    type: file
+    target: cortex
+    path: /opt/techvault/cortex-analyzers/TechVaultScenarioContext/analyzer.json
+    source:
+      name: techvault-cortex-analyzer-definition
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-cortex-analyzer-definition-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-cortex-analyzer-definition
+          version: 0.1.0
+          digest: sha256:9c8bfce7a9b41ed10f549e1d841879ec350a3ea1b4b03b6658313255ef435970
+          media_type: application/json
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  cortex-analyzer-executable:
+    type: file
+    target: cortex
+    path: /opt/techvault/cortex-analyzers/TechVaultScenarioContext/techvault_scenario_context.py
+    source:
+      name: techvault-cortex-analyzer-executable
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-cortex-analyzer-executable-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-cortex-analyzer-executable
+          version: 0.1.0
+          digest: sha256:ce6962465bc7bdd6394b4df3785685a8cf32f22689671dfda644540ffc51f152
+          media_type: text/x-python
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  cortex-initializer-script:
+    type: file
+    target: cortex-initializer
+    path: /opt/techvault/cortex-initializer.py
+    source:
+      name: techvault-cortex-initializer
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-cortex-initializer-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-cortex-initializer
+          version: 0.1.0
+          digest: sha256:7ad7cb07259da52fbb7dfe5ea77b02874273d84d37b6abdb000858237a5ed96c
+          media_type: text/x-python
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
   misp-suricata-sync-pyproject:
     type: file
     target: misp-suricata-sync
@@ -3832,44 +4097,110 @@ content:
       [Install]
       WantedBy=multi-user.target
 
-# ADR-088 initial service state readback scaffolding for the Cortex job index.
-# The service_materialization on content.cortex-job-index-schema binds these
-# refs: the backend materializes the field schema into thehive-es natively and
-# proves it via a fresh portable readback before Cortex is admitted.
 propositions:
-  cortex-job-index-schema-visible:
-    description: The declared Cortex job-index fields have exact portable semantics.
-    subjects: [content.cortex-job-index-schema]
+  cortex-enrichment-ready:
+    description: The exact TechVault analyzer executes offline and TheHive reports its authenticated Cortex connector ready.
+    subjects: [cortex, thehive]
     basis: observed_state
     predicate:
       kind: boolean
-      property: service-search-index-schema-visible
-      semantic_ref: urn:raes:observable:service-search-index-schema-visible
+      property: cortex-enrichment-ready
+      semantic_ref: urn:raes:observable:cortex-enrichment-ready
       expected: true
-    evidence_requirements: [cortex-job-index-schema-readback]
+    evidence_requirements: [cortex-enrichment-readback]
+  suricata-local-rules-ready:
+    description: The exact TechVault local corpus passes native configuration validation and all 16 declared SIDs are loaded.
+    subjects: [nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local]
+    basis: observed_state
+    predicate:
+      kind: boolean
+      property: network-detection-rule-source-ready
+      semantic_ref: urn:raes:observable:network-detection-rule-source-ready
+      expected: true
+    evidence_requirements: [suricata-local-rule-readiness]
+  suricata-login-sqli-detected:
+    description: A participant-equivalent SQL-injection request to the declared login route produces local SID 1000010 and Wazuh web-attack alert 303020.
+    subjects: [nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local]
+    basis: observed_state
+    predicate:
+      kind: boolean
+      property: network-detection-alert-sid-1000010-observed
+      semantic_ref: urn:raes:observable:network-detection-alert-observed
+      expected: true
+    evidence_requirements: [suricata-login-sqli-alert]
 
 assertions:
-  cortex-job-index-schema-visible:
-    proposition: cortex-job-index-schema-visible
+  cortex-enrichment-ready:
+    proposition: cortex-enrichment-ready
+    role: postcondition
+  suricata-local-rules-ready:
+    proposition: suricata-local-rules-ready
+    role: postcondition
+  suricata-login-sqli-detected:
+    proposition: suricata-login-sqli-detected
     role: postcondition
 
 observation_boundaries:
-  participant-cortex-search-view:
-    projection_basis: ordinary participant access through the named search service
-    observable_refs: [content.cortex-job-index-schema]
-    redaction_policy: preserve declared portable field semantics
-    latency_profile: available before participant admission
+  participant-cortex-enrichment-view:
+    projection_basis: ordinary operator access through TheHive and Cortex APIs
+    observable_refs: [nodes.cortex, nodes.thehive]
+    redaction_policy: preserve analyzer identity and bounded result status while removing credentials
+    latency_profile: available after one-shot Cortex initialization
 
 evidence_requirements:
-  cortex-job-index-schema-readback:
-    source_refs: [content.cortex-job-index-schema]
-    scope: fresh native schema readback projected to portable field semantics
-    boundary_kind: participant_equivalent
+  cortex-enrichment-readback:
+    description: Records the exact enabled analyzer identity, a successful bounded report for the scenario attacker IP, and TheHive's Cortex connector status without credentials or full report bodies.
+    source_refs:
+      - nodes.cortex.runtime.platform_applications.cortex-enrichment
+      - nodes.thehive.runtime.platform_applications.thehive-case-management
+    scope_refs: [nodes.cortex, nodes.thehive]
+    scope: Exact analyzer inventory, successful TechVaultScenarioContext_1_0 execution for 172.20.1.30, and TheHive Cortex connector status OK.
+    boundary_ref: participant-cortex-enrichment-view
+    boundary_kind: system_under_test
     channel: api_response
     artifact_role: service_materialization_readback
     media_types: [application/json]
     sensitivity: plain
     redaction: redact_secrets
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+  suricata-local-rule-readiness:
+    description: Records admitted content identities, native configuration success, selected files, and the loaded 16-SID local corpus without recording rule bodies or host paths.
+    source_refs:
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.suricata-builtin
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local
+    scope_refs:
+      - nodes.suricata
+      - content.suricata-config
+      - content.suricata-local-rules
+    scope: Exact image and content identities and realized-byte digests, native Suricata configuration result, selected source paths, and active local SIDs and count.
+    boundary_kind: system_under_test
+    channel: log
+    artifact_role: network_detection_rule_readiness
+    media_types: [text/plain]
+    sensitivity: plain
+    redaction: redact_sensitive
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+  suricata-login-sqli-alert:
+    description: Captures the exact EVE alert for local SID 1000010 and its Wazuh 303020 correlation after a participant-equivalent login SQL-injection request.
+    source_refs:
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.output_streams.eve-json
+      - nodes.wazuh-manager.runtime.security_monitoring_managers.wazuh-manager.content_sets.suricata-rules
+    scope_refs:
+      - nodes.webapp.runtime.applications.techvault-portal
+      - vulnerabilities.webapp-sqli-login
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local
+    scope: A fresh Kali-to-webapp POST /login containing UNION SELECT must yield Suricata signature_id 1000010 and Wazuh rule id 303020; unrelated alerts and aggregate counts do not satisfy this requirement.
+    trigger_ref: nodes.webapp.runtime.applications.techvault-portal
+    boundary_kind: participant_equivalent
+    channel: log
+    artifact_role: network_detection_alert
+    media_types: [application/x-ndjson]
+    sensitivity: plain
+    redaction: redact_sensitive
     integrity: checksum
     retention: run_lifetime
     loss_disclosure: required
@@ -3893,6 +4224,18 @@ identity_domains:
     authority_account_ref: ad-emily-chen
 
 relationships:
+  thehive-uses-cortex-enrichment:
+    type: connects_to
+    source: thehive
+    target: cortex
+    service_integration:
+      consumer_ref: thehive-case-management
+      engine_ref: cortex-enrichment
+      integration_kind: enrichment
+      auth_principal_ref: thehive-cortex-connector
+      enabled: true
+      direction: outbound
+      description: TheHive submits observables to Cortex using its dedicated read/analyze service account.
   ad-controls-techvault-domain:
     type: domain_controller_for
     source: ad

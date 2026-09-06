@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "rdp-accessible-windows-host",
     "ref_version": null,
-    "ref_digest": "sha256:b7c51f10923596ef62c28c6b6db22387a1337177836e3608f9e7d717b2710041",
+    "ref_digest": "sha256:b53c166c1fcdcf18fb6afa4d2e3b128f6effc6db659f99d01032b3439c70939c",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "491508b99a492d56f504de24d31a250512b5d64ad0e75eab963e813585c6fa3c"
+        "value": "609c91e15550e4b0400a23282abe899913b610ad853c48071bb404a68f6501a5"
       },
-      "size_bytes": 2053,
+      "size_bytes": 2230,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.rdp-accessible-windows-host@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:22e4b4e738ace1c9002bac226d0754aa81b8c6e2311766c13769d51908791a12"
+  "set_digest": "sha256:6c663688e9230d9386b12f3959adacb22f82704767c348daa3a6f7da14a76b3d"
 }

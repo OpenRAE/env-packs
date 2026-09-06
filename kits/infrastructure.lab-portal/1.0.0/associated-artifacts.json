@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "lab-portal",
     "ref_version": null,
-    "ref_digest": "sha256:22158fffd9041b5748ef577cfb912dd7e68f329ce0c7ff5717a8305a720cf5d4",
+    "ref_digest": "sha256:da87e6fbe9cdfcdaf385062679012f8616b12ef583950523ca297ea44045ad1e",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "35748976c68c6c2533df66e2f089f9f6c6da74e81a92c4259f836e7ad671ad02"
+        "value": "3830102caf181a2ad2c1f81c254d8bc7feb825bb0af670cf90bc0d45cac9ed97"
       },
-      "size_bytes": 2480,
+      "size_bytes": 2655,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.lab-portal@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:24bf2bedd6cc25ae6ea0410feb7129610aec97f17e01a51fa0ebedc17dfb0322"
+  "set_digest": "sha256:45f4e70a65d7e47fbde9d8eef06d6f783bc181f2dcb8f1c176f220a5082ae514"
 }

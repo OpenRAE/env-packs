@@ -32,7 +32,7 @@ variables:
     default: win-member-01
 nodes:
   domain_member:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Windows domain
       member). Configuration: ${computer_name}.'
     source:
@@ -76,3 +76,11 @@ accounts:
     node: domain_member
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/domain_member
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

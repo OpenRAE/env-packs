@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "authoritative-dns-service",
     "ref_version": null,
-    "ref_digest": "sha256:506cee67bd671d87c33ba155066e3b7e6669af7b8cbeb09311dc52759cf8722e",
+    "ref_digest": "sha256:01156026ad528a7c6552f1af469ed6b837cb30d8ea6ba4cc54d56f603cd989db",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "42c0bc73d868e944ca7429f48a96952d7d65af1ef45f1360fd362886fb8a9a61"
+        "value": "462aa59a0b3fca4b38a37494da2f88b1f87b24d537dc4e3b83bbee771177e8f8"
       },
-      "size_bytes": 1896,
+      "size_bytes": 2068,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.authoritative-dns-service@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:c7d0fc2799cf691568be10164ad4fb7f1eaee3cc38d52724ad23b0b6b9119e41"
+  "set_digest": "sha256:2287a620e31e585249cc91c888feda70a1442c14c951aceab9831b1d1eba1f37"
 }

@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "python-package-resolver",
     "ref_version": null,
-    "ref_digest": "sha256:939a5a33908bc3ee72095ffd1a990e9b589cd73315c7b76850c501b6717f735b",
+    "ref_digest": "sha256:124e140c4917f31673fad083150c31656aa53a01f561467c1c0f662a1a4dc910",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "664159ab6870a5ba0cef7502c3391b2138abd84309f5a1c3d43885fc488d3376"
+        "value": "a18b61bf44d94b7f7e82d2d958b9f8774f0ab29bfaa99c617e93fe016dec1203"
       },
-      "size_bytes": 2733,
+      "size_bytes": 2910,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.python-package-resolver@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:c3bf98a520d557456b5cd2dcd1a77c09ce9f28b4f04aae1004480d1589e40c9b"
+  "set_digest": "sha256:06b6cad6090f733529b08ce818540dfbd372611a261f27247049022581244d33"
 }

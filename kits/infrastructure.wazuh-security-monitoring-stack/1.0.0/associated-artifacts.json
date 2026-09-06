@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "wazuh-security-monitoring-stack",
     "ref_version": null,
-    "ref_digest": "sha256:5084d42bd3b8caff80c2f9489dd0b8b44c024f93213c6f92fd412ab5d2fe571b",
+    "ref_digest": "sha256:e3f094abacf0089803f2b68824848560189c9d329ec47fdb9cb32e2d7baac11a",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "2a160d7e45a92298fe2745fcaf33f4f2684a4a4c3a9cb8be2f8b2dc0a0365960"
+        "value": "d7df319f13874e423007fa165c1e7a5d6903ded2c5b9161a6729ec305607b6cb"
       },
-      "size_bytes": 4208,
+      "size_bytes": 4682,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.wazuh-security-monitoring-stack@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:a62c6b6d9243c144573e8eef5c14185431140f6a5c566c7efaec33c5c6f490a0"
+  "set_digest": "sha256:af2dc1c8ed95f8a4950e45901ad22019738525a634c3ce618d226ad99c4aaf0f"
 }

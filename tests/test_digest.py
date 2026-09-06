@@ -220,7 +220,9 @@ class InventoryTests(PackFixture):
 
 class ParentAndManifestTests(PackFixture):
     def test_sealed_scenario_snapshot_parent_is_supported(self):
-        scenario = parse_sdl_file(self.root / "sdl/example.sdl.yaml")
+        scenario = parse_sdl_file(
+            self.root / "sdl/example.sdl.yaml", migration_policy="accept"
+        )
         payload = json.loads((self.root / "associated-artifacts.json").read_text())
         payload["parent_ref"] = {
             "ref_kind": "scenario-snapshot",

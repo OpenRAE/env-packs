@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "observability-evidence-store",
     "ref_version": null,
-    "ref_digest": "sha256:f54e908982cd62f877e5c50f6f7b2810a57f696bf4dba8d8160fa686cb0cc4f0",
+    "ref_digest": "sha256:5a55d0059c45fe9ad31946666824740d28732316ca9de23780016830e6e716c7",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "8c47edd9297460bad9ca6bc8f42b1db5423b8f40c727ccaa9caa15549e62b3b7"
+        "value": "5e0f8f4b6c6acdbbb50e027490a44a41a769b2c601927ccb3d388d7d055578df"
       },
-      "size_bytes": 3698,
+      "size_bytes": 4021,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.observability-evidence-store@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:1ec614a98a1d050eb8bff70669382b83b2794e34774da99dcb4a70efa3c26f13"
+  "set_digest": "sha256:4ea45a7ac4df94f5dcab51c7c777f90e667fd2046c80be641c216bee24d0f218"
 }

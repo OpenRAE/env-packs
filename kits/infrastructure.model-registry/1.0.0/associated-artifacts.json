@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "model-registry",
     "ref_version": null,
-    "ref_digest": "sha256:86fe4a9b014e9cf70ab07400158d65b4ce07aa0c1a32e466dce13eeda3204c26",
+    "ref_digest": "sha256:9367bc4860009b3897bf6889bb4d484b671021a547e19d2768542ae11d233a05",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "da121dc0d0c17953f5cbe10b26f97daa72db63cef76d03d8d8bc8a33c12891bf"
+        "value": "1f86cd1624172541c9000a57532fde93d0c504ed1240313bb6cebd8baf069996"
       },
-      "size_bytes": 2669,
+      "size_bytes": 2846,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.model-registry@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:b41b4950c7c2e5c90c3ca40f4494e65ca0240a651fe33df226bf581577be7d70"
+  "set_digest": "sha256:1b021042a3c19b1997ff34582f6b34fa04af15fd92c3de65f70ee6ef050861c9"
 }

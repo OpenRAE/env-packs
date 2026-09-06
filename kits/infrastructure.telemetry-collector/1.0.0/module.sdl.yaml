@@ -30,7 +30,7 @@ variables:
     default: default
 nodes:
   collector:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Telemetry collector).
       Configuration: ${pipeline_name}.'
     source:
@@ -78,3 +78,11 @@ content:
       - infrastructure
       - seed
       description: Declared resource attributes for this reusable service.
+realization:
+  constraints:
+  - field_pointer: /nodes/collector
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

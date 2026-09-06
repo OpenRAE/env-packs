@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "9886c98798f3673334be5829f42f4781dbffabb79a4d6cfbf72fc1c4dc8e63d2"
+        "value": "b07d3a67d4bbba0e08797dcc52e8cec6f5d8fe4a531770d67a6a5ea98ee790cc"
       },
-      "size_bytes": 2401,
+      "size_bytes": 5026,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -252,6 +252,102 @@
       "sensitivity": "internal",
       "description": null
     },
+    "techvault-suricata-config": {
+      "artifact_id": "techvault-suricata-config",
+      "role": "other",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-pack:/assets/content/suricata.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "37cbb226360af33f01ec4806ebbbb59fc318c6912472845831e954c0a324d471"
+      },
+      "size_bytes": 2530,
+      "created_at": "2026-09-03T00:00:00Z",
+      "source": "environment-pack-author adapted from aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "TechVault Suricata variables, rule selection, outputs, and command channel; packet acquisition remains governed separately."
+    },
+    "techvault-suricata-local-rules": {
+      "artifact_id": "techvault-suricata-local-rules",
+      "role": "other",
+      "media_type": "text/plain",
+      "uri": "raes-environment-pack:/assets/content/suricata-local.rules",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "c453a657ff6aba3bc756432c2300bffb6602532f6099236ddfbd17d091d2add4"
+      },
+      "size_bytes": 3636,
+      "created_at": "2026-09-03T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Immutable 16-rule TechVault local detection corpus."
+    },
+    "techvault-suricata-misp-ioc-rules-seed": {
+      "artifact_id": "techvault-suricata-misp-ioc-rules-seed",
+      "role": "other",
+      "media_type": "text/plain",
+      "uri": "raes-environment-pack:/assets/content/suricata-misp-iocs.rules",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "462aecd67796a9ff9acd80e2bb2e9e597f05bfb05892c0766110bca933a30ede"
+      },
+      "size_bytes": 174,
+      "created_at": "2026-09-03T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Zero-indicator startup seed replaced atomically by the declared MISP forwarding agent."
+    },
+    "techvault-suricata-misp-md5-seed": {
+      "artifact_id": "techvault-suricata-misp-md5-seed",
+      "role": "other",
+      "media_type": "text/plain",
+      "uri": "raes-environment-pack:/assets/content/suricata-misp-md5.list",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "66be1ef4237386fd2e34a978fc245bb2030641fd76409062d72919954830f376"
+      },
+      "size_bytes": 156,
+      "created_at": "2026-09-03T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Empty initial MD5 sidecar for generated MISP rules."
+    },
+    "techvault-suricata-misp-sha1-seed": {
+      "artifact_id": "techvault-suricata-misp-sha1-seed",
+      "role": "other",
+      "media_type": "text/plain",
+      "uri": "raes-environment-pack:/assets/content/suricata-misp-sha1.list",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d91e7c095d162c8efb5ff55389043cf429809899df45f32f931f5d2eae381f0c"
+      },
+      "size_bytes": 157,
+      "created_at": "2026-09-03T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Empty initial SHA-1 sidecar for generated MISP rules."
+    },
+    "techvault-suricata-misp-sha256-seed": {
+      "artifact_id": "techvault-suricata-misp-sha256-seed",
+      "role": "other",
+      "media_type": "text/plain",
+      "uri": "raes-environment-pack:/assets/content/suricata-misp-sha256.list",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "b059ca012bd1345811fb9aae5e7a758498b33063887b092956bd083e41fa85dd"
+      },
+      "size_bytes": 159,
+      "created_at": "2026-09-03T00:00:00Z",
+      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Empty initial SHA-256 sidecar for generated MISP rules."
+    },
     "techvault-wazuh-webapp-rules": {
       "artifact_id": "techvault-wazuh-webapp-rules",
       "role": "other",
@@ -419,9 +515,9 @@
       "uri": "raes-environment-pack:/docs/attack-path.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "9aed617ea7b40b810134181077d0fc97286044f8fdb8d3c74c618c95964b37be"
+        "value": "aa06f1904308c96c789c5330f9259a9c6e8eb0d6e0b8851795a463f63c35ae62"
       },
-      "size_bytes": 581,
+      "size_bytes": 980,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -435,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/concepts.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "fc8cca821601779633d87922d6e54d7c73a0f1e9a60d23e0940023475815e1ff"
+        "value": "78926adc1a74de23dbe3cd1e8e2e1aecac3b8b4767f5674ae36d6bcdf3b902ea"
       },
-      "size_bytes": 668,
+      "size_bytes": 1002,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -451,9 +547,9 @@
       "uri": "raes-environment-pack:/docs/golden-readiness-checklist.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "6729487ccafdaac404dd41d2e0a9d220c25b80e7bf481c0f487817779eb53e0a"
+        "value": "e63da555ffe5ca65258b2d1f41a140bdc7930095edb749f24aa7abeb8e9b6fd0"
       },
-      "size_bytes": 1170,
+      "size_bytes": 1318,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -467,9 +563,9 @@
       "uri": "raes-environment-pack:/docs/lineage.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "7e4afa21cf04fd261501a092d1d96398ace7d70a022933e3ebac2851394d7dff"
+        "value": "32f0fef569a762b6c8d9155f0467aaaec36785a3342bc13abb984e5a34b4a610"
       },
-      "size_bytes": 1095,
+      "size_bytes": 1639,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -483,9 +579,9 @@
       "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "0ec455befceccd1042f1ca9bf060eae185b97986931c8fb6e9d9326accf16dc5"
+        "value": "afe40414ad63f712d6b02474c92a6f6e5584e0fbbd1e37605275c44b6b9068c4"
       },
-      "size_bytes": 1973,
+      "size_bytes": 2044,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -547,9 +643,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "dd18219ba5009d464df1828529db4a562a9b7ffe1410029b0cbb1ff51015fa5c"
+        "value": "52df7fe925d9dba36bb35498c64b99dae715709f9f12a47f7bec989983e82b1f"
       },
-      "size_bytes": 156225,
+      "size_bytes": 171774,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -579,15 +675,63 @@
       "uri": "raes-environment-pack:/validation/validate_techvault.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "983a3fd26546e126e4c8312c83491811441a6c80a40c1ab2f0cfd74252091b1f"
+        "value": "f636eebcbe887b2338be747e213dacdbfa09864be6bb2a8495c20a3fbe76a7c4"
       },
-      "size_bytes": 812,
+      "size_bytes": 27183,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
       "sensitivity": "public",
       "description": null
+    },
+    "techvault-cortex-analyzer-definition": {
+      "artifact_id": "techvault-cortex-analyzer-definition",
+      "role": "other",
+      "media_type": "application/json",
+      "uri": "raes-environment-pack:/assets/content/cortex-techvault-analyzer.json",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "9c8bfce7a9b41ed10f549e1d841879ec350a3ea1b4b03b6658313255ef435970"
+      },
+      "size_bytes": 458,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Exact offline Cortex analyzer definition for TechVault scenario IP context."
+    },
+    "techvault-cortex-analyzer-executable": {
+      "artifact_id": "techvault-cortex-analyzer-executable",
+      "role": "other",
+      "media_type": "text/x-python",
+      "uri": "raes-environment-pack:/assets/content/cortex-techvault-analyzer.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "ce6962465bc7bdd6394b4df3785685a8cf32f22689671dfda644540ffc51f152"
+      },
+      "size_bytes": 1953,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Exact dependency-free offline Cortex analyzer executable."
+    },
+    "techvault-cortex-initializer": {
+      "artifact_id": "techvault-cortex-initializer",
+      "role": "other",
+      "media_type": "text/x-python",
+      "uri": "raes-environment-pack:/assets/content/cortex-initializer.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7ad7cb07259da52fbb7dfe5ea77b02874273d84d37b6abdb000858237a5ed96c"
+      },
+      "size_bytes": 9452,
+      "created_at": "2026-08-02T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Idempotent bounded initializer for TechVault Cortex application state."
     }
   },
-  "set_digest": "sha256:c532775575d99438f4b4890d49a4fdb7354921f0405afdaa9f370ea4fe3f5a20"
+  "set_digest": "sha256:9f59822f3922fb66dc889c9d97fb7ae4933fc5f42a19041b3a64ad3c901dce5d"
 }

@@ -32,7 +32,7 @@ variables:
     default: analyst
 nodes:
   endpoint:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (RDP-accessible
       Windows host). Configuration: ${login_name}.'
     source:
@@ -76,3 +76,11 @@ accounts:
     node: endpoint
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/endpoint
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

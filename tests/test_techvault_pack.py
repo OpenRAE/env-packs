@@ -15,6 +15,7 @@ import io
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tarfile
@@ -33,6 +34,18 @@ _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _PACK = _ROOT / "packs" / "techvault"
 _SDL = _PACK / "sdl" / "techvault.sdl.yaml"
 _PROFILE = _PACK / "profiles" / "exact-artifact-copy-v1.json"
+_VALIDATOR = _PACK / "validation" / "validate_techvault.py"
+
+
+def _load_pack_validator() -> types.ModuleType:
+    module = types.ModuleType("techvault_pack_validator")
+    module.__file__ = str(_VALIDATOR)
+    source = _VALIDATOR.read_text(encoding="utf-8")
+    exec(compile(source, str(_VALIDATOR), "exec"), module.__dict__)
+    return module
+
+
+_PACK_VALIDATOR = _load_pack_validator()
 
 _PACK_ARTIFACT_CONTENT_IDS = frozenset(
     {
@@ -48,6 +61,15 @@ _PACK_ARTIFACT_CONTENT_IDS = frozenset(
         "misp-suricata-sync-readme",
         "misp-suricata-sync-hatch-build",
         "misp-suricata-sync-src",
+        "cortex-analyzer-executable",
+        "cortex-analyzer-definition",
+        "cortex-initializer-script",
+        "suricata-config",
+        "suricata-local-rules",
+        "suricata-misp-ioc-rules-seed",
+        "suricata-misp-md5-seed",
+        "suricata-misp-sha1-seed",
+        "suricata-misp-sha256-seed",
         "webapp-app-code",
         "dns-named-conf",
         "dns-zone-fwd",
@@ -273,6 +295,120 @@ def _assert_shuffle_runtime_contract(test: unittest.TestCase, sdl: dict) -> None
     )
 
 
+def _assert_shuffle_orborus_contract(test: unittest.TestCase, sdl: dict) -> None:
+    """Assert the portable Orborus configuration and runtime-image inventory."""
+    orborus = sdl["nodes"]["shuffle-orborus"]
+    runtime = orborus["runtime"]
+
+    expected_worker = (
+        "ghcr.io/shuffle/shuffle-worker@"
+        "sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd"
+    )
+    expected_http_app = (
+        "frikky/shuffle:http_1.4.0@"
+        "sha256:0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c"
+    )
+
+    environment = {item["name"]: item for item in runtime["environment"]}
+    expected_values = {
+        "BASE_URL": "http://shuffle-backend:5001",
+        "CLEANUP": "false",
+        "DOCKER_API_VERSION": "1.44",
+        "ENVIRONMENT_NAME": "Shuffle",
+        "SHUFFLE_APP_SDK_TIMEOUT": "300",
+        "SHUFFLE_AUTO_IMAGE_DOWNLOAD": "false",
+        "SHUFFLE_BASE_IMAGE_NAME": "frikky/shuffle",
+        "SHUFFLE_ORBORUS_EXECUTION_TIMEOUT": "600",
+        "SHUFFLE_WORKER_IMAGE": expected_worker,
+    }
+    test.assertEqual(set(environment), set(expected_values))
+    for name, value in expected_values.items():
+        test.assertEqual(
+            environment[name],
+            {
+                "name": name,
+                "value": value,
+                "value_classification": "plain",
+                "provenance": "compose",
+            },
+        )
+
+    (authority,) = runtime["orchestration_authorities"]
+    test.assertEqual(authority["engine"], "docker")
+    test.assertEqual(authority["privilege_class"], "host_root_equivalent")
+    test.assertEqual(authority["control_interface_ref"], "docker-sock")
+    test.assertNotIn("realized_children", authority)
+    test.assertEqual(
+        environment["DOCKER_API_VERSION"]["value"],
+        authority["engine_api_version"],
+    )
+    test.assertEqual(
+        environment["ENVIRONMENT_NAME"]["value"],
+        authority["scope"]["environment_name"],
+    )
+
+    templates = {
+        item["template_id"]: item for item in authority["spawn_templates"]
+    }
+    test.assertEqual(
+        templates,
+        {
+            "shuffle-http-1-4-0": {
+                "template_id": "shuffle-http-1-4-0",
+                "image_ref": expected_http_app,
+                "purpose": "seeded HTTP workflow app execution",
+            },
+            "shuffle-worker": {
+                "template_id": "shuffle-worker",
+                "image_ref": expected_worker,
+                "purpose": "workflow execution",
+            },
+        },
+    )
+    test.assertEqual(
+        environment["SHUFFLE_WORKER_IMAGE"]["value"],
+        templates["shuffle-worker"]["image_ref"],
+    )
+    test.assertTrue(
+        templates["shuffle-http-1-4-0"]["image_ref"].startswith(
+            environment["SHUFFLE_BASE_IMAGE_NAME"]["value"] + ":"
+        )
+    )
+    test.assertEqual(
+        environment["SHUFFLE_ORBORUS_EXECUTION_TIMEOUT"]["value"],
+        authority["lifecycle_policy"]["execution_timeout"],
+    )
+    test.assertEqual(
+        environment["CLEANUP"]["value"],
+        authority["lifecycle_policy"]["cleanup"],
+    )
+
+    shuffle_api = next(
+        service
+        for service in sdl["nodes"]["shuffle-backend"]["services"]
+        if service["name"] == "shuffle-api"
+    )
+    test.assertEqual(
+        environment["BASE_URL"]["value"],
+        f'http://shuffle-backend:{shuffle_api["port"]}',
+    )
+
+    (control_interface,) = runtime["local_control_interfaces"]
+    test.assertEqual(
+        control_interface,
+        {
+            "control_interface_id": "docker-sock",
+            "path": "/var/run/docker.sock",
+            "kind": "unix_socket",
+            "access": "read_write",
+            "description": (
+                "The in-world Docker control endpoint used by Shuffle to "
+                "create workflow workloads."
+            ),
+        },
+    )
+
+
 class TechVaultPackTests(unittest.TestCase):
     def test_pack_and_byte_manifest_validate(self) -> None:
         result = validate_pack(_PACK)
@@ -305,17 +441,17 @@ class TechVaultPackTests(unittest.TestCase):
         sdl = _load_sdl()
         self.assertEqual(sdl["name"], "techvault")
         expected_counts = {
-            "nodes": 37,
-            "infrastructure": 37,
-            "persistent_volumes": 23,
+            "nodes": 38,
+            "infrastructure": 38,
+            "persistent_volumes": 24,
             "features": 2,
             "vulnerabilities": 14,
-            "propositions": 1,
-            "assertions": 1,
+            "propositions": 3,
+            "assertions": 3,
             "observation_boundaries": 1,
-            "evidence_requirements": 1,
+            "evidence_requirements": 3,
             "identity_domains": 1,
-            "relationships": 1,
+            "relationships": 2,
             "accounts": 4,
         }
         for section, expected in expected_counts.items():
@@ -328,6 +464,46 @@ class TechVaultPackTests(unittest.TestCase):
 
     def test_shuffle_runtime_contract_is_complete_and_consistent(self) -> None:
         _assert_shuffle_runtime_contract(self, _load_sdl())
+
+    def test_shuffle_orborus_contract_is_complete_and_consistent(self) -> None:
+        _assert_shuffle_orborus_contract(self, _load_sdl())
+
+    def test_shuffle_orborus_contract_rejects_content_and_backend_drift(self) -> None:
+        mutations = {
+            "missing environment": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ].pop("environment"),
+            "mutable worker": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["orchestration_authorities"][0]["spawn_templates"][0].update(
+                image_ref="ghcr.io/shuffle/shuffle-worker:latest"
+            ),
+            "missing app image": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["orchestration_authorities"][0]["spawn_templates"].pop(),
+            "mismatched timeout": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["orchestration_authorities"][0]["lifecycle_policy"].update(
+                execution_timeout="601"
+            ),
+            "host bind source": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["local_control_interfaces"][0].update(
+                bind_source="/var/run/docker.sock"
+            ),
+            "predicted child": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["orchestration_authorities"][0].update(
+                realized_children=[{"workload_id": "expected-worker"}]
+            ),
+        }
+
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                candidate = _load_sdl()
+                mutate(candidate)
+                with self.assertRaises((AssertionError, KeyError)):
+                    _assert_shuffle_orborus_contract(self, candidate)
 
     def test_shuffle_runtime_contract_rejects_closed_state_drift(self) -> None:
         mutations = {
@@ -368,8 +544,6 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertTrue(_GENERATED_SSH_CONTENT_IDS.isdisjoint(content))
         inline = {name for name, item in content.items() if "text" in item}
         sourced = {name for name, item in content.items() if "source" in item}
-        # ADR-088 service-materialized content declares desired service state and
-        # carries neither an inline `text` body nor a `source` package.
         materialized = {
             name
             for name, item in content.items()
@@ -379,10 +553,10 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline & materialized, set())
         self.assertEqual(sourced & materialized, set())
         self.assertEqual(inline | sourced | materialized, set(content))
-        self.assertEqual(len(inline), 25)
+        self.assertEqual(len(inline), 23)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
-        self.assertEqual(materialized, {"cortex-job-index-schema"})
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 60)
+        self.assertEqual(materialized, set())
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 66)
 
     def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
         sdl = _load_sdl()
@@ -399,6 +573,520 @@ class TechVaultPackTests(unittest.TestCase):
                     pathlib.PurePosixPath(placement["path"]).name,
                     content_set["name"],
                 )
+
+    def test_suricata_content_contract_is_complete(self) -> None:
+        errors = _PACK_VALIDATOR.validate_suricata_contract(_PACK, _load_sdl())
+        self.assertEqual(errors, [])
+
+        local = resolve_pack_artifact(
+            _PACK, "techvault-suricata-local-rules"
+        ).data.decode("utf-8")
+        active = [
+            line
+            for line in local.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        self.assertEqual(len(active), 16)
+        self.assertEqual(
+            tuple(int(value) for value in re.findall(r"\bsid:(\d+);", local)),
+            (
+                1000001,
+                1000002,
+                1000010,
+                1000011,
+                1000012,
+                1000020,
+                1000030,
+                1000031,
+                1000040,
+                1000050,
+                1000060,
+                1000061,
+                1000070,
+                1000080,
+                1000090,
+                1000091,
+            ),
+        )
+        self.assertIn(
+            'content:"UNION"; nocase; content:"SELECT"',
+            next(line for line in active if "sid:1000010;" in line),
+        )
+
+        manifest = json.loads(
+            (_PACK / "associated-artifacts.json").read_text(encoding="utf-8")
+        )["artifacts"]
+        pinned_source = "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e"
+        for artifact_id in (
+            "techvault-suricata-local-rules",
+            "techvault-suricata-misp-ioc-rules-seed",
+            "techvault-suricata-misp-md5-seed",
+            "techvault-suricata-misp-sha1-seed",
+            "techvault-suricata-misp-sha256-seed",
+        ):
+            self.assertEqual(manifest[artifact_id]["source"], pinned_source)
+        self.assertIn(pinned_source, manifest["techvault-suricata-config"]["source"])
+
+    def test_suricata_content_contract_rejects_broken_variants(self) -> None:
+        original = _load_sdl()
+        local_artifact = "techvault-suricata-local-rules"
+        config_artifact = "techvault-suricata-config"
+        wazuh_artifact = "techvault-wazuh-suricata-rules"
+
+        def resolve_path(sdl, path):
+            target = sdl
+            for key in path:
+                target = target[key]
+            return target
+
+        def set_path(path, value):
+            def mutate(sdl, assets):
+                target = resolve_path(sdl, path[:-1])
+                target[path[-1]] = value
+
+            return mutate
+
+        def update_named(path, identity_key, identity, updates):
+            def mutate(sdl, assets):
+                item = next(
+                    candidate
+                    for candidate in resolve_path(sdl, path)
+                    if candidate.get(identity_key) == identity
+                )
+                item.update(updates)
+
+            return mutate
+
+        def replace_artifact(artifact_id, before, after):
+            return lambda sdl, assets: assets.update(
+                {artifact_id: assets[artifact_id].replace(before, after)}
+            )
+
+        def replace_local(before: bytes, after: bytes):
+            return replace_artifact(local_artifact, before, after)
+
+        def null_rule_files(sdl, assets):
+            config = yaml.safe_load(assets[config_artifact].decode("utf-8"))
+            config["rule-files"] = None
+            assets[config_artifact] = yaml.safe_dump(config).encode("utf-8")
+
+        cases = {
+            "empty local corpus": (
+                lambda sdl, assets: assets.update({local_artifact: b""}),
+                "suricata.local-rules-empty",
+            ),
+            "header-only local corpus": (
+                lambda sdl, assets: assets.update(
+                    {local_artifact: b"# no active local rules\n"}
+                ),
+                "suricata.local-rules-zero-effective",
+            ),
+            "undefined rule variable": (
+                replace_local(b"$HTTP_SERVERS", b"$UNDEFINED_SERVERS"),
+                "suricata.rule-variable-undefined",
+            ),
+            "selected rule file missing": (
+                lambda sdl, assets: assets.update(
+                    {
+                        config_artifact: assets[config_artifact].replace(
+                            b"/etc/suricata/rules/local.rules",
+                            b"/etc/suricata/rules/missing.rules",
+                        )
+                    }
+                ),
+                "suricata.rule-file-unresolved",
+            ),
+            "malformed rule file list": (
+                null_rule_files,
+                "suricata.rule-files-invalid",
+            ),
+            "content provenance mismatch": (
+                lambda sdl, assets: sdl["content"]["suricata-local-rules"][
+                    "source"
+                ]["artifact_requirement"]["exact_artifact"].update(
+                    {"digest": "sha256:" + "0" * 64}
+                ),
+                "suricata.content-identity-mismatch",
+            ),
+            "declared zero effective rules": (
+                lambda sdl, assets: next(
+                    source
+                    for source in sdl["nodes"]["suricata"]["runtime"][
+                        "network_detection_engines"
+                    ][0]["rule_sources"]
+                    if source["source_id"] == "techvault-local"
+                ).update({"rule_count": 0}),
+                "suricata.local-rule-count-mismatch",
+            ),
+            "reload target mismatch": (
+                lambda sdl, assets: sdl["nodes"]["misp-suricata-sync"][
+                    "runtime"
+                ]["forwarding_agents"][0]["reload_channels"][0].update(
+                    {"target_ref": "suricata"}
+                ),
+                "suricata.reload-target-mismatch",
+            ),
+            "content placement mismatch": (
+                set_path(("content", "suricata-config", "path"), "/tmp/suricata.yaml"),
+                "suricata.content-placement-mismatch: suricata-config",
+            ),
+            "invalid configuration bytes": (
+                lambda sdl, assets: assets.update({config_artifact: b"["}),
+                "suricata.config-invalid: suricata-config",
+            ),
+            "invalid local rule encoding": (
+                lambda sdl, assets: assets.update({local_artifact: b"\xff"}),
+                "suricata.local-rules-invalid: suricata-local-rules",
+            ),
+            "non-alert local action": (
+                replace_local(b"alert http", b"drop http"),
+                "suricata.local-rule-action-invalid: all local rules must be alert rules",
+            ),
+            "local SID corpus mismatch": (
+                replace_local(b"sid:1000091;", b"sid:1000092;"),
+                "suricata.local-rule-sids-mismatch: expected the authoritative 16-SID corpus",
+            ),
+            "nonzero MISP seed": (
+                replace_artifact(
+                    "techvault-suricata-misp-ioc-rules-seed",
+                    b"# ioc_count=0",
+                    b"# ioc_count=1",
+                ),
+                "suricata.misp-seed-invalid: the initial generated source must declare zero indicators",
+            ),
+            "missing engine identity": (
+                set_path(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "network_detection_engine_id",
+                    ),
+                    "other-engine",
+                ),
+                "suricata.engine-missing: suricata-engine",
+            ),
+            "configuration reference mismatch": (
+                set_path(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "configuration_file_refs",
+                    ),
+                    [],
+                ),
+                "suricata.configuration-ref-mismatch: suricata-engine",
+            ),
+            "log reference mismatch": (
+                set_path(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "log_file_refs",
+                    ),
+                    [],
+                ),
+                "suricata.output-ref-mismatch: suricata-engine",
+            ),
+            "rule source mismatch": (
+                update_named(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "rule_sources",
+                    ),
+                    "source_id",
+                    "techvault-local",
+                    {"loaded": False},
+                ),
+                "suricata.rule-source-mismatch: techvault-local",
+            ),
+            "EVE output mismatch": (
+                update_named(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "output_streams",
+                    ),
+                    "stream_id",
+                    "eve-json",
+                    {"path": "/tmp/eve.json"},
+                ),
+                "suricata.output-ref-mismatch: eve-json",
+            ),
+            "generated source mismatch": (
+                update_named(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "rule_sources",
+                    ),
+                    "source_id",
+                    "misp-iocs",
+                    {"generated_by": "other"},
+                ),
+                "suricata.generated-source-mismatch: misp-iocs",
+            ),
+            "generated output mismatch": (
+                update_named(
+                    ("nodes", "misp-suricata-sync", "runtime", "environment"),
+                    "name",
+                    "RULES_OUT_PATH",
+                    {"value": "/tmp/misp.rules"},
+                ),
+                "suricata.generated-output-mismatch: RULES_OUT_PATH",
+            ),
+            "SID namespace mismatch": (
+                update_named(
+                    ("nodes", "misp-suricata-sync", "runtime", "environment"),
+                    "name",
+                    "SID_BASE",
+                    {"value": "98000000"},
+                ),
+                "suricata.sid-namespace-mismatch: SID_BASE",
+            ),
+            "control channel path mismatch": (
+                update_named(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "control_channels",
+                    ),
+                    "channel_id",
+                    "command-socket",
+                    {"path": "/tmp/suricata-command.socket"},
+                ),
+                "suricata.control-channel-mismatch: command-socket",
+            ),
+            "control channel capability mismatch": (
+                update_named(
+                    (
+                        "nodes",
+                        "suricata",
+                        "runtime",
+                        "network_detection_engines",
+                        0,
+                        "control_channels",
+                    ),
+                    "channel_id",
+                    "command-socket",
+                    {"capabilities": []},
+                ),
+                "suricata.control-channel-mismatch: command-socket",
+            ),
+            "forwarder socket mismatch": (
+                update_named(
+                    ("nodes", "misp-suricata-sync", "runtime", "environment"),
+                    "name",
+                    "SURICATA_SOCKET_PATH",
+                    {"value": "/tmp/suricata-command.socket"},
+                ),
+                "suricata.control-channel-mismatch: SURICATA_SOCKET_PATH",
+            ),
+            "duplicate shared runtime mount": (
+                lambda sdl, assets: sdl["nodes"]["suricata"]["runtime"].setdefault(
+                    "mounts", []
+                ).append(
+                    {
+                        "source": "suricata_command_socket",
+                        "destination": "/var/run/suricata",
+                    }
+                ),
+                "suricata.shared-volume-mismatch: duplicate runtime mount on suricata",
+            ),
+            "stale config seed": (
+                lambda sdl, assets: sdl["persistent_volumes"].update(
+                    {"suricata_config_seed": {}}
+                ),
+                "suricata.stale-config-seed: suricata_config_seed",
+            ),
+            "shared volume access mismatch": (
+                set_path(
+                    ("persistent_volumes", "suricata_command_socket", "access_mode"),
+                    "read_write_once",
+                ),
+                "suricata.shared-volume-mismatch: suricata_command_socket",
+            ),
+            "shared volume consumers mismatch": (
+                set_path(
+                    ("persistent_volumes", "suricata_misp_rules", "consumers"),
+                    [],
+                ),
+                "suricata.shared-volume-mismatch: suricata_misp_rules",
+            ),
+            "readiness proposition mismatch": (
+                set_path(
+                    ("propositions", "suricata-local-rules-ready", "subjects"), []
+                ),
+                "suricata.readiness-evidence-mismatch: suricata-local-rules-ready",
+            ),
+            "detection proposition mismatch": (
+                set_path(
+                    (
+                        "propositions",
+                        "suricata-login-sqli-detected",
+                        "evidence_requirements",
+                    ),
+                    [],
+                ),
+                "suricata.detection-evidence-mismatch: suricata-login-sqli-detected",
+            ),
+            "detection assertion mismatch": (
+                set_path(
+                    ("assertions", "suricata-login-sqli-detected", "role"),
+                    "invariant",
+                ),
+                "suricata.detection-evidence-mismatch: suricata-login-sqli-detected",
+            ),
+            "readiness evidence sources mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-local-rule-readiness",
+                        "source_refs",
+                    ),
+                    [],
+                ),
+                "suricata.readiness-evidence-mismatch: suricata-local-rule-readiness",
+            ),
+            "readiness evidence scope mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-local-rule-readiness",
+                        "scope_refs",
+                    ),
+                    [],
+                ),
+                "suricata.readiness-evidence-mismatch: suricata-local-rule-readiness",
+            ),
+            "alert evidence sources mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-login-sqli-alert",
+                        "source_refs",
+                    ),
+                    [],
+                ),
+                "suricata.detection-evidence-mismatch: suricata-login-sqli-alert sources",
+            ),
+            "alert trigger mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-login-sqli-alert",
+                        "trigger_ref",
+                    ),
+                    "nodes.other",
+                ),
+                "suricata.detection-evidence-mismatch: suricata-login-sqli-alert path",
+            ),
+            "alert scope refs mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-login-sqli-alert",
+                        "scope_refs",
+                    ),
+                    [],
+                ),
+                "suricata.detection-evidence-mismatch: suricata-login-sqli-alert path",
+            ),
+            "alert identity scope mismatch": (
+                set_path(
+                    (
+                        "evidence_requirements",
+                        "suricata-login-sqli-alert",
+                        "scope",
+                    ),
+                    "unrelated alert",
+                ),
+                "suricata.detection-evidence-mismatch: expected alert identities",
+            ),
+            "login route vulnerability mismatch": (
+                set_path(
+                    (
+                        "nodes",
+                        "webapp",
+                        "runtime",
+                        "applications",
+                        0,
+                        "routes",
+                        1,
+                        "vulnerability_refs",
+                    ),
+                    [],
+                ),
+                "suricata.detection-path-mismatch: webapp login vulnerability",
+            ),
+            "Wazuh detection rule mismatch": (
+                lambda sdl, assets: assets.update({wazuh_artifact: b"<group/>"}),
+                "suricata.detection-path-mismatch: Wazuh rule 303020",
+            ),
+        }
+
+        artifact_ids = (
+            local_artifact,
+            config_artifact,
+            "techvault-suricata-misp-ioc-rules-seed",
+            "techvault-suricata-misp-md5-seed",
+            "techvault-suricata-misp-sha1-seed",
+            "techvault-suricata-misp-sha256-seed",
+            wazuh_artifact,
+        )
+        resolved_artifacts = {
+            artifact_id: resolve_pack_artifact(_PACK, artifact_id)
+            for artifact_id in artifact_ids
+        }
+        base_assets = {
+            artifact_id: resolved.data
+            for artifact_id, resolved in resolved_artifacts.items()
+        }
+
+        # The canonical resolver is tested independently and above supplies
+        # real byte-bound results. Reuse those immutable results so this
+        # mutation matrix isolates every validator branch without revalidating
+        # the complete pack artifact set hundreds of times.
+        with mock.patch.object(
+            _PACK_VALIDATOR,
+            "resolve_pack_artifact",
+            side_effect=lambda pack_root, artifact_id: resolved_artifacts[artifact_id],
+        ):
+            for name, (mutate, expected_code) in cases.items():
+                with self.subTest(mutation=name):
+                    candidate = copy.deepcopy(original)
+                    assets = dict(base_assets)
+                    mutate(candidate, assets)
+                    errors = _PACK_VALIDATOR.validate_suricata_contract(
+                        _PACK,
+                        candidate,
+                        artifact_overrides=assets,
+                    )
+                    self.assertTrue(
+                        any(expected_code in error for error in errors),
+                        errors,
+                    )
 
     def test_operator_soc_surfaces_are_loopback_published(self) -> None:
         nodes = _load_sdl()["nodes"]
@@ -422,71 +1110,261 @@ class TechVaultPackTests(unittest.TestCase):
                     all(item["host_ip"] == "127.0.0.1" for item in published)
                 )
 
-    def test_cortex_job_index_schema_is_adr088_initial_service_state(self) -> None:
+    def test_cortex_provides_case_driven_offline_enrichment(self) -> None:
         sdl = _load_sdl()
-
-        # The one-shot init node, its inline script, and its topology row are gone.
-        self.assertNotIn("cortex-index-init", sdl["nodes"])
-        self.assertNotIn("cortex-index-init", sdl["infrastructure"])
-        self.assertNotIn("cortex-index-init-script", sdl["content"])
-
-        entry = sdl["content"]["cortex-job-index-schema"]
-        self.assertEqual(entry["type"], "dataset")
-        self.assertEqual(entry["target"], "thehive-es")
-        # Materialization-only: no inline body, source package, or item list.
-        self.assertNotIn("text", entry)
-        self.assertNotIn("source", entry)
-        self.assertNotIn("items", entry)
-
-        materialization = entry["service_materialization"]
+        thehive = sdl["nodes"]["thehive"]
+        command = thehive["runtime"]["container"]["command"]
         self.assertEqual(
-            materialization["interface_profile"], "service-search-index-schema"
-        )
-        self.assertEqual(materialization["profile_version"], "1")
-        self.assertEqual(
-            materialization["target_service_ref"],
-            "nodes.thehive-es.services.elasticsearch",
-        )
-        requirements = materialization["requirements"]
-        self.assertEqual(requirements["operation"], "ensure-search-index-field-schema")
-        self.assertEqual(requirements["conflict_policy"], "reject-unowned-collision")
-        self.assertEqual(
-            requirements["readback"], "canonical-portable-field-schema-digest"
+            command[command.index("--cortex-proto") + 1], "http"
         )
         self.assertEqual(
-            requirements["field_semantics"],
+            command[command.index("--cortex-hostnames") + 1], "cortex"
+        )
+        self.assertEqual(command[command.index("--cortex-port") + 1], "9001")
+
+        thehive_environment = {
+            item["name"]: item for item in thehive["runtime"]["environment"]
+        }
+        connector_key = thehive_environment["TH_CORTEX_KEYS"]
+        self.assertEqual(connector_key["value_classification"], "redacted")
+        self.assertNotIn("value", connector_key)
+        self.assertEqual(
+            connector_key["value_from"],
             {
-                "key": "exact-token",
-                "status": "exact-token",
-                "relations": "exact-token",
+                "generated_artifact": "cortex-service-credentials",
+                "output": "connector-api-key",
             },
         )
 
-        # The readback scaffolding cross-refs resolve to a postcondition assertion
-        # over an observed-state proposition whose subject is this content, plus a
-        # bound evidence requirement and an observation boundary that exposes it.
-        (assertion_ref,) = materialization["readback_assertion_refs"]
-        (evidence_ref,) = materialization["evidence_requirement_refs"]
-        (boundary_ref,) = materialization["observation_boundary_refs"]
+        cortex = sdl["nodes"]["cortex"]
+        self.assertEqual(
+            cortex["services"],
+            [{"name": "cortex-api", "port": 9001, "protocol": "tcp"}],
+        )
+        cortex_config = sdl["content"]["cortex-app-config"]["text"]
+        self.assertIn('job.runners = ["process"]', cortex_config)
+        self.assertIn(
+            'analyzer.urls = ["/opt/techvault/cortex-analyzers"]', cortex_config
+        )
+        self.assertNotIn("docker.sock", yaml.safe_dump(cortex))
+        cortex_app = cortex["runtime"]["platform_applications"][0]
+        self.assertEqual(cortex_app["platform_application_id"], "cortex-enrichment")
+        self.assertEqual(cortex_app["authorization_ref"], "cortex-rbac")
+        self.assertEqual(
+            {item["kind"] for item in cortex_app["capabilities"]},
+            {"analysis_execution"},
+        )
+        analyzers = {
+            item["content_object_id"]: item
+            for item in cortex_app["content_objects"]
+            if item["kind"] == "analyzer"
+        }
+        self.assertIn("techvault-scenario-context", analyzers)
+        self.assertEqual(
+            analyzers["techvault-scenario-context"]["attributes"]["data_types"],
+            ["ip"],
+        )
 
-        assertion = sdl["assertions"][assertion_ref]
-        self.assertEqual(assertion["role"], "postcondition")
-        proposition = sdl["propositions"][assertion["proposition"]]
+        authorization = cortex["runtime"]["app_authorizations"][0]
+        self.assertEqual(authorization["app_authorization_id"], "cortex-rbac")
+        principals = {
+            item["principal_id"]: item for item in authorization["principals"]
+        }
+        connector = principals["thehive-cortex-connector"]
+        self.assertEqual(connector["kind"], "service_account")
+        self.assertEqual(connector["credential_classification"], "redacted")
+        self.assertEqual(connector["backend_roles"], ["read", "analyze"])
+        self.assertNotIn("orgadmin", connector["backend_roles"])
+        initializer_principal = principals["cortex-initializer-admin"]
+        self.assertEqual(initializer_principal["credential_classification"], "redacted")
+        self.assertEqual(
+            initializer_principal["backend_roles"], ["read", "analyze", "orgadmin"]
+        )
+
+        initializer = sdl["nodes"]["cortex-initializer"]
+        self.assertTrue(initializer["runtime"]["container"]["autoremove"])
+        initializer_environment = {
+            item["name"]: item for item in initializer["runtime"]["environment"]
+        }
+        self.assertEqual(
+            initializer_environment["CORTEX_CONNECTOR_KEY"]["value_from"],
+            connector_key["value_from"],
+        )
+        self.assertEqual(
+            initializer_environment["CORTEX_CONNECTOR_KEY"]["value_classification"],
+            "redacted",
+        )
+        self.assertNotEqual(
+            initializer_environment["CORTEX_ADMIN_KEY"]["value_from"],
+            connector_key["value_from"],
+        )
+        self.assertNotIn("value", initializer_environment["CORTEX_ADMIN_KEY"])
+
+        credential_artifact = sdl["generated_artifacts"][
+            "cortex-service-credentials"
+        ]
+        self.assertEqual(credential_artifact["generator"], "rendered_config")
+        self.assertEqual(credential_artifact["lifecycle"], "reuse_valid")
+        self.assertEqual(
+            {output["name"] for output in credential_artifact["outputs"]},
+            {"initializer-api-key", "connector-api-key"},
+        )
+        self.assertTrue(
+            all(
+                output["sensitivity"] == "secret"
+                for output in credential_artifact["outputs"]
+            )
+        )
+
+        self.assertIn(
+            "cortex-initializer", sdl["infrastructure"]["thehive"]["dependencies"]
+        )
+        self.assertEqual(
+            sdl["infrastructure"]["cortex-initializer"]["dependencies"],
+            ["cortex"],
+        )
+
+        integrations = [
+            relationship["service_integration"]
+            for relationship in sdl["relationships"].values()
+            if relationship.get("service_integration", {}).get("engine_ref")
+            == "cortex-enrichment"
+        ]
+        self.assertEqual(len(integrations), 1)
+        integration = integrations[0]
+        self.assertEqual(integration["consumer_ref"], "thehive-case-management")
+        self.assertEqual(integration["integration_kind"], "enrichment")
+        self.assertEqual(integration["auth_principal_ref"], "thehive-cortex-connector")
+        self.assertTrue(integration["enabled"])
+
+        for content_id in (
+            "cortex-analyzer-definition",
+            "cortex-analyzer-executable",
+            "cortex-initializer-script",
+        ):
+            content = sdl["content"][content_id]
+            requirement = content["source"]["artifact_requirement"]
+            self.assertEqual(requirement["explicitness"], "exact")
+            self.assertEqual(
+                resolve_pack_artifact(_PACK, content["source"]["name"]).identity.digest,
+                requirement["exact_artifact"]["digest"],
+            )
+
+        proposition = sdl["propositions"]["cortex-enrichment-ready"]
         self.assertEqual(proposition["basis"], "observed_state")
-        self.assertIn("content.cortex-job-index-schema", proposition["subjects"])
-        self.assertIn(evidence_ref, proposition["evidence_requirements"])
+        self.assertIn("cortex-enrichment-readback", proposition["evidence_requirements"])
+        evidence = sdl["evidence_requirements"]["cortex-enrichment-readback"]
+        self.assertIn("nodes.cortex", evidence["scope_refs"])
+        self.assertIn("nodes.thehive", evidence["scope_refs"])
 
-        evidence = sdl["evidence_requirements"][evidence_ref]
-        self.assertIn("content.cortex-job-index-schema", evidence["source_refs"])
+    def test_cortex_owns_its_native_job_index_schema(self) -> None:
+        sdl = _load_sdl()
 
-        boundary = sdl["observation_boundaries"][boundary_ref]
-        self.assertIn("content.cortex-job-index-schema", boundary["observable_refs"])
+        self.assertNotIn("cortex-index-init", sdl["nodes"])
+        self.assertNotIn("cortex-index-init", sdl["infrastructure"])
+        self.assertNotIn("cortex-index-init-script", sdl["content"])
+        self.assertNotIn("cortex-job-index-schema", sdl["content"])
 
-        # ADR-088 forbids leaking the backend index name or vendor ES literals into
-        # the portable declaration; only portable field semantics belong here.
-        declaration = yaml.safe_dump(entry)
-        for forbidden in ("cortex_6", "keyword", "_mapping", "http://", "https://"):
-            self.assertNotIn(forbidden, declaration)
+        self.assertNotIn(
+            "datastore_services", sdl["nodes"]["thehive-es"]["runtime"]
+        )
+
+        initializer = (
+            _PACK / "assets" / "content" / "cortex-initializer.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("/api/maintenance/migrate", initializer)
+        self.assertNotIn("cortex_6", initializer)
+        self.assertNotIn("_mapping", initializer)
+
+    def test_cortex_pack_validator_rejects_contract_mutations(self) -> None:
+        original = _load_sdl()
+        self.assertEqual(
+            _PACK_VALIDATOR.validate_cortex_contract(_PACK, original), []
+        )
+
+        def environments(candidate):
+            return {
+                node: {
+                    item["name"]: item
+                    for item in candidate["nodes"][node]["runtime"]["environment"]
+                }
+                for node in ("thehive", "cortex-initializer")
+            }
+
+        def principals(candidate):
+            return {
+                item["principal_id"]: item
+                for item in candidate["nodes"]["cortex"]["runtime"]
+                ["app_authorizations"][0]["principals"]
+            }
+
+        def mutate(candidate, code):
+            env = environments(candidate)
+            cortex_runtime = candidate["nodes"]["cortex"]["runtime"]
+            if code == "connector-key-mismatch":
+                env["thehive"]["TH_CORTEX_KEYS"]["value_from"]["output"] = "initializer-api-key"
+            elif code == "initializer-key-invalid":
+                env["cortex-initializer"]["CORTEX_ADMIN_KEY"]["value_from"]["output"] = "connector-api-key"
+            elif code == "generated-credentials-invalid":
+                candidate["generated_artifacts"]["cortex-service-credentials"]["outputs"][0]["sensitivity"] = "public"
+            elif code == "application-missing":
+                cortex_runtime["platform_applications"][0]["platform_application_id"] = "other"
+            elif code == "capability-missing":
+                cortex_runtime["platform_applications"][0]["capabilities"] = []
+            elif code == "connector-principal-invalid":
+                principals(candidate)["thehive-cortex-connector"]["backend_roles"].append("orgadmin")
+            elif code == "initializer-principal-invalid":
+                principals(candidate)["cortex-initializer-admin"]["backend_roles"] = ["read"]
+            elif code == "initializer-not-oneshot":
+                candidate["nodes"]["cortex-initializer"]["runtime"]["container"]["autoremove"] = False
+            elif code == "docker-socket-forbidden":
+                candidate["nodes"]["cortex-initializer"]["runtime"]["container"]["mounts"] = ["/var/run/docker.sock"]
+            elif code == "native-schema-leaked":
+                candidate["content"]["cortex-job-index-schema"] = {}
+            elif code == "content-placement-mismatch":
+                candidate["content"]["cortex-initializer-script"]["path"] = "/tmp/initializer.py"
+            elif code == "content-identity-mismatch":
+                candidate["content"]["cortex-initializer-script"]["source"]["artifact_requirement"]["exact_artifact"]["digest"] = "sha256:" + "0" * 64
+
+        codes = (
+            "connector-key-mismatch",
+            "initializer-key-invalid",
+            "generated-credentials-invalid",
+            "application-missing",
+            "capability-missing",
+            "connector-principal-invalid",
+            "initializer-principal-invalid",
+            "initializer-not-oneshot",
+            "docker-socket-forbidden",
+            "native-schema-leaked",
+            "content-placement-mismatch",
+            "content-identity-mismatch",
+        )
+        for code in codes:
+            with self.subTest(code=code):
+                candidate = copy.deepcopy(original)
+                mutate(candidate, code)
+                errors = _PACK_VALIDATOR.validate_cortex_contract(_PACK, candidate)
+                self.assertTrue(
+                    any(f"cortex.{code}" in error for error in errors), errors
+                )
+
+        real_resolve = _PACK_VALIDATOR.resolve_pack_artifact
+
+        def invalid_definition(pack_root, artifact_id):
+            artifact = real_resolve(pack_root, artifact_id)
+            if artifact_id == "techvault-cortex-analyzer-definition":
+                return types.SimpleNamespace(identity=artifact.identity, data=b"{}")
+            return artifact
+
+        with mock.patch.object(
+            _PACK_VALIDATOR, "resolve_pack_artifact", side_effect=invalid_definition
+        ):
+            errors = _PACK_VALIDATOR.validate_cortex_contract(_PACK, original)
+        self.assertTrue(
+            any("cortex.analyzer-definition-invalid" in error for error in errors),
+            errors,
+        )
 
     def test_content_sources_are_exact_resolvable_pack_artifacts(self) -> None:
         profile = json.loads(_PROFILE.read_text(encoding="utf-8"))
@@ -563,7 +1441,7 @@ class TechVaultPackTests(unittest.TestCase):
 
     def test_generated_keys_and_certificates_enforce_output_boundaries(self) -> None:
         generated = _load_sdl()["generated_artifacts"]
-        self.assertEqual(len(generated), 7)
+        self.assertEqual(len(generated), 8)
 
         ssh = generated["techvault-ssh-keys"]
         self.assertEqual(ssh["generator"], "ssh_key_bundle")

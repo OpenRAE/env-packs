@@ -32,7 +32,7 @@ variables:
     default: baseline
 nodes:
   registry:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Model registry).
       Configuration: ${registry_namespace}.'
     source:
@@ -103,3 +103,11 @@ accounts:
     node: registry
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/registry
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

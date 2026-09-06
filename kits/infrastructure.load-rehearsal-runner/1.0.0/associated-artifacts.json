@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "load-rehearsal-runner",
     "ref_version": null,
-    "ref_digest": "sha256:adca0e693fd82e12116748d9942513f2c7e3966b1805cfb1b129a9288a40717b",
+    "ref_digest": "sha256:50eaf61122ac260ddf406d09a693dfdb051e10bd74d4c5bdf40c84bbf8fc6a6a",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "03f5f95b1ba97a951674bb7ceaaffbcac53258f294e59aa5d0e924afd5f544a0"
+        "value": "76cc7cce34e1ba09ecdd6797423323782b7c5f8b5cb5284cdc59e9da324e8d23"
       },
-      "size_bytes": 2184,
+      "size_bytes": 2359,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.load-rehearsal-runner@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:8f453687149bc409226f83c7bfeeba287ebe795f87f2a3ad82cfa5b2f907a4c0"
+  "set_digest": "sha256:182cbd497d12d5b6b89f517df04247dccf4613eae0953edc16adfaff5ce318d9"
 }

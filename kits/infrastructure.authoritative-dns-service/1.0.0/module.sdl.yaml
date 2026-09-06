@@ -30,7 +30,7 @@ variables:
     default: environment.test
 nodes:
   dns:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Authoritative
       DNS service). Configuration: ${zone_name}.'
     source:
@@ -74,3 +74,11 @@ content:
       - infrastructure
       - seed
       description: Declared service records for this reusable service.
+realization:
+  constraints:
+  - field_pointer: /nodes/dns
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

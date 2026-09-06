@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "windows-active-directory-domain-controller",
     "ref_version": null,
-    "ref_digest": "sha256:b4a32e36a27537f13145e7718cdaf6735e3eefb236b708f08aca0a1c5ee631c0",
+    "ref_digest": "sha256:c05225f5c9961a740713c478008202a3495c2430b2b61c3fdf5776a71492cf12",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "07a3f04dffa6899ddda9cc2af653e58bc827972851fef0d0b9a7c5e7e86a6a2d"
+        "value": "f5db2f2b99929345cd31580e6dcfc6dbb8876747b5840cd363ad60a70ad11f50"
       },
-      "size_bytes": 3255,
+      "size_bytes": 3441,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.windows-active-directory-domain-controller@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:7cf6112196c182f6f025e284633fe183f68ead4102052dd24df313230586ee9f"
+  "set_digest": "sha256:cddcbfd6126f32e85799c54b3b52422af24bcc3dbd662b5da2a75b68c269d2d5"
 }

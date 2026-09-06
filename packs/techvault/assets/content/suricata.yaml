@@ -1,0 +1,118 @@
+%YAML 1.1
+---
+
+vars:
+  address-groups:
+    HOME_NET: "[172.20.0.0/16]"
+    EXTERNAL_NET: "!$HOME_NET"
+    DMZ_NET: "[172.20.1.0/24]"
+    INTERNAL_NET: "[172.20.2.0/24]"
+    DNS_SERVERS: "[172.20.1.22]"
+    HTTP_SERVERS: "[172.20.1.20]"
+    SMTP_SERVERS: "$HOME_NET"
+    SQL_SERVERS: "[172.20.2.11]"
+    TELNET_SERVERS: "$HOME_NET"
+    AIM_SERVERS: "$EXTERNAL_NET"
+    DC_SERVERS: "[172.20.2.10]"
+    DNP3_SERVER: "$HOME_NET"
+    DNP3_CLIENT: "$HOME_NET"
+    MODBUS_SERVER: "$HOME_NET"
+    MODBUS_CLIENT: "$HOME_NET"
+    ENIP_SERVER: "$HOME_NET"
+    ENIP_CLIENT: "$HOME_NET"
+
+  port-groups:
+    HTTP_PORTS: "80,8080"
+    SHELLCODE_PORTS: "!80"
+    ORACLE_PORTS: "1521"
+    SSH_PORTS: "22"
+    DNS_PORTS: "53"
+    SQL_PORTS: "5432"
+    DNP3_PORTS: "20000"
+    MODBUS_PORTS: "502"
+    FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
+    FTP_PORTS: "21"
+    GENEVE_PORTS: "6081"
+    VXLAN_PORTS: "4789"
+    TEREDO_PORTS: "3544"
+
+default-log-dir: /var/log/suricata/
+
+stats:
+  enabled: yes
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            tagged-packets: yes
+        - http:
+            extended: yes
+        - dns:
+            query: yes
+            answer: yes
+        - tls:
+            extended: yes
+        - files:
+            force-magic: no
+        - ssh
+        - flow
+        - netflow
+        - stats:
+            totals: yes
+            threads: no
+
+  - fast:
+      enabled: yes
+      filename: fast.log
+
+# Packet acquisition remains governed by OpenRAE/env-packs#284. Preserve the
+# current authored interfaces while repairing only the content contract here.
+af-packet:
+  - interface: any
+
+pcap:
+  - interface: any
+
+pcap-file:
+  checksum-checks: auto
+
+app-layer:
+  protocols:
+    http:
+      enabled: yes
+    tls:
+      enabled: yes
+    dns:
+      enabled: yes
+      tcp:
+        enabled: yes
+      udp:
+        enabled: yes
+    ssh:
+      enabled: yes
+    smtp:
+      enabled: yes
+    ftp:
+      enabled: yes
+    smb:
+      enabled: yes
+
+default-rule-path: /var/lib/suricata/rules
+rule-files:
+  - suricata.rules
+  - /etc/suricata/rules/local.rules
+  # The sync agent atomically replaces this seed and reloads Suricata. Keeping
+  # it relative makes generated file-hash list references resolve alongside it.
+  - misp/misp-iocs.rules
+
+classification-file: /etc/suricata/classification.config
+reference-config-file: /etc/suricata/reference.config
+
+default-run-dir: /var/run/suricata
+unix-command:
+  enabled: yes
+  filename: suricata-command.socket

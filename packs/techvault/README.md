@@ -39,6 +39,57 @@ The pack-local satisfaction profile in
 by every exact content requirement. Tar assets are deterministic POSIX tar
 carriers whose members are materialized at the declared directory destination.
 
+## Cortex enrichment contract
+
+TechVault ships one exact, dependency-free offline analyzer for scenario IP
+context. A one-shot initializer uses Cortex's supported API to migrate a clean
+database, create separate initializer and least-privilege TheHive identities,
+and enable the analyzer idempotently. TheHive then connects with the dedicated
+`read`/`analyze` identity. Both API keys are backend-generated artifact outputs
+injected by RAES `value_from` bindings; their bytes never appear in the SDL,
+pack, or evidence. Cortex owns its native Elasticsearch mapping; the portable
+scenario does not reproduce that vendor-internal schema.
+
+The native gate proves a clean start, analyzer execution for the scenario
+attacker IP, the returned attacker classification, and TheHive connector status
+`OK` using the exact declared images:
+
+```sh
+TECHVAULT_NATIVE_CORTEX=1 .venv/bin/python -m unittest \
+  tests.test_techvault_cortex_native.NativeCortexContractTests.test_exact_images_execute_enrichment_and_connect_thehive
+```
+
+## Suricata content contract
+
+The Suricata configuration and 16-rule TechVault local corpus are exact pack
+artifacts. The image-owned built-in rules remain a separate source. The four
+empty MISP files are clean-start seeds in an ephemeral shared volume; the
+declared MISP forwarding agent may replace them and reload the engine through
+the private Unix socket. A consumer must not source or copy replacement files
+from an APTL/LilRAE checkout.
+
+Static validation joins the artifact identities, content placements, selected
+rule files, variables, engine inventory, generated-output path, SID namespace,
+shared volumes, reload target, and evidence requirements. Live readiness still
+requires Suricata's native configuration test and realized evidence showing the
+selected sources and 16 active local SIDs. The declared behavioral probe sends
+a participant-equivalent SQL-injection request to `/login` and requires
+Suricata SID `1000010` plus the existing Wazuh correlation rule `303020`.
+Passing static validation does not by itself establish that live result.
+
+When Docker is available, run the native exact-image gate from the repository
+root with:
+
+```sh
+TECHVAULT_NATIVE_SURICATA=1 .venv/bin/python -m unittest \
+  tests.test_techvault_suricata_native.NativeSuricataContractTests.test_exact_image_accepts_all_declared_rule_sources
+```
+
+The gate derives the image digest, built-in path, and content mounts from the
+pack, verifies that the built-in file is non-empty inside that exact image, and
+requires Suricata's native configuration test to load all three selected source
+files with zero rule failures.
+
 ## Capture consumer contract
 
 The Kali capture client uses protocol version 2 and fails closed. Before an SSH

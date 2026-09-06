@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "image-inference-service",
     "ref_version": null,
-    "ref_digest": "sha256:06ef3b6d64722043b51699863084dfc43e802249cef4d796e486cbae1e4b5af4",
+    "ref_digest": "sha256:dabdc75d2139208edee56391ba6d358a0c7f51ec8122bf1a2a722ecdee152750",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "9e69b4f7ec039f0d0628a5a21fd0813e92e93336b3b217466488eb43a70fbcf9"
+        "value": "d83314638683a02f0fd1d871b28c70af27d222926f08d93e30a4d04f6658cad7"
       },
-      "size_bytes": 2849,
+      "size_bytes": 3027,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.image-inference-service@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:397ad7c9f471fa87823b0be3410e49bd5ee54c3811ec2d9048814a82b04a5c4a"
+  "set_digest": "sha256:35a349c7fb6d879fcdff7fe0843b09b6dfd798bb02fbc16e1a9fd05ff1175b9e"
 }

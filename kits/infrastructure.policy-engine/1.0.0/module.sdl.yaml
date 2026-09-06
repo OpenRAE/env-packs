@@ -32,7 +32,7 @@ variables:
     default: baseline
 nodes:
   policy:
-    type: vm
+    type: compute
     description: '${deployment_profile} profile for ${service_label} (Policy engine).
       Configuration: ${policy_bundle}.'
     source:
@@ -103,3 +103,11 @@ accounts:
     node: policy
     password_strength: strong
     description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/policy
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "suricata-network-intrusion-detection-sensor",
     "ref_version": null,
-    "ref_digest": "sha256:d802b5bc048229267b7ca50558774fff000707398483beb31e0a9a1c4da0c9cc",
+    "ref_digest": "sha256:338d47476a1bb5f55e5d2eb581d2913030ccda6748e4fbd94f655441f5503414",
     "ref_path": null
   },
   "artifacts": {
@@ -83,9 +83,9 @@
       "uri": "raes-environment-kit:/module.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "f8461f432709c16060d8a2a2e98e9e743aa92112b5eea3881dd873e99d2aadab"
+        "value": "f4b50c81e61eea6946c79c7d249ddd9a9f2884e24262e0a19c9c3c47bf257c08"
       },
-      "size_bytes": 2073,
+      "size_bytes": 2248,
       "created_at": "2026-08-01T00:00:00Z",
       "source": "infrastructure.suricata-network-intrusion-detection-sensor@1.0.0",
       "satisfies_refs": [],
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:05dce77ac47528380efa9b0e3c4f1e7bb4d65d544b67013cf6ba605f09310ddc"
+  "set_digest": "sha256:ba37e62811a57264b638ecc8bf6bb7c34ad5971d37625dcf656a93cbd3665b33"
 }
