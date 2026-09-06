@@ -484,6 +484,21 @@ def _trusted_schema(path: Path) -> dict[str, object]:
     return value
 
 
+def _check_json_shape(document: object, limits: PackValidationLimits) -> None:
+    """Bound JSON nodes and nesting without recursively traversing authored data."""
+    pending = [(document, 0)]
+    nodes = 0
+    while pending:
+        item, depth = pending.pop()
+        nodes += 1
+        if depth > limits.max_yaml_depth or nodes > limits.max_yaml_nodes:
+            raise ValueError("JSON shape limit")
+        if isinstance(item, dict):
+            pending.extend((value, depth + 1) for pair in item.items() for value in pair)
+        elif isinstance(item, list):
+            pending.extend((value, depth + 1) for value in item)
+
+
 def _strict_json_member(
     root_fd: int,
     rel: str,
@@ -516,17 +531,7 @@ def _strict_json_member(
             object_pairs_hook=object_pairs,
             parse_constant=invalid_constant,
         )
-        pending = [(document, 0)]
-        nodes = 0
-        while pending:
-            item, depth = pending.pop()
-            nodes += 1
-            if depth > limits.max_yaml_depth or nodes > limits.max_yaml_nodes:
-                raise ValueError("JSON shape limit")
-            if isinstance(item, dict):
-                pending.extend((value, depth + 1) for pair in item.items() for value in pair)
-            elif isinstance(item, list):
-                pending.extend((value, depth + 1) for value in item)
+        _check_json_shape(document, limits)
         return document
     except (ValueError, RecursionError):
         errors.add("kit-materializations.invalid", rel)

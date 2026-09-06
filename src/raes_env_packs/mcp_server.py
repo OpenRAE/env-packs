@@ -5,10 +5,13 @@ import argparse
 import asyncio
 import json
 import sys
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 import anyio
 from mcp import types
 from mcp.server.lowlevel import Server
+from mcp.server.context import ServerRequestContext
 from mcp.server.stdio import stdio_server
 
 from . import __version__, catalog, kits
@@ -16,15 +19,16 @@ from ._authoring_tools import TOOLS
 from .authoring import AuthoringSession, _bounded
 
 _MAX_FRAME = 262144
+_Source = TypeVar("_Source")
 
 
-class _BoundedStdin:
+class _BoundedStdin(object):
     """Frame admission before SDK parsing; never return raw parser errors."""
 
-    def __aiter__(self):
+    def __aiter__(self) -> _BoundedStdin:
         return self
 
-    async def __anext__(self):
+    async def __anext__(self) -> str:
         raw = await anyio.to_thread.run_sync(
             lambda: sys.stdin.buffer.readline(_MAX_FRAME + 1), abandon_on_cancel=True,
         )
@@ -49,7 +53,11 @@ def create_server(session: AuthoringSession, *, allow_writes: bool = False,
                if (name != "pack_apply" or allow_writes)
                and (name != "pack_prepare" or allow_prepare)}
 
-    async def list_tools(_context, _params):
+    async def list_tools(
+        _context: ServerRequestContext[Any], _params: types.PaginatedRequestParams,
+    ) -> types.ListToolsResult:
+        """Yield to cancellation, then list exactly the host-granted tool surface."""
+        await anyio.lowlevel.checkpoint()
         return types.ListToolsResult(tools=[
             types.Tool(name=name, description=TOOLS[name][0], input_schema=TOOLS[name][1],
                        annotations=types.ToolAnnotations(
@@ -59,7 +67,11 @@ def create_server(session: AuthoringSession, *, allow_writes: bool = False,
             for name in sorted(visible)
         ])
 
-    async def call_tool(_context, params):
+    async def call_tool(
+        _context: ServerRequestContext[Any], params: types.CallToolRequestParams,
+    ) -> types.CallToolResult:
+        """Observe pending cancellation before dispatching a bounded operation."""
+        await anyio.lowlevel.checkpoint()
         # Synchronous bounded library calls serialize writers and finish before
         # cancellation can abandon an in-flight commit. No detached worker.
         result = session.call(params.name if params.name in visible else "", params.arguments or {})
@@ -74,7 +86,8 @@ def create_server(session: AuthoringSession, *, allow_writes: bool = False,
                   on_list_tools=list_tools, on_call_tool=call_tool)
 
 
-def _sources(rows: list[list[str]], kind: type) -> dict:
+def _sources(rows: list[list[str]], kind: Callable[[str, str, str], _Source]) -> dict[str, _Source]:
+    """Translate unique CLI handles into canonical host-owned source records."""
     result = {}
     for key, source_id, revision, root in rows:
         if key in result:
@@ -84,11 +97,13 @@ def _sources(rows: list[list[str]], kind: type) -> dict:
 
 
 async def _serve(server: Server) -> None:
+    """Run the official stdio protocol over bounded input frames."""
     async with stdio_server(stdin=_BoundedStdin()) as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Launch a local MCP session with only explicit host configuration and grants."""
     parser = argparse.ArgumentParser(prog="raes-pack-mcp", description=__doc__)
     parser.add_argument("--pack", action="append", nargs=4, default=[],
                         metavar=("HANDLE", "SOURCE_ID", "REVISION", "ROOT"))

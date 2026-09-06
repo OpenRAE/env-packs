@@ -4,6 +4,7 @@ from collections.abc import Mapping
 
 
 def _member(data: bytes | None) -> dict[str, object] | None:
+    """Describe one exact file value, retaining binary identity when needed."""
     if data is None:
         return None
     result: dict[str, object] = {

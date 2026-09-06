@@ -19,6 +19,22 @@ from raes_env_packs.authoring import AuthoringSession
 
 
 class StdioTests(TestCase):
+    def test_cancelled_request_never_reaches_the_authoring_service(self):
+        with AuthoringSession() as author, \
+             mock.patch.object(author, "call", wraps=author.call) as dispatch, \
+             mock.patch.object(mcp_server, "Server") as server:
+            mcp_server.create_server(author)
+            callback = server.call_args.kwargs["on_call_tool"]
+
+            async def exchange():
+                with anyio.CancelScope() as cancellation:
+                    cancellation.cancel()
+                    await callback(None, mcp_server.types.CallToolRequestParams(name="pack_examples", arguments={}))
+                    self.fail("pending cancellation must be observed before dispatch")
+
+            asyncio.run(exchange())
+            dispatch.assert_not_called()
+
     def test_in_process_transport_observes_launch_grants_and_exact_apply(self):
         with tempfile.TemporaryDirectory() as directory:
             async def exchange():

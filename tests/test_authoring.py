@@ -190,6 +190,35 @@ class AuthoringTests(TestCase):
                      {"version": "raes-pack-authoring/v99", "inputs": {}}):
             self.assertEqual(self.session.call("pack_scaffold", args)["status"], 2)
 
+    def test_document_admission_preserves_scalar_shape_and_serialized_limits(self):
+        from raes_env_packs.authoring import _bounded, _InvalidInput
+
+        _bounded({"values": [None, True, 1, 1.5, "plain", ("tuple",)]}, max_bytes=1024)
+        for value, reason in (({1: "value"}, "document keys"),
+                              (object(), "document type"), (b"bytes", "document type"),
+                              (float("nan"), "document encoding"),
+                              ([None] * 32768, "document limit")):
+            with self.subTest(reason=reason), self.assertRaisesRegex(_InvalidInput, reason):
+                _bounded(value, max_bytes=1024 * 1024)
+        nested = None
+        for _ in range(32):
+            nested = [nested]
+        _bounded(nested, max_bytes=1024)
+        with self.assertRaisesRegex(_InvalidInput, "document limit"):
+            _bounded([nested], max_bytes=1024)
+        with self.assertRaisesRegex(_InvalidInput, "document bytes"):
+            _bounded("four", max_bytes=4)
+
+    def test_publication_reference_admission_remains_ascii_only(self):
+        from raes_env_packs.authoring import AuthoringSession
+
+        with AuthoringSession(releases={"release": str(self.root)}) as session:
+            for reference in ("vérsion", "版本", "١", ".tag", "x" * 129):
+                result = session.call("pack_publication_plan", {
+                    "source": "release", "repository": "registry.invalid/pack", "reference": reference,
+                })
+                self.assertEqual(result["status"], 2, result)
+
     def test_nested_secret_parameter_is_refused_before_preparation(self):
         with mock.patch.object(self.session, "_compose", side_effect=AssertionError("must reject before dispatch")):
             result = self.call("pack_compose", source="sample", operation="add", parameters={"password": "private-value"})

@@ -1,10 +1,12 @@
 """Closed request shapes for the authoring adapter and MCP discovery."""
 
 def text(maximum: int = 256) -> dict[str, object]:
+    """Describe a bounded string parameter."""
     return {"type": "string", "maxLength": maximum}
 
 
-def fields(properties: dict, required: tuple[str, ...] = ()) -> dict:
+def fields(properties: dict[str, object], required: tuple[str, ...] = ()) -> dict[str, object]:
+    """Describe a closed object with explicitly required fields."""
     return {"type": "object", "properties": properties, "required": list(required),
             "additionalProperties": False}
 
@@ -37,14 +39,16 @@ TOOLS = {
                              "kit_source": text(), "kit": text(), "version": text(),
                              "namespace": text(), "target_sdl": text(), "materialization": text(),
                              "parameters": {"type": "object"}}, ("source", "operation"))),
-    "pack_prepare": ("Execute the stored preparation in its disclosed private scratch target; requires host permission.",
+    "pack_prepare": ("Execute the stored preparation in its disclosed private scratch target; "
+                     "requires host permission.",
                      _PROPOSAL),
     "pack_apply": ("Apply the exact previously returned proposal; requires host write permission.", _PROPOSAL),
     "pack_sdl": ("Delegate in-memory SDL services to RAES; plan uses the reference manifest and never executes.",
                  fields({"operation": {"enum": ["parse", "diagnostics", "completion", "format", "compile", "plan"]},
                          "content": text(65536), "cursor_path": text(), "prefix": text(),
                          "parameters": {"type": "object"}}, ("operation", "content"))),
-    "pack_publication_plan": ("Plan signing/registry effects for admitted release evidence; does not publish or establish readiness.",
+    "pack_publication_plan": ("Plan signing/registry effects for admitted release evidence; "
+                              "does not publish or establish readiness.",
                               fields({"source": text(), "repository": text(), "reference": text()},
                                      ("source", "repository", "reference"))),
 }
