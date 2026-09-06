@@ -11,6 +11,18 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [5.1.0](https://github.com/OpenRAE/env-packs/compare/v5.0.0...v5.1.0) (2026-09-06)
+
+
+### Features
+
+* **mcp:** add host-scoped pack authoring tools ([#320](https://github.com/OpenRAE/env-packs/issues/320)) ([2ace868](https://github.com/OpenRAE/env-packs/commit/2ace868cf5ff191dabb3dc35af83b7cbbd2ef84d))
+
+
+### Bug Fixes
+
+* migrate TechVault nodes to containers ([#323](https://github.com/OpenRAE/env-packs/issues/323)) ([455584c](https://github.com/OpenRAE/env-packs/commit/455584c45fae4900b7103f665c926ccb30dd785f))
+
 ## [5.0.0](https://github.com/OpenRAE/env-packs/compare/v4.0.3...v5.0.0) (2026-09-06)
 
 
