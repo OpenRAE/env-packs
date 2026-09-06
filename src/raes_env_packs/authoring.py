@@ -268,13 +268,15 @@ class AuthoringSession(object):
         document = json.loads(check.render_json(check.build_report(result, Path(source.root).name)))
         return _envelope(0 if result.ok else 1, document)
 
-    def _explain(self, args: Json) -> Json:
+    @staticmethod
+    def _explain(args: Json) -> Json:
         """Present a stable diagnostic code without authored exception prose."""
         if not _CODE.fullmatch(args["code"]):
             raise _InvalidInput("diagnostic code")
         return _envelope(0, dataclasses.asdict(check.presentation_for(args["code"])))
 
-    def _examples(self, args: Json) -> Json:
+    @staticmethod
+    def _examples(args: Json) -> Json:
         """Preview the shared starter and its optional layers without writes."""
         inputs = {"version": wizard.WIZARD_INPUT_VERSION, "pack_id": "example-pack",
                   "route": args.get("route", "minimal")}
