@@ -34,16 +34,16 @@ import json
 import os
 import sys
 from collections.abc import Callable, Mapping
-from pathlib import Path
 from typing import TextIO
 
-import yaml
 
 from . import digest as digest_module
 from . import publication as publication_module
 from . import release_provenance
 from . import sbom as sbom_module
 from . import validation
+from . import _pack_fs
+from ._authoring_safety import sensitive_member
 
 STATE_ABSENT = "absent"
 STATE_UNAVAILABLE = "unavailable"
@@ -156,45 +156,38 @@ def load_release_evidence(
     rather than an error.
     """
 
-    base = Path(evidence_dir)
-    profile_path = base / "release.yaml"
-    if not profile_path.is_file():
+    limits = validation.PackValidationLimits()
+    try:
+        _root, root_fd = _pack_fs.open_root(evidence_dir)
+    except _pack_fs.PackFilesystemError:
         return None, None, None
-    profile = yaml.safe_load(profile_path.read_text(encoding="utf-8"))
-    profile = profile if isinstance(profile, dict) else None
-    evidence = profile.get("evidence") if isinstance(profile, dict) else None
-    sbom_document = _load_json_pointer(base, evidence, "sbom")
-    provenance_document = _load_json_pointer(base, evidence, "provenance")
-    return profile, sbom_document, provenance_document
+    try:
+        errors = validation._Errors(limits)
+        profile = validation._load_yaml_member(root_fd, "release.yaml", limits, errors)
+        profile = profile if isinstance(profile, dict) and errors.result().ok else None
+        evidence = profile.get("evidence") if profile is not None else None
+        return (profile, _load_json_pointer(root_fd, evidence, "sbom", limits),
+                _load_json_pointer(root_fd, evidence, "provenance", limits))
+    finally:
+        os.close(root_fd)
 
 
-def _load_json_pointer(base: Path, evidence: object, key: str) -> dict | None:
+def _load_json_pointer(
+    root_fd: int, evidence: object, key: str, limits: validation.PackValidationLimits,
+) -> dict | None:
     """Load one evidence document referenced by ``evidence[key].path``.
 
-    The referenced path is external, so it is resolved and confirmed to stay
-    inside ``base`` before any bytes are read. Containment is enforced two ways:
-    the resolved target must sit under ``base`` by ``Path.parents`` *and* their
-    real paths must share ``base`` as their common prefix
-    (``os.path.commonpath([base_real, target_real]) == base_real``). A path that
-    escapes -- or bytes that cannot be parsed -- yields ``None`` rather than
-    reaching the reader.
+    Read through the same root descriptor, refusing links, special files,
+    escaping paths, duplicate keys and oversized documents before use.
     """
 
-    document: dict | None = None
     ref = evidence.get(key) if isinstance(evidence, dict) else None
     rel = ref.get("path") if isinstance(ref, dict) else None
-    if isinstance(rel, str):
-        base_real = os.path.realpath(base)
-        base_resolved = base.resolve()
-        target = (base / rel).resolve()
-        under_base = base_resolved in target.parents or target == base_resolved
-        contained = under_base and os.path.commonpath([base_real, os.path.realpath(target)]) == base_real
-        if contained:
-            try:
-                document = json.loads(target.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                document = None
-    return document
+    if not isinstance(rel, str) or sensitive_member(rel):
+        return None
+    errors = validation._Errors(limits)
+    document = validation._strict_json_member(root_fd, rel, limits, errors)
+    return document if isinstance(document, dict) and errors.result().ok else None
 
 
 def _static_gate(pack_root: str) -> Evidence:

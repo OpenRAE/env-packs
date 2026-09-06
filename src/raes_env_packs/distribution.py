@@ -654,12 +654,14 @@ def plan_publish(
 
     profile, _sbom, _provenance = verify_module.load_release_evidence(release_root)
     diagnostics: list[validation.Diagnostic] = []
-    if not isinstance(profile, dict) or "evidence" not in profile:
-        diagnostics.append(validation.Diagnostic("distribution.not-a-published-release", path=release_root))
     subject = ""
     if isinstance(profile, dict):
-        source_set = profile.get("release", {}).get("source_set", {})
-        subject = source_set.get("set_digest", "") if isinstance(source_set, dict) else ""
+        release = profile.get("release")
+        source_set = release.get("source_set") if isinstance(release, dict) else None
+        observed = source_set.get("set_digest") if isinstance(source_set, dict) else None
+        subject = observed if isinstance(observed, str) else ""
+    if not subject or not isinstance(profile.get("evidence"), dict):
+        diagnostics.append(validation.Diagnostic("distribution.not-a-published-release", path=release_root))
     effects = [
         Effect(EFFECT_NETWORK, f"contact {selector.repository}"),
         Effect(EFFECT_CREDENTIAL, "use registry credentials from the operator's helper"),

@@ -27,6 +27,8 @@ pip install raes-env-packs
 - **Author a pack** — scaffold one with the [pack tools](new-pack-script.md) and
   plan it against the [golden-readiness checklist](golden-readiness.md), then
   add common infrastructure from [reusable kits](kits.md).
+- **Use an MCP host** — [search, inspect, and author packs](mcp.md) with explicit
+  review before preparation and writes.
 - **Consume a pack** — [check a pack](checking.md) you received with
   `raes-pack-check`, or call the [`validate_pack` API](validating.md), before you
   trust its bytes. To install and verify a signed release, see
@@ -54,6 +56,7 @@ limitations
 :caption: Author a pack
 
 new-pack-script
+mcp
 kits
 kit-content-strategy
 pack-issue-skeleton-script
