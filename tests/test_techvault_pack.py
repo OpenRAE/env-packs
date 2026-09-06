@@ -101,6 +101,27 @@ _GENERATED_SSH_CONTENT_IDS = frozenset(
     }
 )
 
+_UNDERDECLARED_RUNTIME_NODES = frozenset(
+    {
+        "thehive",
+        "cortex",
+        "cortex-initializer",
+        "misp",
+        "misp-db",
+        "misp-redis",
+        "wazuh-dashboard",
+        "shuffle-backend",
+        "shuffle-frontend",
+        "ad",
+        "kali-capture",
+        "kali-ssh-proxy",
+        "webapp-proxy",
+        "aptl-otel-collector",
+        "aptl-tempo",
+        "aptl-grafana-otel",
+    }
+)
+
 
 def _load_sdl() -> dict:
     return yaml.safe_load(_SDL.read_text(encoding="utf-8"))
@@ -1151,13 +1172,336 @@ class TechVaultPackTests(unittest.TestCase):
                         errors,
                     )
 
+    def test_underdeclared_nodes_have_complete_runtime_contracts(self) -> None:
+        nodes = _load_sdl()["nodes"]
+        expected_runtime_keys = {
+            "thehive": {"applications", "platform_applications", "service_listeners"},
+            "cortex": {"applications", "platform_applications", "service_listeners"},
+            "cortex-initializer": {"container", "environment"},
+            "misp": {"applications", "platform_applications", "service_listeners"},
+            "misp-db": {"database_services", "environment", "service_listeners"},
+            "misp-redis": {"datastore_services", "service_listeners"},
+            "wazuh-dashboard": {
+                "applications",
+                "platform_applications",
+                "service_listeners",
+            },
+            "shuffle-backend": {
+                "applications",
+                "platform_applications",
+                "service_listeners",
+            },
+            "shuffle-frontend": {"applications", "service_listeners"},
+            "ad": {"identity_authorities", "service_listeners"},
+            "kali-capture": {"container", "network_sensors"},
+            "kali-ssh-proxy": {"service_listeners"},
+            "webapp-proxy": {"applications", "service_listeners"},
+            "aptl-otel-collector": {"service_listeners"},
+            "aptl-tempo": {"container", "datastore_services", "service_listeners"},
+            "aptl-grafana-otel": {
+                "applications",
+                "platform_applications",
+                "service_listeners",
+            },
+        }
+        expected_policy = {
+            "thehive": ("unless_stopped", "1 GiB"),
+            "cortex": ("unless_stopped", "2 GiB"),
+            "cortex-initializer": ("no", None),
+            "misp": ("unless_stopped", "2 GiB"),
+            "misp-db": ("unless_stopped", "512 MiB"),
+            "misp-redis": ("unless_stopped", "128 MiB"),
+            "wazuh-dashboard": ("always", "1 GiB"),
+            "shuffle-backend": ("unless_stopped", "1 GiB"),
+            "shuffle-frontend": ("unless_stopped", "256 MiB"),
+            "ad": ("unless_stopped", "512 MiB"),
+            "kali-capture": ("unless_stopped", "256 MiB"),
+            "kali-ssh-proxy": ("unless_stopped", "64 MiB"),
+            "webapp-proxy": ("unless_stopped", None),
+            "aptl-otel-collector": ("unless_stopped", "256 MiB"),
+            "aptl-tempo": ("unless_stopped", "512 MiB"),
+            "aptl-grafana-otel": ("unless_stopped", "256 MiB"),
+        }
+        self.assertEqual(set(expected_runtime_keys), _UNDERDECLARED_RUNTIME_NODES)
+        self.assertEqual(set(expected_policy), _UNDERDECLARED_RUNTIME_NODES)
+
+        for node_name, required_keys in expected_runtime_keys.items():
+            with self.subTest(node=node_name):
+                runtime = nodes[node_name]["runtime"]
+                self.assertLessEqual(required_keys, set(runtime))
+                policy = runtime["operational_policy"]
+                expected_restart, expected_memory = expected_policy[node_name]
+                self.assertEqual(policy["restart"], expected_restart)
+                if expected_memory is None:
+                    self.assertNotIn("resource_limits", policy)
+                else:
+                    self.assertEqual(
+                        policy["resource_limits"]["memory"], expected_memory
+                    )
+
+                listeners = {
+                    listener["service"]: listener
+                    for listener in runtime.get("service_listeners", [])
+                }
+                for service in nodes[node_name]["services"]:
+                    listener = listeners[service["name"]]
+                    self.assertEqual(listener["port"], service["port"])
+                    self.assertEqual(listener["protocol"], service["protocol"])
+                    self.assertNotIn("role", listener)
+
+    def test_underdeclared_runtime_joins_are_explicit_and_portable(self) -> None:
+        sdl = _load_sdl()
+        nodes = sdl["nodes"]
+        infrastructure = sdl["infrastructure"]
+
+        expected_application_services = {
+            "thehive": "thehive-api",
+            "cortex": "cortex-api",
+            "misp": "https",
+            "wazuh-dashboard": "dashboard",
+            "shuffle-backend": "shuffle-api",
+            "shuffle-frontend": "https",
+            "webapp-proxy": "http",
+            "aptl-grafana-otel": "grafana",
+        }
+        for node_name, service in expected_application_services.items():
+            with self.subTest(application=node_name):
+                (application,) = nodes[node_name]["runtime"]["applications"]
+                self.assertEqual(application["service"], service)
+                self.assertTrue(application["routes"])
+
+        thehive_command = nodes["thehive"]["runtime"]["container"]["command"]
+        thehive_index_backend = thehive_command[
+            thehive_command.index("--index-backend") + 1
+        ]
+        thehive_bindings = {
+            item["role"]: (item["target_node_ref"], item["target_service_ref"])
+            for item in nodes["thehive"]["runtime"]["platform_applications"][0][
+                "upstream_bindings"
+            ]
+        }
+        self.assertEqual(
+            (thehive_index_backend, thehive_bindings),
+            (
+                "elasticsearch",
+                {
+                    "cql_backend": ("thehive-cassandra", "cassandra"),
+                    "index_backend": ("thehive-es", "elasticsearch"),
+                },
+            ),
+        )
+        self.assertEqual(
+            infrastructure["thehive"]["dependencies"],
+            ["thehive-cassandra", "thehive-es", "cortex-initializer"],
+        )
+        self.assertNotIn("--secret", thehive_command)
+        thehive_environment = {
+            item["name"]: item
+            for item in nodes["thehive"]["runtime"]["environment"]
+        }
+        self.assertEqual(
+            thehive_environment["TH_SECRET"]["value_classification"],
+            "secret_fixture",
+        )
+        self.assertNotIn(
+            thehive_environment["TH_SECRET"]["value"],
+            thehive_command,
+        )
+
+        misp_runtime = nodes["misp"]["runtime"]
+        self.assertEqual(
+            misp_runtime["platform_applications"][0]["platform_kind"],
+            "threat_intel",
+        )
+        self.assertEqual(
+            infrastructure["misp"]["dependencies"], ["misp-db", "misp-redis"]
+        )
+        misp_environment = {
+            item["name"]: item for item in misp_runtime["environment"]
+        }
+        self.assertEqual(misp_environment["MYSQL_HOST"]["value"], "misp-db")
+        self.assertEqual(misp_environment["REDIS_HOST"]["value"], "misp-redis")
+        self.assertEqual(
+            misp_environment["MYSQL_PASSWORD"]["value_classification"],
+            "secret_fixture",
+        )
+
+        (database,) = nodes["misp-db"]["runtime"]["database_services"]
+        self.assertEqual(
+            (database["service"], database["engine"], database["protocol"]),
+            ("mysql", "mariadb", "mysql"),
+        )
+        self.assertEqual(database["databases"][0]["name"], "misp")
+        db_environment = {
+            item["name"]: item
+            for item in nodes["misp-db"]["runtime"]["environment"]
+        }
+        for name in ("MYSQL_PASSWORD", "MYSQL_ROOT_PASSWORD"):
+            self.assertEqual(
+                db_environment[name]["value_classification"], "secret_fixture"
+            )
+
+        (redis,) = nodes["misp-redis"]["runtime"]["datastore_services"]
+        self.assertEqual(
+            (redis["service"], redis["engine"], redis["data_model"]),
+            ("redis", "redis", "key_value"),
+        )
+        self.assertEqual(redis["persistence"]["eviction"], "noeviction")
+
+        (authority,) = nodes["ad"]["runtime"]["identity_authorities"]
+        self.assertEqual(authority["kind"], "domain")
+        self.assertEqual(authority["domain_name"], "techvault.local")
+        self.assertEqual(
+            {item["protocol"] for item in authority["services"]},
+            {"ldap", "kerberos", "ad_ds_rpc"},
+        )
+
+        (sensor,) = nodes["kali-capture"]["runtime"]["network_sensors"]
+        self.assertEqual(
+            (sensor["implementation"], sensor["sensor_kind"], sensor["capture_mode"]),
+            ("tcpdump", "packet_capture", "pcap"),
+        )
+        self.assertNotIn("applications", nodes["kali-ssh-proxy"]["runtime"])
+        self.assertNotIn("forwarding_agents", nodes["kali-ssh-proxy"]["runtime"])
+
+        webapp_route = nodes["webapp-proxy"]["runtime"]["applications"][0][
+            "routes"
+        ][0]
+        self.assertEqual(
+            webapp_route["upstream_target"],
+            {
+                "target_node_ref": "webapp",
+                "target_service": "http",
+                "scheme": "http",
+                "tls_terminated_here": False,
+            },
+        )
+
+        collector_runtime = nodes["aptl-otel-collector"]["runtime"]
+        self.assertNotIn("forwarding_agents", collector_runtime)
+        self.assertIn(
+            "aptl-tempo", infrastructure["aptl-otel-collector"]["dependencies"]
+        )
+        health_service = next(
+            service
+            for service in nodes["aptl-otel-collector"]["services"]
+            if service["name"] == "health"
+        )
+        health_listener = next(
+            listener
+            for listener in collector_runtime["service_listeners"]
+            if listener["service"] == "health"
+        )
+        collector_config = yaml.safe_load(
+            sdl["content"]["otel-collector-config"]["text"]
+        )
+        health_endpoint = collector_config["extensions"]["health_check"][
+            "endpoint"
+        ]
+        health_address, health_port = health_endpoint.rsplit(":", 1)
+        self.assertEqual(
+            (
+                health_service["port"],
+                health_listener["address"],
+                health_listener["port"],
+            ),
+            (int(health_port), health_address, int(health_port)),
+        )
+
+        tempo_services = {
+            service["name"]: service for service in nodes["aptl-tempo"]["services"]
+        }
+        self.assertEqual(tempo_services["otlp-grpc"]["port"], 4317)
+        (tempo,) = nodes["aptl-tempo"]["runtime"]["datastore_services"]
+        self.assertEqual(
+            (tempo["engine"], tempo["data_model"]), ("other", "other")
+        )
+        self.assertIn("trace", tempo["description"].lower())
+
+        grafana = nodes["aptl-grafana-otel"]["runtime"]
+        self.assertEqual(
+            grafana["platform_applications"][0]["platform_kind"],
+            "analytics_dashboard",
+        )
+        self.assertEqual(
+            grafana["platform_applications"][0]["upstream_bindings"][0][
+                "target_node_ref"
+            ],
+            "aptl-tempo",
+        )
+
+        mount_owned_nodes = {
+            "thehive",
+            "cortex",
+            "misp",
+            "misp-db",
+            "wazuh-dashboard",
+            "shuffle-backend",
+            "shuffle-frontend",
+            "ad",
+            "kali-capture",
+            "aptl-otel-collector",
+            "aptl-tempo",
+            "aptl-grafana-otel",
+        }
+        for node_name in mount_owned_nodes:
+            self.assertNotIn("mounts", nodes[node_name]["runtime"])
+
+        declared_destinations: dict[str, set[str]] = {}
+        for content in sdl["content"].values():
+            if path := content.get("path"):
+                declared_destinations.setdefault(content["target"], set()).add(path)
+        for volume in sdl["persistent_volumes"].values():
+            for consumer in volume.get("consumers", []):
+                declared_destinations.setdefault(consumer["node"], set()).add(
+                    consumer["mount_destination"]
+                )
+        for artifact in sdl["generated_artifacts"].values():
+            for consumer in artifact.get("consumers", []):
+                declared_destinations.setdefault(consumer["node"], set()).add(
+                    consumer["mount_destination"]
+                )
+        expected_destinations = {
+            "thehive": "/opt/thp/thehive/data",
+            "cortex": "/opt/cortex/jobs",
+            "misp": "/var/www/MISP/app/Config",
+            "misp-db": "/var/lib/mysql",
+            "wazuh-dashboard": "/usr/share/wazuh-dashboard/data/wazuh/config",
+            "shuffle-backend": "/shuffle-database",
+            "shuffle-frontend": "/opt/aptl/soc-certs",
+            "ad": "/var/lib/samba",
+            "kali-capture": "/var/log/aptl/captures",
+            "aptl-otel-collector": "/etc/otelcol-contrib/config.yaml",
+            "aptl-tempo": "/var/tempo",
+            "aptl-grafana-otel": "/var/lib/grafana",
+        }
+        self.assertEqual(set(expected_destinations), mount_owned_nodes)
+        for node_name, destination in expected_destinations.items():
+            self.assertIn(destination, declared_destinations[node_name])
+
+        for node_name in _UNDERDECLARED_RUNTIME_NODES:
+            for item in nodes[node_name]["runtime"].get("environment", []):
+                self.assertIn("value_classification", item)
+                self.assertIn("provenance", item)
+                self.assertFalse(
+                    item.get("value", "").startswith(("/home/", "/Users/"))
+                )
+                if item["value_classification"] in {"operator_secret", "redacted"}:
+                    self.assertNotIn("value", item)
+
     def test_operator_soc_surfaces_are_loopback_published(self) -> None:
         nodes = _load_sdl()["nodes"]
         expected = {
             "misp": {(443, 8443)},
             "thehive": {(9000, 9000)},
             "cortex": {(9001, 9001)},
+            "wazuh-dashboard": {(5601, 443)},
             "shuffle-frontend": {(443, 3443), (80, 3001)},
+            "kali-ssh-proxy": {(2023, 2023)},
+            "webapp-proxy": {(8080, 8080)},
+            "aptl-otel-collector": {(4317, 4317), (4318, 4318)},
+            "aptl-tempo": {(3200, 3200)},
+            "aptl-grafana-otel": {(3000, 3100)},
         }
 
         for node_name, expected_ports in expected.items():
