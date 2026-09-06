@@ -164,6 +164,51 @@ class LeastPrivilegeTests(unittest.TestCase):
         self.assertNotIn("attestations", perms)
         self.assertIn("googleapis/release-please-action@", _step_text(job))
 
+    def test_release_pr_maintenance_is_sequenced_behind_release_detection(self) -> None:
+        # Root cause of #328: `concurrency: release` serializes workflow RUNS, not
+        # sibling JOBS within one run. On the push that merged a release PR, the
+        # maintenance job ran beside publication, read a manifest that had already
+        # advanced while the signed tag did not yet exist, failed to resolve the
+        # last release, rescanned full history, and opened a phantom major release
+        # PR. Ordering maintenance behind the authenticated detector is the fix.
+        job = _job(self.data, "release-please")
+        needs = job.get("needs", [])
+        needs = [needs] if isinstance(needs, str) else needs
+        self.assertIn(
+            "detect-release", needs,
+            "release-please must depend on detect-release so PR maintenance "
+            "cannot run beside publication of a merged release PR (#328)",
+        )
+
+    def test_release_pr_maintenance_excludes_the_release_push(self) -> None:
+        # Enforcing predicate: the maintenance job consumes the detector's single
+        # release decision. Losing this conjunct restores the phantom-PR race.
+        condition = str(_job(self.data, "release-please").get("if", ""))
+        self.assertIn(
+            "needs.detect-release.outputs.release != 'true'", condition,
+            "release-please must be skipped for an authenticated release push",
+        )
+        self.assertIn(
+            "github.event_name == 'push'", condition,
+            "a normal non-release push must still maintain the release PR",
+        )
+
+    def test_release_pr_maintenance_fails_closed_on_a_detector_failure(self) -> None:
+        # A failed or skipped detector must skip maintenance, never license it.
+        # `always()` / `!cancelled()` would reinterpret a missing output as
+        # permission to run — the exact weakening this pins shut.
+        condition = str(_job(self.data, "release-please").get("if", ""))
+        self.assertNotIn("always()", condition)
+        self.assertNotIn("cancelled()", condition)
+
+    def test_maintenance_and_publication_are_mutually_exclusive(self) -> None:
+        # Both jobs branch on the same detector output with opposite predicates,
+        # so exactly one of them can run for any single push.
+        maintain = str(_job(self.data, "release-please").get("if", ""))
+        publish = str(_job(self.data, "publish").get("if", ""))
+        self.assertIn("needs.detect-release.outputs.release != 'true'", maintain)
+        self.assertIn("needs.detect-release.outputs.release == 'true'", publish)
+
     def test_detect_release_job_is_read_only(self) -> None:
         job = _job(self.data, "detect-release")
         perms = job.get("permissions", {})
