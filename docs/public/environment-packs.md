@@ -52,7 +52,7 @@ small:
 name: example-pack
 nodes:
   target:
-    type: vm
+    type: compute
 ```
 
 ## Provenance ledger

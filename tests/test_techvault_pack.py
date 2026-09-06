@@ -25,6 +25,7 @@ import unittest
 from unittest import mock
 
 import yaml
+from raes import parse_sdl_file
 
 from raes_env_packs import PackDigestError, resolve_pack_artifact, validate_pack
 from raes_env_packs.digest import validate_pack_content_manifest
@@ -461,6 +462,68 @@ class TechVaultPackTests(unittest.TestCase):
         # This runtime-authority declaration is intentionally not a content
         # acquisition path and must survive the pack migration.
         self.assertIn("/var/run/docker.sock", _SDL.read_text(encoding="utf-8"))
+
+    def test_compute_nodes_require_container_substrate(self) -> None:
+        scenario = parse_sdl_file(_SDL)
+        sdl = _load_sdl()
+        compute_nodes = {
+            node_id
+            for node_id, node in sdl["nodes"].items()
+            if node["type"] != "switch"
+        }
+        expected_constraints = {
+            (
+                f"/nodes/{node_id}",
+                "compute-substrate",
+                "exact",
+                "exact",
+                "operating-system-container",
+            )
+            for node_id in compute_nodes
+        }
+        actual_constraints = {
+            (
+                constraint["field_pointer"],
+                constraint["concern"],
+                constraint["posture"],
+                constraint["domain"]["kind"],
+                constraint["domain"]["value"],
+            )
+            for constraint in sdl["realization"]["constraints"]
+            if constraint["concern"] == "compute-substrate"
+        }
+
+        self.assertEqual(len(scenario.nodes), 38)
+        self.assertEqual(len(compute_nodes), 33)
+        self.assertEqual(
+            {sdl["nodes"][node_id]["type"] for node_id in compute_nodes},
+            {"compute"},
+        )
+        self.assertEqual(actual_constraints, expected_constraints)
+
+    def test_pack_validator_rejects_compute_substrate_drift(self) -> None:
+        mutations = {
+            "legacy node type": lambda sdl: sdl["nodes"]["wazuh-manager"].update(
+                type="vm"
+            ),
+            "missing constraint": lambda sdl: sdl["realization"][
+                "constraints"
+            ].pop(),
+            "wrong substrate": lambda sdl: sdl["realization"]["constraints"][
+                0
+            ]["domain"].update(value="virtual-machine"),
+        }
+
+        for expected, mutate in mutations.items():
+            with self.subTest(expected=expected):
+                candidate = copy.deepcopy(_load_sdl())
+                mutate(candidate)
+                errors = _PACK_VALIDATOR.validate_compute_substrate_contract(
+                    candidate
+                )
+                self.assertTrue(
+                    any(expected in error for error in errors), errors
+                )
 
     def test_shuffle_runtime_contract_is_complete_and_consistent(self) -> None:
         _assert_shuffle_runtime_contract(self, _load_sdl())
