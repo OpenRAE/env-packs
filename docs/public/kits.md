@@ -137,6 +137,12 @@ Kit assets can be placed only below `assets/briefing/`, `assets/content/`,
 `assets/kits/`, or `docs/kits/`. They cannot add pack validators, tests, hooks,
 or workflows. Catalog titles are also treated as untrusted terminal text.
 
+Release inspection parses the kit module in memory and denies imports. Local
+composition resolves imports through RAES with an empty registry policy;
+`raes-trust.yaml` and known secret-file names are refused before content reads.
+An MCP host uses [separate preparation and review steps](mcp.md) before applying
+a kit proposal.
+
 An exceptionally rare failed recovery exchange returns a tool failure and a
 `recovery:` path. That directory contains the preserved original pack; do not
 delete it until the target and recovery copy have been inspected.

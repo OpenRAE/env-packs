@@ -6,7 +6,7 @@ flagged five ``pip install`` invocations across ``ci.yml`` and
 Scorecard wants a hash, because a version alone still trusts whatever artifact
 the index serves for that version.
 
-Two invariants are asserted here.
+Three invariants are asserted here.
 
 1. Every ``pip install`` in every workflow is in one of the shapes Scorecard
    accepts as pinned. ``_is_unpinned_pip_install`` below reimplements
@@ -16,6 +16,8 @@ Two invariants are asserted here.
 2. The ``requirements/*.txt`` locks are internally coherent: fully hashed,
    exactly pinned, agreeing with each other on any shared transitive package, and
    consistent with ``pyproject.toml``.
+3. Static analysis and package syntax retain the declared Python compatibility
+   floor, rather than assuming only the newer CI interpreter is supported.
 
 On invariant 2's last point -- the locks are CI *toolchain* pins. They are not a
 restatement of what the distributed package requires. ``pyproject.toml`` keeps
@@ -27,6 +29,7 @@ them.
 
 from __future__ import annotations
 
+import ast
 import pathlib
 import re
 import shlex
@@ -187,6 +190,22 @@ def _parse_lock(path: pathlib.Path) -> dict[str, str]:
         if match:
             pins[match.group("name").lower().replace("_", "-")] = match.group("version")
     return pins
+
+
+class PythonAnalysisCompatibilityTests(unittest.TestCase):
+    def test_analysis_and_source_syntax_include_the_declared_python_floor(self) -> None:
+        project = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))["project"]
+        declared = re.fullmatch(r">=(\d+)\.(\d+)", project["requires-python"])
+        self.assertIsNotNone(declared, "update the floor check when the supported range changes")
+        floor = tuple(map(int, declared.groups()))
+        properties = (_ROOT / "sonar-project.properties").read_text(encoding="utf-8")
+        configured = re.search(r"^sonar\.python\.version=(.+)$", properties, re.MULTILINE)
+        self.assertIsNotNone(configured)
+        versions = [tuple(map(int, item.strip().split("."))) for item in configured[1].split(",")]
+        self.assertIn(floor, versions, "analysis must not recommend syntax unavailable to supported users")
+        for path in sorted((_ROOT / "src" / "raes_env_packs").rglob("*.py")):
+            with self.subTest(source=path.relative_to(_ROOT).as_posix()):
+                ast.parse(path.read_text(encoding="utf-8"), filename=str(path), feature_version=floor)
 
 
 class PipPinningRuleTests(unittest.TestCase):
