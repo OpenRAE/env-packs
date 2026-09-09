@@ -116,9 +116,6 @@ _UNDERDECLARED_RUNTIME_NODES = frozenset(
         "kali-capture",
         "kali-ssh-proxy",
         "webapp-proxy",
-        "aptl-otel-collector",
-        "aptl-tempo",
-        "aptl-grafana-otel",
     }
 )
 
@@ -463,9 +460,9 @@ class TechVaultPackTests(unittest.TestCase):
         sdl = _load_sdl()
         self.assertEqual(sdl["name"], "techvault")
         expected_counts = {
-            "nodes": 38,
-            "infrastructure": 38,
-            "persistent_volumes": 24,
+            "nodes": 35,
+            "infrastructure": 35,
+            "persistent_volumes": 22,
             "features": 2,
             "vulnerabilities": 14,
             "propositions": 3,
@@ -483,6 +480,40 @@ class TechVaultPackTests(unittest.TestCase):
         # This runtime-authority declaration is intentionally not a content
         # acquisition path and must survive the pack migration.
         self.assertIn("/var/run/docker.sock", _SDL.read_text(encoding="utf-8"))
+
+    def test_backend_observability_nodes_are_excised(self) -> None:
+        sdl = _load_sdl()
+        removed = {"aptl-otel-collector", "aptl-tempo", "aptl-grafana-otel"}
+
+        self.assertEqual(removed & set(sdl["nodes"]), set())
+        self.assertEqual(removed & set(sdl["infrastructure"]), set())
+        for name, entry in sdl["infrastructure"].items():
+            with self.subTest(infrastructure=name):
+                self.assertEqual(removed & set(entry.get("dependencies", [])), set())
+
+        self.assertEqual(
+            {constraint["field_pointer"] for constraint in sdl["realization"]["constraints"]}
+            & {f"/nodes/{node_id}" for node_id in removed},
+            set(),
+        )
+
+        for section in ("persistent_volumes", "generated_artifacts"):
+            for name, entry in sdl[section].items():
+                with self.subTest(section=section, entry=name):
+                    consumers = {item["node"] for item in entry.get("consumers", [])}
+                    self.assertEqual(removed & consumers, set())
+
+        self.assertEqual(
+            removed & {content.get("target") for content in sdl["content"].values()},
+            set(),
+        )
+
+        # Nothing may survive by name: a stray dependency, upstream binding, or
+        # config body would reintroduce the backend coupling the excision removes.
+        raw = _SDL.read_text(encoding="utf-8")
+        for node_id in removed:
+            with self.subTest(node=node_id):
+                self.assertNotIn(node_id, raw)
 
     def test_compute_nodes_require_container_substrate(self) -> None:
         scenario = parse_sdl_file(_SDL)
@@ -514,8 +545,8 @@ class TechVaultPackTests(unittest.TestCase):
             if constraint["concern"] == "compute-substrate"
         }
 
-        self.assertEqual(len(scenario.nodes), 38)
-        self.assertEqual(len(compute_nodes), 33)
+        self.assertEqual(len(scenario.nodes), 35)
+        self.assertEqual(len(compute_nodes), 30)
         self.assertEqual(
             {sdl["nodes"][node_id]["type"] for node_id in compute_nodes},
             {"compute"},
@@ -637,10 +668,10 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline & materialized, set())
         self.assertEqual(sourced & materialized, set())
         self.assertEqual(inline | sourced | materialized, set(content))
-        self.assertEqual(len(inline), 23)
+        self.assertEqual(len(inline), 20)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
         self.assertEqual(materialized, set())
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 66)
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 63)
 
     def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
         sdl = _load_sdl()
@@ -1196,13 +1227,6 @@ class TechVaultPackTests(unittest.TestCase):
             "kali-capture": {"container", "network_sensors"},
             "kali-ssh-proxy": {"service_listeners"},
             "webapp-proxy": {"applications", "service_listeners"},
-            "aptl-otel-collector": {"service_listeners"},
-            "aptl-tempo": {"container", "datastore_services", "service_listeners"},
-            "aptl-grafana-otel": {
-                "applications",
-                "platform_applications",
-                "service_listeners",
-            },
         }
         expected_policy = {
             "thehive": ("unless_stopped", "1 GiB"),
@@ -1218,9 +1242,6 @@ class TechVaultPackTests(unittest.TestCase):
             "kali-capture": ("unless_stopped", "256 MiB"),
             "kali-ssh-proxy": ("unless_stopped", "64 MiB"),
             "webapp-proxy": ("unless_stopped", None),
-            "aptl-otel-collector": ("unless_stopped", "256 MiB"),
-            "aptl-tempo": ("unless_stopped", "512 MiB"),
-            "aptl-grafana-otel": ("unless_stopped", "256 MiB"),
         }
         self.assertEqual(set(expected_runtime_keys), _UNDERDECLARED_RUNTIME_NODES)
         self.assertEqual(set(expected_policy), _UNDERDECLARED_RUNTIME_NODES)
@@ -1262,7 +1283,6 @@ class TechVaultPackTests(unittest.TestCase):
             "shuffle-backend": "shuffle-api",
             "shuffle-frontend": "https",
             "webapp-proxy": "http",
-            "aptl-grafana-otel": "grafana",
         }
         for node_name, service in expected_application_services.items():
             with self.subTest(application=node_name):
@@ -1377,59 +1397,6 @@ class TechVaultPackTests(unittest.TestCase):
             },
         )
 
-        collector_runtime = nodes["aptl-otel-collector"]["runtime"]
-        self.assertNotIn("forwarding_agents", collector_runtime)
-        self.assertIn(
-            "aptl-tempo", infrastructure["aptl-otel-collector"]["dependencies"]
-        )
-        health_service = next(
-            service
-            for service in nodes["aptl-otel-collector"]["services"]
-            if service["name"] == "health"
-        )
-        health_listener = next(
-            listener
-            for listener in collector_runtime["service_listeners"]
-            if listener["service"] == "health"
-        )
-        collector_config = yaml.safe_load(
-            sdl["content"]["otel-collector-config"]["text"]
-        )
-        health_endpoint = collector_config["extensions"]["health_check"][
-            "endpoint"
-        ]
-        health_address, health_port = health_endpoint.rsplit(":", 1)
-        self.assertEqual(
-            (
-                health_service["port"],
-                health_listener["address"],
-                health_listener["port"],
-            ),
-            (int(health_port), health_address, int(health_port)),
-        )
-
-        tempo_services = {
-            service["name"]: service for service in nodes["aptl-tempo"]["services"]
-        }
-        self.assertEqual(tempo_services["otlp-grpc"]["port"], 4317)
-        (tempo,) = nodes["aptl-tempo"]["runtime"]["datastore_services"]
-        self.assertEqual(
-            (tempo["engine"], tempo["data_model"]), ("other", "other")
-        )
-        self.assertIn("trace", tempo["description"].lower())
-
-        grafana = nodes["aptl-grafana-otel"]["runtime"]
-        self.assertEqual(
-            grafana["platform_applications"][0]["platform_kind"],
-            "analytics_dashboard",
-        )
-        self.assertEqual(
-            grafana["platform_applications"][0]["upstream_bindings"][0][
-                "target_node_ref"
-            ],
-            "aptl-tempo",
-        )
-
         mount_owned_nodes = {
             "thehive",
             "cortex",
@@ -1440,9 +1407,6 @@ class TechVaultPackTests(unittest.TestCase):
             "shuffle-frontend",
             "ad",
             "kali-capture",
-            "aptl-otel-collector",
-            "aptl-tempo",
-            "aptl-grafana-otel",
         }
         for node_name in mount_owned_nodes:
             self.assertNotIn("mounts", nodes[node_name]["runtime"])
@@ -1471,9 +1435,6 @@ class TechVaultPackTests(unittest.TestCase):
             "shuffle-frontend": "/opt/aptl/soc-certs",
             "ad": "/var/lib/samba",
             "kali-capture": "/var/log/aptl/captures",
-            "aptl-otel-collector": "/etc/otelcol-contrib/config.yaml",
-            "aptl-tempo": "/var/tempo",
-            "aptl-grafana-otel": "/var/lib/grafana",
         }
         self.assertEqual(set(expected_destinations), mount_owned_nodes)
         for node_name, destination in expected_destinations.items():
@@ -1499,9 +1460,6 @@ class TechVaultPackTests(unittest.TestCase):
             "shuffle-frontend": {(443, 3443), (80, 3001)},
             "kali-ssh-proxy": {(2023, 2023)},
             "webapp-proxy": {(8080, 8080)},
-            "aptl-otel-collector": {(4317, 4317), (4318, 4318)},
-            "aptl-tempo": {(3200, 3200)},
-            "aptl-grafana-otel": {(3000, 3100)},
         }
 
         for node_name, expected_ports in expected.items():

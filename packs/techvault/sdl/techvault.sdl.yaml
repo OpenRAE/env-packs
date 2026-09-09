@@ -2514,208 +2514,6 @@ nodes:
                 tls_terminated_here: false
       operational_policy:
         restart: unless_stopped
-  aptl-otel-collector:
-    type: compute
-    os: linux
-    source:
-      name: "otel/opentelemetry-collector-contrib"
-      version: "sha256:e39311df1f3d941923c00da79ac7ba6269124a870ee87e3c3ad24d60f8aee4d2"
-      artifact_requirement:
-        requirement_id: aptl-otel-collector-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "otel/opentelemetry-collector-contrib"
-          version: "sha256:e39311df1f3d941923c00da79ac7ba6269124a870ee87e3c3ad24d60f8aee4d2"
-          digest: "sha256:e39311df1f3d941923c00da79ac7ba6269124a870ee87e3c3ad24d60f8aee4d2"
-          media_type: "application/vnd.docker.distribution.manifest.list.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
-    services:
-      - {name: otlp-grpc, port: 4317, protocol: tcp}
-      - {name: otlp-http, port: 4318, protocol: tcp}
-      - {name: health, port: 13133, protocol: tcp}
-    runtime:
-      network:
-        published_ports:
-          - {container_port: 4317, protocol: tcp, host_port: 4317, host_ip: "127.0.0.1"}
-          - {container_port: 4318, protocol: tcp, host_port: 4318, host_ip: "127.0.0.1"}
-      service_listeners:
-        - service_listener_id: collector-otlp-grpc-listener
-          service: otlp-grpc
-          address: 0.0.0.0
-          port: 4317
-          protocol: tcp
-          scope: wildcard
-          published_port_refs:
-            - {container_port: 4317, protocol: tcp, host_port: 4317, host_ip: "127.0.0.1"}
-          provenance: operator
-        - service_listener_id: collector-otlp-http-listener
-          service: otlp-http
-          address: 0.0.0.0
-          port: 4318
-          protocol: tcp
-          scope: wildcard
-          published_port_refs:
-            - {container_port: 4318, protocol: tcp, host_port: 4318, host_ip: "127.0.0.1"}
-          provenance: operator
-        - service_listener_id: collector-health-listener
-          service: health
-          address: 0.0.0.0
-          port: 13133
-          protocol: tcp
-          scope: wildcard
-          provenance: operator
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 256 MiB
-  aptl-tempo:
-    type: compute
-    os: linux
-    source:
-      name: "grafana/tempo"
-      version: "sha256:4b0277a9b572a4b1fa43b01468e58911ec214dd69d033f2cd476596d14de9fe3"
-      artifact_requirement:
-        requirement_id: aptl-tempo-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "grafana/tempo"
-          version: "sha256:4b0277a9b572a4b1fa43b01468e58911ec214dd69d033f2cd476596d14de9fe3"
-          digest: "sha256:4b0277a9b572a4b1fa43b01468e58911ec214dd69d033f2cd476596d14de9fe3"
-          media_type: "application/vnd.docker.distribution.manifest.list.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
-    services:
-      - {name: tempo-http, port: 3200, protocol: tcp}
-      - {name: otlp-grpc, port: 4317, protocol: tcp}
-    runtime:
-      container:
-        command:
-          - "-config.file=/etc/tempo/tempo.yaml"
-      network:
-        published_ports:
-          - {container_port: 3200, protocol: tcp, host_port: 3200, host_ip: "127.0.0.1"}
-      service_listeners:
-        - service_listener_id: tempo-http-listener
-          service: tempo-http
-          address: 0.0.0.0
-          port: 3200
-          protocol: tcp
-          scope: wildcard
-          published_port_refs:
-            - {container_port: 3200, protocol: tcp, host_port: 3200, host_ip: "127.0.0.1"}
-          provenance: operator
-        - service_listener_id: tempo-otlp-grpc-listener
-          service: otlp-grpc
-          address: 0.0.0.0
-          port: 4317
-          protocol: tcp
-          scope: wildcard
-          provenance: operator
-      datastore_services:
-        - datastore_service_id: aptl-tempo
-          service: tempo-http
-          engine: other
-          data_model: other
-          protocol: http
-          nodes:
-            - node_id: aptl-tempo-node
-              endpoints:
-                - endpoint_id: tempo-query
-                  role: client
-                  protocol: http
-                  address: aptl-tempo
-                  port: 3200
-                - endpoint_id: tempo-otlp-ingest
-                  role: client
-                  protocol: otlp
-                  address: aptl-tempo
-                  port: 4317
-          description: Trace storage and query backend for the TechVault OTLP observability path.
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 512 MiB
-  aptl-grafana-otel:
-    type: compute
-    os: linux
-    source:
-      name: "grafana/grafana"
-      version: "sha256:62d2b9d20a19714ebfe48d1bb405086081bc602aa053e28cf6d73c7537640dfb"
-      artifact_requirement:
-        requirement_id: aptl-grafana-otel-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "grafana/grafana"
-          version: "sha256:62d2b9d20a19714ebfe48d1bb405086081bc602aa053e28cf6d73c7537640dfb"
-          digest: "sha256:62d2b9d20a19714ebfe48d1bb405086081bc602aa053e28cf6d73c7537640dfb"
-          media_type: "application/vnd.docker.distribution.manifest.list.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
-    services:
-      - {name: grafana, port: 3000, protocol: tcp}
-    runtime:
-      network:
-        published_ports:
-          - {container_port: 3000, protocol: tcp, host_port: 3100, host_ip: "127.0.0.1"}
-      environment:
-        - {name: GF_SECURITY_ADMIN_USER, value: admin, value_classification: plain, provenance: compose}
-        - {name: GF_SECURITY_ADMIN_PASSWORD, value_classification: operator_secret, provenance: operator}
-        - {name: GF_USERS_ALLOW_SIGN_UP, value: "false", value_classification: plain, provenance: compose}
-      service_listeners:
-        - service_listener_id: grafana-listener
-          service: grafana
-          address: 0.0.0.0
-          port: 3000
-          protocol: tcp
-          scope: wildcard
-          published_port_refs:
-            - {container_port: 3000, protocol: tcp, host_port: 3100, host_ip: "127.0.0.1"}
-          provenance: operator
-      applications:
-        - application_id: grafana-web
-          service: grafana
-          protocol: http
-          routes:
-            - route_id: grafana-root
-              path: /
-              methods: [GET]
-              auth_required: true
-      platform_applications:
-        - platform_application_id: grafana-observability
-          service: grafana
-          platform_kind: analytics_dashboard
-          product: Grafana
-          capabilities:
-            - capability_id: analytics-presentation
-              kind: analytics_presentation
-          upstream_bindings:
-            - binding_id: tempo-data-source
-              role: data_source
-              target_node_ref: aptl-tempo
-              target_service_ref: tempo-http
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 256 MiB
 
 realization:
   constraints:
@@ -2836,18 +2634,6 @@ realization:
       posture: exact
       domain: {kind: exact, value: operating-system-container}
     - field_pointer: /nodes/webapp-proxy
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/aptl-otel-collector
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/aptl-tempo
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/aptl-grafana-otel
       concern: compute-substrate
       posture: exact
       domain: {kind: exact, value: operating-system-container}
@@ -2978,15 +2764,6 @@ infrastructure:
   webapp-proxy:
     links: [control-net, dmz-net]
     dependencies: [webapp]
-
-  aptl-otel-collector:
-    links: [security-net]
-    dependencies: [aptl-tempo]
-  aptl-tempo:
-    links: [security-net]
-  aptl-grafana-otel:
-    links: [security-net]
-    dependencies: [aptl-tempo]
 
 # Stateful Wazuh prerequisites are authored RAES resources. The deployment
 # backend materializes and verifies these before either consumer starts; the
@@ -3238,11 +3015,6 @@ persistent_volumes:
     access_mode: read_write_once
     consumers:
       - {node: cortex, mount_destination: /opt/cortex/jobs, access_mode: read_write}
-  grafana_otel_data:
-    lifecycle: retain
-    access_mode: read_write_once
-    consumers:
-      - {node: aptl-grafana-otel, mount_destination: /var/lib/grafana, access_mode: read_write}
   kali_captures:
     lifecycle: retain
     access_mode: read_write_once
@@ -3302,11 +3074,6 @@ persistent_volumes:
     consumers:
       - {node: suricata, mount_destination: /var/log/suricata, access_mode: read_write}
       - {node: wazuh-sidecar-suricata, mount_destination: /logs, access_mode: read_only}
-  tempo_data:
-    lifecycle: retain
-    access_mode: read_write_once
-    consumers:
-      - {node: aptl-tempo, mount_destination: /var/tempo, access_mode: read_write}
   thehive_cassandra_data:
     lifecycle: retain
     access_mode: read_write_once
@@ -3433,34 +3200,6 @@ vulnerabilities:
     technical: true
     class: CWE-209
 content:
-  aptl-tempo-config:
-    type: file
-    target: aptl-tempo
-    path: /etc/tempo/tempo.yaml
-    text: |
-      server:
-        http_listen_port: 3200
-
-      distributor:
-        receivers:
-          otlp:
-            protocols:
-              grpc:
-
-      ingester:
-        max_block_duration: 5m
-
-      compactor:
-        compaction:
-          block_retention: 72h
-
-      storage:
-        trace:
-          backend: local
-          wal:
-            path: /var/tempo/wal
-          local:
-            path: /var/tempo/blocks
   wazuh-indexer-opensearch-config:
     type: file
     target: wazuh-indexer
@@ -3850,52 +3589,6 @@ content:
           - mechanism: *suricata-content-copy
             acquisition: copy
             timing: pack-ingestion
-  otel-collector-config:
-    type: file
-    target: aptl-otel-collector
-    path: /etc/otelcol-contrib/config.yaml
-    text: |
-      extensions:
-        health_check:
-          endpoint: 0.0.0.0:13133
-      receivers:
-        otlp:
-          protocols:
-            grpc:
-              endpoint: 0.0.0.0:4317
-            http:
-              endpoint: 0.0.0.0:4318
-      processors:
-        batch:
-          timeout: 5s
-          send_batch_size: 1024
-      exporters:
-        otlp/tempo:
-          endpoint: aptl-tempo:4317
-          tls:
-            insecure: true
-        debug:
-          verbosity: basic
-      service:
-        extensions: [health_check]
-        pipelines:
-          traces:
-            receivers: [otlp]
-            processors: [batch]
-            exporters: [otlp/tempo, debug]
-  grafana-datasources-config:
-    type: file
-    target: aptl-grafana-otel
-    path: /etc/grafana/provisioning/datasources/tempo.yaml
-    text: |
-      apiVersion: 1
-      datasources:
-        - name: Tempo
-          type: tempo
-          access: proxy
-          url: http://aptl-tempo:3200
-          isDefault: true
-          editable: false
   cortex-app-config:
     type: file
     target: cortex

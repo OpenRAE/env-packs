@@ -5,6 +5,19 @@ turning this repository into a second RAES schema authority or a LilRAE
 configuration repository. This note records the modeling boundary and the
 cross-cutting gates for that work. It is not an implementation plan.
 
+## Superseded backend-observability scope
+
+Issue #337 supersedes this note's treatment of `aptl-otel-collector`,
+`aptl-tempo`, and `aptl-grafana-otel`. Those services observe the realizing
+backend rather than participate in the TechVault scenario, so they and their
+node-scoped configuration, topology, storage, and artifact requirements do not
+belong in the portable SDL. The historical OpenTelemetry, Tempo, and Grafana
+modeling guidance below must not be used to retain or recreate them. If
+TechVault needs an additional captured result, author the need through the
+existing RAES `evidence_requirements` contract without selecting a collector or
+storage product; backend instrumentation and evidence persistence remain
+LilRAE-owned runtime concerns.
+
 ## Current baseline
 
 The current SDL has 38 nodes: five network nodes and 33 compute nodes. All 33
