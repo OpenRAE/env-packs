@@ -55,11 +55,10 @@ nodes:
       - {name: agent-enrollment, port: 1515, protocol: tcp}
       - {name: syslog, port: 514, protocol: udp}
     runtime:
-      # Loopback-published on the host exactly as the pre-refactor range did:
-      # agent enrollment (1514/1515), syslog (514/udp), and the manager API
-      # (55000). The authenticated readiness gate probes the API over the
-      # published 55000 binding, so this is required for a clean boot, not just
-      # operator convenience.
+      # Published on host loopback: agent enrollment (1514/1515), syslog
+      # (514/udp), and the manager API (55000). The authenticated readiness gate
+      # probes the API over the published 55000 binding, so this is required for
+      # a clean boot, not just operator convenience.
       network:
         published_ports:
           - {container_port: 1514, protocol: tcp, host_port: 1514, host_ip: "127.0.0.1"}
@@ -254,8 +253,8 @@ nodes:
     services:
       - {name: indexer-api, port: 9200, protocol: tcp}
     runtime:
-      # Loopback-published on the host as the pre-refactor range did. The
-      # authenticated readiness gate probes the indexer over this 9200 binding.
+      # Published on host loopback. The authenticated readiness gate probes the
+      # indexer over this 9200 binding.
       network:
         published_ports:
           - {container_port: 9200, protocol: tcp, host_port: 9200, host_ip: "127.0.0.1"}
@@ -325,8 +324,8 @@ nodes:
     services:
       - {name: dashboard, port: 5601, protocol: tcp}
     runtime:
-      # The SOC dashboard is the operator-facing Wazuh UI; the pre-refactor
-      # range published it on loopback 443 (host) -> 5601 (container).
+      # The SOC dashboard is the operator-facing Wazuh UI, published on loopback
+      # 443 (host) -> 5601 (container).
       network:
         published_ports:
           - {container_port: 5601, protocol: tcp, host_port: 443, host_ip: "127.0.0.1"}
@@ -428,7 +427,7 @@ nodes:
         # Run suricata directly rather than through the image's
         # docker-entrypoint.sh: that wrapper chowns /etc/suricata/* on start,
         # which fails on the read-only config content mount. suricata itself
-        # only reads the config, so a direct exec starts cleanly (issue #875).
+        # only reads the config, so a direct exec starts cleanly.
         entrypoint:
           - /bin/sh
           - -c
@@ -753,10 +752,9 @@ nodes:
     os: linux
     services: []
     runtime:
-      # Environment the pre-refactor component required. Names and
-      # classification only: a secret value is supplied by the operator
-      # environment through the existing secret boundary, never authored
-      # here and never carried in realization DTOs, argv, or logs.
+      # Names and classification only: a secret value is supplied by the
+      # operator environment through the existing secret boundary, never
+      # authored here and never carried in realization DTOs, argv, or logs.
       environment:
         - name: MISP_URL
           value: "https://misp"
@@ -767,10 +765,9 @@ nodes:
           provenance: compose
         - name: MISP_VERIFY_SSL
           # MISP serves a self-signed certificate in the lab and there is no lab
-          # CA, so the sync client must not verify TLS. This is the documented
-          # lab default (ADR-022); declaring it here makes it real range content
-          # the backend realizes and discloses, rather than leaking in from the
-          # operator .env out of band.
+          # CA, so the sync client must not verify TLS. Declaring it here makes
+          # it real range content the backend realizes and discloses, rather
+          # than leaking in from the operator environment out of band.
           value: "false"
           value_classification: plain
           provenance: compose
@@ -1490,9 +1487,7 @@ nodes:
         # The db node is a generic-base apt install of PostgreSQL 15 (Debian
         # bookworm base), which logs to /var/log/postgresql/postgresql-15-main.log.
         # The db_logs volume shares that directory into this sidecar at /logs, so
-        # the tailed file is the log postgres actually writes -- not the
-        # pre-refactor postgres-image path (pg_log/postgresql.log under PGDATA)
-        # that the apt build no longer produces.
+        # the tailed file is the log postgres actually writes.
         - {name: LOG_PATHS, value: /logs/postgresql-15-main.log}
         - {name: LOG_FORMAT, value: syslog}
       forwarding_agents:
@@ -1583,16 +1578,14 @@ nodes:
     services:
       - {name: http, port: 8080, protocol: tcp}
     runtime:
-      # Named volumes the pre-refactor component owned. Bind mounts of
-      # project keys and certificates are not restated here: they are
-      # already authored as content placements, which carry containment
-      # and sensitivity handling a raw bind does not.
+      # Bind mounts of project keys and certificates are not restated here:
+      # they are already authored as content placements, which carry
+      # containment and sensitivity handling a raw bind does not.
       mounts:
         - {target: /var/log/gunicorn, source: webapp_logs, source_kind: volume}
-      # Environment the pre-refactor component required. Names and
-      # classification only: a secret value is supplied by the operator
-      # environment through the existing secret boundary, never authored
-      # here and never carried in realization DTOs, argv, or logs.
+      # Names and classification only: a secret value is supplied by the
+      # operator environment through the existing secret boundary, never
+      # authored here and never carried in realization DTOs, argv, or logs.
       environment:
         - name: DB_HOST
           value: "172.20.2.11"
@@ -1645,41 +1638,36 @@ nodes:
         - {manager: apt, name: python3-jwt, version: "*"}
         # rsyslog forwards gunicorn's access log to the Wazuh manager's syslog
         # port (172.20.2.30:514) so webapp SQLi/XSS/cmd-injection fire rules
-        # 302010/302020/302030. #581 parity: the v5.0.0 webapp ran an in-process
-        # Wazuh agent for this; on the generic node we forward via syslog (the
-        # manager accepts remote syslog on 514 from 172.20.0.0/16), which the
-        # web-accesslog decoder + custom rules process identically.
+        # 302010/302020/302030. The manager accepts remote syslog on 514 from
+        # 172.20.0.0/16, and the web-accesslog decoder plus the custom rules
+        # process those lines.
         - {manager: apt, name: rsyslog, version: "*"}
-        # aptl lab continuity-audit (src/aptl/core/continuity.py) execs
-        # iptables here to revert blanket kali source-IP DROPs left by Wazuh
-        # active response. The node already declares CAP_NET_ADMIN for that;
-        # without the tool itself the audit cannot inspect or clear the chain.
+        # iptables reverts blanket kali source-IP DROPs left by Wazuh active
+        # response. The node already declares CAP_NET_ADMIN for that; without
+        # the tool itself the chain cannot be inspected or cleared.
         - {manager: apt, name: iptables, version: "*"}
       filesystem_inventory:
         - {path: /var/log/gunicorn, entry_type: directory}
-      # aptl lab continuity-audit (src/aptl/core/continuity.py) execs
-      # iptables against this node's INPUT chain to revert blanket kali
-      # source-IP DROPs; that needs CAP_NET_ADMIN, which Docker's default
-      # capability set does not grant.
+      # Reverting blanket kali source-IP DROPs on this node's INPUT chain needs
+      # CAP_NET_ADMIN, which Docker's default capability set does not grant.
       linux_capabilities:
         add: [CAP_NET_ADMIN]
       # webapp is a deliberate attack-surface target, reachable from other
-      # machines on the LAN like the in-range red team (test_docker_compose_
-      # port_bindings.py TARGET_SURFACES), not an operator/management
-      # surface -- so it does NOT get a loopback ADR-034 published_ports
-      # declaration here. Its own networks (aptl-dmz, aptl-internal) are
-      # both internal: true (SAF-002), which Docker never routes host
-      # traffic through regardless of host_ip; the docker-compose.yml
-      # webapp-proxy service is the real host publication (issue #581).
+      # machines on the LAN like the in-range red team, not an operator or
+      # management surface -- so it does NOT get a loopback published_ports
+      # declaration here. Its own networks (aptl-dmz, aptl-internal) are both
+      # internal: true, which Docker never routes host traffic through
+      # regardless of host_ip; the webapp-proxy node is the real host
+      # publication.
       service_manager_units:
         - {unit_id: webapp, unit_name: webapp.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (#581 parity; see aptl-flaggen.sh content below).
+        # Per-boot CTF flags (see the flag-generator content below).
         - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
         # Custom rsyslog unit (below): the stock rsyslog.service carries systemd
         # sandboxing (ProtectKernelTunables/RestrictNamespaces/...) that fails
-        # 226/NAMESPACE under the materializer's restricted caps, and a drop-in
-        # would need a daemon-reload the materializer does not run. A fresh unit
-        # file loads on start (like webapp.service) with no sandboxing.
+        # 226/NAMESPACE under restricted capabilities, and a drop-in would need
+        # a daemon-reload that does not run here. A fresh unit file loads on
+        # start (like webapp.service) with no sandboxing.
         - {unit_id: aptl-rsyslog, unit_name: aptl-rsyslog.service, enabled_state: enabled, active_state: active}
       applications:
         - application_id: techvault-portal
@@ -1841,7 +1829,7 @@ nodes:
       # Samba AD DC provisioning sets NT ACLs (security.NTACL xattrs) on the
       # sysvol during `samba-tool domain provision`, which needs CAP_SYS_ADMIN;
       # NET_ADMIN is for the DC's own network setup. Without them provisioning
-      # fails with NT_STATUS_ACCESS_DENIED (issue #875 / #259).
+      # fails with NT_STATUS_ACCESS_DENIED.
       linux_capabilities:
         add: [CAP_SYS_ADMIN, CAP_NET_ADMIN]
       environment:
@@ -1897,16 +1885,14 @@ nodes:
     services:
       - {name: postgres, port: 5432, protocol: tcp}
     runtime:
-      # Named volumes the pre-refactor component owned. Bind mounts of
-      # project keys and certificates are not restated here: they are
-      # already authored as content placements, which carry containment
-      # and sensitivity handling a raw bind does not.
+      # Bind mounts of project keys and certificates are not restated here:
+      # they are already authored as content placements, which carry
+      # containment and sensitivity handling a raw bind does not.
       mounts:
         - {target: /var/lib/postgresql/data, source: db_data, source_kind: volume}
-      # Environment the pre-refactor component required. Names and
-      # classification only: a secret value is supplied by the operator
-      # environment through the existing secret boundary, never authored
-      # here and never carried in realization DTOs, argv, or logs.
+      # Names and classification only: a secret value is supplied by the
+      # operator environment through the existing secret boundary, never
+      # authored here and never carried in realization DTOs, argv, or logs.
       environment:
         - name: POSTGRES_DB
           value: "techvault"
@@ -1972,16 +1958,14 @@ nodes:
     services:
       - {name: ssh, port: 22, protocol: tcp}
     runtime:
-      # Named volumes the pre-refactor component owned. Bind mounts of
-      # project keys and certificates are not restated here: they are
-      # already authored as content placements, which carry containment
-      # and sensitivity handling a raw bind does not.
+      # Bind mounts of project keys and certificates are not restated here:
+      # they are already authored as content placements, which carry
+      # containment and sensitivity handling a raw bind does not.
       mounts:
         - {target: /var/log, source: workstation_logs, source_kind: volume}
-      # Environment the pre-refactor component required. Names and
-      # classification only: a secret value is supplied by the operator
-      # environment through the existing secret boundary, never authored
-      # here and never carried in realization DTOs, argv, or logs.
+      # Names and classification only: a secret value is supplied by the
+      # operator environment through the existing secret boundary, never
+      # authored here and never carried in realization DTOs, argv, or logs.
       environment:
         - name: SIEM_IP
           value: "172.20.2.30"
@@ -1993,11 +1977,10 @@ nodes:
           provenance: compose
       packages:
         - {manager: dnf, name: openssh-server, version: "*"}
-        # openssh-clients (the `ssh` binary) + postgresql (the `psql` client):
-        # #581 parity for the compromised-workstation attack paths. dev-user's
-        # leaked SSH key pivots into victim (workstation -> victim lateral
-        # movement) and the leaked .pgpass reaches the DB; neither works without
-        # a client. The v5.0.0 workstation image shipped both.
+        # openssh-clients (the `ssh` binary) + postgresql (the `psql` client)
+        # for the compromised-workstation attack paths. dev-user's leaked SSH
+        # key pivots into victim (workstation -> victim lateral movement) and
+        # the leaked .pgpass reaches the DB; neither works without a client.
         - {manager: dnf, name: openssh-clients, version: "*"}
         - {manager: dnf, name: postgresql, version: "*"}
         - {manager: dnf, name: sudo, version: "*"}
@@ -2007,14 +1990,14 @@ nodes:
           - {name: dev-user}
         users:
           - {username: labadmin, primary_group: labadmin, supplemental_groups: [wheel]}
-          # dev-user (michael.thompson): the compromised-workstation persona,
-          # #581 parity. Distinct weak-cred developer account whose home holds
-          # the planted credential loot the red-team exercise mines; separate
-          # from the labadmin admin account. Loot placed via content below.
+          # dev-user (michael.thompson): the compromised-workstation persona.
+          # Distinct weak-cred developer account whose home holds the planted
+          # credential loot the red-team exercise mines; separate from the
+          # labadmin admin account. Loot placed via content below.
           - {username: dev-user, primary_group: dev-user, supplemental_groups: [wheel]}
       service_manager_units:
         - {unit_id: sshd, unit_name: sshd.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (#581 parity; see aptl-flaggen.sh content below).
+        # Per-boot CTF flags (see the flag-generator content below).
         - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
         # Fix dev-user loot ownership + secret-file perms after the content copy
         # (the directory copy lands as labadmin:labadmin 664; .pgpass at 664 is
@@ -2026,17 +2009,15 @@ nodes:
     services:
       - {name: smb, port: 445, protocol: tcp}
     runtime:
-      # Named volumes the pre-refactor component owned. Bind mounts of
-      # project keys and certificates are not restated here: they are
-      # already authored as content placements, which carry containment
-      # and sensitivity handling a raw bind does not.
+      # Bind mounts of project keys and certificates are not restated here:
+      # they are already authored as content placements, which carry
+      # containment and sensitivity handling a raw bind does not.
       mounts:
         - {target: /srv/shares, source: fileshare_data, source_kind: volume}
         - {target: /var/log/samba, source: fileshare_logs, source_kind: volume}
-      # Environment the pre-refactor component required. Names and
-      # classification only: a secret value is supplied by the operator
-      # environment through the existing secret boundary, never authored
-      # here and never carried in realization DTOs, argv, or logs.
+      # Names and classification only: a secret value is supplied by the
+      # operator environment through the existing secret boundary, never
+      # authored here and never carried in realization DTOs, argv, or logs.
       environment:
         - name: SIEM_IP
           value: "172.20.0.10"
@@ -2059,18 +2040,18 @@ nodes:
           value_classification: plain
           provenance: compose
       packages:
-        # continuity-audit execs iptables here to revert active-response
-        # DROPs; the node declares CAP_NET_ADMIN for it, so the tool must
-        # be present or the audit cannot inspect or clear the chain.
+        # iptables reverts active-response DROPs here; the node declares
+        # CAP_NET_ADMIN for it, so the tool must be present or the chain
+        # cannot be inspected or cleared.
         - {manager: apt, name: iptables, version: "*"}
         - {manager: apt, name: samba, version: "*"}
-      # aptl lab continuity-audit needs CAP_NET_ADMIN to revert blanket kali
-      # source-IP DROPs on this node's INPUT chain (src/aptl/core/continuity.py).
+      # Reverting blanket kali source-IP DROPs on this node's INPUT chain
+      # needs CAP_NET_ADMIN.
       linux_capabilities:
         add: [CAP_NET_ADMIN]
       service_manager_units:
         - {unit_id: smbd, unit_name: smbd.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (#581 parity; see aptl-flaggen.sh content below).
+        # Per-boot CTF flags (see the flag-generator content below).
         - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
       file_services:
         - file_service_id: techvault-fileshare
@@ -2151,16 +2132,14 @@ nodes:
     services:
       - {name: dns, port: 53, protocol: udp}
     runtime:
-      # Named volumes the pre-refactor component owned. Bind mounts of
-      # project keys and certificates are not restated here: they are
-      # already authored as content placements, which carry containment
-      # and sensitivity handling a raw bind does not.
+      # Bind mounts of project keys and certificates are not restated here:
+      # they are already authored as content placements, which carry
+      # containment and sensitivity handling a raw bind does not.
       mounts:
         - {target: /var/log/named, source: dns_logs, source_kind: volume}
-      # Environment the pre-refactor component required. Names and
-      # classification only: a secret value is supplied by the operator
-      # environment through the existing secret boundary, never authored
-      # here and never carried in realization DTOs, argv, or logs.
+      # Names and classification only: a secret value is supplied by the
+      # operator environment through the existing secret boundary, never
+      # authored here and never carried in realization DTOs, argv, or logs.
       environment:
         - name: WAZUH_MANAGER
           value: "wazuh.manager"
@@ -2179,26 +2158,25 @@ nodes:
           value_classification: plain
           provenance: compose
       packages:
-        # continuity-audit execs iptables here to revert active-response
-        # DROPs; the node declares CAP_NET_ADMIN for it, so the tool must
-        # be present or the audit cannot inspect or clear the chain.
+        # iptables reverts active-response DROPs here; the node declares
+        # CAP_NET_ADMIN for it, so the tool must be present or the chain
+        # cannot be inspected or cleared.
         - {manager: apt, name: iptables, version: "*"}
         - {manager: apt, name: bind9, version: "*"}
         - {manager: apt, name: dnsutils, version: "*"}
       filesystem_inventory:
         - {path: /var/log/named, entry_type: directory, owner_user: bind, owner_group: bind}
-      # aptl lab continuity-audit needs CAP_NET_ADMIN to revert blanket kali
-      # source-IP DROPs on this node's INPUT chain (src/aptl/core/continuity.py).
+      # Reverting blanket kali source-IP DROPs on this node's INPUT chain
+      # needs CAP_NET_ADMIN.
       linux_capabilities:
         add: [CAP_NET_ADMIN]
       # Host port 5353 (53 is commonly already bound on the host by a local
       # resolver): both protocols, since DNS genuinely uses UDP for queries
       # and TCP for zone transfers / large responses. dns is a deliberate
-      # attack-surface target like webapp (test_docker_compose_port_bindings.py
-      # TARGET_SURFACES), so host_ip is explicit all-interfaces, not the
-      # ADR-034 loopback default meant for operator/management surfaces
-      # (issue #581). dns also sits on aptl-security (not internal: true),
-      # so unlike webapp this publishes correctly without a proxy.
+      # attack-surface target like webapp, so host_ip is explicit
+      # all-interfaces rather than the loopback default meant for operator and
+      # management surfaces. dns also sits on aptl-security (not internal:
+      # true), so unlike webapp this publishes correctly without a proxy.
       network:
         published_ports:
           - {container_port: 53, protocol: tcp, host_port: 5353, host_ip: "0.0.0.0"}
@@ -2231,16 +2209,14 @@ nodes:
     services:
       - {name: ssh, port: 22, protocol: tcp}
     runtime:
-      # Named volumes the pre-refactor component owned. Bind mounts of
-      # project keys and certificates are not restated here: they are
-      # already authored as content placements, which carry containment
-      # and sensitivity handling a raw bind does not.
+      # Bind mounts of project keys and certificates are not restated here:
+      # they are already authored as content placements, which carry
+      # containment and sensitivity handling a raw bind does not.
       mounts:
         - {target: /var/log, source: victim_logs, source_kind: volume}
-      # Environment the pre-refactor component required. Names and
-      # classification only: a secret value is supplied by the operator
-      # environment through the existing secret boundary, never authored
-      # here and never carried in realization DTOs, argv, or logs.
+      # Names and classification only: a secret value is supplied by the
+      # operator environment through the existing secret boundary, never
+      # authored here and never carried in realization DTOs, argv, or logs.
       environment:
         - name: SIEM_IP
           value: "172.20.2.30"
@@ -2255,8 +2231,7 @@ nodes:
         - {manager: dnf, name: sudo, version: "*"}
         # rsyslog forwards the victim's syslog to the Wazuh manager
         # (172.20.2.30:514) so host events (auth failures, the smoke
-        # log-ingestion probe) reach the SIEM. #581 parity: the v5.0.0 victim
-        # ran an in-process Wazuh agent; the generic node forwards via syslog.
+        # log-ingestion probe) reach the SIEM.
         - {manager: dnf, name: rsyslog, version: "*"}
       local_identity:
         groups:
@@ -2266,7 +2241,7 @@ nodes:
       service_manager_units:
         - {unit_id: sshd, unit_name: sshd.service, enabled_state: enabled, active_state: active}
         - {unit_id: aptl-rsyslog, unit_name: aptl-rsyslog.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (#581 parity; see aptl-flaggen.sh content below).
+        # Per-boot CTF flags (see the flag-generator content below).
         - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
 
   kali:
@@ -2275,16 +2250,14 @@ nodes:
     services:
       - {name: ssh, port: 22, protocol: tcp}
     runtime:
-      # Named volumes the pre-refactor component owned. Bind mounts of
-      # project keys and certificates are not restated here: they are
-      # already authored as content placements, which carry containment
-      # and sensitivity handling a raw bind does not.
+      # Bind mounts of project keys and certificates are not restated here:
+      # they are already authored as content placements, which carry
+      # containment and sensitivity handling a raw bind does not.
       mounts:
         - {target: /home/kali/operations, source: kali_operations, source_kind: volume}
-      # Environment the pre-refactor component required. Names and
-      # classification only: a secret value is supplied by the operator
-      # environment through the existing secret boundary, never authored
-      # here and never carried in realization DTOs, argv, or logs.
+      # Names and classification only: a secret value is supplied by the
+      # operator environment through the existing secret boundary, never
+      # authored here and never carried in realization DTOs, argv, or logs.
       environment:
         - name: VICTIM_IP
           value: "172.20.2.20"
@@ -2292,22 +2265,19 @@ nodes:
           provenance: compose
       packages:
         - {manager: apt, name: openssh-server, version: "*"}
-        # iputils-ping: the live gate's kali_reachability check ICMP-pings
-        # every shared-network host from kali. nmap: telemetry_evidence_path
-        # drives an nmap scan + failed-ssh-auth as the representative event
-        # Suricata/Wazuh must correlate (issue #581).
+        # iputils-ping: reachability checks ICMP-ping every shared-network
+        # host from kali. nmap: an nmap scan plus a failed SSH auth is the
+        # representative event Suricata and Wazuh must correlate.
         - {manager: apt, name: iputils-ping, version: "*"}
         - {manager: apt, name: nmap, version: "*"}
         # python3 backs the Python offensive tooling below (python3-impacket,
         # sqlmap).
         - {manager: apt, name: python3, version: "*"}
-        # Offensive toolset — #581 parity with the v5.0.0 Kali image. The
-        # live tests drive curl-based web attacks (SQLi/XSS/cmd-injection) and
-        # the TechVault attack path uses these enumeration/exploitation tools.
-        # NOTE: Kali metapackages (kali-linux-core / kali-tools-top10, which
-        # carry metasploit) live in the Kali apt repo, not Debian, so restoring
-        # those on the generic Debian base needs an upstream third-party-repo
-        # materializer capability (aces#847). Here we install the
+        # Offensive toolset. The TechVault attack path uses these
+        # enumeration and exploitation tools, and the web attacks
+        # (SQLi/XSS/cmd-injection) are driven with curl. Kali metapackages
+        # (kali-linux-core / kali-tools-top10, which carry metasploit) live in
+        # the Kali apt repo rather than Debian, so this installs the
         # Debian-available subset the scenario actually exercises.
         - {manager: apt, name: curl, version: "*"}
         - {manager: apt, name: wget, version: "*"}
@@ -2447,23 +2417,6 @@ nodes:
         restart: unless_stopped
 
 realization:
-  # This pack is not a simulation. It is authoritative over node substrate,
-  # topology, declared services and listeners, declared content, and the
-  # runtime desired-state families it states below -- and over nothing else.
-  # It does not enumerate the operating system: the files, processes, packages
-  # and units a real Debian or Kali image carries are not declared here and
-  # never will be. Closed-world means the SDL is total authority, so anything
-  # undeclared must not exist; asserting that over a real OS would claim a
-  # completeness this pack does not have and no honest backend could admit.
-  #
-  # Open is the truthful posture: a backend may add what realizing this
-  # environment and capturing the declared evidence actually requires, as long
-  # as it contradicts nothing below and reports what it did. Closure is
-  # orthogonal to posture -- every constraint here still binds exactly.
-  #
-  # Out-of-game concerns (host containment, collector supply chain, operator
-  # secret handling) are the backend's, per the Hub program boundary. They are
-  # deliberately not expressed here.
   default: open
   constraints:
     - field_pointer: /nodes/wazuh-manager
@@ -2653,10 +2606,9 @@ infrastructure:
     links: [security-net]
     dependencies: [wazuh-manager, suricata]
 
-  # Fixed addressing for the enterprise + attacker set. #581 parity: the
-  # v5.0.0 fixed-compose lab assigned these deterministically, and the DNS
-  # zones, seeded credentials/loot, and the live tests all hardcode them.
-  # Without a pinned address the node is auto-allocated and drifts.
+  # Fixed addressing for the enterprise + attacker set: the DNS zones and the
+  # seeded credentials and loot hardcode these. Without a pinned address the
+  # node is auto-allocated and drifts.
   webapp:
     links: [dmz-net, internal-net]
     dependencies: [db, wazuh-manager]
@@ -2709,9 +2661,7 @@ infrastructure:
     dependencies: [webapp]
 
 # Stateful Wazuh prerequisites are authored RAES resources. The deployment
-# backend materializes and verifies these before either consumer starts; the
-# checked-in Compose service definitions are provider bindings, not the source
-# of artifact, volume, or dependency intent.
+# backend materializes and verifies these before either consumer starts.
 generated_artifacts:
   # A backend generates and retains these values, then injects the selected
   # outputs directly into the initializer and TheHive environments. Raw API
@@ -2775,10 +2725,9 @@ generated_artifacts:
         selected_outputs: [manager-config]
     ordering_dependencies: [generated_artifacts.wazuh-manager-certs]
 
-  # Backend-produced access material replaces the seven former content.source
-  # entries that pointed at standup-generated APTL paths. The operator private
-  # key remains inside the producer. Each node receives only the output subset
-  # needed for its declared SSH path; no private key is copied into this pack.
+  # Backend-produced access material. The operator private key remains inside
+  # the producer. Each node receives only the output subset needed for its
+  # declared SSH path; no private key is copied into this pack.
   techvault-ssh-keys:
     generator: ssh_key_bundle
     lifecycle: regenerate_on_change
@@ -3063,15 +3012,11 @@ vulnerabilities:
     technical: true
     class: CWE-89
 
-# Realizable content (ADR-046 TechVault Operational Standup Addendum,
-# issue #689): every entry here is either bounded inline text or a
-# project-contained, checked-in source. No runtime-observed:, dataset, or
-# captured-filesystem content is authored here — the LilRAE runtime does not
-# carry a separate captured inventory as review evidence (ADR-046 Capture
-# Inventory and Parity-Inventory Removal Addendum). Both entries land on the
-# `fileshare` node, whose Compose service mounts the `fileshare_data`
-# named volume the LilRAE content realization backend seeds through
-# `aptl lab start`.
+# Realizable content: every entry here is either bounded inline text or a
+# project-contained, checked-in source. No runtime-observed, dataset, or
+# captured-filesystem content is authored here. Both entries land on the
+# `fileshare` node, which mounts the `fileshare_data` named volume the content
+# realization backend seeds.
   webapp-sqli-search:
     name: SQL injection in search
     description: The /search query parameter is interpolated into SQL. This is the path the range's detection chain exercises.
@@ -3176,11 +3121,11 @@ content:
   wazuh-indexer-internal-users:
     # The indexer initializes its security index from this file on first boot
     # (opensearch.yml sets allow_default_init_securityindex: true). The admin
-    # bcrypt hash below is for the password LilRAE hydrates into INDEXER_PASSWORD
-    # ('SecretPassword', from config/wazuh_cluster/filebeat_wazuh_module.yml);
-    # without this file the indexer falls back to its bundled demo users and
-    # rejects the operator credentials, so the authenticated readiness gate and
-    # every SIEM consumer (manager filebeat, dashboard) fail auth.
+    # bcrypt hash below is for the password the backend hydrates into
+    # INDEXER_PASSWORD; without this file the indexer falls back to its bundled
+    # demo users and rejects the operator credentials, so the authenticated
+    # readiness gate and every SIEM consumer (manager filebeat, dashboard)
+    # fail auth.
     type: file
     target: wazuh-indexer
     path: /usr/share/wazuh-indexer/opensearch-security/internal_users.yml
@@ -3742,12 +3687,11 @@ content:
 
       [Install]
       WantedBy=multi-user.target
-  # rsyslog forward configs (#581 Tier-2 monitoring parity). imfile reads
-  # gunicorn's access log and forwards every message to the Wazuh manager's
-  # remote-syslog port; the gunicorn-tagged access lines are what the
-  # web-accesslog decoder + rules 302010/302020/302030 match (verified live:
-  # a forwarded SQLi line fires 302010). victim forwards its host syslog so
-  # auth failures + the smoke log-ingestion probe reach the SIEM.
+  # rsyslog forward configs. imfile reads gunicorn's access log and forwards
+  # every message to the Wazuh manager's remote-syslog port; the access lines
+  # are what the web-accesslog decoder and rules 302010/302020/302030 match.
+  # victim forwards its host syslog so auth failures and the smoke
+  # log-ingestion probe reach the SIEM.
   webapp-rsyslog-forward:
     type: file
     target: webapp
@@ -3775,7 +3719,7 @@ content:
       *.* @172.20.2.30:514
   # Custom rsyslog units for the generic systemd nodes (see the
   # service_manager_units note on webapp): a fresh unit with no sandboxing so
-  # systemd can start rsyslogd under the materializer's restricted caps.
+  # systemd can start rsyslogd under restricted capabilities.
   webapp-rsyslog-unit:
     type: file
     target: webapp
@@ -3894,7 +3838,7 @@ content:
               digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
             acquisition: copy
             timing: pack-ingestion
-  # Full TechVault file-share loot tree — #581 parity. smb.conf advertises
+  # Full TechVault file-share loot tree. smb.conf advertises
   # Public/Engineering/Finance/HR/IT-Backups/Shared; the red-team exercise
   # mines the planted creds (engineering/deployments/deploy.sh), PII
   # (hr/employees/directory.csv), wifi passwords (shared/wifi-passwords.txt),
@@ -3923,7 +3867,7 @@ content:
               digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
             acquisition: copy
             timing: pack-ingestion
-  # Workstation dev-user loot home — #581 parity (WS-01..WS-05). Planted
+  # Workstation dev-user loot home. Planted
   # credential artifacts (.bash_history, .pgpass, .config/credentials.json,
   # projects/techvault-portal/{.env,deploy.sh}, Documents/onboarding-notes.txt,
   # .ssh keypair) the attack path harvests off the compromised workstation.
@@ -3950,15 +3894,13 @@ content:
               digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
             acquisition: copy
             timing: pack-ingestion
-  # dev-user's leaked SSH private key (loot WS-03) is the real workstation->
-  # victim lateral-movement pivot: the standup-generated workstation pivot
-  # keypair from the `techvault-ssh-keys` generated artifact, whose public half
-  # victim already authorizes
-  # (victim-authorized-keys below). Placing its private half here as dev-user's
-  # ~/.ssh/id_rsa reproduces the v5.0.0 workstation entrypoint's throwaway
-  # dev-user keypair, so `ssh -i ~/.ssh/id_rsa labadmin@victim` from the
-  # compromised workstation works. The private key is generated per standup,
-  # so no id_rsa/PEM secret ships in the pack.
+  # dev-user's leaked SSH private key is the real workstation -> victim
+  # lateral-movement pivot: the workstation pivot keypair from the
+  # `techvault-ssh-keys` generated artifact, whose public half victim already
+  # authorizes (victim-authorized-keys below). Placing its private half here as
+  # dev-user's ~/.ssh/id_rsa makes `ssh -i ~/.ssh/id_rsa labadmin@victim` from
+  # the compromised workstation work. The private key is generated per standup,
+  # so no id_rsa or PEM secret ships in the pack.
   db-init-schema:
     type: file
     target: db
@@ -4043,23 +3985,21 @@ content:
 
       [Install]
       WantedBy=multi-user.target
-  # SEC #417: victim/workstation authorize both the operator control-plane
-  # key and the kali pivot key (target_authorized_keys is the two combined,
-  # generated at lab standup — src/aptl/core/ssh.py). kali itself is
-  # authorized with only the control-plane key, and separately receives the
-  # pivot key's *private* half to SSH out into these targets. This mirrors
-  # the entrypoint-script SSH provisioning the legacy hand-authored images
-  # ran, now realized generically from declared content (issue #581).
+  # victim and workstation authorize both the operator control-plane key and
+  # the kali pivot key (target_authorized_keys is the two combined, generated
+  # at lab standup). kali itself is authorized with only the control-plane key,
+  # and separately receives the pivot key's *private* half to SSH out into
+  # these targets.
   #
   # victim additionally trusts the workstation pivot key below (Prime
   # scenario lateral movement, workstation -> victim), so it gets its own
   # combined file instead of sharing target_authorized_keys with workstation.
   # ---------------------------------------------------------------------------
-  # CTF flag generation (#581 parity). The v5.0.0 base image and the still-image
-  # AD node generate per-boot signed flags at container start; the image-free
-  # generic nodes (victim, workstation, webapp, fileshare) reproduce it with a
-  # oneshot systemd unit running the shared aptl-flaggen.sh. flags.py (scoring)
-  # reads /home/labadmin|dev-user/user.txt, /app/user.txt,
+  # CTF flag generation. The still-image AD node generates per-boot signed
+  # flags at container start; the image-free generic nodes (victim,
+  # workstation, webapp, fileshare) reproduce it with a oneshot systemd unit
+  # running the shared flag generator. Scoring reads
+  # /home/labadmin|dev-user/user.txt, /app/user.txt,
   # /srv/shares/shared/user-flag.txt, and /root/root.txt and verifies the
   # aptl:v2 HMAC-SHA-256 token. One script; each node's unit selects its
   # backend-generated signing-key file through Environment=.
@@ -4239,8 +4179,8 @@ content:
   # Finalizes dev-user loot after the directory copy: the copy lands the home
   # as labadmin:labadmin 664, but psql ignores a group/world-readable .pgpass
   # and dev-user's home should be dev-user-owned. chown + tighten the secret
-  # files to 600 (matching the v5.0.0 setup-workstation.sh perms). Best-effort
-  # per file so a fixture reshuffle never fails the whole boot.
+  # files to 600. Best-effort per file so a fixture reshuffle never fails the
+  # whole boot.
   workstation-loot-unit:
     type: file
     target: workstation
@@ -4369,8 +4309,7 @@ evidence_requirements:
     description: >-
       Records the red team's interactive command-line activity, the commands
       issued and the responses returned, so research can reconstruct what the
-      red team actually did. Names no collector; the backend chooses how to
-      capture this and answers with its own capture offer.
+      red team actually did.
     source_class: apparatus
     scope_refs:
       - nodes.kali
@@ -4388,17 +4327,14 @@ evidence_requirements:
     retention: run_lifetime
     loss_disclosure: required
 
-# Realizable accounts (ADR-046 Account and Identity Realization Addendum,
-# #577): the deployment backend's realize_accounts operation ensures these
-# groups, users, memberships, and non-secret attributes on the resolved `ad`
-# node and verifies them by read-after-write. Declares identity only (no
-# password material); the concrete credential is generated inside the target
-# provider and never crosses the SDL or run evidence. Accounts that also exist
-# in containers/ad/provision-users.sh are reconciled, not re-created, so the
-# provisioner-owned weak passwords (the intentional attack surface) are
-# preserved. This is a representative subset of the full
-# weak/Kerberoastable/over-privileged roster, proving the account-placement
-# realization path against real, clean-start-created accounts.
+# Realizable accounts: the deployment backend ensures these groups, users,
+# memberships, and non-secret attributes on the resolved `ad` node and verifies
+# them by read-after-write. Declares identity only (no password material); the
+# concrete credential is generated inside the target provider and never crosses
+# the SDL or run evidence. Accounts the AD provisioner also creates are
+# reconciled rather than re-created, so the provisioner-owned weak passwords
+# (the intentional attack surface) are preserved. This is a representative
+# subset of the full weak/Kerberoastable/over-privileged roster.
 identity_domains:
   techvault:
     profile: active_directory
