@@ -26,6 +26,10 @@ from unittest import mock
 
 import yaml
 from raes import parse_sdl_file
+from raes.realization_designation import (
+    designation_records,
+    resolve_realization_designation,
+)
 
 from raes_env_packs import PackDigestError, resolve_pack_artifact, validate_pack
 from raes_env_packs.digest import validate_pack_content_manifest
@@ -465,7 +469,7 @@ class TechVaultPackTests(unittest.TestCase):
             "propositions": 3,
             "assertions": 3,
             "observation_boundaries": 1,
-            "evidence_requirements": 3,
+            "evidence_requirements": 4,
             "identity_domains": 1,
             "relationships": 2,
             "accounts": 4,
@@ -477,6 +481,75 @@ class TechVaultPackTests(unittest.TestCase):
         # This runtime-authority declaration is intentionally not a content
         # acquisition path and must survive the pack migration.
         self.assertIn("/var/run/docker.sock", _SDL.read_text(encoding="utf-8"))
+
+    def test_realization_is_open_below_the_declared_contract(self) -> None:
+        sdl = _load_sdl()
+        scenario = parse_sdl_file(_SDL)
+
+        # This pack is authoritative over substrate, topology, declared
+        # services, declared content and the runtime families it states -- not
+        # over the operating system. Closed-world means the SDL is total
+        # authority, so anything undeclared must not exist; asserting that over
+        # a real Debian or Kali image would claim a completeness this pack does
+        # not have, and no honest backend could admit it.
+        self.assertEqual(sdl["realization"].get("default"), "open")
+        self.assertEqual(scenario.realization.default.value, "open")
+
+        records = designation_records(scenario.realization)
+        for pointer in (
+            "/nodes/kali/runtime/packages",
+            "/nodes/kali/runtime/forwarding_agents",
+            "/nodes/kali/runtime/filesystem_inventory",
+            "/nodes/kali/runtime/processes",
+            "/nodes/wazuh-manager/runtime/environment",
+        ):
+            with self.subTest(field_pointer=pointer):
+                self.assertEqual(
+                    resolve_realization_designation(
+                        records, field_pointer=pointer
+                    ).closure.value,
+                    "open-world",
+                )
+
+        # Open closure grants no licence to contradict: closure is orthogonal
+        # to posture, so the exact compute-substrate contract still binds every
+        # compute node.
+        compute = {
+            node_id
+            for node_id, node in sdl["nodes"].items()
+            if node["type"] != "switch"
+        }
+        self.assertEqual(len(scenario.realization.constraints), len(compute))
+        self.assertEqual(
+            {item.posture.value for item in scenario.realization.constraints},
+            {"exact"},
+        )
+
+    def test_redteam_activity_is_declared_as_a_need_not_a_collector(self) -> None:
+        requirement = _load_sdl()["evidence_requirements"]["redteam-session-transcript"]
+
+        # The research need is what the red team did: the commands issued and
+        # the responses returned. The pack states the need and names no
+        # collector, so the backend answers it with its own capture offer.
+        self.assertEqual(requirement["source_class"], "apparatus")
+        self.assertNotIn("source_refs", requirement)
+        self.assertEqual(requirement["scope_refs"], ["nodes.kali"])
+        self.assertEqual(requirement["channel"], "participant_output")
+        self.assertEqual(requirement["retention"], "run_lifetime")
+        self.assertEqual(requirement["loss_disclosure"], "required")
+
+        # The removed sidecar held its evidence where the participant could not
+        # reach it. That intent survives as a stated expectation rather than as
+        # a mechanism the pack ships.
+        self.assertEqual(requirement["integrity"], "chain_of_custody")
+        self.assertEqual(requirement["redaction"], "redact_secrets")
+
+        for field in ("scope", "description"):
+            with self.subTest(field=field):
+                self.assertNotRegex(
+                    requirement[field].lower(),
+                    r"tcpdump|grafana|tempo|otel|opentelemetry|sidecar|collector agent",
+                )
 
     def test_backend_measurement_apparatus_is_excised(self) -> None:
         sdl = _load_sdl()

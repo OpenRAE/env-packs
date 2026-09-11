@@ -2447,6 +2447,24 @@ nodes:
         restart: unless_stopped
 
 realization:
+  # This pack is not a simulation. It is authoritative over node substrate,
+  # topology, declared services and listeners, declared content, and the
+  # runtime desired-state families it states below -- and over nothing else.
+  # It does not enumerate the operating system: the files, processes, packages
+  # and units a real Debian or Kali image carries are not declared here and
+  # never will be. Closed-world means the SDL is total authority, so anything
+  # undeclared must not exist; asserting that over a real OS would claim a
+  # completeness this pack does not have and no honest backend could admit.
+  #
+  # Open is the truthful posture: a backend may add what realizing this
+  # environment and capturing the declared evidence actually requires, as long
+  # as it contradicts nothing below and reports what it did. Closure is
+  # orthogonal to posture -- every constraint here still binds exactly.
+  #
+  # Out-of-game concerns (host containment, collector supply chain, operator
+  # secret handling) are the backend's, per the Hub program boundary. They are
+  # deliberately not expressed here.
+  default: open
   constraints:
     - field_pointer: /nodes/wazuh-manager
       concern: compute-substrate
@@ -4345,6 +4363,28 @@ evidence_requirements:
     sensitivity: plain
     redaction: redact_sensitive
     integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+  redteam-session-transcript:
+    description: >-
+      Records the red team's interactive command-line activity, the commands
+      issued and the responses returned, so research can reconstruct what the
+      red team actually did. Names no collector; the backend chooses how to
+      capture this and answers with its own capture offer.
+    source_class: apparatus
+    scope_refs:
+      - nodes.kali
+    scope: >-
+      Every interactive shell session on the red-team workstation, with the
+      commands issued and the responses returned, attributable to a session
+      and ordered in time.
+    window: the full run, from range readiness through teardown
+    channel: participant_output
+    artifact_role: participant_session_transcript
+    media_types: [text/plain]
+    sensitivity: plain
+    redaction: redact_secrets
+    integrity: chain_of_custody
     retention: run_lifetime
     loss_disclosure: required
 
