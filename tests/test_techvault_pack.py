@@ -80,8 +80,6 @@ _PACK_ARTIFACT_CONTENT_IDS = frozenset(
         "workstation-dev-user-home",
         "db-init-schema",
         "db-init-seed",
-        "kali-wrap-shell-script",
-        "kali-capture-client",
         "victim-flaggen-script",
         "workstation-flaggen-script",
         "webapp-flaggen-script",
@@ -113,7 +111,6 @@ _UNDERDECLARED_RUNTIME_NODES = frozenset(
         "shuffle-backend",
         "shuffle-frontend",
         "ad",
-        "kali-capture",
         "kali-ssh-proxy",
         "webapp-proxy",
     }
@@ -460,9 +457,9 @@ class TechVaultPackTests(unittest.TestCase):
         sdl = _load_sdl()
         self.assertEqual(sdl["name"], "techvault")
         expected_counts = {
-            "nodes": 35,
-            "infrastructure": 35,
-            "persistent_volumes": 22,
+            "nodes": 34,
+            "infrastructure": 34,
+            "persistent_volumes": 21,
             "features": 2,
             "vulnerabilities": 14,
             "propositions": 3,
@@ -481,9 +478,14 @@ class TechVaultPackTests(unittest.TestCase):
         # acquisition path and must survive the pack migration.
         self.assertIn("/var/run/docker.sock", _SDL.read_text(encoding="utf-8"))
 
-    def test_backend_observability_nodes_are_excised(self) -> None:
+    def test_backend_measurement_apparatus_is_excised(self) -> None:
         sdl = _load_sdl()
-        removed = {"aptl-otel-collector", "aptl-tempo", "aptl-grafana-otel"}
+        removed = {
+            "aptl-otel-collector",
+            "aptl-tempo",
+            "aptl-grafana-otel",
+            "kali-capture",
+        }
 
         self.assertEqual(removed & set(sdl["nodes"]), set())
         self.assertEqual(removed & set(sdl["infrastructure"]), set())
@@ -515,6 +517,29 @@ class TechVaultPackTests(unittest.TestCase):
             with self.subTest(node=node_id):
                 self.assertNotIn(node_id, raw)
 
+        # The pack declares WHAT must be captured, never the apparatus that
+        # captures it. In-world security tooling (Suricata, Wazuh and the rest
+        # of the SOC stack) is scenario content and stays; anything whose only
+        # job is feeding evidence capture belongs to the realizing backend,
+        # which answers an evidence requirement with its own capture offer.
+        for node_id, node in sdl["nodes"].items():
+            runtime = node.get("runtime") or {}
+            for sensor in runtime.get("network_sensors", []) or []:
+                with self.subTest(node=node_id, sensor=sensor["network_sensor_id"]):
+                    self.assertNotIn("evidence_refs", sensor)
+            for agent in runtime.get("forwarding_agents", []) or []:
+                with self.subTest(node=node_id, agent=agent["forwarding_agent_id"]):
+                    self.assertNotEqual(
+                        agent.get("ownership_role", "system_under_test"),
+                        "measurement_apparatus",
+                    )
+        for agent in sdl.get("forwarding_agents", []) or []:
+            with self.subTest(agent=agent["forwarding_agent_id"]):
+                self.assertNotEqual(
+                    agent.get("ownership_role", "system_under_test"),
+                    "measurement_apparatus",
+                )
+
     def test_compute_nodes_require_container_substrate(self) -> None:
         scenario = parse_sdl_file(_SDL)
         sdl = _load_sdl()
@@ -545,8 +570,8 @@ class TechVaultPackTests(unittest.TestCase):
             if constraint["concern"] == "compute-substrate"
         }
 
-        self.assertEqual(len(scenario.nodes), 35)
-        self.assertEqual(len(compute_nodes), 30)
+        self.assertEqual(len(scenario.nodes), 34)
+        self.assertEqual(len(compute_nodes), 29)
         self.assertEqual(
             {sdl["nodes"][node_id]["type"] for node_id in compute_nodes},
             {"compute"},
@@ -668,10 +693,10 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline & materialized, set())
         self.assertEqual(sourced & materialized, set())
         self.assertEqual(inline | sourced | materialized, set(content))
-        self.assertEqual(len(inline), 20)
+        self.assertEqual(len(inline), 17)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
         self.assertEqual(materialized, set())
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 63)
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 58)
 
     def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
         sdl = _load_sdl()
@@ -1224,7 +1249,6 @@ class TechVaultPackTests(unittest.TestCase):
             },
             "shuffle-frontend": {"applications", "service_listeners"},
             "ad": {"identity_authorities", "service_listeners"},
-            "kali-capture": {"container", "network_sensors"},
             "kali-ssh-proxy": {"service_listeners"},
             "webapp-proxy": {"applications", "service_listeners"},
         }
@@ -1239,7 +1263,6 @@ class TechVaultPackTests(unittest.TestCase):
             "shuffle-backend": ("unless_stopped", "1 GiB"),
             "shuffle-frontend": ("unless_stopped", "256 MiB"),
             "ad": ("unless_stopped", "512 MiB"),
-            "kali-capture": ("unless_stopped", "256 MiB"),
             "kali-ssh-proxy": ("unless_stopped", "64 MiB"),
             "webapp-proxy": ("unless_stopped", None),
         }
@@ -1376,11 +1399,6 @@ class TechVaultPackTests(unittest.TestCase):
             {"ldap", "kerberos", "ad_ds_rpc"},
         )
 
-        (sensor,) = nodes["kali-capture"]["runtime"]["network_sensors"]
-        self.assertEqual(
-            (sensor["implementation"], sensor["sensor_kind"], sensor["capture_mode"]),
-            ("tcpdump", "packet_capture", "pcap"),
-        )
         self.assertNotIn("applications", nodes["kali-ssh-proxy"]["runtime"])
         self.assertNotIn("forwarding_agents", nodes["kali-ssh-proxy"]["runtime"])
 
@@ -1406,7 +1424,6 @@ class TechVaultPackTests(unittest.TestCase):
             "shuffle-backend",
             "shuffle-frontend",
             "ad",
-            "kali-capture",
         }
         for node_name in mount_owned_nodes:
             self.assertNotIn("mounts", nodes[node_name]["runtime"])
@@ -1434,7 +1451,6 @@ class TechVaultPackTests(unittest.TestCase):
             "shuffle-backend": "/shuffle-database",
             "shuffle-frontend": "/opt/aptl/soc-certs",
             "ad": "/var/lib/samba",
-            "kali-capture": "/var/log/aptl/captures",
         }
         self.assertEqual(set(expected_destinations), mount_owned_nodes)
         for node_name, destination in expected_destinations.items():
@@ -1852,211 +1868,9 @@ class TechVaultPackTests(unittest.TestCase):
         )
 
     def test_security_assets_drop_legacy_unsafe_primitives(self) -> None:
-        capture = resolve_pack_artifact(_PACK, "techvault-kali-wrap-shell").data
-        self.assertNotIn(b"run_unwrapped", capture)
-        self.assertNotIn(b"running unwrapped", capture)
-
         flaggen = resolve_pack_artifact(_PACK, "techvault-flaggen-script").data
         self.assertNotIn(b"aptl-flag-key-2024", flaggen)
         self.assertNotIn(b"md5sum", flaggen)
-
-    def test_capture_wrapper_rejects_missing_capability_and_unreachable_sidecar(
-        self,
-    ) -> None:
-        wrapper = _PACK / "assets" / "content" / "kali-wrap-shell.sh"
-        env = os.environ.copy()
-        env.pop("APTL_CAPTURE_CAPABILITY", None)
-        missing = subprocess.run(
-            ["/bin/bash", str(wrapper)],
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-        self.assertEqual(missing.returncode, 70)
-        self.assertIn("capture capability missing; access denied", missing.stderr)
-
-        with tempfile.TemporaryDirectory() as directory:
-            tools = pathlib.Path(directory)
-            client = tools / "aptl-capture-client"
-            client.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-            client.chmod(0o755)
-            env.update(
-                {
-                    "PATH": f"{tools}:/usr/bin:/bin",
-                    "APTL_CAPTURE_CAPABILITY": "opaque-one-use-capability",
-                }
-            )
-            unavailable = subprocess.run(
-                ["/bin/bash", str(wrapper)],
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-        self.assertEqual(unavailable.returncode, 70)
-        self.assertIn("capture sidecar unavailable; access denied", unavailable.stderr)
-
-    def test_capture_client_sends_and_validates_authenticated_protocol(self) -> None:
-        path = _PACK / "assets" / "content" / "kali-capture-client"
-        module = types.ModuleType("techvault_capture_client_protocol_test")
-        module.__file__ = str(path)
-        exec(compile(path.read_bytes(), str(path), "exec"), module.__dict__)
-
-        class AcknowledgingSocket:
-            def __init__(self) -> None:
-                self.frames: list[dict] = []
-                self.response = bytearray()
-
-            def settimeout(self, _timeout: float) -> None:
-                pass
-
-            def sendall(self, data: bytes) -> None:
-                frame = json.loads(data)
-                self.frames.append(frame)
-                if frame["type"] == "session_start":
-                    response_type = "session_accepted"
-                elif frame["type"] == "session_end":
-                    response_type = "session_finalized"
-                else:
-                    return
-                self.response.extend(
-                    json.dumps(
-                        {
-                            "version": 2,
-                            "type": response_type,
-                            "run_id": "run-1",
-                            "session_id": "session-1",
-                        },
-                        separators=(",", ":"),
-                    ).encode("utf-8")
-                    + b"\n"
-                )
-
-            def recv(self, size: int) -> bytes:
-                chunk = bytes(self.response[:size])
-                del self.response[:size]
-                return chunk
-
-            def close(self) -> None:
-                pass
-
-        source = io.BytesIO(b"terminal bytes")
-        fake_socket = AcknowledgingSocket()
-        with (
-            mock.patch.object(module, "_connect", return_value=fake_socket),
-            mock.patch.object(module.sys, "stdin", types.SimpleNamespace(buffer=source)),
-            mock.patch.dict(
-                module.os.environ,
-                {"APTL_CAPTURE_CAPABILITY": "opaque-one-use-capability"},
-            ),
-        ):
-            module.cmd_stream("run-1", "session-1")
-
-        self.assertEqual(
-            [frame["type"] for frame in fake_socket.frames],
-            ["session_start", "pty_chunk", "session_end"],
-        )
-        start = fake_socket.frames[0]
-        self.assertEqual(start["version"], 2)
-        self.assertEqual(start["capability"], "opaque-one-use-capability")
-        self.assertEqual((start["run_id"], start["session_id"]), ("run-1", "session-1"))
-
-    def test_capture_client_drains_after_midstream_failure_and_exits_nonzero(self) -> None:
-        path = _PACK / "assets" / "content" / "kali-capture-client"
-        module = types.ModuleType("techvault_capture_client_test")
-        module.__file__ = str(path)
-        exec(compile(path.read_bytes(), str(path), "exec"), module.__dict__)
-
-        class FailingSocket:
-            def __init__(self) -> None:
-                self.send_count = 0
-                self.response = bytearray(
-                    b'{"version":2,"type":"session_accepted",'
-                    b'"run_id":"run-1","session_id":"session-1"}\n'
-                )
-
-            def settimeout(self, _timeout: float) -> None:
-                pass
-
-            def sendall(self, _data: bytes) -> None:
-                self.send_count += 1
-                if self.send_count == 3:
-                    raise BrokenPipeError("injected mid-stream failure")
-
-            def recv(self, size: int) -> bytes:
-                chunk = bytes(self.response[:size])
-                del self.response[:size]
-                return chunk
-
-            def close(self) -> None:
-                pass
-
-        source = io.BytesIO(b"x" * (module._CHUNK_SIZE * 3))
-        fake_socket = FailingSocket()
-        with (
-            mock.patch.object(module, "_connect", return_value=fake_socket),
-            mock.patch.object(module.sys, "stdin", types.SimpleNamespace(buffer=source)),
-            mock.patch.dict(
-                module.os.environ,
-                {"APTL_CAPTURE_CAPABILITY": "opaque-one-use-capability"},
-            ),
-            self.assertRaises(SystemExit) as raised,
-        ):
-            module.cmd_stream("run-1", "session-1")
-
-        self.assertEqual(raised.exception.code, 1)
-        self.assertEqual(source.tell(), len(source.getvalue()))
-
-    def test_capture_wrapper_rejects_failed_stream_after_fifo_is_drained(self) -> None:
-        wrapper = _PACK / "assets" / "content" / "kali-wrap-shell.sh"
-        with tempfile.TemporaryDirectory() as directory:
-            tools = pathlib.Path(directory)
-            client = tools / "aptl-capture-client"
-            script = tools / "script"
-            client.write_text(
-                "#!/bin/sh\n"
-                "if [ \"${1:-}\" = ping ]; then exit 0; fi\n"
-                "cat >/dev/null\n"
-                "exit 1\n",
-                encoding="utf-8",
-            )
-            script.write_text(
-                "#!/bin/sh\n"
-                "spool=\n"
-                "while [ \"$#\" -gt 0 ]; do\n"
-                "  if [ \"$1\" = --log-io ]; then shift; spool=$1; fi\n"
-                "  shift\n"
-                "done\n"
-                "printf 'fully drained transcript' >\"$spool\"\n"
-                "exit 0\n",
-                encoding="utf-8",
-            )
-            client.chmod(0o755)
-            script.chmod(0o755)
-            env = os.environ.copy()
-            env.update(
-                {
-                    "PATH": f"{tools}:/usr/bin:/bin",
-                    "APTL_CAPTURE_CAPABILITY": "opaque-one-use-capability",
-                    "APTL_RUN_ID": "run-1",
-                    "APTL_SESSION_ID": "session-1",
-                    "SSH_ORIGINAL_COMMAND": "true",
-                }
-            )
-            result = subprocess.run(
-                ["/bin/bash", str(wrapper)],
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-
-        self.assertEqual(result.returncode, 70)
-        self.assertIn("capture stream failed; session invalid", result.stderr)
 
     def test_flag_generator_requires_key_and_emits_verifiable_hmac_tokens(self) -> None:
         flaggen = _PACK / "assets" / "content" / "flaggen.sh"

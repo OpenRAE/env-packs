@@ -2298,14 +2298,9 @@ nodes:
         # Suricata/Wazuh must correlate (issue #581).
         - {manager: apt, name: iputils-ping, version: "*"}
         - {manager: apt, name: nmap, version: "*"}
-        # OBS-003 (ADR-033/ADR-041) per-session capture wiring: bsdmainutils
-        # provides script(1) (the PTY recording pipe), python3 runs
-        # aptl-capture-client, libcap2-bin provides capsh (drops
-        # CAP_AUDIT_CONTROL from sshd so the kali user's passwordless sudo
-        # cannot touch the audit trail the aptl-kali-capture sidecar owns).
-        - {manager: apt, name: bsdmainutils, version: "*"}
+        # python3 backs the Python offensive tooling below (python3-impacket,
+        # sqlmap).
         - {manager: apt, name: python3, version: "*"}
-        - {manager: apt, name: libcap2-bin, version: "*"}
         # Offensive toolset — #581 parity with the v5.0.0 Kali image. The
         # live tests drive curl-based web attacks (SQLi/XSS/cmd-injection) and
         # the TechVault attack path uses these enumeration/exploitation tools.
@@ -2330,70 +2325,6 @@ nodes:
           - {username: kali, primary_group: kali}
       service_manager_units:
         - {unit_id: ssh, unit_name: ssh.service, enabled_state: enabled, active_state: active}
-        - {unit_id: kali-capture-bootstrap, unit_name: kali-capture-bootstrap.service, enabled_state: enabled, active_state: active}
-  kali-capture:
-    type: compute
-    os: linux
-    description: >-
-      OBS-003 per-session capture sidecar (ADR-041 / issue #305). Shares Kali's
-      network namespace so the abstract capture-control socket the Kali workload
-      connects to is mutually visible, and owns the kali_captures volume
-      read-write so the Kali user (even after sudo) cannot tamper with recorded
-      evidence.
-    services: []
-    source:
-      name: "aptl-kali-capture"
-      version: local
-      artifact_requirement:
-        requirement_id: kali-capture-image
-        explicitness: constrained
-        materialization_specifications:
-          - specification_id: kali-capture
-            profile:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            digest: "sha256:29fe82a449d4b1afa79b3be15aa1f06d19fb3b2c8fc0fe56b803ef8b29484d42"
-            locked_input_ids: []
-        permitted_routes:
-          - mechanism:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            acquisition: none
-            timing: backend-preparation
-    runtime:
-      container:
-        # OBS-003: share Kali's network namespace so the abstract control
-        # socket (\0aptl-capture-ctrl, a per-netns kernel object) is visible to
-        # both the Kali workload and this sidecar.
-        namespaces:
-          network:
-            target_node_ref: kali
-      # The sidecar (NOT the Kali workload) holds the capture capabilities:
-      # AUDIT_CONTROL/AUDIT_WRITE for auditd, SYS_PACCT for process accounting,
-      # NET_RAW for per-session tcpdump.
-      linux_capabilities:
-        add: [CAP_AUDIT_CONTROL, CAP_AUDIT_WRITE, CAP_SYS_PACCT, CAP_NET_RAW]
-      network_sensors:
-        - network_sensor_id: kali-packet-capture
-          implementation: tcpdump
-          sensor_kind: packet_capture
-          monitoring_posture: host_local
-          capture_mode: pcap
-          capture_interfaces: [any]
-          log_file_refs: [/var/log/aptl/captures]
-          evidence_refs: [/var/log/aptl/captures]
-          description: Records the Kali workload's per-session packet evidence from the shared network namespace.
-      # The kali_captures volume mount is authored under persistent_volumes
-      # (that consumer entry carries the containment + read_write intent); a
-      # runtime mount here would double-declare the same target.
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 256 MiB
   kali-ssh-proxy:
     type: compute
     os: linux
@@ -2625,10 +2556,6 @@ realization:
       concern: compute-substrate
       posture: exact
       domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/kali-capture
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
     - field_pointer: /nodes/kali-ssh-proxy
       concern: compute-substrate
       posture: exact
@@ -2756,8 +2683,6 @@ infrastructure:
       - {redteam-net: 172.20.4.30}
       - {dmz-net: 172.20.1.30}
       - {internal-net: 172.20.2.35}
-  kali-capture:
-    dependencies: [kali]
   kali-ssh-proxy:
     links: [control-net, redteam-net]
     dependencies: [kali]
@@ -3015,11 +2940,6 @@ persistent_volumes:
     access_mode: read_write_once
     consumers:
       - {node: cortex, mount_destination: /opt/cortex/jobs, access_mode: read_write}
-  kali_captures:
-    lifecycle: retain
-    access_mode: read_write_once
-    consumers:
-      - {node: kali-capture, mount_destination: /var/log/aptl/captures, access_mode: read_write}
   misp_config:
     lifecycle: retain
     access_mode: read_write_once
@@ -4116,104 +4036,6 @@ content:
   # victim additionally trusts the workstation pivot key below (Prime
   # scenario lateral movement, workstation -> victim), so it gets its own
   # combined file instead of sharing target_authorized_keys with workstation.
-  kali-wrap-shell-script:
-    type: file
-    target: kali
-    path: /usr/local/bin/aptl-wrap-shell.sh
-    source:
-      name: techvault-kali-wrap-shell
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-kali-wrap-shell-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-kali-wrap-shell
-          version: 0.1.0
-          digest: sha256:4c718dc0eac63a682565014fdd7168797fc90e8d5d401987f351b03806498c7e
-          media_type: text/x-shellscript
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  kali-capture-client:
-    type: file
-    target: kali
-    path: /usr/local/bin/aptl-capture-client
-    source:
-      name: techvault-kali-capture-client
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-kali-capture-client-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-kali-capture-client
-          version: 0.1.0
-          digest: sha256:d9f56dac38241055fa13057261a30a9922dbc7c22bddd850f2ace8cd22176fc2
-          media_type: text/x-python
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  # Drops CAP_AUDIT_CONTROL from sshd itself — belt-and-suspenders on top of
-  # kali's container capability set (which never includes AUDIT_CONTROL to
-  # begin with; that capability lives only on the capture sidecar).
-  kali-ssh-capsh-override:
-    type: file
-    target: kali
-    path: /etc/systemd/system/ssh.service.d/override.conf
-    text: |
-      [Service]
-      ExecStart=
-      ExecStart=/usr/sbin/capsh --drop=cap_audit_control -- -c "exec /usr/sbin/sshd -D $SSHD_OPTS"
-  # Appends the ForceCommand/AcceptEnv wiring to the stock sshd_config and
-  # applies both this and the capsh override above with one restart —
-  # neither content: placement above can itself trigger sshd to notice a
-  # config change it may already have started with (issue #581, same
-  # pattern as db-bootstrap.sh).
-  kali-capture-bootstrap-script:
-    type: file
-    target: kali
-    path: /opt/kali-capture-bootstrap.sh
-    text: |
-      #!/bin/bash
-      set -e
-      if ! grep -q "^AcceptEnv APTL_SESSION_ID" /etc/ssh/sshd_config; then
-        {
-          echo ""
-          echo "# OBS-003 / ADR-033: per-session capture wiring"
-          echo "AcceptEnv APTL_SESSION_ID APTL_RUN_ID APTL_TRACE_ID APTL_CAPTURE_CAPABILITY"
-          echo "Match User kali"
-          echo "    ForceCommand /bin/bash /usr/local/bin/aptl-wrap-shell.sh"
-        } >> /etc/ssh/sshd_config
-      fi
-      sshd -t
-      systemctl daemon-reload
-      systemctl restart ssh
-  kali-capture-bootstrap-unit:
-    type: file
-    target: kali
-    path: /etc/systemd/system/kali-capture-bootstrap.service
-    text: |
-      [Unit]
-      Description=TechVault kali OBS-003 per-session capture wiring
-      After=ssh.service
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      ExecStart=/bin/bash /opt/kali-capture-bootstrap.sh
-
-      [Install]
-      WantedBy=multi-user.target
-
   # ---------------------------------------------------------------------------
   # CTF flag generation (#581 parity). The v5.0.0 base image and the still-image
   # AD node generate per-boot signed flags at container start; the image-free
