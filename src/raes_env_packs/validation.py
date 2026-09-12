@@ -1189,6 +1189,119 @@ def _validate_challenges(
             )
 
 
+# A RAES monitoring corpus (``RuntimeSecurityMonitoringContentSet``) names its
+# files in ``file_refs`` and counts them in ``file_count``. The count is of
+# files, not of the rules, decoders, or queries inside them.
+_CONTENT_SET_REFS_MISSING = "content-set.file-refs.missing"
+_CONTENT_SET_COUNT_MISMATCH = "content-set.file-count-mismatch"
+_CONTENT_SET_REF_UNSUPPLIED = "content-set.file-ref.unsupplied"
+
+
+def _content_set_declarations(
+    scenario: object,
+) -> Iterator[tuple[str, str, object]]:
+    """Yield ``(node_id, field_prefix, content_set)`` for every declared corpus.
+
+    Sorted node order keeps the diagnostic stream stable across runs over the
+    same bytes.
+    """
+
+    nodes = getattr(scenario, "nodes", None)
+    if not isinstance(nodes, dict):
+        return
+    for node_id in sorted(nodes):
+        runtime = getattr(nodes[node_id], "runtime", None)
+        managers = getattr(runtime, "security_monitoring_managers", None) or []
+        for manager_index, manager in enumerate(managers):
+            content_sets = getattr(manager, "content_sets", None) or []
+            for set_index, content_set in enumerate(content_sets):
+                field_prefix = (
+                    f"nodes.{node_id}.runtime.security_monitoring_managers"
+                    f"[{manager_index}].content_sets[{set_index}]"
+                )
+                yield str(node_id), field_prefix, content_set
+
+
+def _node_supplied_files(
+    scenario: object, node_id: str
+) -> tuple[frozenset[str], tuple[str, ...]]:
+    """Return the file paths and directory roots the scenario puts on a node.
+
+    Files come from the pack's ``content`` file rows, the node's present
+    non-directory ``filesystem_inventory`` entries, and its image build
+    destinations (RAES resolves file refs against the last two). A ``content``
+    directory row materializes an archive whose members the SDL does not list,
+    so it supplies a root: any path beneath its destination.
+    """
+
+    files: set[str] = set()
+    roots: list[str] = []
+    content = getattr(scenario, "content", None)
+    for row in (content.values() if isinstance(content, dict) else ()):
+        if str(getattr(row, "target", "")) != node_id:
+            continue
+        row_type = getattr(row, "type", None)
+        row_type = str(getattr(row_type, "value", row_type))
+        if row_type == "file" and getattr(row, "path", ""):
+            files.add(str(row.path))
+        elif row_type == "directory" and getattr(row, "destination", ""):
+            roots.append(str(row.destination).rstrip("/") + "/")
+    node = scenario.nodes[node_id]
+    runtime = getattr(node, "runtime", None)
+    for entry in getattr(runtime, "filesystem_inventory", None) or []:
+        entry_type = getattr(entry, "entry_type", None)
+        presence = getattr(entry, "presence", None)
+        if (
+            getattr(entry, "path", "")
+            and str(getattr(entry_type, "value", entry_type)) != "directory"
+            and str(getattr(presence, "value", presence)) == "present"
+        ):
+            files.add(str(entry.path))
+    build = getattr(getattr(node, "source", None), "build", None)
+    for item in (
+        *(getattr(build, "copied_sources", None) or []),
+        *(getattr(build, "source_inputs", None) or []),
+    ):
+        if getattr(item, "destination_path", ""):
+            files.add(str(item.destination_path))
+    return frozenset(files), tuple(roots)
+
+
+def _validate_content_set_inventory(
+    scenario: object, rel: str, errors: _Errors
+) -> None:
+    """Check each monitoring corpus's declared files against what ships.
+
+    RAES realizes ``security_monitoring_managers`` as an exact configuration
+    requirement, and ``file_count`` and ``file_refs`` are both compared. A count
+    that disagrees with the files the scenario supplies cannot be truthfully
+    realized by any backend (issue #343). So a resolved ``file_count`` must be
+    backed by ``file_refs``, the count must equal the number of distinct refs,
+    and every ref must be a file the scenario puts on the manager's node. An
+    unresolved variable (RAES admits one where it requires an absolute path) is
+    not checked.
+    """
+
+    supplied: dict[str, tuple[frozenset[str], tuple[str, ...]]] = {}
+    for node_id, prefix, content_set in _content_set_declarations(scenario):
+        declared = getattr(content_set, "file_count", None)
+        refs = [str(ref) for ref in getattr(content_set, "file_refs", None) or []]
+        if isinstance(declared, int) and not isinstance(declared, bool):
+            if not refs:
+                errors.add(_CONTENT_SET_REFS_MISSING, rel, f"{prefix}.file_refs")
+            elif len(set(refs)) != declared:
+                errors.add(_CONTENT_SET_COUNT_MISMATCH, rel, f"{prefix}.file_count")
+        if not refs:
+            continue
+        if node_id not in supplied:
+            supplied[node_id] = _node_supplied_files(scenario, node_id)
+        files, roots = supplied[node_id]
+        for index, ref in enumerate(refs):
+            if not ref.startswith("/") or ref in files or ref.startswith(roots):
+                continue
+            errors.add(_CONTENT_SET_REF_UNSUPPLIED, rel, f"{prefix}.file_refs[{index}]")
+
+
 def _open_validation_root(
     pack_root: str | os.PathLike[str], errors: _Errors
 ) -> tuple[str, int] | None:
@@ -1331,6 +1444,7 @@ def _validate_sdl_documents(
             root_fd, root, rel, limits, errors, author_sdl=author_sdl
         )
         if scenario is not None:
+            _validate_content_set_inventory(scenario, rel, errors)
             parsed.append(scenario)
     return tuple(parsed)
 

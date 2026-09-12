@@ -453,6 +453,192 @@ class SdlValidationTests(PackValidationFixture):
         self.assertFalse((self.root / "sdl" / ".raes").exists())
 
 
+_CORPUS = (
+    "sdl/example.sdl.yaml:nodes.siem.runtime.security_monitoring_managers[0]"
+    ".content_sets[0]"
+)
+
+
+class ContentSetInventoryTests(PackValidationFixture):
+    """A corpus's file_count and file_refs must match the files that ship (#343)."""
+
+    def _write_sdl(
+        self,
+        content_set: dict[str, object],
+        content: dict[str, object] | None = None,
+    ) -> None:
+        document = {
+            "name": "example-pack",
+            "nodes": {
+                "siem": {
+                    "type": "vm",
+                    "runtime": {
+                        "security_monitoring_managers": [
+                            {
+                                "security_monitoring_manager_id": "siem",
+                                "implementation": "wazuh",
+                                "content_sets": [
+                                    {"content_id": "rules", **content_set}
+                                ],
+                            }
+                        ]
+                    },
+                },
+                "other": {"type": "vm"},
+            },
+        }
+        if content is not None:
+            document["content"] = content
+        (self.root / "sdl" / "example.sdl.yaml").write_text(
+            yaml.safe_dump(document, sort_keys=False), encoding="utf-8"
+        )
+
+    @staticmethod
+    def _file_row(path: str, target: str = "siem") -> dict[str, object]:
+        return {"type": "file", "target": target, "path": path, "text": "<group/>"}
+
+    def _set_inventory(self, entries: list[dict[str, object]]) -> None:
+        path = self.root / "sdl" / "example.sdl.yaml"
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        document["nodes"]["siem"]["runtime"]["filesystem_inventory"] = entries
+        path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+
+    def _corpus_errors(self) -> list[str]:
+        return [e for e in self.validate().errors if e.startswith("content-set.")]
+
+    def test_count_matching_supplied_refs_passes(self) -> None:
+        self._write_sdl(
+            {"file_count": 2, "file_refs": ["/rules/a.xml", "/rules/b.xml"]},
+            {
+                "a": self._file_row("/rules/a.xml"),
+                "b": self._file_row("/rules/b.xml"),
+            },
+        )
+        result = self.validate()
+        self.assertTrue(result.ok, result.errors)
+
+    def test_definition_count_declared_as_file_count_is_rejected(self) -> None:
+        # The #343 defect: one XML file holding 11 rules declared as 11 files.
+        self._write_sdl(
+            {"file_count": 11, "file_refs": ["/rules/webapp_rules.xml"]},
+            {"webapp": self._file_row("/rules/webapp_rules.xml")},
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-count-mismatch: {_CORPUS}.file_count"],
+        )
+
+    def test_file_count_without_file_refs_is_rejected(self) -> None:
+        self._write_sdl(
+            {"file_count": 1, "name": "webapp_rules.xml"},
+            {"webapp": self._file_row("/rules/webapp_rules.xml")},
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-refs.missing: {_CORPUS}.file_refs"],
+        )
+
+    def test_duplicate_refs_count_once(self) -> None:
+        self._write_sdl(
+            {"file_count": 2, "file_refs": ["/rules/a.xml", "/rules/a.xml"]},
+            {"a": self._file_row("/rules/a.xml")},
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-count-mismatch: {_CORPUS}.file_count"],
+        )
+
+    def test_ref_nothing_supplies_is_rejected(self) -> None:
+        self._write_sdl(
+            {"file_count": 2, "file_refs": ["/rules/a.xml", "/rules/missing.xml"]},
+            {"a": self._file_row("/rules/a.xml")},
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-ref.unsupplied: {_CORPUS}.file_refs[1]"],
+        )
+
+    def test_file_placed_on_another_node_does_not_supply_the_ref(self) -> None:
+        self._write_sdl(
+            {"file_count": 1, "file_refs": ["/rules/a.xml"]},
+            {"a": self._file_row("/rules/a.xml", target="other")},
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-ref.unsupplied: {_CORPUS}.file_refs[0]"],
+        )
+
+    def test_ref_beneath_a_directory_row_is_supplied(self) -> None:
+        self._write_sdl(
+            {"file_count": 1, "file_refs": ["/rules/bundle/a.xml"]},
+            {
+                "bundle": {
+                    "type": "directory",
+                    "target": "siem",
+                    "destination": "/rules/bundle",
+                }
+            },
+        )
+        self.assertEqual(self._corpus_errors(), [])
+
+    def test_directory_root_does_not_supply_a_sibling_prefix(self) -> None:
+        self._write_sdl(
+            {"file_count": 1, "file_refs": ["/rules/bundle-extra/a.xml"]},
+            {
+                "bundle": {
+                    "type": "directory",
+                    "target": "siem",
+                    "destination": "/rules/bundle",
+                }
+            },
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-ref.unsupplied: {_CORPUS}.file_refs[0]"],
+        )
+
+    def test_present_inventory_file_supplies_the_ref(self) -> None:
+        self._write_sdl({"file_count": 1, "file_refs": ["/rules/a.xml"]})
+        self._set_inventory([{"path": "/rules/a.xml", "entry_type": "file"}])
+        self.assertEqual(self._corpus_errors(), [])
+
+    def test_image_build_destination_supplies_the_ref(self) -> None:
+        self._write_sdl({"file_count": 1, "file_refs": ["/rules/a.xml"]})
+        path = self.root / "sdl" / "example.sdl.yaml"
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        document["nodes"]["siem"]["source"] = {
+            "name": "siem-image",
+            "build": {
+                "copied_sources": [
+                    {"source_path": "rules/a.xml", "destination_path": "/rules/a.xml"}
+                ]
+            },
+        }
+        path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+        self.assertEqual(self._corpus_errors(), [])
+
+    def test_absent_or_directory_inventory_entry_does_not_supply_the_ref(self) -> None:
+        for entry in (
+            {"path": "/rules/a.xml", "entry_type": "file", "presence": "expected_absent"},
+            {"path": "/rules/a.xml", "entry_type": "directory"},
+        ):
+            with self.subTest(entry=entry):
+                self._write_sdl({"file_count": 1, "file_refs": ["/rules/a.xml"]})
+                self._set_inventory([entry])
+                self.assertEqual(
+                    self._corpus_errors(),
+                    [f"content-set.file-ref.unsupplied: {_CORPUS}.file_refs[0]"],
+                )
+
+    def test_unresolved_variable_ref_counts_but_is_not_resolved(self) -> None:
+        self._write_sdl({"file_count": 1, "file_refs": ["${corpus_path}"]})
+        self.assertEqual(self._corpus_errors(), [])
+
+    def test_corpus_without_a_file_count_or_refs_is_not_checked(self) -> None:
+        self._write_sdl({"name": "stock ruleset"})
+        self.assertEqual(self._corpus_errors(), [])
+
+
 class ValidationBoundaryTests(PackValidationFixture):
     def test_duplicate_yaml_keys_are_rejected_without_echoing_values(self) -> None:
         # A stand-in for confidential pack content. It is named for what it is

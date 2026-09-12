@@ -90,8 +90,10 @@ component** responsible for the contract it failed.
 
 ### Pack layout
 
-`pack`, `yaml`, `filesystem`, `resource`, and `challenges` codes. The pack's
-identity (`pack.yaml`), its file shapes, and its size bounds. Owned by
+`pack`, `yaml`, `filesystem`, `resource`, `challenges`, and `content-set`
+codes. The pack's identity (`pack.yaml`), its file shapes, its size bounds, and
+whether each monitoring corpus's `file_count` and `file_refs` match the files
+the pack ships. Owned by
 **env-packs**: this package defines the pack layout. Fix the pack's manifest or
 files.
 
