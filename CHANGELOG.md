@@ -11,6 +11,20 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [5.2.0](https://github.com/OpenRAE/env-packs/compare/v5.1.0...v5.2.0) (2026-09-12)
+
+
+### Features
+
+* **techvault:** complete runtime desired-state declarations ([113e847](https://github.com/OpenRAE/env-packs/commit/113e847d0087683a312b1549ad05de1c87ed46c9))
+* **techvault:** complete runtime desired-state for the 16 under-declared nodes ([#329](https://github.com/OpenRAE/env-packs/issues/329)) ([113e847](https://github.com/OpenRAE/env-packs/commit/113e847d0087683a312b1549ad05de1c87ed46c9))
+* **techvault:** own the scenario, not the backend's apparatus ([#338](https://github.com/OpenRAE/env-packs/issues/338)) ([7c01acd](https://github.com/OpenRAE/env-packs/commit/7c01acd0ec3b889ca015178c886af3bede95d796))
+
+
+### Bug Fixes
+
+* **release:** sequence release-PR maintenance behind release detection ([#330](https://github.com/OpenRAE/env-packs/issues/330)) ([c78660d](https://github.com/OpenRAE/env-packs/commit/c78660da7abea8ee247b54b8eb4776474fa4b0c3))
+
 ## [5.1.0](https://github.com/OpenRAE/env-packs/compare/v5.0.0...v5.1.0) (2026-09-06)
 
 
