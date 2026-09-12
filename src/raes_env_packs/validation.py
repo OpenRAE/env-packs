@@ -1222,49 +1222,86 @@ def _content_set_declarations(
                 yield str(node_id), field_prefix, content_set
 
 
-def _node_supplied_files(
-    scenario: object, node_id: str
-) -> tuple[frozenset[str], tuple[str, ...]]:
-    """Return the file paths and directory roots the scenario puts on a node.
+def _enum_text(value: object) -> str:
+    """Return a RAES enum member's value, or the plain value, as text."""
 
-    Files come from the pack's ``content`` file rows, the node's present
-    non-directory ``filesystem_inventory`` entries, and its image build
-    destinations (RAES resolves file refs against the last two). A ``content``
-    directory row materializes an archive whose members the SDL does not list,
-    so it supplies a root: any path beneath its destination.
+    return str(getattr(value, "value", value))
+
+
+def _content_row_supply(
+    scenario: object, node_id: str
+) -> tuple[set[str], list[str]]:
+    """Return the file paths and directory roots ``content`` rows put on a node.
+
+    A directory row materializes an archive whose members the SDL does not
+    list, so it supplies a root: any path beneath its destination.
     """
 
     files: set[str] = set()
     roots: list[str] = []
     content = getattr(scenario, "content", None)
-    for row in (content.values() if isinstance(content, dict) else ()):
+    for row in content.values() if isinstance(content, dict) else ():
         if str(getattr(row, "target", "")) != node_id:
             continue
-        row_type = getattr(row, "type", None)
-        row_type = str(getattr(row_type, "value", row_type))
+        row_type = _enum_text(getattr(row, "type", None))
         if row_type == "file" and getattr(row, "path", ""):
             files.add(str(row.path))
         elif row_type == "directory" and getattr(row, "destination", ""):
             roots.append(str(row.destination).rstrip("/") + "/")
-    node = scenario.nodes[node_id]
+    return files, roots
+
+
+def _inventory_files(node: object) -> Iterator[str]:
+    """Yield the node's present, non-directory ``filesystem_inventory`` paths."""
+
     runtime = getattr(node, "runtime", None)
     for entry in getattr(runtime, "filesystem_inventory", None) or []:
-        entry_type = getattr(entry, "entry_type", None)
-        presence = getattr(entry, "presence", None)
         if (
             getattr(entry, "path", "")
-            and str(getattr(entry_type, "value", entry_type)) != "directory"
-            and str(getattr(presence, "value", presence)) == "present"
+            and _enum_text(getattr(entry, "entry_type", None)) != "directory"
+            and _enum_text(getattr(entry, "presence", None)) == "present"
         ):
-            files.add(str(entry.path))
+            yield str(entry.path)
+
+
+def _build_destinations(node: object) -> Iterator[str]:
+    """Yield the paths the node's image build copies files to."""
+
     build = getattr(getattr(node, "source", None), "build", None)
-    for item in (
-        *(getattr(build, "copied_sources", None) or []),
-        *(getattr(build, "source_inputs", None) or []),
-    ):
-        if getattr(item, "destination_path", ""):
-            files.add(str(item.destination_path))
+    for field_name in ("copied_sources", "source_inputs"):
+        for item in getattr(build, field_name, None) or []:
+            if getattr(item, "destination_path", ""):
+                yield str(item.destination_path)
+
+
+def _node_supplied_files(
+    scenario: object, node_id: str
+) -> tuple[frozenset[str], tuple[str, ...]]:
+    """Return the file paths and directory roots the scenario puts on a node."""
+
+    # RAES resolves file refs against the node's inventory and build
+    # destinations; the pack's content rows are what it ships onto the node.
+    node = scenario.nodes[node_id]
+    files, roots = _content_row_supply(scenario, node_id)
+    files.update(_inventory_files(node))
+    files.update(_build_destinations(node))
     return frozenset(files), tuple(roots)
+
+
+def _check_content_set_count(
+    content_set: object, refs: list[str], prefix: str, rel: str, errors: _Errors
+) -> None:
+    """Require a resolved ``file_count`` to equal the corpus's distinct refs."""
+
+    declared = getattr(content_set, "file_count", None)
+    # RAES admits an unresolved variable reference as a string; only a
+    # resolved integer is comparable.
+    if not isinstance(declared, int) or isinstance(declared, bool):
+        return
+    if not refs:
+        errors.add(_CONTENT_SET_REFS_MISSING, rel, f"{prefix}.file_refs")
+    elif len(set(refs)) != declared:
+        errors.add(_CONTENT_SET_COUNT_MISMATCH, rel, f"{prefix}.file_count")
 
 
 def _validate_content_set_inventory(
@@ -1284,22 +1321,24 @@ def _validate_content_set_inventory(
 
     supplied: dict[str, tuple[frozenset[str], tuple[str, ...]]] = {}
     for node_id, prefix, content_set in _content_set_declarations(scenario):
-        declared = getattr(content_set, "file_count", None)
-        refs = [str(ref) for ref in getattr(content_set, "file_refs", None) or []]
-        if isinstance(declared, int) and not isinstance(declared, bool):
-            if not refs:
-                errors.add(_CONTENT_SET_REFS_MISSING, rel, f"{prefix}.file_refs")
-            elif len(set(refs)) != declared:
-                errors.add(_CONTENT_SET_COUNT_MISMATCH, rel, f"{prefix}.file_count")
+        refs = [str(ref) for ref in getattr(content_set, "file_refs", None) or ()]
+        _check_content_set_count(content_set, refs, prefix, rel, errors)
         if not refs:
             continue
         if node_id not in supplied:
             supplied[node_id] = _node_supplied_files(scenario, node_id)
-        files, roots = supplied[node_id]
-        for index, ref in enumerate(refs):
-            if not ref.startswith("/") or ref in files or ref.startswith(roots):
-                continue
+        for index in _unsupplied_ref_indexes(refs, *supplied[node_id]):
             errors.add(_CONTENT_SET_REF_UNSUPPLIED, rel, f"{prefix}.file_refs[{index}]")
+
+
+def _unsupplied_ref_indexes(
+    refs: list[str], files: frozenset[str], roots: tuple[str, ...]
+) -> Iterator[int]:
+    """Yield the index of each resolved ref that no supplied file or root covers."""
+
+    for index, ref in enumerate(refs):
+        if ref.startswith("/") and ref not in files and not ref.startswith(roots):
+            yield index
 
 
 def _open_validation_root(
