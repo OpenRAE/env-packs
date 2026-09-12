@@ -91,11 +91,26 @@ updates:
     commit-message:
       prefix: fix
       include: scope
+    # Direct dependencies only — the ones pyproject.toml actually declares. This
+    # entry reaches requirements/runtime.txt as well as pyproject.toml, and
+    # without this filter it raises a separate ungrouped PR for every transitive
+    # line in that lock: #298 (pygments), #299 (idna) and #300 (python-dotenv)
+    # were all opened that way. Each one edits runtime.txt alone, so it either
+    # breaks the co-installation contract that tests/test_dependency_pinning.py
+    # enforces — runtime.txt and pip-audit.txt land in one environment in
+    # ci.yml:audit — or duplicates half of the /requirements batch and forces it
+    # to rebase. That is precisely the split the group above exists to prevent,
+    # so the transitive closure is that entry's job and only the declared
+    # dependencies are this one's.
+    allow:
+      - dependency-type: "direct"
     ignore:
       # Same parent-pinned transitives as the /requirements entry above, and the
       # same reasoning — this entry reaches requirements/runtime.txt too, which
       # is how the unresolvable z3-solver bump in #166 was raised here rather
       # than there. Both directories have to decline it or the PR just returns
-      # under the other one.
+      # under the other one. `allow` above already excludes them as transitives;
+      # these stay as a belt-and-braces decline, since a lock line reads as a
+      # requested pin to the pip updater.
       - dependency-name: "z3-solver"
       - dependency-name: "pydantic-core"
