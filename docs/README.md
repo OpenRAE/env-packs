@@ -28,6 +28,9 @@ User-facing documentation is under [`public/`](public/index.md).
 - [TechVault Shuffle Orborus offline-runtime preflight](development/techvault-shuffle-orborus-offline-runtime-preflight.md)
   — portable Orborus content/configuration and APTL realization ownership for
   issue #285.
+- [TechVault Orborus self-identity binding preflight](development/techvault-orborus-self-identity-preflight.md)
+  — why native holder identities stay outside portable pack content for issue
+  #331.
 - [Migration scrub policy](development/scrub-policy.md) — how to adapt material
   from another source into this repository without leaking private vocabulary.
 - [Documentation style guide](development/documentation-style-guide.md) — how the
