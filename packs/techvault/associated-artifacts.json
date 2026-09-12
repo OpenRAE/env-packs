@@ -156,38 +156,6 @@
       "sensitivity": "internal",
       "description": null
     },
-    "techvault-kali-capture-client": {
-      "artifact_id": "techvault-kali-capture-client",
-      "role": "other",
-      "media_type": "text/x-python",
-      "uri": "raes-environment-pack:/assets/content/kali-capture-client",
-      "checksum": {
-        "algorithm": "sha256",
-        "value": "d9f56dac38241055fa13057261a30a9922dbc7c22bddd850f2ace8cd22176fc2"
-      },
-      "size_bytes": 8770,
-      "created_at": "2026-08-02T00:00:00Z",
-      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
-      "satisfies_refs": [],
-      "sensitivity": "internal",
-      "description": null
-    },
-    "techvault-kali-wrap-shell": {
-      "artifact_id": "techvault-kali-wrap-shell",
-      "role": "other",
-      "media_type": "text/x-shellscript",
-      "uri": "raes-environment-pack:/assets/content/kali-wrap-shell.sh",
-      "checksum": {
-        "algorithm": "sha256",
-        "value": "4c718dc0eac63a682565014fdd7168797fc90e8d5d401987f351b03806498c7e"
-      },
-      "size_bytes": 4979,
-      "created_at": "2026-08-02T00:00:00Z",
-      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
-      "satisfies_refs": [],
-      "sensitivity": "internal",
-      "description": null
-    },
     "techvault-misp-sync-hatch-build": {
       "artifact_id": "techvault-misp-sync-hatch-build",
       "role": "other",
@@ -643,9 +611,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "5702d215a9a6b7b1627acb6e87c0328ab5388e8b587b472c05b8501bafc4d0fc"
+        "value": "a72d7404cbaf43b49d462661f4348a58e63a1c3fd3fb3c7f215dc1c08541e8b5"
       },
-      "size_bytes": 195557,
+      "size_bytes": 174906,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -733,5 +701,5 @@
       "description": "Idempotent bounded initializer for TechVault Cortex application state."
     }
   },
-  "set_digest": "sha256:51803cd3e96a87ab803c0ef8fe5209c298ad385682e0664097b1c8fa9a95544d"
+  "set_digest": "sha256:5561f51e56f03ec9e5a45a23721f5bcde7873a83ed0e4ab2418bd1a29451e2c4"
 }
