@@ -16,7 +16,7 @@ APTL-era issue #589. The two records are meant to agree and be read together.
 | --- | --- |
 | Portable scenario, workflow, capture, evidence, and inventory semantics | RAES |
 | Environment-pack format, templates, schemas, validation, release tooling, adoption guidance, and selected first-party pack content | `OpenRAE/env-packs` (this repository) |
-| A particular scenario's content and experiment design | Its declared pack owner, which may be this repository or an external catalog |
+| A particular scenario's in-game content, experiment and trial design, and required data/evidence | Its declared pack owner, which may be this repository or an external catalog |
 | Admitted-plan realization, lab lifecycle, trusted source acquisition, backend observation, and local evidence persistence | LilRAE (formerly APTL) |
 
 ### RAES owns the meaning
@@ -39,10 +39,11 @@ privileges from being colocated with the tooling.
 
 ### The downstream owner owns the scenario
 
-Whoever owns a particular pack owns its content and experiment design,
-and the execution choices made with a pack: which RAES scenario is authored, what
-the environment contains, which capture requirements are declared, and what the
-run is meant to show. Those are RAES inputs expressed within this format. They are
+Whoever owns a particular pack owns its in-game content, experiment and trial
+design, and the data and evidence the experiment requires. That includes which
+RAES scenario is authored, what participants encounter, how many trials the
+experiment requests, which capture requirements are declared, and what the run
+is meant to show. Those are RAES inputs expressed within this format. They are
 not authority over RAES semantics, and not authority over runtime detail.
 
 ### LilRAE owns runtime realization, not pack content
@@ -60,6 +61,7 @@ The format carries declarative RAES content. It has no mechanism — and must ne
 acquire one — for a pack to select:
 
 - LilRAE shell commands, container names, or compose fragments;
+- backend-native identities or realization-only bootstrap configuration;
 - host paths, output paths, or backend-specific persistence paths;
 - collector implementations, registration ids, or import paths;
 - credentials, secret sources, environment-variable keys, or trust roots.

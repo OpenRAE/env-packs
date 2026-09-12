@@ -38,7 +38,10 @@ _OWNER_RESPONSIBILITIES = {
         "layout contract, templates, schemas, validation, release tooling, and "
         "adoption guidance"
     ),
-    "downstream": "experiment design, and the execution choices made with a pack",
+    "downstream": (
+        "in-game content, experiment and trial design, and the data and evidence "
+        "the experiment requires"
+    ),
     "LilRAE": (
         "admitted-plan realization, lab lifecycle, trusted source acquisition, "
         "backend observation, and LilRAE-local evidence persistence"
@@ -49,10 +52,18 @@ _OWNER_RESPONSIBILITIES = {
 # negative claim, so it needs a positive assertion here to stay true.
 _PACK_MUST_NOT_SELECT = (
     "shell commands",
+    "backend-native identities",
+    "realization-only bootstrap configuration",
     "host paths",
     "persistence paths",
     "collector implementations",
     "credentials",
+)
+
+_SCENARIO_OWNER_SCOPE = (
+    "in-game content",
+    "experiment and trial design",
+    "data and evidence the experiment requires",
 )
 
 
@@ -118,6 +129,15 @@ class OwnershipBoundaryDocTests(unittest.TestCase):
                     item, self.text,
                     f"the guidance must state that a pack cannot select {item} "
                     "(#138)",
+                )
+
+    def test_scenario_owner_scope_stays_at_the_portable_boundary(self) -> None:
+        for item in _SCENARIO_OWNER_SCOPE:
+            with self.subTest(item=item):
+                self.assertIn(
+                    item,
+                    self.text,
+                    "the scenario owner must state needs, not realization machinery",
                 )
 
     def test_links_the_lilrae_projects_aptl_era_ownership_record(self) -> None:

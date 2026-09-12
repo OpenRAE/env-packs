@@ -342,6 +342,7 @@ def _assert_shuffle_orborus_contract(test: unittest.TestCase, sdl: dict) -> None
         "SHUFFLE_WORKER_IMAGE": expected_worker,
     }
     test.assertEqual(set(environment), set(expected_values))
+    test.assertNotIn("ORBORUS_CONTAINER_NAME", environment)
     for name, value in expected_values.items():
         test.assertEqual(
             environment[name],
@@ -708,6 +709,16 @@ class TechVaultPackTests(unittest.TestCase):
                 "runtime"
             ]["orchestration_authorities"][0].update(
                 realized_children=[{"workload_id": "expected-worker"}]
+            ),
+            "runtime self identity": lambda sdl: sdl["nodes"]["shuffle-orborus"][
+                "runtime"
+            ]["environment"].append(
+                {
+                    "name": "ORBORUS_CONTAINER_NAME",
+                    "value": "native-holder",
+                    "value_classification": "plain",
+                    "provenance": "runtime",
+                }
             ),
         }
 
