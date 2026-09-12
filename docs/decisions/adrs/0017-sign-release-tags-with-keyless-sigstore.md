@@ -100,6 +100,17 @@ through environment bindings after shape validation; no value is evaluated as
 shell code. Release runs are serialized with `cancel-in-progress: false`, so two
 workflow runs cannot race to create or publish the same tag.
 
+Serialization between workflow runs does not order sibling jobs within one run.
+Release-PR maintenance must therefore depend on the authenticated release
+detection job and run only when that job reports a non-release push. A merged
+release-PR push must proceed to publication without concurrently invoking
+Release Please against the already-advanced manifest and still-absent signed
+tag. Explicit recovery remains a separate path: it may resume Release Please
+maintenance only after publication succeeds. The detector's existing output is
+the single release/non-release decision for all three paths; jobs must not
+duplicate that decision by probing for a tag, parsing versions, or scanning
+history independently.
+
 The release job creates one signed, annotated tag at the exact current commit
 with gitsign's GitHub Actions token provider. It immediately verifies both the
 signature and the signer policy before any GitHub Release creation, PyPI

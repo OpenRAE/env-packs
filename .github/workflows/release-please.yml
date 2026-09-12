@@ -56,7 +56,19 @@ concurrency:
 jobs:
   release-please:
     name: Maintain release PR
-    if: github.event_name == 'push'
+    # Sequenced behind the authenticated release decision, not merely behind the
+    # top-level `concurrency: release` group: that group serializes workflow
+    # RUNS, while these are sibling JOBS inside one run. Without this edge, the
+    # push that merges a release PR runs maintenance beside publication --
+    # Release Please then reads a manifest whose version has already advanced
+    # while the signed tag and GitHub Release do not exist yet, fails to resolve
+    # the last release, rescans full history, rediscovers historical breaking
+    # commits, and opens a phantom major release PR (#328). Detection is the one
+    # release/non-release authority; a detector failure skips this job closed.
+    needs: [detect-release]
+    if: >-
+      github.event_name == 'push' &&
+      needs.detect-release.outputs.release != 'true'
     runs-on: ubuntu-latest
     # PR-writing privilege only; no OIDC or attestation (ADR 0017 least-privilege).
     permissions:
