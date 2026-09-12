@@ -90,13 +90,12 @@ pack, verifies that the built-in file is non-empty inside that exact image, and
 requires Suricata's native configuration test to load all three selected source
 files with zero rule failures.
 
-## Capture consumer contract
+## Red-team session evidence
 
-The Kali capture client uses protocol version 2 and fails closed. Before an SSH
-session, the consuming control plane must pre-authorize an opaque, single-use
-capability bound to the run and session identifiers, then supply it as
-`APTL_CAPTURE_CAPABILITY`. The sidecar must reject absent, invalid, expired,
-replayed, or identifier-mismatched capabilities and return matching
-`session_accepted` and `session_finalized` acknowledgements. The client never
-treats an unacknowledged or partial stream as valid evidence, and it removes the
-capability from the participant command environment after starting capture.
+TechVault requires a transcript of every interactive session on the red-team
+workstation, covering the commands issued and responses returned. The SDL's
+`redteam-session-transcript` evidence requirement defines its scope, lifetime,
+redaction, integrity, and loss-disclosure posture without selecting a capture
+mechanism. A realizing backend decides how to satisfy that requirement and must
+report evidence loss rather than silently treating an uncaptured session as
+captured.
