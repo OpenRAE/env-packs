@@ -4,3 +4,8 @@
 PyYAML>=6
 aces-sdl==0.23.1
 cyclonedx-bom==7.3.0
+# Floor, not a pin: the historical closure pulls cryptography transitively
+# (aces-sdl, asyncssh, pyjwt) and the resolver would otherwise hold it at the
+# version this lock was first generated with, which is affected by
+# GHSA-g6cj-pr64-35w5 (PKCS#7 Bleichenbacher oracle, high).
+cryptography>=50.0.0  # GHSA-g6cj-pr64-35w5

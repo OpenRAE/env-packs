@@ -1,6 +1,6 @@
 # PEP 517 build frontend + the backend pyproject declares, hash-locked so no
 # build ever resolves its own toolchain from the network (#142).
-build==1.5.0
+build==1.6.0
 hatchling==1.32.0
 # hatchling imports `editables` lazily when building an EDITABLE wheel and does
 # not declare it as a dependency, so `pip install --no-build-isolation -e .`
