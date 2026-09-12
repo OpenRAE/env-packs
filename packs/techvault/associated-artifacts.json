@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "b07d3a67d4bbba0e08797dcc52e8cec6f5d8fe4a531770d67a6a5ea98ee790cc"
+        "value": "db1d7b33fdf6faa4b32f5355a71a0189041fff26efdb462147391ff21aeac8e0"
       },
-      "size_bytes": 5026,
+      "size_bytes": 4893,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -701,5 +701,5 @@
       "description": "Idempotent bounded initializer for TechVault Cortex application state."
     }
   },
-  "set_digest": "sha256:5561f51e56f03ec9e5a45a23721f5bcde7873a83ed0e4ab2418bd1a29451e2c4"
+  "set_digest": "sha256:a673829e690d82d4328fcc00258823f1a91b042706969e8f2397c47a4002db17"
 }
