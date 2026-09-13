@@ -1601,6 +1601,61 @@ class TechVaultPackTests(unittest.TestCase):
                     all(item["host_ip"] == "127.0.0.1" for item in published)
                 )
 
+    def test_dns_host_publication_is_loopback_for_both_protocols(self) -> None:
+        sdl = _load_sdl()
+        published = sdl["nodes"]["dns"]["runtime"]["network"]["published_ports"]
+
+        self.assertEqual(
+            {
+                (
+                    item["container_port"],
+                    item["protocol"],
+                    item["host_port"],
+                    item["host_ip"],
+                )
+                for item in published
+            },
+            {(53, "tcp", 5353, "127.0.0.1"), (53, "udp", 5353, "127.0.0.1")},
+        )
+        self.assertEqual(
+            _PACK_VALIDATOR.validate_host_publication_contract(sdl), []
+        )
+
+    def test_pack_validator_rejects_non_loopback_host_publications(self) -> None:
+        dns = "/nodes/dns/runtime/network/published_ports"
+        listener = (
+            "/nodes/webapp-proxy/runtime/service_listeners/0/published_port_refs/0"
+        )
+
+        def published(sdl: dict, node: str) -> list:
+            return sdl["nodes"][node]["runtime"]["network"]["published_ports"]
+
+        mutations = {
+            f"{dns}/0 host_ip '0.0.0.0'": lambda sdl: published(sdl, "dns")[
+                0
+            ].update(host_ip="0.0.0.0"),
+            f"{dns}/1 host_ip '0.0.0.0'": lambda sdl: published(sdl, "dns")[
+                1
+            ].update(host_ip="0.0.0.0"),
+            f"{dns}/1 host_ip None": lambda sdl: published(sdl, "dns")[1].pop(
+                "host_ip"
+            ),
+            f"{listener} host_ip '::'": lambda sdl: sdl["nodes"]["webapp-proxy"][
+                "runtime"
+            ]["service_listeners"][0]["published_port_refs"][0].update(
+                host_ip="::"
+            ),
+        }
+
+        for expected, mutate in mutations.items():
+            with self.subTest(expected=expected):
+                candidate = copy.deepcopy(_load_sdl())
+                mutate(candidate)
+                self.assertEqual(
+                    _PACK_VALIDATOR.validate_host_publication_contract(candidate),
+                    [f"publication.non-loopback-host-ip: {expected}"],
+                )
+
     def test_cortex_provides_case_driven_offline_enrichment(self) -> None:
         sdl = _load_sdl()
         thehive = sdl["nodes"]["thehive"]

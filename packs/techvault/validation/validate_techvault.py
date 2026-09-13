@@ -92,6 +92,7 @@ _WAZUH_RULES_REF = (
 _VARIABLE_REF = re.compile(r"\$([A-Z][A-Z0-9_]*)")
 _SID = re.compile(r"(?:^|;)\s*sid\s*:\s*(\d+)\s*;")
 _CONTAINER_SUBSTRATE = "operating-system-container"
+_LOOPBACK_HOST_IP = "127.0.0.1"
 
 
 def _error(errors: list[str], code: str, detail: str) -> None:
@@ -708,6 +709,40 @@ def validate_compute_substrate_contract(sdl: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+def _host_publications(
+    node_id: object, runtime: Mapping[str, Any]
+) -> list[tuple[str, object]]:
+    base = f"/nodes/{node_id}/runtime"
+    published = _as_mapping(runtime.get("network")).get("published_ports")
+    publications = [
+        (f"{base}/network/published_ports/{index}", item)
+        for index, item in enumerate(published if isinstance(published, list) else [])
+    ]
+    listeners = runtime.get("service_listeners")
+    for index, value in enumerate(listeners if isinstance(listeners, list) else []):
+        refs = _as_mapping(value).get("published_port_refs")
+        publications.extend(
+            (f"{base}/service_listeners/{index}/published_port_refs/{ref}", item)
+            for ref, item in enumerate(refs if isinstance(refs, list) else [])
+        )
+    return publications
+
+
+def validate_host_publication_contract(sdl: Mapping[str, Any]) -> list[str]:
+    """Keep every TechVault host publication off the operator's LAN."""
+
+    errors: list[str] = []
+    for node_id, value in _as_mapping(sdl.get("nodes")).items():
+        runtime = _as_mapping(_as_mapping(value).get("runtime"))
+        for pointer, item in _host_publications(node_id, runtime):
+            host_ip = _as_mapping(item).get("host_ip")
+            if host_ip != _LOOPBACK_HOST_IP:
+                errors.append(
+                    f"publication.non-loopback-host-ip: {pointer} host_ip {host_ip!r}"
+                )
+    return errors
+
+
 def validate() -> list[str]:
     root = pathlib.Path(__file__).resolve().parents[1]
     result = validate_pack(root)
@@ -721,6 +756,7 @@ def validate() -> list[str]:
         sdl_path = next((root / "sdl").glob("*.sdl.yaml"))
         sdl = yaml.safe_load(sdl_path.read_text(encoding="utf-8"))
         errors.extend(validate_compute_substrate_contract(sdl))
+        errors.extend(validate_host_publication_contract(sdl))
         errors.extend(validate_suricata_contract(root, sdl))
         errors.extend(validate_cortex_contract(root, sdl))
     return errors
