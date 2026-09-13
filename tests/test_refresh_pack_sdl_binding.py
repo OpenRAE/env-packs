@@ -65,7 +65,8 @@ class RefreshPackSdlBindingTests(unittest.TestCase):
 
         tool.refresh(self.pack)
 
-        self.assertEqual((bindings.read_bytes(), manifest.read_bytes()), before)
+        after = (bindings.read_bytes(), manifest.read_bytes())
+        self.assertEqual(after, before)
 
     def test_refresh_refuses_symlinked_pack_members(self) -> None:
         for rel in (

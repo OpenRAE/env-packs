@@ -1500,13 +1500,14 @@ def _load_scheme_snapshots(
     document = _strict_json_member(
         root_fd, rel, limits, errors, invalid_code=_BINDINGS_INVALID
     )
-    if not isinstance(document, list):
+    entries = document if isinstance(document, list) else None
+    if entries is None:
         if document is not None:
             errors.add(_BINDINGS_INVALID, rel)
         return None
     try:
         return tuple(
-            ExternalConceptSchemeSnapshotModel.model_validate(item) for item in document
+            ExternalConceptSchemeSnapshotModel.model_validate(item) for item in entries
         )
     except ValueError:
         errors.add(_BINDINGS_INVALID, rel)
