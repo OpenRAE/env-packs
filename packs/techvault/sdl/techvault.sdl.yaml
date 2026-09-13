@@ -1666,13 +1666,12 @@ nodes:
       # CAP_NET_ADMIN, which Docker's default capability set does not grant.
       linux_capabilities:
         add: [CAP_NET_ADMIN]
-      # webapp is a deliberate attack-surface target, reachable from other
-      # machines on the LAN like the in-range red team, not an operator or
-      # management surface -- so it does NOT get a loopback published_ports
-      # declaration here. Its own networks (aptl-dmz, aptl-internal) are both
-      # internal: true, which Docker never routes host traffic through
-      # regardless of host_ip; the webapp-proxy node is the real host
-      # publication.
+      # webapp is a deliberate attack-surface target for in-range actors, who
+      # reach it over the scenario networks, so it declares no
+      # published_ports here. Its own networks (aptl-dmz, aptl-internal) are
+      # both internal: true, which Docker never routes host traffic through
+      # regardless of host_ip; the webapp-proxy node is the operator's
+      # loopback host publication.
       service_manager_units:
         - {unit_id: webapp, unit_name: webapp.service, enabled_state: enabled, active_state: active}
         # Per-boot CTF flags (see the flag-generator content below).
@@ -2186,15 +2185,17 @@ nodes:
         add: [CAP_NET_ADMIN]
       # Host port 5353 (53 is commonly already bound on the host by a local
       # resolver): both protocols, since DNS genuinely uses UDP for queries
-      # and TCP for zone transfers / large responses. dns is a deliberate
-      # attack-surface target like webapp, so host_ip is explicit
-      # all-interfaces rather than the loopback default meant for operator and
-      # management surfaces. dns also sits on aptl-security (not internal:
+      # and TCP for zone transfers / large responses. In-range actors resolve
+      # against dns over the scenario networks, never through this
+      # publication; it exists only so the operator can query the range from
+      # the lab host (dig @localhost -p 5353 techvault.local SOA). Like every
+      # other host publication in the pack it binds loopback, so it never
+      # lands on the operator's LAN. dns sits on aptl-security (not internal:
       # true), so unlike webapp this publishes correctly without a proxy.
       network:
         published_ports:
-          - {container_port: 53, protocol: tcp, host_port: 5353, host_ip: "0.0.0.0"}
-          - {container_port: 53, protocol: udp, host_port: 5353, host_ip: "0.0.0.0"}
+          - {container_port: 53, protocol: tcp, host_port: 5353, host_ip: "127.0.0.1"}
+          - {container_port: 53, protocol: udp, host_port: 5353, host_ip: "127.0.0.1"}
       service_manager_units:
         - {unit_id: named, unit_name: named.service, enabled_state: enabled, active_state: active}
       dns_services:

@@ -611,9 +611,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "5d5bf7584f8c097cfd4622fb5224e677d4ab105c052eec419af3aecfa91d22a9"
+        "value": "a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e"
       },
-      "size_bytes": 175484,
+      "size_bytes": 175580,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -643,9 +643,9 @@
       "uri": "raes-environment-pack:/validation/validate_techvault.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "b7703b974472ebd7531344fca150f16235a93ff7adda18dea33e33138c496384"
+        "value": "7f834ba40bb6da19566fffa8bac6bdc43dbe77d5b2ad16d61cc316e9f16f2665"
       },
-      "size_bytes": 29365,
+      "size_bytes": 30900,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -701,5 +701,5 @@
       "description": "Idempotent bounded initializer for TechVault Cortex application state."
     }
   },
-  "set_digest": "sha256:927c10560eaaff36825bbc899b42c0131d78375ebffbcacb4493bb706e489aeb"
+  "set_digest": "sha256:338fe858457c881703417a28772e1ec30878e67a52e7929afaa20146676fbd1e"
 }
