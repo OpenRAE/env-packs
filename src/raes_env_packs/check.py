@@ -208,6 +208,27 @@ _CATALOG: dict[str, Presentation] = {
         "Tactic/technique classification lives in RAES SDL, not a pack field (ADR 0014).",
         "Remove the category field from the reported challenge entry.",
     ),
+    # -- monitoring corpus inventory (pack-domain: the pack's own supply) ------
+    "content-set": _pack(
+        "A monitoring corpus's declared files disagree with the files the pack supplies.",
+        "RAES compares a corpus's file_count and file_refs exactly when realizing it.",
+        "Make the corpus declaration match the files the pack ships.",
+    ),
+    "content-set.file-refs.missing": _pack(
+        "A monitoring corpus declares a file_count but no file_refs.",
+        "A file count can only be checked against the files it counts.",
+        "List the corpus's files in file_refs.",
+    ),
+    "content-set.file-count-mismatch": _pack(
+        "A monitoring corpus's file_count differs from the number of its file_refs.",
+        "file_count counts the corpus's files, not the rules or decoders inside them.",
+        "Set file_count to the number of files listed in file_refs.",
+    ),
+    "content-set.file-ref.unsupplied": _pack(
+        "A monitoring corpus lists a file that nothing puts on its node.",
+        "A backend cannot realize a corpus file the scenario never supplies.",
+        "Add a content row that places the file on the node, or fix the path.",
+    ),
     # -- trust / provenance -----------------------------------------------------
     "provenance": _trust(
         "The provenance ledger is missing or does not meet the pack contract.",

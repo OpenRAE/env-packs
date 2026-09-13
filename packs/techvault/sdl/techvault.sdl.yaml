@@ -155,49 +155,63 @@ nodes:
               kind: rule_corpus
               format: wazuh_rule_xml
               name: webapp_rules.xml
-              file_count: 11
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/webapp_rules.xml
               loaded: true
               description: Web-application attack rules, including the SQL-injection detections the range exercises.
             - content_id: suricata-rules
               kind: rule_corpus
               format: wazuh_rule_xml
               name: suricata_rules.xml
-              file_count: 12
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/suricata_rules.xml
               loaded: true
               description: Rules that fire on Suricata EVE events arriving from the network sensor.
             - content_id: ad-rules
               kind: rule_corpus
               format: wazuh_rule_xml
               name: ad_rules.xml
-              file_count: 11
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/ad_rules.xml
               loaded: true
               description: Active Directory authentication and abuse rules.
             - content_id: database-rules
               kind: rule_corpus
               format: wazuh_rule_xml
               name: database_rules.xml
-              file_count: 7
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/database_rules.xml
               loaded: true
               description: Customer-database access and abuse rules.
             - content_id: falco-rules
               kind: rule_corpus
               format: wazuh_rule_xml
               name: falco_rules.xml
-              file_count: 8
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/falco_rules.xml
               loaded: true
               description: Container runtime rules.
             - content_id: postgresql-decoders
               kind: decoder_corpus
               format: wazuh_decoder_xml
               name: postgresql_decoders.xml
-              file_count: 2
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/decoders/postgresql_decoders.xml
               loaded: true
               description: Decoders that make PostgreSQL log lines parseable by the rules.
             - content_id: samba-decoders
               kind: decoder_corpus
               format: wazuh_decoder_xml
               name: samba_decoders.xml
-              file_count: 2
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/decoders/samba_decoders.xml
               loaded: true
               description: Decoders for Samba file-share activity.
           detection_definitions:

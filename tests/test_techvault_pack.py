@@ -797,6 +797,32 @@ class TechVaultPackTests(unittest.TestCase):
                     pathlib.PurePosixPath(placement["path"]).name,
                     content_set["name"],
                 )
+                # file_count counts files, not the rules or decoders in them
+                # (#343): each corpus ships as exactly its one placed file.
+                self.assertEqual(content_set["file_refs"], [placement["path"]])
+                self.assertEqual(content_set["file_count"], 1)
+
+    def test_pack_validator_rejects_wazuh_definition_counts_as_file_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            staged = pathlib.Path(directory) / "techvault"
+            shutil.copytree(_PACK, staged)
+            sdl_path = staged / "sdl" / "techvault.sdl.yaml"
+            text = sdl_path.read_text(encoding="utf-8")
+            webapp = (
+                "name: webapp_rules.xml\n"
+                "              file_count: 1\n"
+            )
+            self.assertEqual(text.count(webapp), 1)
+            sdl_path.write_text(
+                text.replace(webapp, webapp.replace("file_count: 1", "file_count: 11")),
+                encoding="utf-8",
+            )
+            self.assertIn(
+                "content-set.file-count-mismatch: sdl/techvault.sdl.yaml:"
+                "nodes.wazuh-manager.runtime.security_monitoring_managers[0]"
+                ".content_sets[0].file_count",
+                validate_pack(staged).errors,
+            )
 
     def test_suricata_content_contract_is_complete(self) -> None:
         errors = _PACK_VALIDATOR.validate_suricata_contract(_PACK, _load_sdl())
