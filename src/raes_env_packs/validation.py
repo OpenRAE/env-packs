@@ -61,6 +61,7 @@ _KIT_MATERIALIZATIONS_FILE = "kit.materializations.json"
 _FILESYSTEM_CHANGED = "filesystem.changed"
 _SDL_SUFFIX = ".sdl.yaml"
 _BINDINGS_SUFFIX = ".bindings.json"
+_BINDINGS_INVALID = "sdl.bindings-invalid"
 _SCHEMES_SUFFIX = ".schemes.json"
 _METADATA_LIMIT_MESSAGE = "pack metadata exceeds the validation limit"
 _SECRET_KEY_FRAGMENTS = (
@@ -1486,25 +1487,29 @@ def _direct_sdl_companions(inventory: frozenset[str], suffix: str) -> list[str]:
 
 
 def _companion_sdl(rel: str, suffix: str) -> str:
+    """Return the SDL document a companion member belongs to."""
+
     return rel[: -len(suffix)] + _SDL_SUFFIX
 
 
 def _load_scheme_snapshots(
     root_fd: int, rel: str, limits: PackValidationLimits, errors: _Errors
 ) -> tuple[ExternalConceptSchemeSnapshotModel, ...] | None:
+    """Load the pinned scheme snapshot list beside one bindings document."""
+
     document = _strict_json_member(
-        root_fd, rel, limits, errors, invalid_code="sdl.bindings-invalid"
+        root_fd, rel, limits, errors, invalid_code=_BINDINGS_INVALID
     )
-    if document is None:
+    if not isinstance(document, list):
+        if document is not None:
+            errors.add(_BINDINGS_INVALID, rel)
         return None
     try:
-        if not isinstance(document, list):
-            raise ValueError("scheme snapshots must be a JSON list")
         return tuple(
             ExternalConceptSchemeSnapshotModel.model_validate(item) for item in document
         )
     except ValueError:
-        errors.add("sdl.bindings-invalid", rel)
+        errors.add(_BINDINGS_INVALID, rel)
     return None
 
 
@@ -1538,7 +1543,7 @@ def _validate_concept_bindings(
             errors.add("sdl.bindings-schemes-missing", rel)
             continue
         document = _strict_json_member(
-            root_fd, rel, limits, errors, invalid_code="sdl.bindings-invalid"
+            root_fd, rel, limits, errors, invalid_code=_BINDINGS_INVALID
         )
         snapshots = _load_scheme_snapshots(root_fd, schemes_rel, limits, errors)
         scenario = scenarios.get(sdl_rel)
@@ -1547,7 +1552,7 @@ def _validate_concept_bindings(
         try:
             model = ExternalConceptBindingDocumentModel.model_validate(document)
         except ValueError:
-            errors.add("sdl.bindings-invalid", rel)
+            errors.add(_BINDINGS_INVALID, rel)
             continue
         report = admit_external_concept_bindings(
             model,

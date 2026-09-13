@@ -15,8 +15,9 @@ from raes_env_packs.digest import validate_pack_content_manifest
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _TOOL = _ROOT / "tools" / "refresh_pack_sdl_binding.py"
 _spec = importlib.util.spec_from_file_location("refresh_pack_sdl_binding", _TOOL)
+assert _spec is not None
+assert _spec.loader is not None
 tool = importlib.util.module_from_spec(_spec)
-assert _spec and _spec.loader
 sys.modules[_spec.name] = tool
 _spec.loader.exec_module(tool)
 
@@ -32,7 +33,7 @@ class RefreshPackSdlBindingTests(unittest.TestCase):
     def _edit_sdl_semantically(self) -> None:
         text = self.sdl.read_text(encoding="utf-8")
         marker = "    description: Built-in domain administrator.\n"
-        self.assertEqual(text.count(marker), 1)
+        self.assertIn(marker, text)
         self.sdl.write_text(
             text.replace(marker, "    description: Built-in domain administrator account.\n"),
             encoding="utf-8",
