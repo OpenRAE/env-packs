@@ -22,6 +22,7 @@ import tarfile
 import tempfile
 import types
 import unittest
+from typing import NamedTuple
 from unittest import mock
 
 import yaml
@@ -42,22 +43,29 @@ _BINDINGS = _PACK / "sdl" / "techvault.bindings.json"
 _SCHEMES = _PACK / "sdl" / "techvault.schemes.json"
 _BINDINGS_ARTIFACT = "techvault-pack-sdl-techvault-bindings-json"
 _PORTAL_ROUTES = "nodes.webapp.runtime.applications.techvault-portal.routes."
-# The portal's intentional weaknesses: binding id -> (route id, CWE concept).
+
+
+class _Weakness(NamedTuple):
+    route: str
+    concept: str
+
+
+# The portal's intentional weaknesses, keyed by binding id.
 _WEBAPP_WEAKNESSES = {
-    "webapp-sqli-login": ("login", "CWE-89"),
-    "webapp-verbose-errors": ("login", "CWE-209"),
-    "webapp-sqli-search": ("search", "CWE-89"),
-    "webapp-xss-reflected": ("search", "CWE-79"),
-    "webapp-cmdi-ping": ("ping-tool", "CWE-78"),
-    "webapp-xss-stored": ("comment", "CWE-79"),
-    "webapp-idor-files": ("api-file", "CWE-639"),
-    "webapp-idor-users": ("api-user", "CWE-639"),
-    "webapp-missing-authz-admin": ("admin", "CWE-862"),
-    "webapp-weak-jwt": ("api-token", "CWE-330"),
-    "webapp-hardcoded-secrets": ("api-token", "CWE-798"),
-    "webapp-unrestricted-upload": ("upload", "CWE-434"),
-    "webapp-debug-endpoint": ("debug", "CWE-489"),
-    "webapp-env-disclosure": ("debug", "CWE-538"),
+    "webapp-sqli-login": _Weakness(route="login", concept="CWE-89"),
+    "webapp-verbose-errors": _Weakness(route="login", concept="CWE-209"),
+    "webapp-sqli-search": _Weakness(route="search", concept="CWE-89"),
+    "webapp-xss-reflected": _Weakness(route="search", concept="CWE-79"),
+    "webapp-cmdi-ping": _Weakness(route="ping-tool", concept="CWE-78"),
+    "webapp-xss-stored": _Weakness(route="comment", concept="CWE-79"),
+    "webapp-idor-files": _Weakness(route="api-file", concept="CWE-639"),
+    "webapp-idor-users": _Weakness(route="api-user", concept="CWE-639"),
+    "webapp-missing-authz-admin": _Weakness(route="admin", concept="CWE-862"),
+    "webapp-weak-jwt": _Weakness(route="api-token", concept="CWE-330"),
+    "webapp-hardcoded-secrets": _Weakness(route="api-token", concept="CWE-798"),
+    "webapp-unrestricted-upload": _Weakness(route="upload", concept="CWE-434"),
+    "webapp-debug-endpoint": _Weakness(route="debug", concept="CWE-489"),
+    "webapp-env-disclosure": _Weakness(route="debug", concept="CWE-538"),
 }
 _CWE_SCHEME = {
     "scheme_id": "mitre-cwe",
@@ -2332,8 +2340,8 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
                 for binding_id, binding in bindings.items()
             },
             {
-                binding_id: (_PORTAL_ROUTES + route, concept)
-                for binding_id, (route, concept) in _WEBAPP_WEAKNESSES.items()
+                binding_id: (_PORTAL_ROUTES + weakness.route, weakness.concept)
+                for binding_id, weakness in _WEBAPP_WEAKNESSES.items()
             },
         )
         for binding_id, binding in bindings.items():
@@ -2345,7 +2353,7 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
         (snapshot,) = json.loads(_SCHEMES.read_text(encoding="utf-8"))
         self.assertEqual({key: snapshot[key] for key in _CWE_SCHEME}, _CWE_SCHEME)
         self.assertLessEqual(
-            {concept for _route, concept in _WEBAPP_WEAKNESSES.values()},
+            {weakness.concept for weakness in _WEBAPP_WEAKNESSES.values()},
             {term["concept_id"] for term in snapshot["concepts"]},
         )
 
