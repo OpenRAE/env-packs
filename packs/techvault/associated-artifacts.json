@@ -604,6 +604,38 @@
       "sensitivity": "public",
       "description": null
     },
+    "techvault-pack-sdl-techvault-bindings-json": {
+      "artifact_id": "techvault-pack-sdl-techvault-bindings-json",
+      "role": "other",
+      "media_type": "application/json",
+      "uri": "raes-environment-pack:/sdl/techvault.bindings.json",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "a66ba8592d6cf5ed1e75f7fa6324ab8c405e9eb3c8b781a4292c510b559a1c56"
+      },
+      "size_bytes": 44611,
+      "created_at": "2026-09-13T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "techvault-pack-sdl-techvault-schemes-json": {
+      "artifact_id": "techvault-pack-sdl-techvault-schemes-json",
+      "role": "other",
+      "media_type": "application/json",
+      "uri": "raes-environment-pack:/sdl/techvault.schemes.json",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "bb8245f8092137856df430aa5b711242fc2179cb565a7da0de766be85addf016"
+      },
+      "size_bytes": 46723,
+      "created_at": "2026-09-13T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
     "techvault-pack-sdl-techvault-sdl-yaml": {
       "artifact_id": "techvault-pack-sdl-techvault-sdl-yaml",
       "role": "other",
@@ -611,9 +643,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e"
+        "value": "52019010cede00bb7bb67a82649c1c96818a9bad7b5117bd2f0239cfcf466dc9"
       },
-      "size_bytes": 175580,
+      "size_bytes": 165962,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -643,9 +675,9 @@
       "uri": "raes-environment-pack:/validation/validate_techvault.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "7f834ba40bb6da19566fffa8bac6bdc43dbe77d5b2ad16d61cc316e9f16f2665"
+        "value": "16d951db9b087d0f682c4d95437dcc24144ebd844761d6a7a64d85c7d75fa059"
       },
-      "size_bytes": 30900,
+      "size_bytes": 32427,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -701,5 +733,5 @@
       "description": "Idempotent bounded initializer for TechVault Cortex application state."
     }
   },
-  "set_digest": "sha256:338fe858457c881703417a28772e1ec30878e67a52e7929afaa20146676fbd1e"
+  "set_digest": "sha256:6300b3d539ab9c1e2287b9852e5408e1811516b818a7acf015f045cb3c9c5b89"
 }

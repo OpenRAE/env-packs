@@ -71,6 +71,10 @@ _KNOWN_CODES = (
     "sdl.invalid",
     "sdl.invalid-utf8",
     "sdl.imports-denied",
+    "sdl.bindings-invalid",
+    "sdl.bindings-unresolved",
+    "sdl.bindings-schemes-missing",
+    "sdl.bindings-orphan",
 ) + tuple(f"provenance.schema.{sub}" for sub in _SCHEMA_SUBCODES) + tuple(
     f"compatibility.schema.{sub}" for sub in _SCHEMA_SUBCODES
 )

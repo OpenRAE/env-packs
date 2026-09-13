@@ -43,6 +43,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0035](0035-compose-catalog-kits-through-raes-and-transactional-pack-projections.md) | Compose catalog kits through RAES and transactional pack projections | Content location superseded by 0036 |
 | [0036](0036-publish-first-party-content-with-env-packs.md) | Publish first-party content with env-packs | Accepted |
 | [0037](0037-compose-verified-pack-distribution-from-existing-authorities.md) | Compose verified pack distribution from existing authorities | Accepted |
+| [0038](0038-ship-raes-concept-bindings-beside-pack-sdl.md) | Ship RAES concept bindings beside pack SDL | Accepted |
 
 ```{toctree}
 :hidden:

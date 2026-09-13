@@ -22,6 +22,7 @@ import tarfile
 import tempfile
 import types
 import unittest
+from typing import NamedTuple
 from unittest import mock
 
 import yaml
@@ -38,6 +39,41 @@ from raes_env_packs.digest import validate_pack_content_manifest
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _PACK = _ROOT / "packs" / "techvault"
 _SDL = _PACK / "sdl" / "techvault.sdl.yaml"
+_BINDINGS = _PACK / "sdl" / "techvault.bindings.json"
+_SCHEMES = _PACK / "sdl" / "techvault.schemes.json"
+_BINDINGS_ARTIFACT = "techvault-pack-sdl-techvault-bindings-json"
+_PORTAL_ROUTES = "nodes.webapp.runtime.applications.techvault-portal.routes."
+
+
+class _Weakness(NamedTuple):
+    route: str
+    concept: str
+
+
+# The portal's intentional weaknesses, keyed by binding id.
+_WEBAPP_WEAKNESSES = {
+    "webapp-sqli-login": _Weakness(route="login", concept="CWE-89"),
+    "webapp-verbose-errors": _Weakness(route="login", concept="CWE-209"),
+    "webapp-sqli-search": _Weakness(route="search", concept="CWE-89"),
+    "webapp-xss-reflected": _Weakness(route="search", concept="CWE-79"),
+    "webapp-cmdi-ping": _Weakness(route="ping-tool", concept="CWE-78"),
+    "webapp-xss-stored": _Weakness(route="comment", concept="CWE-79"),
+    "webapp-idor-files": _Weakness(route="api-file", concept="CWE-639"),
+    "webapp-idor-users": _Weakness(route="api-user", concept="CWE-639"),
+    "webapp-missing-authz-admin": _Weakness(route="admin", concept="CWE-862"),
+    "webapp-weak-jwt": _Weakness(route="api-token", concept="CWE-330"),
+    "webapp-hardcoded-secrets": _Weakness(route="api-token", concept="CWE-798"),
+    "webapp-unrestricted-upload": _Weakness(route="upload", concept="CWE-434"),
+    "webapp-debug-endpoint": _Weakness(route="debug", concept="CWE-489"),
+    "webapp-env-disclosure": _Weakness(route="debug", concept="CWE-538"),
+}
+_CWE_SCHEME = {
+    "scheme_id": "mitre-cwe",
+    "authority": "MITRE Common Weakness Enumeration",
+    "revision": "4.20",
+    "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+    "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+}
 _PROFILE = _PACK / "profiles" / "exact-artifact-copy-v1.json"
 _VALIDATOR = _PACK / "validation" / "validate_techvault.py"
 
@@ -115,8 +151,6 @@ _UNDERDECLARED_RUNTIME_NODES = frozenset(
         "shuffle-backend",
         "shuffle-frontend",
         "ad",
-        "kali-ssh-proxy",
-        "webapp-proxy",
     }
 )
 
@@ -462,18 +496,20 @@ class TechVaultPackTests(unittest.TestCase):
         sdl = _load_sdl()
         self.assertEqual(sdl["name"], "techvault")
         expected_counts = {
-            "nodes": 34,
-            "infrastructure": 34,
-            "persistent_volumes": 21,
+            "nodes": 29,
+            "infrastructure": 29,
+            "persistent_volumes": 19,
             "features": 2,
-            "vulnerabilities": 14,
             "propositions": 3,
             "assertions": 3,
             "observation_boundaries": 1,
             "evidence_requirements": 4,
             "identity_domains": 1,
             "relationships": 2,
-            "accounts": 4,
+            "accounts": 14,
+            "variables": 2,
+            "entities": 1,
+            "agents": 1,
         }
         for section, expected in expected_counts.items():
             with self.subTest(section=section):
@@ -644,8 +680,8 @@ class TechVaultPackTests(unittest.TestCase):
             if constraint["concern"] == "compute-substrate"
         }
 
-        self.assertEqual(len(scenario.nodes), 34)
-        self.assertEqual(len(compute_nodes), 29)
+        self.assertEqual(len(scenario.nodes), 29)
+        self.assertEqual(len(compute_nodes), 25)
         self.assertEqual(
             {sdl["nodes"][node_id]["type"] for node_id in compute_nodes},
             {"compute"},
@@ -777,10 +813,10 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline & materialized, set())
         self.assertEqual(sourced & materialized, set())
         self.assertEqual(inline | sourced | materialized, set(content))
-        self.assertEqual(len(inline), 17)
+        self.assertEqual(len(inline), 19)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
         self.assertEqual(materialized, set())
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 58)
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 60)
 
     def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
         sdl = _load_sdl()
@@ -1274,21 +1310,24 @@ class TechVaultPackTests(unittest.TestCase):
                 ),
                 "suricata.detection-evidence-mismatch: expected alert identities",
             ),
-            "login route vulnerability mismatch": (
-                set_path(
-                    (
-                        "nodes",
-                        "webapp",
-                        "runtime",
-                        "applications",
-                        0,
-                        "routes",
-                        1,
-                        "vulnerability_refs",
-                    ),
-                    [],
+            "login route weakness mismatch": (
+                lambda sdl, assets: assets.update(
+                    {
+                        _BINDINGS_ARTIFACT: json.dumps(
+                            {
+                                **json.loads(assets[_BINDINGS_ARTIFACT]),
+                                "bindings": {
+                                    binding_id: binding
+                                    for binding_id, binding in json.loads(
+                                        assets[_BINDINGS_ARTIFACT]
+                                    )["bindings"].items()
+                                    if binding_id != "webapp-sqli-login"
+                                },
+                            }
+                        ).encode("utf-8")
+                    }
                 ),
-                "suricata.detection-path-mismatch: webapp login vulnerability",
+                "suricata.detection-path-mismatch: webapp login weakness",
             ),
             "Wazuh detection rule mismatch": (
                 lambda sdl, assets: assets.update({wazuh_artifact: b"<group/>"}),
@@ -1304,6 +1343,7 @@ class TechVaultPackTests(unittest.TestCase):
             "techvault-suricata-misp-sha1-seed",
             "techvault-suricata-misp-sha256-seed",
             wazuh_artifact,
+            _BINDINGS_ARTIFACT,
         )
         resolved_artifacts = {
             artifact_id: resolve_pack_artifact(_PACK, artifact_id)
@@ -1359,8 +1399,6 @@ class TechVaultPackTests(unittest.TestCase):
             },
             "shuffle-frontend": {"applications", "service_listeners"},
             "ad": {"identity_authorities", "service_listeners"},
-            "kali-ssh-proxy": {"service_listeners"},
-            "webapp-proxy": {"applications", "service_listeners"},
         }
         expected_policy = {
             "thehive": ("unless_stopped", "1 GiB"),
@@ -1373,8 +1411,6 @@ class TechVaultPackTests(unittest.TestCase):
             "shuffle-backend": ("unless_stopped", "1 GiB"),
             "shuffle-frontend": ("unless_stopped", "256 MiB"),
             "ad": ("unless_stopped", "512 MiB"),
-            "kali-ssh-proxy": ("unless_stopped", "64 MiB"),
-            "webapp-proxy": ("unless_stopped", None),
         }
         self.assertEqual(set(expected_runtime_keys), _UNDERDECLARED_RUNTIME_NODES)
         self.assertEqual(set(expected_policy), _UNDERDECLARED_RUNTIME_NODES)
@@ -1415,7 +1451,6 @@ class TechVaultPackTests(unittest.TestCase):
             "wazuh-dashboard": "dashboard",
             "shuffle-backend": "shuffle-api",
             "shuffle-frontend": "https",
-            "webapp-proxy": "http",
         }
         for node_name, service in expected_application_services.items():
             with self.subTest(application=node_name):
@@ -1509,22 +1544,6 @@ class TechVaultPackTests(unittest.TestCase):
             {"ldap", "kerberos", "ad_ds_rpc"},
         )
 
-        self.assertNotIn("applications", nodes["kali-ssh-proxy"]["runtime"])
-        self.assertNotIn("forwarding_agents", nodes["kali-ssh-proxy"]["runtime"])
-
-        webapp_route = nodes["webapp-proxy"]["runtime"]["applications"][0][
-            "routes"
-        ][0]
-        self.assertEqual(
-            webapp_route["upstream_target"],
-            {
-                "target_node_ref": "webapp",
-                "target_service": "http",
-                "scheme": "http",
-                "tls_terminated_here": False,
-            },
-        )
-
         mount_owned_nodes = {
             "thehive",
             "cortex",
@@ -1584,8 +1603,6 @@ class TechVaultPackTests(unittest.TestCase):
             "cortex": {(9001, 9001)},
             "wazuh-dashboard": {(5601, 443)},
             "shuffle-frontend": {(443, 3443), (80, 3001)},
-            "kali-ssh-proxy": {(2023, 2023)},
-            "webapp-proxy": {(8080, 8080)},
         }
 
         for node_name, expected_ports in expected.items():
@@ -1624,7 +1641,7 @@ class TechVaultPackTests(unittest.TestCase):
     def test_pack_validator_rejects_non_loopback_host_publications(self) -> None:
         dns = "/nodes/dns/runtime/network/published_ports"
         listener = (
-            "/nodes/webapp-proxy/runtime/service_listeners/0/published_port_refs/0"
+            "/nodes/thehive/runtime/service_listeners/0/published_port_refs/0"
         )
 
         def published(sdl: dict, node: str) -> list:
@@ -1640,7 +1657,7 @@ class TechVaultPackTests(unittest.TestCase):
             f"{dns}/1 host_ip None": lambda sdl: published(sdl, "dns")[1].pop(
                 "host_ip"
             ),
-            f"{listener} host_ip '::'": lambda sdl: sdl["nodes"]["webapp-proxy"][
+            f"{listener} host_ip '::'": lambda sdl: sdl["nodes"]["thehive"][
                 "runtime"
             ]["service_listeners"][0]["published_port_refs"][0].update(
                 host_ip="::"
@@ -2109,6 +2126,369 @@ class TechVaultPackTests(unittest.TestCase):
                     hashlib.sha256,
                 ).hexdigest()
                 self.assertTrue(hmac.compare_digest(signature, expected))
+
+
+# The TechVault domain's in-world roster: username -> (groups, password
+# strength, SPN). Only the SPN each account is Kerberoastable through is listed.
+_AD_ACCOUNT_ROSTER = {
+    "Administrator": ({"Domain Admins"}, "weak", ""),
+    "sarah.mitchell": ({"Executives"}, "strong", ""),
+    "james.rodriguez": ({"Executives", "IT-Admins"}, "strong", ""),
+    "lisa.chang": ({"Executives", "Sales"}, "medium", ""),
+    "emily.chen": ({"Engineering", "IT-Admins", "Domain Admins"}, "medium", ""),
+    "michael.thompson": ({"Engineering"}, "weak", ""),
+    "david.kim": ({"Engineering", "IT-Admins"}, "strong", ""),
+    "jessica.williams": ({"Sales", "VPN-Users"}, "weak", ""),
+    "robert.martinez": ({"Sales"}, "medium", ""),
+    "svc-sql": (set(), "weak", "MSSQLSvc/db.techvault.local:1433"),
+    "svc-web": (set(), "weak", "HTTP/webapp.techvault.local"),
+    "svc-backup": ({"Domain Admins"}, "medium", ""),
+    "contractor.temp": ({"VPN-Users", "Remote-Desktop", "Engineering"}, "weak", ""),
+    "former.employee": (set(), "weak", ""),
+}
+
+
+class TechVaultInWorldDeclarationTests(unittest.TestCase):
+    """The pack states what exists in the scenario, never how it is built."""
+
+    def test_pack_validator_rejects_build_recipes(self) -> None:
+        sdl = _load_sdl()
+        self.assertEqual(
+            _PACK_VALIDATOR.validate_realization_method_contract(sdl), []
+        )
+
+        build_route = {
+            "mechanism": {
+                "mechanism": "materialization-specification",
+                "profile": "some-build",
+                "version": "1",
+                "digest": "sha256:" + "0" * 64,
+            },
+            "acquisition": "none",
+            "timing": "backend-preparation",
+        }
+        mutations = {
+            "/nodes/kali/source/artifact_requirement": lambda candidate: candidate[
+                "nodes"
+            ]["kali"].update(
+                source={
+                    "name": "kali",
+                    "version": "local",
+                    "artifact_requirement": {
+                        "requirement_id": "kali-image",
+                        "explicitness": "constrained",
+                        "materialization_specifications": [
+                            {
+                                "specification_id": "kali",
+                                "profile": build_route["mechanism"],
+                                "digest": "sha256:" + "1" * 64,
+                            }
+                        ],
+                        "permitted_routes": [build_route],
+                    },
+                }
+            ),
+            "/content/webapp-app-code/source/artifact_requirement": lambda candidate: candidate[
+                "content"
+            ]["webapp-app-code"]["source"]["artifact_requirement"][
+                "permitted_routes"
+            ].append(build_route),
+        }
+        for pointer, mutate in mutations.items():
+            with self.subTest(pointer=pointer):
+                candidate = copy.deepcopy(sdl)
+                mutate(candidate)
+                self.assertEqual(
+                    _PACK_VALIDATOR.validate_realization_method_contract(candidate),
+                    [f"realization.build-recipe: {pointer}"],
+                )
+
+    def test_ad_declares_its_domain_without_a_build_source(self) -> None:
+        sdl = _load_sdl()
+        ad = sdl["nodes"]["ad"]
+
+        self.assertNotIn("source", ad)
+        environment = {item["name"] for item in ad["runtime"].get("environment", [])}
+        for name in (
+            "SAMBA_DOMAIN",
+            "SAMBA_REALM",
+            "SAMBA_ADMIN_PASSWORD",
+            "DNS_FORWARDER",
+            "SIEM_IP",
+            "WAZUH_MANAGER",
+            "AGENT_NAME",
+            "LOG_PATHS",
+            "LOG_FORMAT",
+        ):
+            with self.subTest(environment=name):
+                self.assertNotIn(name, environment)
+
+        scenario = parse_sdl_file(_SDL)
+        domain_accounts = {
+            account.username: account
+            for account in scenario.accounts.values()
+            if account.node == "ad"
+        }
+        self.assertEqual(set(domain_accounts), set(_AD_ACCOUNT_ROSTER))
+        for username, (groups, strength, spn) in _AD_ACCOUNT_ROSTER.items():
+            with self.subTest(account=username):
+                account = domain_accounts[username]
+                self.assertEqual(set(account.groups), groups)
+                self.assertEqual(account.password_strength.value, strength)
+                self.assertEqual(account.spn, spn)
+                self.assertEqual(account.domain_ref, "techvault")
+                self.assertFalse(account.disabled)
+
+    def test_wazuh_agents_are_declared_on_the_hosts_they_watch(self) -> None:
+        sdl = _load_sdl()
+        removed = {"wazuh-sidecar-db", "wazuh-sidecar-suricata"}
+
+        self.assertEqual(removed & set(sdl["nodes"]), set())
+        self.assertEqual(removed & set(sdl["infrastructure"]), set())
+        for volume, entry in sdl["persistent_volumes"].items():
+            with self.subTest(volume=volume):
+                consumers = {item["node"] for item in entry.get("consumers", [])}
+                self.assertEqual(removed & consumers, set())
+        self.assertNotIn("wazuh-sidecar", _SDL.read_text(encoding="utf-8"))
+
+        expected = {
+            "ad": {
+                (
+                    "wazuh_agent",
+                    frozenset(
+                        {
+                            "/var/log/samba/log.samba",
+                            "/var/log/samba/log.smbd",
+                            "/var/log/samba/log.winbindd",
+                        }
+                    ),
+                    ("wazuh-manager", 1514, "tcp"),
+                ),
+                ("rsyslog", frozenset(), ("wazuh-manager", 514, "udp")),
+            },
+            "db": {
+                (
+                    "wazuh_agent",
+                    frozenset({"/var/log/postgresql/postgresql-15-main.log"}),
+                    ("wazuh-manager", 1514, "tcp"),
+                )
+            },
+            "suricata": {
+                (
+                    "wazuh_agent",
+                    frozenset({"/var/log/suricata/eve.json"}),
+                    ("wazuh-manager", 1514, "tcp"),
+                )
+            },
+        }
+        for node_id, agents in expected.items():
+            with self.subTest(node=node_id):
+                declared = {
+                    (
+                        agent["implementation"],
+                        frozenset(
+                            source["location"]
+                            for source in agent["sources"]
+                            if source.get("kind") == "tailed_path"
+                        ),
+                        (
+                            target["target_node_ref"],
+                            target["ingestion_port"],
+                            target["protocol"],
+                        ),
+                    )
+                    for agent in sdl["nodes"][node_id]["runtime"]["forwarding_agents"]
+                    for target in agent["ship_targets"]
+                }
+                self.assertEqual(declared, agents)
+
+    def test_red_team_ssh_access_is_declared_not_proxied(self) -> None:
+        sdl = _load_sdl()
+        removed = {"kali-ssh-proxy", "webapp-proxy", "control-net"}
+
+        self.assertEqual(removed & set(sdl["nodes"]), set())
+        self.assertEqual(removed & set(sdl["infrastructure"]), set())
+        raw = _SDL.read_text(encoding="utf-8")
+        for name in removed:
+            with self.subTest(name=name):
+                self.assertNotIn(name, raw)
+
+        scenario = parse_sdl_file(_SDL)
+        self.assertEqual(scenario.entities["red-team"].role.value, "red")
+        operator = scenario.agents["red-team-operator"]
+        self.assertEqual(operator.entity, "red-team")
+        self.assertEqual(
+            {
+                (access.target_ref, access.channel.value)
+                for access in operator.interactive_access.values()
+            },
+            {("kali", "ssh")},
+        )
+
+    def test_webapp_weaknesses_are_cwe_bindings_on_their_routes(self) -> None:
+        raw = _SDL.read_text(encoding="utf-8")
+        self.assertNotIn("vulnerabilities", _load_sdl())
+        self.assertNotIn("vulnerability_refs", raw)
+
+        bindings = json.loads(_BINDINGS.read_text(encoding="utf-8"))["bindings"]
+        self.assertEqual(
+            {
+                binding_id: (
+                    binding["subject"]["canonical_ref"],
+                    binding["scheme"]["concept_id"],
+                )
+                for binding_id, binding in bindings.items()
+            },
+            {
+                binding_id: (_PORTAL_ROUTES + weakness.route, weakness.concept)
+                for binding_id, weakness in _WEBAPP_WEAKNESSES.items()
+            },
+        )
+        for binding_id, binding in bindings.items():
+            with self.subTest(binding=binding_id):
+                self.assertEqual(
+                    {key: binding["scheme"][key] for key in _CWE_SCHEME}, _CWE_SCHEME
+                )
+
+        (snapshot,) = json.loads(_SCHEMES.read_text(encoding="utf-8"))
+        self.assertEqual({key: snapshot[key] for key in _CWE_SCHEME}, _CWE_SCHEME)
+        self.assertLessEqual(
+            {weakness.concept for weakness in _WEBAPP_WEAKNESSES.values()},
+            {term["concept_id"] for term in snapshot["concepts"]},
+        )
+
+        self.assertEqual(
+            [error for error in validate_pack(_PACK).errors if error.startswith("sdl.bindings")],
+            [],
+        )
+
+    def test_ad_flags_are_backend_provided_values(self) -> None:
+        sdl = _load_sdl()
+        scenario = parse_sdl_file(_SDL)
+        inventory = {
+            entry["path"]: entry
+            for entry in sdl["nodes"]["ad"]["runtime"]["filesystem_inventory"]
+        }
+        placed = {
+            item["path"]: item
+            for item in sdl["content"].values()
+            if item.get("target") == "ad" and item.get("type") == "file"
+        }
+
+        for variable, path, mode in (
+            ("flag_ad_user", "/opt/flags/user.txt", "0644"),
+            ("flag_ad_root", "/root/root.txt", "0600"),
+        ):
+            with self.subTest(flag=variable):
+                declared = scenario.variables[variable]
+                self.assertEqual(declared.type.value, "string")
+                self.assertTrue(declared.required)
+                self.assertIsNone(declared.default)
+
+                self.assertEqual(placed[path]["text"], "${" + variable + "}")
+                self.assertIs(placed[path]["sensitive"], True)
+
+                entry = inventory[path]
+                self.assertEqual(
+                    (
+                        entry["entry_type"],
+                        entry["owner_user"],
+                        entry["owner_group"],
+                        entry["mode"],
+                    ),
+                    ("file", "root", "root", mode),
+                )
+
+
+def _load_refresh_tool() -> types.ModuleType:
+    path = _ROOT / "tools" / "refresh_pack_sdl_binding.py"
+    module = types.ModuleType("techvault_refresh_pack_sdl_binding")
+    module.__file__ = str(path)
+    exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), module.__dict__)
+    return module
+
+
+class TechVaultValidatorEntrypointTests(unittest.TestCase):
+    """``validate()`` is what CI runs; every pack contract must be wired into it."""
+
+    def test_validate_reports_each_contract_violation(self) -> None:
+        refresh = _load_refresh_tool().refresh
+        build_route = {
+            "mechanism": {
+                "mechanism": "materialization-specification",
+                "profile": "some-build",
+                "version": "1",
+                "digest": "sha256:" + "0" * 64,
+            },
+            "acquisition": "none",
+            "timing": "backend-preparation",
+        }
+
+        def drop_substrate_constraint(sdl: dict) -> None:
+            sdl["realization"]["constraints"].pop()
+
+        def add_build_recipe(sdl: dict) -> None:
+            sdl["nodes"]["kali"]["source"] = {
+                "name": "kali",
+                "version": "local",
+                "artifact_requirement": {
+                    "requirement_id": "kali-image",
+                    "explicitness": "constrained",
+                    "materialization_specifications": [
+                        {
+                            "specification_id": "kali",
+                            "profile": build_route["mechanism"],
+                            "digest": "sha256:" + "1" * 64,
+                        }
+                    ],
+                    "permitted_routes": [build_route],
+                },
+            }
+
+        def publish_on_every_interface(sdl: dict) -> None:
+            sdl["nodes"]["dns"]["runtime"]["network"]["published_ports"][0][
+                "host_ip"
+            ] = "0.0.0.0"
+
+        def unrelated_suricata_alert(sdl: dict) -> None:
+            sdl["evidence_requirements"]["suricata-login-sqli-alert"][
+                "scope"
+            ] = "unrelated alert"
+
+        def long_lived_cortex_initializer(sdl: dict) -> None:
+            sdl["nodes"]["cortex-initializer"]["runtime"]["container"][
+                "autoremove"
+            ] = False
+
+        cases = {
+            "compute.constraint-missing": drop_substrate_constraint,
+            "realization.build-recipe": add_build_recipe,
+            "publication.non-loopback-host-ip": publish_on_every_interface,
+            "suricata.detection-evidence-mismatch": unrelated_suricata_alert,
+            "cortex.initializer-not-oneshot": long_lived_cortex_initializer,
+        }
+        for code, mutate in cases.items():
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as directory:
+                pack = pathlib.Path(directory) / "techvault"
+                shutil.copytree(_PACK, pack)
+                sdl_path = pack / "sdl" / "techvault.sdl.yaml"
+                sdl = yaml.safe_load(sdl_path.read_text(encoding="utf-8"))
+                mutate(sdl)
+                sdl_path.write_text(yaml.safe_dump(sdl, sort_keys=False), encoding="utf-8")
+                refresh(pack)
+
+                validator_path = pack / "validation" / "validate_techvault.py"
+                validator = types.ModuleType("techvault_pack_validator_copy")
+                validator.__file__ = str(validator_path)
+                exec(
+                    compile(validator_path.read_text(encoding="utf-8"), str(validator_path), "exec"),
+                    validator.__dict__,
+                )
+                errors = validator.validate()
+
+                self.assertTrue(
+                    any(error.startswith(code) for error in errors), errors
+                )
 
 
 class TechVaultCiContractTests(unittest.TestCase):

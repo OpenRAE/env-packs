@@ -30,6 +30,7 @@ attrs==26.1.0 \
     # via
     #   jsonschema
     #   referencing
+    #   univers
 blake3==1.0.9 \
     --hash=sha256:01e136de1078a9011c82beb4a1cb400644794068c0e80877415328bb46d93b47 \
     --hash=sha256:021309d760b390706fecf13498f9a25aa8f689bbb65a0896029b8fa223aae18b \
@@ -382,10 +383,13 @@ jsonschema==4.26.0 \
     # via
     #   raes-env-packs (pyproject.toml)
     #   mcp
+    #   raes
 jsonschema-specifications==2025.9.1 \
     --hash=sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe \
     --hash=sha256:b540987f239e745613c7a9176f3edb72b832a4ac465cf02712288397832b5e8d
-    # via jsonschema
+    # via
+    #   jsonschema
+    #   raes
 markdown-it-py==4.2.0 \
     --hash=sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49 \
     --hash=sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a
@@ -411,7 +415,9 @@ opentelemetry-api==1.44.0 \
 packaging==26.3 \
     --hash=sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79 \
     --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
-    # via raes
+    # via
+    #   raes
+    #   univers
 pycparser==3.0 \
     --hash=sha256:600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29 \
     --hash=sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992
@@ -640,9 +646,9 @@ pyyaml==6.0.3 \
     #   raes-env-packs (pyproject.toml)
     #   raes
     #   uvicorn
-raes==3.5.0 \
-    --hash=sha256:0d0580d358cd4f1c8690b07af15e0bdd66760bde1ccf3da7729d2af753cea564 \
-    --hash=sha256:69975a5ae0cc5aad2036a06e8ff435150e158036ecd1e2f8111e885353fe8dc4
+raes==4.1.0 \
+    --hash=sha256:25ef831a62b8138c9a7bf556ca1eacf88de80aca28908981b9e85931c042a8c9 \
+    --hash=sha256:283f4b1a57cadd9cc7e0bda0a6b468ea784c4f060ebb7829052e861c85d58d09
     # via raes-env-packs (pyproject.toml)
 referencing==0.37.0 \
     --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231 \
@@ -650,6 +656,7 @@ referencing==0.37.0 \
     # via
     #   jsonschema
     #   jsonschema-specifications
+    #   raes
 rfc8785==0.1.4 \
     --hash=sha256:520d690b448ecf0703691c76e1a34a24ddcd4fc5bc41d589cb7c58ec651bcd48 \
     --hash=sha256:e545841329fe0eee4f6a3b44e7034343100c12b4ec566dc06ca9735681deb4da
@@ -780,6 +787,14 @@ rpds-py==2026.6.3 \
     # via
     #   jsonschema
     #   referencing
+semantic-version==2.10.0 \
+    --hash=sha256:bdabb6d336998cbb378d4b9db3a4b56a1e3235701dc05ea2690d9a997ed5041c \
+    --hash=sha256:de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177
+    # via univers
+semver==3.1.0 \
+    --hash=sha256:14bc073439513d7773662a338f4db9829cf16c12b74b9568e2d2689975fbd7fc \
+    --hash=sha256:6e4998f8b4762acdfea85f9bfd5b4032e0bb50038dc04bf82011b42d5d1145c5
+    # via univers
 shellingham==1.5.4 \
     --hash=sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686 \
     --hash=sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de
@@ -830,6 +845,10 @@ typing-inspection==0.4.4 \
     #   fastapi
     #   mcp
     #   pydantic
+univers==32.0.1 \
+    --hash=sha256:50a574ff2321e31e1eba7aa586bf63a9558d91c69c70316bf26c75e1b122499b \
+    --hash=sha256:fae187245f72bee1581f29b0b0b6e907049b2ea136e3e52bf8d8edbfef10e7f0
+    # via raes
 uvicorn==0.52.4 \
     --hash=sha256:73acfee47a0b133c5de13d219492d62d8a31e935f4fe6e41a232451a15379f86 \
     --hash=sha256:f86e41a149d7d05a9969337e3946a9c171c06a5d42680896daaba624aeac8da1

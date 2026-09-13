@@ -29,7 +29,11 @@ explains each problem in plain language (or JSON), with documented exit codes.
 - the required provenance ledger — its schema, its matching pack name, its
   content-safety attestations, and its review gates;
 - the referenced compatibility manifest, if the pack has one; and
-- every `sdl/*.sdl.yaml` start-state document, parsed through the pinned `raes`.
+- every `sdl/*.sdl.yaml` start-state document, parsed through the pinned `raes`;
+  and
+- any concept bindings beside an SDL document (`sdl/<name>.bindings.json`),
+  resolved against its pinned schemes (`sdl/<name>.schemes.json`). A binding
+  that no longer resolves fails with `sdl.bindings-unresolved`.
 
 ## What it will not do
 
