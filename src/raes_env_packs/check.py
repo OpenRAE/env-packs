@@ -343,6 +343,26 @@ _CATALOG: dict[str, Presentation] = {
         "Import resolution can reach the network, so it is refused for untrusted input.",
         "Inline the imported content, or validate as the trusted author with raes-pack-validate.",
     ),
+    "sdl.bindings-invalid": _sdl(
+        "An SDL concept-binding or scheme-snapshot document is malformed.",
+        "Bindings and their pinned schemes must match the RAES external concept binding contracts.",
+        "Correct the reported document so it validates as external-concept-bindings/v1 or a scheme snapshot list.",
+    ),
+    "sdl.bindings-unresolved": _sdl(
+        "A concept binding no longer resolves against its SDL or pinned scheme.",
+        "Every binding must name a current SDL subject and a concept present in its pinned scheme snapshot.",
+        "Retarget the bindings after editing the SDL, or correct the subject or concept the binding names.",
+    ),
+    "sdl.bindings-schemes-missing": _sdl(
+        "A concept-binding document has no pinned scheme snapshots beside it.",
+        "Bindings resolve only against explicitly pinned schemes, never a fetched catalog.",
+        "Add sdl/<name>.schemes.json with the scheme snapshots the bindings name.",
+    ),
+    "sdl.bindings-orphan": _sdl(
+        "A concept-binding or scheme-snapshot document has no matching SDL document.",
+        "Bindings attach to one sdl/<name>.sdl.yaml start state and its schemes to those bindings.",
+        "Rename the document to match its SDL start state, or remove it.",
+    ),
 }
 
 # Appended to a schema-violation suggestion, keyed by the JSON-Schema subcode the

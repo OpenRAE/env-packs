@@ -17,6 +17,13 @@ from pathlib import Path
 
 import yaml
 from raes import SDLError, SDLParserLimits, parse_sdl, parse_sdl_file
+from raes.external_concept_subjects import external_concept_subjects
+from raes_contracts.contracts import ExternalConceptBindingDocumentModel
+from raes_contracts.external_concept_bindings import (
+    ExternalConceptResolutionOutcome,
+    ExternalConceptSchemeSnapshotModel,
+    admit_external_concept_bindings,
+)
 from yaml.events import (
     AliasEvent,
     CollectionEndEvent,
@@ -52,6 +59,9 @@ _PACK_MANIFEST = "pack.yaml"
 _CHALLENGES_FILE = "challenges/challenges.yaml"
 _KIT_MATERIALIZATIONS_FILE = "kit.materializations.json"
 _FILESYSTEM_CHANGED = "filesystem.changed"
+_SDL_SUFFIX = ".sdl.yaml"
+_BINDINGS_SUFFIX = ".bindings.json"
+_SCHEMES_SUFFIX = ".schemes.json"
 _METADATA_LIMIT_MESSAGE = "pack metadata exceeds the validation limit"
 _SECRET_KEY_FRAGMENTS = (
     "credential",
@@ -504,6 +514,8 @@ def _strict_json_member(
     rel: str,
     limits: PackValidationLimits,
     errors: _Errors,
+    *,
+    invalid_code: str = "kit-materializations.invalid",
 ) -> object | None:
     """Load one bounded JSON member without duplicate keys or non-finite numbers."""
 
@@ -534,7 +546,7 @@ def _strict_json_member(
         _check_json_shape(document, limits)
         return document
     except (ValueError, RecursionError):
-        errors.add("kit-materializations.invalid", rel)
+        errors.add(invalid_code, rel)
     except _pack_fs.PackFilesystemError as exc:
         if str(exc) == _METADATA_LIMIT_MESSAGE:
             errors.add("resource.metadata-limit", rel)
@@ -1463,6 +1475,92 @@ def _parse_sdl_document(
     return scenario
 
 
+def _direct_sdl_companions(inventory: frozenset[str], suffix: str) -> list[str]:
+    """Return sorted direct ``sdl/`` members that carry one companion suffix."""
+
+    return sorted(
+        rel
+        for rel in inventory
+        if rel.startswith("sdl/") and rel.count("/") == 1 and rel.endswith(suffix)
+    )
+
+
+def _companion_sdl(rel: str, suffix: str) -> str:
+    return rel[: -len(suffix)] + _SDL_SUFFIX
+
+
+def _load_scheme_snapshots(
+    root_fd: int, rel: str, limits: PackValidationLimits, errors: _Errors
+) -> tuple[ExternalConceptSchemeSnapshotModel, ...] | None:
+    document = _strict_json_member(
+        root_fd, rel, limits, errors, invalid_code="sdl.bindings-invalid"
+    )
+    if document is None:
+        return None
+    try:
+        if not isinstance(document, list):
+            raise ValueError("scheme snapshots must be a JSON list")
+        return tuple(
+            ExternalConceptSchemeSnapshotModel.model_validate(item) for item in document
+        )
+    except ValueError:
+        errors.add("sdl.bindings-invalid", rel)
+    return None
+
+
+def _validate_concept_bindings(
+    root_fd: int,
+    inventory: frozenset[str],
+    scenarios: dict[str, object],
+    limits: PackValidationLimits,
+    errors: _Errors,
+) -> None:
+    """Admit each SDL document's external concept bindings through RAES.
+
+    ``sdl/<name>.bindings.json`` binds concepts to exact subjects of
+    ``sdl/<name>.sdl.yaml`` and resolves only against the pinned scheme
+    snapshots in ``sdl/<name>.schemes.json``. Anything short of a current,
+    exact resolution fails closed.
+    """
+
+    bindings = _direct_sdl_companions(inventory, _BINDINGS_SUFFIX)
+    bound = {_companion_sdl(rel, _BINDINGS_SUFFIX) for rel in bindings}
+    for rel in _direct_sdl_companions(inventory, _SCHEMES_SUFFIX):
+        if _companion_sdl(rel, _SCHEMES_SUFFIX) not in bound:
+            errors.add("sdl.bindings-orphan", rel)
+    for rel in bindings:
+        sdl_rel = _companion_sdl(rel, _BINDINGS_SUFFIX)
+        schemes_rel = sdl_rel[: -len(_SDL_SUFFIX)] + _SCHEMES_SUFFIX
+        if sdl_rel not in inventory:
+            errors.add("sdl.bindings-orphan", rel)
+            continue
+        if schemes_rel not in inventory:
+            errors.add("sdl.bindings-schemes-missing", rel)
+            continue
+        document = _strict_json_member(
+            root_fd, rel, limits, errors, invalid_code="sdl.bindings-invalid"
+        )
+        snapshots = _load_scheme_snapshots(root_fd, schemes_rel, limits, errors)
+        scenario = scenarios.get(sdl_rel)
+        if document is None or snapshots is None or scenario is None:
+            continue
+        try:
+            model = ExternalConceptBindingDocumentModel.model_validate(document)
+        except ValueError:
+            errors.add("sdl.bindings-invalid", rel)
+            continue
+        report = admit_external_concept_bindings(
+            model,
+            subjects=external_concept_subjects(scenario),
+            scheme_snapshots=snapshots,
+        )
+        if any(
+            result.outcome is not ExternalConceptResolutionOutcome.RESOLVED_CURRENT
+            for result in report.results
+        ):
+            errors.add("sdl.bindings-unresolved", rel)
+
+
 def _validate_sdl_documents(
     root_fd: int,
     root: str,
@@ -1477,15 +1575,16 @@ def _validate_sdl_documents(
     documents = _direct_sdl_documents(inventory)
     if not documents:
         errors.add("sdl.missing", "sdl")
-    parsed: list[object] = []
+    parsed: dict[str, object] = {}
     for rel in documents:
         scenario = _parse_sdl_document(
             root_fd, root, rel, limits, errors, author_sdl=author_sdl
         )
         if scenario is not None:
             _validate_content_set_inventory(scenario, rel, errors)
-            parsed.append(scenario)
-    return tuple(parsed)
+            parsed[rel] = scenario
+    _validate_concept_bindings(root_fd, inventory, parsed, limits, errors)
+    return tuple(parsed.values())
 
 
 def _load_optional_publication(
