@@ -64,13 +64,16 @@ class PublishedReleaseTests(unittest.TestCase):
             self.metadata["evidence"]["sbom"]["digest"],
         )
 
-    def test_sbom_covers_the_pinned_container_images(self) -> None:
+    def test_sbom_covers_portable_content_without_backend_images(self) -> None:
         with open(os.path.join(self.release_root, "techvault-0.1.0.cdx.json")) as fh:
             doc = json.load(fh)
         self.assertEqual(doc["bomFormat"], "CycloneDX")
         self.assertGreaterEqual(len(doc["components"]), 30)
         containers = [c for c in doc["components"] if c["type"] == "container"]
-        self.assertGreaterEqual(len(containers), 10)
+        self.assertEqual(containers, [])
+        refs = {component["bom-ref"] for component in doc["components"]}
+        self.assertIn("artifact-techvault-red-mcp-sources", refs)
+        self.assertIn("artifact-techvault-blue-mcp-sources", refs)
         # The metadata component is bound to the release subject.
         props = {p["name"]: p["value"] for p in doc["metadata"]["component"]["properties"]}
         self.assertIn("raes:associated-artifact-set-digest", props)

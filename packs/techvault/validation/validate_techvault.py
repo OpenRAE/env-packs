@@ -94,10 +94,38 @@ _WAZUH_RULES_REF = (
 )
 _VARIABLE_REF = re.compile(r"\$([A-Z][A-Z0-9_]*)")
 _SID = re.compile(r"(?:^|;)\s*sid\s*:\s*(\d+)\s*;")
-_CONTAINER_SUBSTRATE = "operating-system-container"
-_LOOPBACK_HOST_IP = "127.0.0.1"
 _BUILD_MECHANISM = "materialization-specification"
-_SOURCE_SECTIONS = ("nodes", "features", "content")
+_MISP_SID_NAMESPACE = "99000000"
+_SYSTEMD_UNIT_DIRECTORIES = (
+    pathlib.PurePosixPath("/etc/systemd/system"),
+    pathlib.PurePosixPath("/lib/systemd/system"),
+    pathlib.PurePosixPath("/usr/lib/systemd/system"),
+)
+_SYSTEMD_UNIT_SUFFIXES = frozenset(
+    {
+        ".automount",
+        ".mount",
+        ".path",
+        ".service",
+        ".slice",
+        ".socket",
+        ".target",
+        ".timer",
+    }
+)
+_FORBIDDEN_RUNTIME_FIELDS = {
+    "container": "container-detail",
+    "environment": "runtime-environment",
+    "linux_capabilities": "linux-capabilities",
+    "local_control_interfaces": "local-control-interface",
+    "mounts": "backend-mount",
+    "operational_policy": "operational-policy",
+    "orchestration_authorities": "orchestration-authority",
+}
+_FORBIDDEN_SENSOR_FIELDS = {
+    "capture_interfaces": "packet-acquisition",
+    "capture_mode": "packet-acquisition",
+}
 
 
 def _error(errors: list[str], code: str, detail: str) -> None:
@@ -328,11 +356,6 @@ def _validate_runtime_joins(
         _error(errors, "control-channel-mismatch", "command-socket")
 
     sync_runtime = _as_mapping(_as_mapping(nodes.get("misp-suricata-sync")).get("runtime"))
-    environment = {
-        item.get("name"): item.get("value")
-        for item in sync_runtime.get("environment", [])
-        if isinstance(item, Mapping)
-    }
     forwarders = sync_runtime.get("forwarding_agents", [])
     forwarder = forwarders[0] if isinstance(forwarders, list) and len(forwarders) == 1 else {}
     forwarder = _as_mapping(forwarder)
@@ -340,12 +363,8 @@ def _validate_runtime_joins(
     transform = transforms[0] if isinstance(transforms, list) and len(transforms) == 1 else {}
     reloads = forwarder.get("reload_channels", [])
     reload = reloads[0] if isinstance(reloads, list) and len(reloads) == 1 else {}
-    if environment.get("RULES_OUT_PATH") != expected_source_paths["misp-iocs"]:
-        _error(errors, "generated-output-mismatch", "RULES_OUT_PATH")
-    if environment.get("SID_BASE") != _as_mapping(transform).get("sid_namespace"):
-        _error(errors, "sid-namespace-mismatch", "SID_BASE")
-    if environment.get("SURICATA_SOCKET_PATH") != control.get("path"):
-        _error(errors, "control-channel-mismatch", "SURICATA_SOCKET_PATH")
+    if _as_mapping(transform).get("sid_namespace") != _MISP_SID_NAMESPACE:
+        _error(errors, "sid-namespace-mismatch", "ioc-to-suricata-rules")
     if _as_mapping(reload).get("target_ref") != _CONTROL_CHANNEL_REF:
         _error(errors, "reload-target-mismatch", "suricata-command-socket")
 
@@ -506,66 +525,6 @@ def validate_cortex_contract(
     content = _as_mapping(sdl.get("content"))
     cortex = _as_mapping(nodes.get("cortex"))
     thehive = _as_mapping(nodes.get("thehive"))
-    initializer = _as_mapping(nodes.get("cortex-initializer"))
-
-    def environment(node: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
-        runtime = _as_mapping(node.get("runtime"))
-        return {
-            str(item.get("name")): item
-            for item in runtime.get("environment", [])
-            if isinstance(item, Mapping)
-        }
-
-    thehive_env = environment(thehive)
-    initializer_env = environment(initializer)
-    connector_key = _as_mapping(thehive_env.get("TH_CORTEX_KEYS"))
-    initializer_connector = _as_mapping(
-        initializer_env.get("CORTEX_CONNECTOR_KEY")
-    )
-    admin_key = _as_mapping(initializer_env.get("CORTEX_ADMIN_KEY"))
-
-    def generated_value_ref(value: Mapping[str, Any]) -> tuple[object, object]:
-        value_from = _as_mapping(value.get("value_from"))
-        return value_from.get("generated_artifact"), value_from.get("output")
-
-    connector_ref = ("cortex-service-credentials", "connector-api-key")
-    if (
-        connector_key.get("value")
-        or initializer_connector.get("value")
-        or generated_value_ref(connector_key) != connector_ref
-        or generated_value_ref(initializer_connector) != connector_ref
-        or connector_key.get("value_classification") != "redacted"
-        or initializer_connector.get("value_classification") != "redacted"
-    ):
-        _cortex_error(errors, "connector-key-mismatch", "TheHive connector")
-    if (
-        admin_key.get("value")
-        or generated_value_ref(admin_key)
-        != ("cortex-service-credentials", "initializer-api-key")
-        or admin_key.get("value_classification") != "redacted"
-        or generated_value_ref(admin_key) == connector_ref
-    ):
-        _cortex_error(errors, "initializer-key-invalid", "bootstrap authority")
-
-    generated = _as_mapping(sdl.get("generated_artifacts"))
-    credential_artifact = _as_mapping(generated.get("cortex-service-credentials"))
-    outputs = {
-        item.get("name"): item
-        for item in credential_artifact.get("outputs", [])
-        if isinstance(item, Mapping)
-    }
-    if (
-        credential_artifact.get("generator") != "rendered_config"
-        or credential_artifact.get("lifecycle") != "reuse_valid"
-        or set(outputs) != {"initializer-api-key", "connector-api-key"}
-        or any(
-            item.get("sensitivity") != "secret"
-            or item.get("disposition", "consumer_selected")
-            != "consumer_selected"
-            for item in outputs.values()
-        )
-    ):
-        _cortex_error(errors, "generated-credentials-invalid", "credential outputs")
 
     cortex_runtime = _as_mapping(cortex.get("runtime"))
     applications = cortex_runtime.get("platform_applications", [])
@@ -580,6 +539,31 @@ def validate_cortex_contract(
     }
     if "analysis_execution" not in capabilities:
         _cortex_error(errors, "capability-missing", "analysis_execution")
+
+    thehive_runtime = _as_mapping(thehive.get("runtime"))
+    thehive_applications = thehive_runtime.get("platform_applications", [])
+    thehive_application = _as_mapping(
+        thehive_applications[0]
+        if isinstance(thehive_applications, list) and thehive_applications
+        else {}
+    )
+    cortex_bindings = [
+        item
+        for item in thehive_application.get("upstream_bindings", [])
+        if isinstance(item, Mapping)
+        and item.get("target_node_ref") == "cortex"
+        and item.get("target_service_ref") == "cortex-api"
+        and item.get("role") == "backend_api"
+    ]
+    connectors = [
+        item
+        for item in thehive_application.get("connectors", [])
+        if isinstance(item, Mapping) and item.get("kind") == "analyzer_engine"
+    ]
+    if len(cortex_bindings) != 1 or len(connectors) != 1:
+        _cortex_error(errors, "connector-binding-invalid", "TheHive connector")
+    elif connectors[0].get("credential_classification") != "redacted":
+        _cortex_error(errors, "connector-key-mismatch", "TheHive connector")
 
     authorizations = cortex_runtime.get("app_authorizations", [])
     authorization = (
@@ -599,20 +583,8 @@ def validate_cortex_contract(
         or principal.get("backend_roles") != ["read", "analyze"]
     ):
         _cortex_error(errors, "connector-principal-invalid", "least privilege")
-    initializer_principal = _as_mapping(principals.get("cortex-initializer-admin"))
-    if (
-        initializer_principal.get("kind") != "service_account"
-        or initializer_principal.get("credential_classification") != "redacted"
-        or initializer_principal.get("backend_roles")
-        != ["read", "analyze", "orgadmin"]
-    ):
-        _cortex_error(errors, "initializer-principal-invalid", "bootstrap authority")
-
-    container = _as_mapping(_as_mapping(initializer.get("runtime")).get("container"))
-    if container.get("autoremove") is not True:
-        _cortex_error(errors, "initializer-not-oneshot", "cortex-initializer")
-    if "docker.sock" in yaml.safe_dump({"cortex": cortex, "initializer": initializer}):
-        _cortex_error(errors, "docker-socket-forbidden", "Cortex runtime")
+    if set(principals) != {"thehive-cortex-connector"}:
+        _cortex_error(errors, "unexpected-principal", "Cortex authorization")
     if "cortex-job-index-schema" in content:
         _cortex_error(errors, "native-schema-leaked", "Cortex owns its index mapping")
 
@@ -624,10 +596,6 @@ def validate_cortex_contract(
         "cortex-analyzer-executable": (
             "techvault-cortex-analyzer-executable",
             "/opt/techvault/cortex-analyzers/TechVaultScenarioContext/techvault_scenario_context.py",
-        ),
-        "cortex-initializer-script": (
-            "techvault-cortex-initializer",
-            "/opt/techvault/cortex-initializer.py",
         ),
     }
     resolved: dict[str, bytes] = {}
@@ -661,60 +629,6 @@ def validate_cortex_contract(
     return errors
 
 
-def validate_compute_substrate_contract(sdl: Mapping[str, Any]) -> list[str]:
-    """Bind every non-switch TechVault node to its container realization."""
-
-    errors: list[str] = []
-    nodes = _as_mapping(sdl.get("nodes"))
-    compute_nodes: set[str] = set()
-    for node_id, value in nodes.items():
-        node = _as_mapping(value)
-        if node.get("type") == "switch":
-            continue
-        compute_nodes.add(str(node_id))
-        if node.get("type") != "compute":
-            errors.append(
-                f"compute.legacy-node-type: /nodes/{node_id} legacy node type"
-            )
-
-    realization = _as_mapping(sdl.get("realization"))
-    raw_constraints = realization.get("constraints")
-    constraints = raw_constraints if isinstance(raw_constraints, list) else []
-    expected_pointers = {f"/nodes/{node_id}" for node_id in compute_nodes}
-    substrate_constraints = [
-        _as_mapping(item)
-        for item in constraints
-        if _as_mapping(item).get("concern") == "compute-substrate"
-    ]
-
-    for pointer in sorted(expected_pointers):
-        matches = [
-            constraint
-            for constraint in substrate_constraints
-            if constraint.get("field_pointer") == pointer
-        ]
-        if not matches:
-            errors.append(f"compute.constraint-missing: {pointer} missing constraint")
-            continue
-        if len(matches) != 1:
-            errors.append(f"compute.constraint-duplicate: {pointer}")
-            continue
-        constraint = matches[0]
-        domain = _as_mapping(constraint.get("domain"))
-        if (
-            constraint.get("posture") != "exact"
-            or domain.get("kind") != "exact"
-            or domain.get("value") != _CONTAINER_SUBSTRATE
-        ):
-            errors.append(f"compute.substrate-mismatch: {pointer} wrong substrate")
-
-    for constraint in substrate_constraints:
-        pointer = constraint.get("field_pointer")
-        if pointer not in expected_pointers:
-            errors.append(f"compute.constraint-unexpected: {pointer}")
-    return errors
-
-
 def _is_build_recipe(requirement: Mapping[str, Any]) -> bool:
     if requirement.get("materialization_specifications"):
         return True
@@ -726,53 +640,121 @@ def _is_build_recipe(requirement: Mapping[str, Any]) -> bool:
     )
 
 
+def _is_installed_service_manager_unit(value: Mapping[str, Any]) -> bool:
+    """Return whether content places units or drop-ins in a systemd load path."""
+
+    content_type = value.get("type")
+    location_field = "destination" if content_type == "directory" else "path"
+    location = value.get(location_field)
+    if content_type not in {"file", "directory"} or not isinstance(location, str):
+        return False
+    path = pathlib.PurePosixPath(location)
+    for directory in _SYSTEMD_UNIT_DIRECTORIES:
+        if path != directory and not path.is_relative_to(directory):
+            continue
+        if content_type == "directory":
+            return True
+        relative = path.relative_to(directory)
+        for part in relative.parts:
+            candidate = pathlib.PurePosixPath(part)
+            if candidate.suffix in _SYSTEMD_UNIT_SUFFIXES:
+                return True
+            if candidate.suffix == ".d" and pathlib.PurePosixPath(
+                candidate.stem
+            ).suffix in _SYSTEMD_UNIT_SUFFIXES:
+                return True
+    return False
+
+
 def validate_realization_method_contract(sdl: Mapping[str, Any]) -> list[str]:
-    """Keep TechVault declaring what exists, never a recipe for building it."""
+    """Reject structurally explicit realization choices from TechVault."""
 
     errors: list[str] = []
-    for section in _SOURCE_SECTIONS:
-        for entry_id, value in _as_mapping(sdl.get(section)).items():
-            source = _as_mapping(_as_mapping(value).get("source"))
+
+    realization = _as_mapping(sdl.get("realization"))
+    if realization.get("default") != "open":
+        errors.append("realization.default-not-open: /realization/default")
+    constraints = realization.get("constraints")
+    for index, _constraint in enumerate(
+        constraints if isinstance(constraints, list) else []
+    ):
+        errors.append(f"realization.constraint: /realization/constraints/{index}")
+
+    nodes = _as_mapping(sdl.get("nodes"))
+    for node_id, value in nodes.items():
+        node = _as_mapping(value)
+        base = f"/nodes/{node_id}"
+
+        source = _as_mapping(node.get("source"))
+        if source:
             requirement = _as_mapping(source.get("artifact_requirement"))
             if _is_build_recipe(requirement):
                 errors.append(
-                    "realization.build-recipe: "
-                    f"/{section}/{entry_id}/source/artifact_requirement"
+                    f"realization.build-recipe: {base}/source/artifact_requirement"
                 )
-    return errors
+            else:
+                errors.append(f"realization.node-source: {base}/source")
 
+        runtime = _as_mapping(node.get("runtime"))
+        for field, code in _FORBIDDEN_RUNTIME_FIELDS.items():
+            if field in runtime:
+                errors.append(f"realization.{code}: {base}/runtime/{field}")
 
-def _host_publications(
-    node_id: object, runtime: Mapping[str, Any]
-) -> list[tuple[str, object]]:
-    base = f"/nodes/{node_id}/runtime"
-    published = _as_mapping(runtime.get("network")).get("published_ports")
-    publications = [
-        (f"{base}/network/published_ports/{index}", item)
-        for index, item in enumerate(published if isinstance(published, list) else [])
-    ]
-    listeners = runtime.get("service_listeners")
-    for index, value in enumerate(listeners if isinstance(listeners, list) else []):
-        refs = _as_mapping(value).get("published_port_refs")
-        publications.extend(
-            (f"{base}/service_listeners/{index}/published_port_refs/{ref}", item)
-            for ref, item in enumerate(refs if isinstance(refs, list) else [])
-        )
-    return publications
+        network = _as_mapping(runtime.get("network"))
+        if "published_ports" in network:
+            errors.append(
+                f"realization.host-publication: {base}/runtime/network/published_ports"
+            )
 
-
-def validate_host_publication_contract(sdl: Mapping[str, Any]) -> list[str]:
-    """Keep every TechVault host publication off the operator's LAN."""
-
-    errors: list[str] = []
-    for node_id, value in _as_mapping(sdl.get("nodes")).items():
-        runtime = _as_mapping(_as_mapping(value).get("runtime"))
-        for pointer, item in _host_publications(node_id, runtime):
-            host_ip = _as_mapping(item).get("host_ip")
-            if host_ip != _LOOPBACK_HOST_IP:
+        listeners = runtime.get("service_listeners")
+        for index, listener_value in enumerate(
+            listeners if isinstance(listeners, list) else []
+        ):
+            listener = _as_mapping(listener_value)
+            if "published_port_refs" in listener:
                 errors.append(
-                    f"publication.non-loopback-host-ip: {pointer} host_ip {host_ip!r}"
+                    "realization.listener-publication-ref: "
+                    f"{base}/runtime/service_listeners/{index}/published_port_refs"
                 )
+
+        sensors = runtime.get("network_sensors")
+        for index, sensor_value in enumerate(
+            sensors if isinstance(sensors, list) else []
+        ):
+            sensor = _as_mapping(sensor_value)
+            for field, code in _FORBIDDEN_SENSOR_FIELDS.items():
+                if field in sensor:
+                    errors.append(
+                        f"realization.{code}: "
+                        f"{base}/runtime/network_sensors/{index}/{field}"
+                    )
+
+    for feature_id, value in _as_mapping(sdl.get("features")).items():
+        source = _as_mapping(_as_mapping(value).get("source"))
+        if not source:
+            continue
+        requirement = _as_mapping(source.get("artifact_requirement"))
+        if _is_build_recipe(requirement):
+            errors.append(
+                "realization.build-recipe: "
+                f"/features/{feature_id}/source/artifact_requirement"
+            )
+        else:
+            errors.append(f"realization.feature-source: /features/{feature_id}/source")
+
+    for content_id, value in _as_mapping(sdl.get("content")).items():
+        content = _as_mapping(value)
+        if _is_installed_service_manager_unit(content):
+            errors.append(
+                f"realization.service-unit-content: /content/{content_id}"
+            )
+        source = _as_mapping(content.get("source"))
+        requirement = _as_mapping(source.get("artifact_requirement"))
+        if _is_build_recipe(requirement):
+            errors.append(
+                "realization.build-recipe: "
+                f"/content/{content_id}/source/artifact_requirement"
+            )
     return errors
 
 
@@ -788,9 +770,7 @@ def validate() -> list[str]:
     if not errors:
         sdl_path = next((root / "sdl").glob("*.sdl.yaml"))
         sdl = yaml.safe_load(sdl_path.read_text(encoding="utf-8"))
-        errors.extend(validate_compute_substrate_contract(sdl))
         errors.extend(validate_realization_method_contract(sdl))
-        errors.extend(validate_host_publication_contract(sdl))
         errors.extend(validate_suricata_contract(root, sdl))
         errors.extend(validate_cortex_contract(root, sdl))
     return errors

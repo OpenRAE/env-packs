@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "59c018fa44131bf6e30352ff3849a7db9731782f9d1a84a0f9bbc4d581fbd7b3"
+        "value": "18572218bdf57d373fd195c0ab124e5695060706aa9ceddeb056099be7390a0b"
       },
-      "size_bytes": 5960,
+      "size_bytes": 6279,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -211,9 +211,9 @@
       "uri": "raes-environment-pack:/assets/content/suricata.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "37cbb226360af33f01ec4806ebbbb59fc318c6912472845831e954c0a324d471"
+        "value": "d1bf43326da10781b8b20c10c78ad2bbbc25a64c50019fd7933a56bb52b42471"
       },
-      "size_bytes": 2530,
+      "size_bytes": 2282,
       "created_at": "2026-09-03T00:00:00Z",
       "source": "environment-pack-author adapted from aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
       "satisfies_refs": [],
@@ -515,9 +515,9 @@
       "uri": "raes-environment-pack:/docs/lineage.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "32f0fef569a762b6c8d9155f0467aaaec36785a3342bc13abb984e5a34b4a610"
+        "value": "0571973983982a7f97a7c1acbafda23833139d3d24d18a8c5691b8dd53ac64d1"
       },
-      "size_bytes": 1639,
+      "size_bytes": 2348,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -531,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "afe40414ad63f712d6b02474c92a6f6e5584e0fbbd1e37605275c44b6b9068c4"
+        "value": "13245ec8a162782b8f1b2bd6e9efc4cae47f8844e6580bfe905ca6ab1dc960bc"
       },
-      "size_bytes": 2044,
+      "size_bytes": 3321,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -595,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "920f1c90a0c12e54e2b927b3dd8664b38ec42eb717465b0f8b2c5663a529a09a"
+        "value": "fdafa2dfad5fcda517f7a494afe5424035b6fa8149adecd2822b9d54afae6a03"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -627,9 +627,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "a5727a753761650e65338b5fb8bc87b3b5b8f7f58d691a2d42f26aa167459841"
+        "value": "0d9afbad6646107b88f00003634288e51675552a2ae0a83b0794bc9b3cc294d8"
       },
-      "size_bytes": 160598,
+      "size_bytes": 122474,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -659,9 +659,9 @@
       "uri": "raes-environment-pack:/validation/validate_techvault.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "16d951db9b087d0f682c4d95437dcc24144ebd844761d6a7a64d85c7d75fa059"
+        "value": "51b5af79b241475d1dae32efd1eb8974ef3c8a274d1886486893186105981acf"
       },
-      "size_bytes": 32427,
+      "size_bytes": 30927,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -700,22 +700,38 @@
       "sensitivity": "internal",
       "description": "Exact dependency-free offline Cortex analyzer executable."
     },
-    "techvault-cortex-initializer": {
-      "artifact_id": "techvault-cortex-initializer",
+    "techvault-red-mcp-sources": {
+      "artifact_id": "techvault-red-mcp-sources",
       "role": "other",
-      "media_type": "text/x-python",
-      "uri": "raes-environment-pack:/assets/content/cortex-initializer.py",
+      "media_type": "application/x-tar",
+      "uri": "raes-environment-pack:/assets/content/mcp-red-sources.tar",
       "checksum": {
         "algorithm": "sha256",
-        "value": "7ad7cb07259da52fbb7dfe5ea77b02874273d84d37b6abdb000858237a5ed96c"
+        "value": "3536a2fd58eab9a2bfdc0ad90be4fdfd45bba9db1ef4acb5a54ff76126e7788e"
       },
-      "size_bytes": 9452,
-      "created_at": "2026-08-02T00:00:00Z",
-      "source": "environment-pack-author",
+      "size_bytes": 593920,
+      "created_at": "2026-09-14T00:00:00Z",
+      "source": "aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc",
       "satisfies_refs": [],
       "sensitivity": "internal",
-      "description": "Idempotent bounded initializer for TechVault Cortex application state."
+      "description": "Exact red-team stdio MCP source packages for the Kali workstation."
+    },
+    "techvault-blue-mcp-sources": {
+      "artifact_id": "techvault-blue-mcp-sources",
+      "role": "other",
+      "media_type": "application/x-tar",
+      "uri": "raes-environment-pack:/assets/content/mcp-blue-sources.tar",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "74e850e04e5e428cc0bb4cd5e4a6480373cd1e9a2a686fb40a0e560cd941f111"
+      },
+      "size_bytes": 1116160,
+      "created_at": "2026-09-14T00:00:00Z",
+      "source": "aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:32159b9ba0dd2ec780c4a5a7b8888cf5a3fe11a320975915213744fa4afeb899"
+  "set_digest": "sha256:92b3cdc918220976c719ae38f7bcb6a9242a4de760225e972a8cbaa9ab15040f"
 }

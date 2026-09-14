@@ -69,17 +69,6 @@ outputs:
       enabled: yes
       filename: fast.log
 
-# Packet acquisition remains governed by OpenRAE/env-packs#284. Preserve the
-# current authored interfaces while repairing only the content contract here.
-af-packet:
-  - interface: any
-
-pcap:
-  - interface: any
-
-pcap-file:
-  checksum-checks: auto
-
 app-layer:
   protocols:
     http:
