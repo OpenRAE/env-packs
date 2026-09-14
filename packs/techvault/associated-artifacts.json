@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "db1d7b33fdf6faa4b32f5355a71a0189041fff26efdb462147391ff21aeac8e0"
+        "value": "59c018fa44131bf6e30352ff3849a7db9731782f9d1a84a0f9bbc4d581fbd7b3"
       },
-      "size_bytes": 4893,
+      "size_bytes": 5960,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -134,22 +134,6 @@
         "value": "847edd4733cb764eba178c933831bf1af2359cd9042674994f70b91491a289e0"
       },
       "size_bytes": 1208,
-      "created_at": "2026-08-02T00:00:00Z",
-      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
-      "satisfies_refs": [],
-      "sensitivity": "internal",
-      "description": null
-    },
-    "techvault-flaggen-script": {
-      "artifact_id": "techvault-flaggen-script",
-      "role": "other",
-      "media_type": "text/x-shellscript",
-      "uri": "raes-environment-pack:/assets/content/flaggen.sh",
-      "checksum": {
-        "algorithm": "sha256",
-        "value": "5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38"
-      },
-      "size_bytes": 1862,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
       "satisfies_refs": [],
@@ -611,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "a66ba8592d6cf5ed1e75f7fa6324ab8c405e9eb3c8b781a4292c510b559a1c56"
+        "value": "920f1c90a0c12e54e2b927b3dd8664b38ec42eb717465b0f8b2c5663a529a09a"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -643,9 +627,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "52019010cede00bb7bb67a82649c1c96818a9bad7b5117bd2f0239cfcf466dc9"
+        "value": "a5727a753761650e65338b5fb8bc87b3b5b8f7f58d691a2d42f26aa167459841"
       },
-      "size_bytes": 165962,
+      "size_bytes": 160598,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -733,5 +717,5 @@
       "description": "Idempotent bounded initializer for TechVault Cortex application state."
     }
   },
-  "set_digest": "sha256:6300b3d539ab9c1e2287b9852e5408e1811516b818a7acf015f045cb3c9c5b89"
+  "set_digest": "sha256:32159b9ba0dd2ec780c4a5a7b8888cf5a3fe11a320975915213744fa4afeb899"
 }

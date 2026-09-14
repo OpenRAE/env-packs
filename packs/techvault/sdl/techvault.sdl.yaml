@@ -10,6 +10,38 @@ description: >
 # Flag values are provided per run by whoever instantiates the scenario; the
 # pack never authors them.
 variables:
+  flag_victim_user:
+    type: string
+    required: true
+    description: User-level flag value placed on victim.
+  flag_victim_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on victim.
+  flag_workstation_user:
+    type: string
+    required: true
+    description: User-level flag value placed on workstation.
+  flag_workstation_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on workstation.
+  flag_webapp_user:
+    type: string
+    required: true
+    description: User-level flag value placed on webapp.
+  flag_webapp_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on webapp.
+  flag_fileshare_user:
+    type: string
+    required: true
+    description: User-level flag value placed on fileshare.
+  flag_fileshare_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on fileshare.
   flag_ad_user:
     type: string
     required: true
@@ -1576,6 +1608,8 @@ nodes:
         # the tool itself the chain cannot be inspected or cleared.
         - {manager: apt, name: iptables, version: "*"}
       filesystem_inventory:
+        - {path: /app/user.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
         - {path: /var/log/gunicorn, entry_type: directory}
       # Reverting blanket kali source-IP DROPs on this node's INPUT chain needs
       # CAP_NET_ADMIN, which Docker's default capability set does not grant.
@@ -1586,8 +1620,6 @@ nodes:
       # published_ports here.
       service_manager_units:
         - {unit_id: webapp, unit_name: webapp.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (see the flag-generator content below).
-        - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
         # Custom rsyslog unit (below): the stock rsyslog.service carries systemd
         # sandboxing (ProtectKernelTunables/RestrictNamespaces/...) that fails
         # 226/NAMESPACE under restricted capabilities, and a drop-in would need
@@ -1928,10 +1960,11 @@ nodes:
           # credential loot the red-team exercise mines; separate from the
           # labadmin admin account. Loot placed via content below.
           - {username: dev-user, primary_group: dev-user, supplemental_groups: [wheel]}
+      filesystem_inventory:
+        - {path: /home/dev-user/user.txt, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
       service_manager_units:
         - {unit_id: sshd, unit_name: sshd.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (see the flag-generator content below).
-        - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
         # Fix dev-user loot ownership + secret-file perms after the content copy
         # (the directory copy lands as labadmin:labadmin 664; .pgpass at 664 is
         # ignored by psql, and dev-user's home should be dev-user-owned).
@@ -1982,10 +2015,11 @@ nodes:
       # needs CAP_NET_ADMIN.
       linux_capabilities:
         add: [CAP_NET_ADMIN]
+      filesystem_inventory:
+        - {path: /srv/shares/shared/user-flag.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
       service_manager_units:
         - {unit_id: smbd, unit_name: smbd.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (see the flag-generator content below).
-        - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
       file_services:
         - file_service_id: techvault-fileshare
           protocol: smb
@@ -2173,11 +2207,12 @@ nodes:
           - {name: labadmin}
         users:
           - {username: labadmin, primary_group: labadmin, supplemental_groups: [wheel]}
+      filesystem_inventory:
+        - {path: /home/labadmin/user.txt, entry_type: file, owner_user: labadmin, owner_group: labadmin, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
       service_manager_units:
         - {unit_id: sshd, unit_name: sshd.service, enabled_state: enabled, active_state: active}
         - {unit_id: aptl-rsyslog, unit_name: aptl-rsyslog.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (see the flag-generator content below).
-        - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
 
   kali:
     type: compute
@@ -2607,48 +2642,6 @@ generated_artifacts:
         mount_destination: /opt/aptl/soc-certs
         access_mode: read_only
         selected_outputs: [ca-certificate, shuffle-certificate, shuffle-private-key]
-
-  # Per-node flag signing keys are backend-produced and never ship as pack
-  # bytes. The producer retains its seed; each node receives only its own key,
-  # and the scoring backend can validate the corresponding aptl:v2 HMAC token.
-  techvault-flag-signing-keys:
-    generator: rendered_config
-    lifecycle: regenerate_on_change
-    provenance: techvault:flag-signing-profile/v2
-    outputs:
-      - name: signing-seed
-        path: internal/signing-seed
-        sensitivity: secret
-        disposition: producer_private
-      - name: victim-signing-key
-        path: victim.key
-        sensitivity: secret
-      - name: workstation-signing-key
-        path: workstation.key
-        sensitivity: secret
-      - name: webapp-signing-key
-        path: webapp.key
-        sensitivity: secret
-      - name: fileshare-signing-key
-        path: fileshare.key
-        sensitivity: secret
-    consumers:
-      - node: victim
-        mount_destination: /run/techvault/flag-signing
-        access_mode: read_only
-        selected_outputs: [victim-signing-key]
-      - node: workstation
-        mount_destination: /run/techvault/flag-signing
-        access_mode: read_only
-        selected_outputs: [workstation-signing-key]
-      - node: webapp
-        mount_destination: /run/techvault/flag-signing
-        access_mode: read_only
-        selected_outputs: [webapp-signing-key]
-      - node: fileshare
-        mount_destination: /run/techvault/flag-signing
-        access_mode: read_only
-        selected_outputs: [fileshare-signing-key]
 
 persistent_volumes:
   wazuh-indexer-data:
@@ -3685,187 +3678,55 @@ content:
   # scenario lateral movement, workstation -> victim), so it gets its own
   # combined file instead of sharing target_authorized_keys with workstation.
   # ---------------------------------------------------------------------------
-  # CTF flag generation. The still-image AD node generates per-boot signed
-  # flags at container start; the image-free generic nodes (victim,
-  # workstation, webapp, fileshare) reproduce it with a oneshot systemd unit
-  # running the shared flag generator. Scoring reads
-  # /home/labadmin|dev-user/user.txt, /app/user.txt,
-  # /srv/shares/shared/user-flag.txt, and /root/root.txt and verifies the
-  # aptl:v2 HMAC-SHA-256 token. One script; each node's unit selects its
-  # backend-generated signing-key file through Environment=.
-  # ---------------------------------------------------------------------------
-  victim-flaggen-script:
+  # Flag files receive per-run values from the instantiating backend.
+  victim-user-flag:
     type: file
     target: victim
-    path: /usr/local/sbin/aptl-flaggen.sh
-    source:
-      name: techvault-flaggen-script
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-flaggen-script-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-flaggen-script
-          version: 0.1.0
-          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
-          media_type: text/x-shellscript
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  workstation-flaggen-script:
-    type: file
-    target: workstation
-    path: /usr/local/sbin/aptl-flaggen.sh
-    source:
-      name: techvault-flaggen-script
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-flaggen-script-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-flaggen-script
-          version: 0.1.0
-          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
-          media_type: text/x-shellscript
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  webapp-flaggen-script:
-    type: file
-    target: webapp
-    path: /usr/local/sbin/aptl-flaggen.sh
-    source:
-      name: techvault-flaggen-script
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-flaggen-script-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-flaggen-script
-          version: 0.1.0
-          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
-          media_type: text/x-shellscript
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  fileshare-flaggen-script:
-    type: file
-    target: fileshare
-    path: /usr/local/sbin/aptl-flaggen.sh
-    source:
-      name: techvault-flaggen-script
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-flaggen-script-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-flaggen-script
-          version: 0.1.0
-          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
-          media_type: text/x-shellscript
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  victim-flaggen-unit:
+    path: /home/labadmin/user.txt
+    text: "${flag_victim_user}"
+    sensitive: true
+  victim-root-flag:
     type: file
     target: victim
-    path: /etc/systemd/system/aptl-flaggen.service
-    text: |
-      [Unit]
-      Description=APTL CTF flag generator
-      After=local-fs.target
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/victim.key
-      Environment=APTL_FLAG_NODE=victim
-      Environment=APTL_FLAG_USER_PATH=/home/labadmin/user.txt
-      Environment=APTL_FLAG_USER_OWNER=labadmin:labadmin
-      ExecStart=/bin/bash /usr/local/sbin/aptl-flaggen.sh
-
-      [Install]
-      WantedBy=multi-user.target
-  workstation-flaggen-unit:
+    path: /root/root.txt
+    text: "${flag_victim_root}"
+    sensitive: true
+  workstation-user-flag:
     type: file
     target: workstation
-    path: /etc/systemd/system/aptl-flaggen.service
-    text: |
-      [Unit]
-      Description=APTL CTF flag generator
-      After=local-fs.target
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/workstation.key
-      Environment=APTL_FLAG_NODE=workstation
-      Environment=APTL_FLAG_USER_PATH=/home/dev-user/user.txt
-      Environment=APTL_FLAG_USER_OWNER=dev-user:dev-user
-      ExecStart=/bin/bash /usr/local/sbin/aptl-flaggen.sh
-
-      [Install]
-      WantedBy=multi-user.target
-  webapp-flaggen-unit:
+    path: /home/dev-user/user.txt
+    text: "${flag_workstation_user}"
+    sensitive: true
+  workstation-root-flag:
+    type: file
+    target: workstation
+    path: /root/root.txt
+    text: "${flag_workstation_root}"
+    sensitive: true
+  webapp-user-flag:
     type: file
     target: webapp
-    path: /etc/systemd/system/aptl-flaggen.service
-    text: |
-      [Unit]
-      Description=APTL CTF flag generator
-      After=local-fs.target
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/webapp.key
-      Environment=APTL_FLAG_NODE=webapp
-      Environment=APTL_FLAG_USER_PATH=/app/user.txt
-      Environment=APTL_FLAG_USER_OWNER=root:root
-      ExecStart=/bin/bash /usr/local/sbin/aptl-flaggen.sh
-
-      [Install]
-      WantedBy=multi-user.target
-  fileshare-flaggen-unit:
+    path: /app/user.txt
+    text: "${flag_webapp_user}"
+    sensitive: true
+  webapp-root-flag:
+    type: file
+    target: webapp
+    path: /root/root.txt
+    text: "${flag_webapp_root}"
+    sensitive: true
+  fileshare-user-flag:
     type: file
     target: fileshare
-    path: /etc/systemd/system/aptl-flaggen.service
-    text: |
-      [Unit]
-      Description=APTL CTF flag generator
-      After=local-fs.target
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/fileshare.key
-      Environment=APTL_FLAG_NODE=fileshare
-      Environment=APTL_FLAG_USER_PATH=/srv/shares/shared/user-flag.txt
-      Environment=APTL_FLAG_USER_OWNER=root:root
-      ExecStart=/bin/bash /usr/local/sbin/aptl-flaggen.sh
-
-      [Install]
-      WantedBy=multi-user.target
+    path: /srv/shares/shared/user-flag.txt
+    text: "${flag_fileshare_user}"
+    sensitive: true
+  fileshare-root-flag:
+    type: file
+    target: fileshare
+    path: /root/root.txt
+    text: "${flag_fileshare_root}"
+    sensitive: true
   # Finalizes dev-user loot after the directory copy: the copy lands the home
   # as labadmin:labadmin 664, but psql ignores a group/world-readable .pgpass
   # and dev-user's home should be dev-user-owned. chown + tighten the secret
