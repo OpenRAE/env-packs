@@ -39,6 +39,24 @@ The pack-local satisfaction profile in
 by every exact content requirement. Tar assets are deterministic POSIX tar
 carriers whose members are materialized at the declared directory destination.
 
+## Flag values
+
+Each of `victim`, `workstation`, `webapp`, `fileshare`, and `ad` declares a user
+flag and a root flag in the SDL. The backend supplies fresh values for all ten
+required string variables (`flag_<host>_user` and `flag_<host>_root`) when it
+instantiates a run. These variables have no defaults. Sensitive `content` files
+place the values; each host's `filesystem_inventory` declares their ownership
+and permissions. User flags retain mode `0644`, with `labadmin` ownership on
+`victim`, `dev-user` on `workstation`, and `root` on the other hosts. Root flags
+are owned by `root:root` with mode `0600` at `/root/root.txt`.
+
+Generation, signing, and verification belong to the backend. The pack supplies
+no flag generator, signing keys, token format, or flag-generation service.
+Required variables express the backend-supplied values while RAES's native
+per-run generated-value declaration is tracked in
+[rae#1276](https://github.com/OpenRAE/rae/issues/1276). The SDL owns these file
+declarations; TechVault does not duplicate them in a flag placement map.
+
 ## Cortex enrichment contract
 
 TechVault ships one exact, dependency-free offline analyzer for scenario IP

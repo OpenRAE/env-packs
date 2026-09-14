@@ -10,10 +10,8 @@ from __future__ import annotations
 
 import copy
 import hashlib
-import hmac
 import io
 import json
-import os
 import pathlib
 import re
 import shutil
@@ -26,7 +24,7 @@ from typing import NamedTuple
 from unittest import mock
 
 import yaml
-from raes import parse_sdl_file
+from raes import SDLInstantiationError, instantiate_scenario, parse_sdl_file
 from raes.realization_designation import (
     designation_records,
     resolve_realization_designation,
@@ -120,10 +118,6 @@ _PACK_ARTIFACT_CONTENT_IDS = frozenset(
         "workstation-dev-user-home",
         "db-init-schema",
         "db-init-seed",
-        "victim-flaggen-script",
-        "workstation-flaggen-script",
-        "webapp-flaggen-script",
-        "fileshare-flaggen-script",
     }
 )
 
@@ -507,7 +501,7 @@ class TechVaultPackTests(unittest.TestCase):
             "identity_domains": 1,
             "relationships": 2,
             "accounts": 14,
-            "variables": 2,
+            "variables": 10,
             "entities": 1,
             "agents": 1,
         }
@@ -813,7 +807,7 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline & materialized, set())
         self.assertEqual(sourced & materialized, set())
         self.assertEqual(inline | sourced | materialized, set(content))
-        self.assertEqual(len(inline), 19)
+        self.assertEqual(len(inline), 23)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
         self.assertEqual(materialized, set())
         self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 60)
@@ -2004,7 +1998,7 @@ class TechVaultPackTests(unittest.TestCase):
 
     def test_generated_keys_and_certificates_enforce_output_boundaries(self) -> None:
         generated = _load_sdl()["generated_artifacts"]
-        self.assertEqual(len(generated), 8)
+        self.assertEqual(len(generated), 7)
 
         ssh = generated["techvault-ssh-keys"]
         self.assertEqual(ssh["generator"], "ssh_key_bundle")
@@ -2026,106 +2020,6 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(ca_private["disposition"], "producer_private")
         for consumer in soc["consumers"]:
             self.assertNotIn("ca-private-key", consumer["selected_outputs"])
-
-        signing = generated["techvault-flag-signing-keys"]
-        self.assertEqual(signing["generator"], "rendered_config")
-        seed = next(
-            output for output in signing["outputs"] if output["name"] == "signing-seed"
-        )
-        self.assertEqual(seed["disposition"], "producer_private")
-        selected = {
-            name
-            for consumer in signing["consumers"]
-            for name in consumer["selected_outputs"]
-        }
-        self.assertNotIn("signing-seed", selected)
-        self.assertEqual(
-            selected,
-            {
-                "victim-signing-key",
-                "workstation-signing-key",
-                "webapp-signing-key",
-                "fileshare-signing-key",
-            },
-        )
-
-    def test_security_assets_drop_legacy_unsafe_primitives(self) -> None:
-        flaggen = resolve_pack_artifact(_PACK, "techvault-flaggen-script").data
-        self.assertNotIn(b"aptl-flag-key-2024", flaggen)
-        self.assertNotIn(b"md5sum", flaggen)
-
-    def test_flag_generator_requires_key_and_emits_verifiable_hmac_tokens(self) -> None:
-        flaggen = _PACK / "assets" / "content" / "flaggen.sh"
-        with tempfile.TemporaryDirectory() as directory:
-            root = pathlib.Path(directory)
-            tools = root / "bin"
-            tools.mkdir()
-            chown = tools / "chown"
-            chown.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-            chown.chmod(0o755)
-            key = root / "signing.key"
-            key.write_text("test-only-signing-key", encoding="utf-8")
-            user_flag = root / "user.txt"
-            root_flag = root / "root.txt"
-            base_env = os.environ.copy()
-            base_env.update(
-                {
-                    "PATH": f"{tools}:/usr/bin:/bin",
-                    "APTL_FLAG_NODE": "victim",
-                    "APTL_FLAG_USER_PATH": str(user_flag),
-                    "APTL_FLAG_USER_OWNER": "nobody:nogroup",
-                    "APTL_FLAG_ROOT_PATH": str(root_flag),
-                }
-            )
-
-            missing = subprocess.run(
-                ["/bin/bash", str(flaggen)],
-                env=base_env,
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-            self.assertEqual(missing.returncode, 78)
-
-            empty_key = root / "empty.key"
-            empty_key.touch()
-            empty_env = base_env | {"APTL_FLAG_KEY_FILE": str(empty_key)}
-            empty = subprocess.run(
-                ["/bin/bash", str(flaggen)],
-                env=empty_env,
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-            self.assertEqual(empty.returncode, 78)
-
-            signed_env = base_env | {"APTL_FLAG_KEY_FILE": str(key)}
-            signed = subprocess.run(
-                ["/bin/bash", str(flaggen)],
-                env=signed_env,
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-            self.assertEqual(signed.returncode, 0, signed.stderr)
-
-            for level, path in (("user", user_flag), ("root", root_flag)):
-                token_line = next(
-                    line for line in path.read_text(encoding="utf-8").splitlines()
-                    if line.startswith("Token: ")
-                )
-                token = token_line.removeprefix("Token: ")
-                prefix, version, node, actual_level, nonce, signature = token.split(":")
-                self.assertEqual((prefix, version, node, actual_level), ("aptl", "v2", "victim", level))
-                expected = hmac.new(
-                    b"test-only-signing-key",
-                    f"victim:{level}:{nonce}".encode("utf-8"),
-                    hashlib.sha256,
-                ).hexdigest()
-                self.assertTrue(hmac.compare_digest(signature, expected))
 
 
 # The TechVault domain's in-world roster: username -> (groups, password
@@ -2406,6 +2300,107 @@ def _load_refresh_tool() -> types.ModuleType:
     module.__file__ = str(path)
     exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), module.__dict__)
     return module
+
+
+class TechVaultFlagDeclarationTests(unittest.TestCase):
+    """Flag values bind through RAES; the pack preserves their in-world access."""
+
+    USER_FLAGS = {
+        "victim": ("/home/labadmin/user.txt", "labadmin"),
+        "workstation": ("/home/dev-user/user.txt", "dev-user"),
+        "webapp": ("/app/user.txt", "root"),
+        "fileshare": ("/srv/shares/shared/user-flag.txt", "root"),
+    }
+
+    def test_flags_preserve_paths_owners_and_sensitive_required_values(self) -> None:
+        scenario = parse_sdl_file(_SDL)
+        for host, (user_path, user_owner) in self.USER_FLAGS.items():
+            for level, path, owner, mode in (
+                ("user", user_path, user_owner, "0644"),
+                ("root", "/root/root.txt", "root", "0600"),
+            ):
+                with self.subTest(host=host, level=level):
+                    variable = f"flag_{host}_{level}"
+                    self.assertIn(variable, set(scenario.variables))
+                    declaration = scenario.variables[variable]
+                    self.assertEqual(declaration.type.value, "string")
+                    self.assertTrue(declaration.required)
+                    self.assertIsNone(declaration.default)
+                    placed = [
+                        item for item in scenario.content.values()
+                        if item.target == host and item.path == path
+                    ]
+                    self.assertEqual(len(placed), 1)
+                    self.assertEqual(placed[0].type.value, "file")
+                    self.assertEqual(placed[0].text, "${" + variable + "}")
+                    self.assertTrue(placed[0].sensitive)
+                    self.assertIsNone(placed[0].source)
+                    inventory = [
+                        item for item in scenario.nodes[host].runtime.filesystem_inventory
+                        if item.path == path
+                    ]
+                    self.assertEqual(len(inventory), 1)
+                    entry = inventory[0]
+                    self.assertEqual(entry.entry_type.value, "file")
+                    self.assertEqual((entry.owner_user, entry.owner_group), (owner, owner))
+                    self.assertEqual(entry.mode, mode)
+                    self.assertEqual(entry.sensitivity.value, "operator_secret")
+
+    def test_instantiation_places_each_run_value_and_rejects_missing_flags(self) -> None:
+        scenario = parse_sdl_file(_SDL)
+        parameters = {name: f"test-run-one-{name}" for name in scenario.variables}
+        for host in self.USER_FLAGS:
+            for level in ("user", "root"):
+                parameters[f"flag_{host}_{level}"] = f"test-run-one-{host}-{level}"
+
+        for run in ("first", "second"):
+            values = {name: f"{run}-{value}" for name, value in parameters.items()}
+            concrete = instantiate_scenario(scenario, values)
+            for host, (user_path, _) in self.USER_FLAGS.items():
+                for level, path in (("user", user_path), ("root", "/root/root.txt")):
+                    with self.subTest(run=run, host=host, level=level):
+                        placed = [
+                            item for item in concrete.content.values()
+                            if item.target == host and item.path == path
+                        ]
+                        self.assertEqual(len(placed), 1)
+                        self.assertEqual(placed[0].text, values[f"flag_{host}_{level}"])
+                        self.assertTrue(placed[0].sensitive)
+
+        for host in self.USER_FLAGS:
+            for level in ("user", "root"):
+                variable = f"flag_{host}_{level}"
+                with self.subTest(missing=variable):
+                    supplied = {name: value for name, value in parameters.items() if name != variable}
+                    with self.assertRaisesRegex(
+                        SDLInstantiationError, f"Variable '{variable}' is required"
+                    ):
+                        instantiate_scenario(scenario, supplied)
+
+    def test_pack_has_no_flag_delivery_machinery(self) -> None:
+        self.assertFalse(
+            "flaggen" in _SDL.read_text(encoding="utf-8").lower(),
+            "SDL retains a flag-generation reference",
+        )
+        scenario = parse_sdl_file(_SDL)
+        with self.subTest(surface="generated artifacts"):
+            self.assertNotIn("techvault-flag-signing-keys", set(scenario.generated_artifacts))
+        for host in self.USER_FLAGS:
+            with self.subTest(surface="service units", host=host):
+                units = scenario.nodes[host].runtime.service_manager_units
+                self.assertNotIn("aptl-flaggen", {unit.unit_id for unit in units})
+                self.assertNotIn("aptl-flaggen.service", {unit.unit_name for unit in units})
+            with self.subTest(surface="content", host=host):
+                self.assertNotIn(f"{host}-flaggen-script", set(scenario.content))
+                self.assertNotIn(f"{host}-flaggen-unit", set(scenario.content))
+                paths = {item.path for item in scenario.content.values() if item.target == host}
+                self.assertNotIn("/usr/local/sbin/aptl-flaggen.sh", paths)
+                self.assertNotIn("/etc/systemd/system/aptl-flaggen.service", paths)
+        with self.subTest(surface="published inventory"):
+            manifest = json.loads((_PACK / "associated-artifacts.json").read_text(encoding="utf-8"))
+            self.assertNotIn("techvault-flaggen-script", set(manifest["artifacts"]))
+        with self.subTest(surface="bundled script"):
+            self.assertFalse((_PACK / "assets/content/flaggen.sh").exists())
 
 
 class TechVaultValidatorEntrypointTests(unittest.TestCase):
