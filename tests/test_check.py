@@ -51,6 +51,9 @@ _KNOWN_CODES = (
     "resource.sdl-limit",
     "resource.member-limit",
     "challenges.category.forbidden",
+    "content-set.file-refs.missing",
+    "content-set.file-count-mismatch",
+    "content-set.file-ref.unsupplied",
     "provenance.pointer.missing",
     "provenance.pointer.invalid",
     "provenance.missing",
@@ -68,6 +71,10 @@ _KNOWN_CODES = (
     "sdl.invalid",
     "sdl.invalid-utf8",
     "sdl.imports-denied",
+    "sdl.bindings-invalid",
+    "sdl.bindings-unresolved",
+    "sdl.bindings-schemes-missing",
+    "sdl.bindings-orphan",
 ) + tuple(f"provenance.schema.{sub}" for sub in _SCHEMA_SUBCODES) + tuple(
     f"compatibility.schema.{sub}" for sub in _SCHEMA_SUBCODES
 )
@@ -252,6 +259,7 @@ class PresentationCatalogTests(unittest.TestCase):
         cases = {
             "pack.identity.name-mismatch": ("pack", "env-packs"),
             "yaml.invalid": ("pack", "env-packs"),
+            "content-set.file-count-mismatch": ("pack", "env-packs"),
             "provenance.name-mismatch": ("trust", "env-packs"),
             "compatibility.boundary-overlap": ("compatibility", "env-packs"),
             "sdl.invalid": ("sdl", "raes"),

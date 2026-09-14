@@ -789,7 +789,7 @@ wheels = [
 
 [[package]]
 name = "raes"
-version = "3.5.0"
+version = "4.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asyncssh" },
@@ -798,25 +798,29 @@ dependencies = [
     { name = "cryptography" },
     { name = "defusedxml" },
     { name = "fastapi" },
+    { name = "jsonschema" },
+    { name = "jsonschema-specifications" },
     { name = "mcp" },
     { name = "packaging" },
     { name = "pydantic" },
     { name = "pyyaml" },
+    { name = "referencing" },
     { name = "rfc8785" },
     { name = "rich" },
     { name = "sse-starlette" },
     { name = "typer" },
+    { name = "univers" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "z3-solver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3a/e3/75e1625269903b7de47b79918105db28d67710256da769cd2636b7e5dd0a/raes-3.5.0.tar.gz", hash = "sha256:69975a5ae0cc5aad2036a06e8ff435150e158036ecd1e2f8111e885353fe8dc4", size = 3354723, upload-time = "2026-09-04T05:12:33.328Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/b0/ee1f7f217f7b9c8e7cd3507d8f0447d4e0e793f4031881033ca177951c7c/raes-4.1.0.tar.gz", hash = "sha256:283f4b1a57cadd9cc7e0bda0a6b468ea784c4f060ebb7829052e861c85d58d09", size = 3869640, upload-time = "2026-09-13T20:21:42.951Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/22/3275b3b61f1e033a817ad47602998d521e5da12d24a6a37dadd54f09ec03/raes-3.5.0-py3-none-any.whl", hash = "sha256:0d0580d358cd4f1c8690b07af15e0bdd66760bde1ccf3da7729d2af753cea564", size = 3172192, upload-time = "2026-09-04T05:12:31.259Z" },
+    { url = "https://files.pythonhosted.org/packages/36/e3/40b97fceb9d7f1c5383462db25b66c6728609e2b83063c6aed88371fad49/raes-4.1.0-py3-none-any.whl", hash = "sha256:25ef831a62b8138c9a7bf556ca1eacf88de80aca28908981b9e85931c042a8c9", size = 3596012, upload-time = "2026-09-13T20:21:40.642Z" },
 ]
 
 [[package]]
 name = "raes-env-packs"
-version = "5.1.0"
+version = "5.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -832,7 +836,7 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4" },
     { name = "mcp", specifier = ">=2,<3" },
     { name = "pyyaml", specifier = ">=6" },
-    { name = "raes", specifier = "==3.5.0" },
+    { name = "raes", specifier = "==4.1.0" },
 ]
 
 [[package]]
@@ -995,6 +999,24 @@ wheels = [
 ]
 
 [[package]]
+name = "semantic-version"
+version = "2.10.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/31/f2289ce78b9b473d582568c234e104d2a342fd658cc288a7553d83bb8595/semantic_version-2.10.0.tar.gz", hash = "sha256:bdabb6d336998cbb378d4b9db3a4b56a1e3235701dc05ea2690d9a997ed5041c", size = 52289, upload-time = "2022-05-26T13:35:23.454Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl", hash = "sha256:de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177", size = 15552, upload-time = "2022-05-26T13:35:21.206Z" },
+]
+
+[[package]]
+name = "semver"
+version = "3.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/f5/e1dfe8e1d91c54ce212fd93916eb01fd1c590f413be0a0978c39a97aa1bb/semver-3.1.0.tar.gz", hash = "sha256:14bc073439513d7773662a338f4db9829cf16c12b74b9568e2d2689975fbd7fc", size = 304162, upload-time = "2026-09-12T18:38:14.045Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/02/bce7a1d70e9d0f6ea8623c16386138c251b5855af6cd3a11433d3fba4e66/semver-3.1.0-py3-none-any.whl", hash = "sha256:6e4998f8b4762acdfea85f9bfd5b4032e0bb50038dc04bf82011b42d5d1145c5", size = 18783, upload-time = "2026-09-12T18:38:12.457Z" },
+]
+
+[[package]]
 name = "shellingham"
 version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1072,6 +1094,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac53367ae42139cf4b1ca5f36bb3dc6c9d33acdb43655/typing_inspection-0.4.2.tar.gz", hash = "sha256:ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464", size = 75949, upload-time = "2025-10-01T02:14:41.687Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dc/9b/47798a6c91d8bdb567fe2698fe81e0c6b7cb7ef4d13da4114b41d239f65d/typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7", size = 14611, upload-time = "2025-10-01T02:14:40.154Z" },
+]
+
+[[package]]
+name = "univers"
+version = "32.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "packaging" },
+    { name = "semantic-version" },
+    { name = "semver" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/70/b6/874e832506ff2e5eb4f62a67a810199ee5f5175ad6dbca271da88b5b7cb9/univers-32.0.1.tar.gz", hash = "sha256:fae187245f72bee1581f29b0b0b6e907049b2ea136e3e52bf8d8edbfef10e7f0", size = 297048, upload-time = "2026-05-01T16:42:14.492Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a7/4f/1c7953d10a9147dc1ec8a4902a1e08d7107d1f4833e316470190039e8507/univers-32.0.1-py3-none-any.whl", hash = "sha256:50a574ff2321e31e1eba7aa586bf63a9558d91c69c70316bf26c75e1b122499b", size = 98791, upload-time = "2026-05-01T16:42:12.859Z" },
 ]
 
 [[package]]

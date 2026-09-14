@@ -47,6 +47,8 @@ environments/<name>/
   pack.compatibility.yaml # optional product compatibility projection
   kit.materializations.json # optional inert kit provenance + file ownership
   sdl/            # start state (+ injects/events/timeline)
+    <name>.bindings.json # optional RAES concept bindings for <name>.sdl.yaml
+    <name>.schemes.json  # pinned scheme snapshots those bindings resolve against
     raes.lock.json # RAES-owned exact module resolution, when imports are present
     kits/          # ordinary materialized RAES modules, when kits are present
   assets/         # bespoke files/content the scenario needs
@@ -295,11 +297,13 @@ If a pack needs trust expressivity the RAES policy lacks, that gap is raised
 
 RAES also owns the governed **concept** vocabulary — ATT&CK and ATLAS
 offensive-behaviour tactics, UCO concept families, and the controlled
-vocabularies — published under `contracts/concept-authority/`. Those
-classifications have one semantic home: RAES SDL behaviour specifications
-(`behavior_specifications.offensive_behavior_refs` /
-`ai_offensive_behavior_refs`), validated by the pinned `raes.parse_sdl`. The
-pack format consumes them and restates none of them. Two former local overlaps
+vocabularies — published under `contracts/concept-authority/`. A
+classification (a CWE weakness, an ATT&CK tactic) is a RAES
+`external-concept-bindings/v1` document, not an SDL field. A pack ships it as
+`sdl/<name>.bindings.json` beside its SDL, with the pinned scheme snapshots in
+`sdl/<name>.schemes.json`; `validate_pack` admits it through RAES
+(ADR 0038). The pack format consumes these contracts and restates none of
+them. Two former local overlaps
 are removed: the provenance ledger carries no `sources[].kind`, and the canonical
 challenge contract carries no `challenges[].category` (see
 [Challenges](#challenges)). The remaining local vocabulary — source licensing /

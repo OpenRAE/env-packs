@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import os
 import shutil
 import tempfile
@@ -451,6 +452,329 @@ class SdlValidationTests(PackValidationFixture):
         self.assertIn("sdl.imports-denied: sdl/example.sdl.yaml", result.errors)
         urlopen.assert_not_called()
         self.assertFalse((self.root / "sdl" / ".raes").exists())
+
+
+_BOUND_SDL = "name: example-pack\nnodes:\n  target:\n    type: compute\n    os: linux\n"
+
+
+def _scheme_snapshot(concepts: tuple[str, ...] = ("EX-1",)) -> dict[str, object]:
+    return {
+        "scheme_id": "example-scheme",
+        "authority": "Example authority",
+        "revision": "1",
+        "source_locator": "https://example.invalid/scheme-1.json",
+        "source_digest": "sha256:" + "a" * 64,
+        "concepts": [{"concept_id": concept} for concept in concepts],
+    }
+
+
+def _binding_document(sdl_text: str, concept: str = "EX-1") -> dict[str, object]:
+    from raes import parse_sdl
+    from raes.external_concept_subjects import external_concept_subjects
+
+    (subject,) = [
+        item
+        for item in external_concept_subjects(parse_sdl(sdl_text))
+        if item.canonical_ref == "nodes.target"
+    ]
+    reference = [{"ref_kind": "other", "ref_id": "example"}]
+    return {
+        "schema_version": "external-concept-bindings/v1",
+        "binding_set_id": "example-bindings",
+        "binding_set_version": "1.0.0",
+        "bindings": {
+            "target-concept": {
+                "binding_id": "target-concept",
+                "subject": subject.model_dump(mode="json"),
+                "scheme": {
+                    key: _scheme_snapshot()[key]
+                    for key in ("scheme_id", "authority", "revision", "source_locator", "source_digest")
+                }
+                | {"concept_id": concept},
+                "assertion": {
+                    "relationship_kind": "related-to",
+                    "motivation": "Example classification.",
+                    "motivation_basis_refs": reference,
+                    "semantic_effect": "annotates",
+                    "semantic_effect_basis_refs": reference,
+                },
+                "perspective": {
+                    "asserting_party_kind": "author",
+                    "asserting_party_ref": "authors.example",
+                    "perspective": "author-classification",
+                    "authority_basis_refs": reference,
+                },
+                "provenance": {
+                    "asserted_at": "2026-09-13T00:00:00Z",
+                    "source_refs": reference,
+                },
+                "confidence": {"posture": "high", "basis": "Authored."},
+                "approximation": {"posture": "exact"},
+                "limitations": ["Annotation only."],
+                "review": {"status": "unreviewed"},
+            }
+        },
+    }
+
+
+class ConceptBindingValidationTests(PackValidationFixture):
+    """External concept bindings ship beside their SDL and admit through RAES."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.sdl = self.root / "sdl" / "example.sdl.yaml"
+        self.sdl.write_text(_BOUND_SDL, encoding="utf-8")
+        self.bindings = self.root / "sdl" / "example.bindings.json"
+        self.schemes = self.root / "sdl" / "example.schemes.json"
+
+    def _write(self, bindings: object, schemes: object | None) -> None:
+        self.bindings.write_text(json.dumps(bindings), encoding="utf-8")
+        if schemes is not None:
+            self.schemes.write_text(json.dumps(schemes), encoding="utf-8")
+
+    def _binding_errors(self) -> list[str]:
+        return [error for error in self.validate().errors if error.startswith("sdl.bindings")]
+
+    def test_resolved_bindings_are_admitted(self) -> None:
+        self._write(_binding_document(_BOUND_SDL), [_scheme_snapshot()])
+        self.assertEqual(self._binding_errors(), [])
+
+    def test_bindings_go_stale_when_the_sdl_changes(self) -> None:
+        self._write(_binding_document(_BOUND_SDL), [_scheme_snapshot()])
+        self.sdl.write_text(
+            _BOUND_SDL + "  other:\n    type: compute\n    os: linux\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            self._binding_errors(),
+            ["sdl.bindings-unresolved: sdl/example.bindings.json"],
+        )
+
+    def test_a_concept_missing_from_the_pinned_scheme_is_unresolved(self) -> None:
+        self._write(_binding_document(_BOUND_SDL, "EX-2"), [_scheme_snapshot()])
+        self.assertEqual(
+            self._binding_errors(),
+            ["sdl.bindings-unresolved: sdl/example.bindings.json"],
+        )
+
+    def test_bindings_require_their_pinned_schemes(self) -> None:
+        self._write(_binding_document(_BOUND_SDL), None)
+        self.assertEqual(
+            self._binding_errors(),
+            ["sdl.bindings-schemes-missing: sdl/example.bindings.json"],
+        )
+
+    def test_malformed_documents_fail_closed(self) -> None:
+        document = _binding_document(_BOUND_SDL)
+        del document["bindings"]["target-concept"]["review"]
+        for bindings, schemes, expected in (
+            (document, [_scheme_snapshot()], "sdl.bindings-invalid: sdl/example.bindings.json"),
+            (_binding_document(_BOUND_SDL), {"not": "a list"}, "sdl.bindings-invalid: sdl/example.schemes.json"),
+        ):
+            with self.subTest(expected=expected):
+                self._write(bindings, schemes)
+                self.assertEqual(self._binding_errors(), [expected])
+
+    def test_bindings_without_their_sdl_are_orphans(self) -> None:
+        orphan = self.root / "sdl" / "missing.bindings.json"
+        orphan.write_text(json.dumps(_binding_document(_BOUND_SDL)), encoding="utf-8")
+        self.assertEqual(
+            self._binding_errors(),
+            ["sdl.bindings-orphan: sdl/missing.bindings.json"],
+        )
+
+        orphan.unlink()
+        self.schemes.write_text(json.dumps([_scheme_snapshot()]), encoding="utf-8")
+        self.assertEqual(
+            self._binding_errors(),
+            ["sdl.bindings-orphan: sdl/example.schemes.json"],
+        )
+
+
+_CORPUS = (
+    "sdl/example.sdl.yaml:nodes.siem.runtime.security_monitoring_managers[0]"
+    ".content_sets[0]"
+)
+
+
+class ContentSetInventoryTests(PackValidationFixture):
+    """A corpus's file_count and file_refs must match the files that ship (#343)."""
+
+    def _write_sdl(
+        self,
+        content_set: dict[str, object],
+        content: dict[str, object] | None = None,
+    ) -> None:
+        document = {
+            "name": "example-pack",
+            "nodes": {
+                "siem": {
+                    "type": "vm",
+                    "runtime": {
+                        "security_monitoring_managers": [
+                            {
+                                "security_monitoring_manager_id": "siem",
+                                "implementation": "wazuh",
+                                "content_sets": [
+                                    {"content_id": "rules", **content_set}
+                                ],
+                            }
+                        ]
+                    },
+                },
+                "other": {"type": "vm"},
+            },
+        }
+        if content is not None:
+            document["content"] = content
+        (self.root / "sdl" / "example.sdl.yaml").write_text(
+            yaml.safe_dump(document, sort_keys=False), encoding="utf-8"
+        )
+
+    @staticmethod
+    def _file_row(path: str, target: str = "siem") -> dict[str, object]:
+        return {"type": "file", "target": target, "path": path, "text": "<group/>"}
+
+    def _set_inventory(self, entries: list[dict[str, object]]) -> None:
+        path = self.root / "sdl" / "example.sdl.yaml"
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        document["nodes"]["siem"]["runtime"]["filesystem_inventory"] = entries
+        path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+
+    def _corpus_errors(self) -> list[str]:
+        return [e for e in self.validate().errors if e.startswith("content-set.")]
+
+    def test_count_matching_supplied_refs_passes(self) -> None:
+        self._write_sdl(
+            {"file_count": 2, "file_refs": ["/rules/a.xml", "/rules/b.xml"]},
+            {
+                "a": self._file_row("/rules/a.xml"),
+                "b": self._file_row("/rules/b.xml"),
+            },
+        )
+        result = self.validate()
+        self.assertTrue(result.ok, result.errors)
+
+    def test_definition_count_declared_as_file_count_is_rejected(self) -> None:
+        # The #343 defect: one XML file holding 11 rules declared as 11 files.
+        self._write_sdl(
+            {"file_count": 11, "file_refs": ["/rules/webapp_rules.xml"]},
+            {"webapp": self._file_row("/rules/webapp_rules.xml")},
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-count-mismatch: {_CORPUS}.file_count"],
+        )
+
+    def test_file_count_without_file_refs_is_rejected(self) -> None:
+        self._write_sdl(
+            {"file_count": 1, "name": "webapp_rules.xml"},
+            {"webapp": self._file_row("/rules/webapp_rules.xml")},
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-refs.missing: {_CORPUS}.file_refs"],
+        )
+
+    def test_duplicate_refs_count_once(self) -> None:
+        self._write_sdl(
+            {"file_count": 2, "file_refs": ["/rules/a.xml", "/rules/a.xml"]},
+            {"a": self._file_row("/rules/a.xml")},
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-count-mismatch: {_CORPUS}.file_count"],
+        )
+
+    def test_ref_nothing_supplies_is_rejected(self) -> None:
+        self._write_sdl(
+            {"file_count": 2, "file_refs": ["/rules/a.xml", "/rules/missing.xml"]},
+            {"a": self._file_row("/rules/a.xml")},
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-ref.unsupplied: {_CORPUS}.file_refs[1]"],
+        )
+
+    def test_file_placed_on_another_node_does_not_supply_the_ref(self) -> None:
+        self._write_sdl(
+            {"file_count": 1, "file_refs": ["/rules/a.xml"]},
+            {"a": self._file_row("/rules/a.xml", target="other")},
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-ref.unsupplied: {_CORPUS}.file_refs[0]"],
+        )
+
+    def test_ref_beneath_a_directory_row_is_supplied(self) -> None:
+        self._write_sdl(
+            {"file_count": 1, "file_refs": ["/rules/bundle/a.xml"]},
+            {
+                "bundle": {
+                    "type": "directory",
+                    "target": "siem",
+                    "destination": "/rules/bundle",
+                }
+            },
+        )
+        self.assertEqual(self._corpus_errors(), [])
+
+    def test_directory_root_does_not_supply_a_sibling_prefix(self) -> None:
+        self._write_sdl(
+            {"file_count": 1, "file_refs": ["/rules/bundle-extra/a.xml"]},
+            {
+                "bundle": {
+                    "type": "directory",
+                    "target": "siem",
+                    "destination": "/rules/bundle",
+                }
+            },
+        )
+        self.assertEqual(
+            self._corpus_errors(),
+            [f"content-set.file-ref.unsupplied: {_CORPUS}.file_refs[0]"],
+        )
+
+    def test_present_inventory_file_supplies_the_ref(self) -> None:
+        self._write_sdl({"file_count": 1, "file_refs": ["/rules/a.xml"]})
+        self._set_inventory([{"path": "/rules/a.xml", "entry_type": "file"}])
+        self.assertEqual(self._corpus_errors(), [])
+
+    def test_image_build_destination_supplies_the_ref(self) -> None:
+        self._write_sdl({"file_count": 1, "file_refs": ["/rules/a.xml"]})
+        path = self.root / "sdl" / "example.sdl.yaml"
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        document["nodes"]["siem"]["source"] = {
+            "name": "siem-image",
+            "build": {
+                "copied_sources": [
+                    {"source_path": "rules/a.xml", "destination_path": "/rules/a.xml"}
+                ]
+            },
+        }
+        path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+        self.assertEqual(self._corpus_errors(), [])
+
+    def test_absent_or_directory_inventory_entry_does_not_supply_the_ref(self) -> None:
+        for entry in (
+            {"path": "/rules/a.xml", "entry_type": "file", "presence": "expected_absent"},
+            {"path": "/rules/a.xml", "entry_type": "directory"},
+        ):
+            with self.subTest(entry=entry):
+                self._write_sdl({"file_count": 1, "file_refs": ["/rules/a.xml"]})
+                self._set_inventory([entry])
+                self.assertEqual(
+                    self._corpus_errors(),
+                    [f"content-set.file-ref.unsupplied: {_CORPUS}.file_refs[0]"],
+                )
+
+    def test_unresolved_variable_ref_counts_but_is_not_resolved(self) -> None:
+        self._write_sdl({"file_count": 1, "file_refs": ["${corpus_path}"]})
+        self.assertEqual(self._corpus_errors(), [])
+
+    def test_corpus_without_a_file_count_or_refs_is_not_checked(self) -> None:
+        self._write_sdl({"name": "stock ruleset"})
+        self.assertEqual(self._corpus_errors(), [])
 
 
 class ValidationBoundaryTests(PackValidationFixture):

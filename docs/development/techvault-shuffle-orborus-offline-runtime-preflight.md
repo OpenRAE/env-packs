@@ -6,6 +6,13 @@ This note limits the env-pack change to portable, in-world content and content
 configuration. Runtime realization is tracked separately in
 [Brad-Edwards/aptl#974](https://github.com/Brad-Edwards/aptl/issues/974).
 
+Issue #331 subsequently found that one realization needed an additional native
+holder identity to start Orborus correctly. The
+[self-identity boundary review](techvault-orborus-self-identity-preflight.md)
+confirms that this realization-only value does not belong in portable pack
+content or require a new RAES value source. The image, endpoint, authority, and
+observation decisions below still apply.
+
 ## Ownership decision
 
 RAES owns the meaning of the SDL fields used here. This repository consumes

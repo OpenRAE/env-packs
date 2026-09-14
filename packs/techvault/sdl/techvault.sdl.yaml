@@ -7,6 +7,18 @@ description: >
   products or layers. There is no separate captured deep per-asset inventory
   behind this scenario pack (ADR-046).
 
+# Flag values are provided per run by whoever instantiates the scenario; the
+# pack never authors them.
+variables:
+  flag_ad_user:
+    type: string
+    required: true
+    description: User-level flag value placed on the domain controller.
+  flag_ad_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on the domain controller.
+
 nodes:
   security-net:
     type: switch
@@ -20,12 +32,6 @@ nodes:
   redteam-net:
     type: switch
     description: Red-team operations network.
-  control-net:
-    type: switch
-    description: >-
-      Control network carrying operator access to the range: the Kali SSH proxy
-      and the web application proxy attach here alongside their range-facing
-      networks. Not internal, so the host can reach the published proxy ports.
 
   wazuh-manager:
     type: compute
@@ -144,60 +150,78 @@ nodes:
           agents:
             - agent_id: suricata-agent
               name: aptl-suricata-agent
-              node_ref: wazuh-sidecar-suricata
+              node_ref: suricata
               description: Ships Suricata EVE events; see that node's forwarding agent.
             - agent_id: db-agent
               name: aptl-db-agent
-              node_ref: wazuh-sidecar-db
+              node_ref: db
               description: Ships PostgreSQL logs; see that node's forwarding agent.
+            - agent_id: ad-agent
+              name: aptl-ad-agent
+              node_ref: ad
+              description: Ships the domain controller's Samba logs; see that node's forwarding agent.
           content_sets:
             - content_id: webapp-rules
               kind: rule_corpus
               format: wazuh_rule_xml
               name: webapp_rules.xml
-              file_count: 11
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/webapp_rules.xml
               loaded: true
               description: Web-application attack rules, including the SQL-injection detections the range exercises.
             - content_id: suricata-rules
               kind: rule_corpus
               format: wazuh_rule_xml
               name: suricata_rules.xml
-              file_count: 12
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/suricata_rules.xml
               loaded: true
               description: Rules that fire on Suricata EVE events arriving from the network sensor.
             - content_id: ad-rules
               kind: rule_corpus
               format: wazuh_rule_xml
               name: ad_rules.xml
-              file_count: 11
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/ad_rules.xml
               loaded: true
               description: Active Directory authentication and abuse rules.
             - content_id: database-rules
               kind: rule_corpus
               format: wazuh_rule_xml
               name: database_rules.xml
-              file_count: 7
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/database_rules.xml
               loaded: true
               description: Customer-database access and abuse rules.
             - content_id: falco-rules
               kind: rule_corpus
               format: wazuh_rule_xml
               name: falco_rules.xml
-              file_count: 8
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/falco_rules.xml
               loaded: true
               description: Container runtime rules.
             - content_id: postgresql-decoders
               kind: decoder_corpus
               format: wazuh_decoder_xml
               name: postgresql_decoders.xml
-              file_count: 2
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/decoders/postgresql_decoders.xml
               loaded: true
               description: Decoders that make PostgreSQL log lines parseable by the rules.
             - content_id: samba-decoders
               kind: decoder_corpus
               format: wazuh_decoder_xml
               name: samba_decoders.xml
-              file_count: 2
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/decoders/samba_decoders.xml
               loaded: true
               description: Decoders for Samba file-share activity.
           detection_definitions:
@@ -448,7 +472,7 @@ nodes:
             - internal-net
             - redteam-net
           name: TechVault network sensor
-          description: Watches range traffic passively. Its EVE output is what the Wazuh sidecar tails, so this is where network visibility enters the SOC.
+          description: Watches range traffic passively. Its EVE output is what the node's Wazuh agent ships, so this is where network visibility enters the SOC.
       network_detection_engines:
         - network_detection_engine_id: suricata-engine
           implementation: suricata
@@ -509,7 +533,6 @@ nodes:
                 - dmz-net
                 - internal-net
                 - redteam-net
-                - control-net
               description: The range itself; everything outside it is EXTERNAL_NET.
             - set_id: external-net
               kind: external_net
@@ -551,7 +574,7 @@ nodes:
                 - flow
                 - stats
               enabled: true
-              description: The file the Wazuh sidecar tails off the shared suricata_logs volume. This path is the detection-to-SIEM hand-off.
+              description: The file the node's Wazuh agent tails. This path is the detection-to-SIEM hand-off.
             - stream_id: fast-log
               format: fast_log
               path: /var/log/suricata/fast.log
@@ -567,6 +590,30 @@ nodes:
                 - rule_reload
               auth_required: false
               description: Where the MISP sync agent drives a reload after writing rules.
+      forwarding_agents:
+        - forwarding_agent_id: suricata-eve-forwarder
+          implementation: wazuh_agent
+          agent_kind: log_forwarder
+          name: aptl-suricata-agent
+          description: Tails Suricata's EVE output and ships it to the Wazuh manager. This is the hand-off that makes network detections visible to the SIEM.
+          sources:
+            - source_id: suricata-eve
+              kind: tailed_path
+              location: /var/log/suricata/eve.json
+              parse_format: eve_json
+          transforms:
+            - transform_id: eve-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: suricata-eve-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: suricata-eve-forwarder-manager
+              target_node_ref: wazuh-manager
+              ingestion_port: 1514
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
   misp:
     type: compute
     os: linux
@@ -1453,124 +1500,6 @@ nodes:
               partition_ref: users
               top_level_field_count: 30
               description: SOAR user record mapping.
-  wazuh-sidecar-db:
-    type: compute
-    os: linux
-    source:
-      name: "aptl-wazuh-sidecar"
-      version: local
-      artifact_requirement:
-        requirement_id: wazuh-sidecar-db-image
-        explicitness: constrained
-        materialization_specifications:
-          - specification_id: wazuh-sidecar
-            profile:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            digest: "sha256:1fdafc28ba63364e7d91a5fbb68bce8e251f35b40287ea99a7d3c903198a8985"
-            locked_input_ids: []
-        permitted_routes:
-          - mechanism:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            acquisition: none
-            timing: backend-preparation
-    services: []
-    runtime:
-      environment:
-        - {name: WAZUH_MANAGER, value: wazuh-manager}
-        - {name: AGENT_NAME, value: aptl-db-agent}
-        # The db node is a generic-base apt install of PostgreSQL 15 (Debian
-        # bookworm base), which logs to /var/log/postgresql/postgresql-15-main.log.
-        # The db_logs volume shares that directory into this sidecar at /logs, so
-        # the tailed file is the log postgres actually writes.
-        - {name: LOG_PATHS, value: /logs/postgresql-15-main.log}
-        - {name: LOG_FORMAT, value: syslog}
-      forwarding_agents:
-        - forwarding_agent_id: db-postgres-forwarder
-          implementation: wazuh_agent
-          agent_kind: log_forwarder
-          name: aptl-db-agent
-          description: Tails the customer database's PostgreSQL log off the shared db_logs volume and ships it to the Wazuh manager, so database activity reaches the SIEM.
-          sources:
-            - source_id: postgres-log
-              kind: tailed_path
-              location: /logs/postgresql-15-main.log
-              parse_format: syslog
-          transforms:
-            - transform_id: postgres-parse
-              kind: parse
-          buffer_policy:
-            buffer_policy_id: db-postgres-forwarder-buffer
-            crypto: aes
-          ship_targets:
-            - target_id: db-postgres-forwarder-manager
-              target_node_ref: wazuh-manager
-              ingestion_port: 1514
-              enrollment_port: 1515
-              protocol: tcp
-              enrollment_identity_classification: operator_secret
-  wazuh-sidecar-suricata:
-    type: compute
-    os: linux
-    source:
-      name: "aptl-wazuh-sidecar"
-      version: local
-      artifact_requirement:
-        requirement_id: wazuh-sidecar-suricata-image
-        explicitness: constrained
-        materialization_specifications:
-          - specification_id: wazuh-sidecar
-            profile:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            digest: "sha256:1fdafc28ba63364e7d91a5fbb68bce8e251f35b40287ea99a7d3c903198a8985"
-            locked_input_ids: []
-        permitted_routes:
-          - mechanism:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            acquisition: none
-            timing: backend-preparation
-    services: []
-    runtime:
-      environment:
-        - {name: WAZUH_MANAGER, value: wazuh-manager}
-        - {name: AGENT_NAME, value: aptl-suricata-agent}
-        - {name: LOG_PATHS, value: /logs/eve.json}
-        - {name: LOG_FORMAT, value: json}
-      forwarding_agents:
-        - forwarding_agent_id: suricata-eve-forwarder
-          implementation: wazuh_agent
-          agent_kind: log_forwarder
-          name: aptl-suricata-agent
-          description: Tails Suricata's EVE output off the shared suricata_logs volume and ships it to the Wazuh manager. This is the hand-off that makes network detections visible to the SIEM.
-          sources:
-            - source_id: suricata-eve
-              kind: tailed_path
-              location: /logs/eve.json
-              parse_format: eve_json
-          transforms:
-            - transform_id: eve-parse
-              kind: parse
-          buffer_policy:
-            buffer_policy_id: suricata-eve-forwarder-buffer
-            crypto: aes
-          ship_targets:
-            - target_id: suricata-eve-forwarder-manager
-              target_node_ref: wazuh-manager
-              ingestion_port: 1514
-              enrollment_port: 1515
-              protocol: tcp
-              enrollment_identity_classification: operator_secret
 
   webapp:
     type: compute
@@ -1652,13 +1581,9 @@ nodes:
       # CAP_NET_ADMIN, which Docker's default capability set does not grant.
       linux_capabilities:
         add: [CAP_NET_ADMIN]
-      # webapp is a deliberate attack-surface target, reachable from other
-      # machines on the LAN like the in-range red team, not an operator or
-      # management surface -- so it does NOT get a loopback published_ports
-      # declaration here. Its own networks (aptl-dmz, aptl-internal) are both
-      # internal: true, which Docker never routes host traffic through
-      # regardless of host_ip; the webapp-proxy node is the real host
-      # publication.
+      # webapp is a deliberate attack-surface target for in-range actors, who
+      # reach it over the scenario networks, so it declares no
+      # published_ports here.
       service_manager_units:
         - {unit_id: webapp, unit_name: webapp.service, enabled_state: enabled, active_state: active}
         # Per-boot CTF flags (see the flag-generator content below).
@@ -1690,10 +1615,7 @@ nodes:
                 - GET
                 - POST
               auth_required: false
-              description: Login form.
-              vulnerability_refs:
-                - webapp-sqli-login
-                - webapp-verbose-errors
+              description: Login form. It accepts intentionally vulnerable SQL input, and its error responses reveal internal detail.
             - route_id: logout
               path: /logout
               methods:
@@ -1711,34 +1633,26 @@ nodes:
               methods:
                 - GET
               auth_required: true
-              description: Administrative view over stored backup configuration.
-              vulnerability_refs:
-                - webapp-missing-authz-admin
+              description: Administrative view over stored backup configuration. /admin is reachable by any authenticated user and exposes stored cloud credentials.
             - route_id: upload
               path: /upload
               methods:
                 - GET
                 - POST
               auth_required: true
-              description: File upload.
-              vulnerability_refs:
-                - webapp-unrestricted-upload
+              description: File upload. Uploads are neither type- nor size-checked, and the filename allows traversal.
             - route_id: api-file
               path: /api/v1/files/<int:file_id>
               methods:
                 - GET
               auth_required: true
-              description: Fetch one file record.
-              vulnerability_refs:
-                - webapp-idor-files
+              description: Fetch one file record. /api/v1/files/<id> performs no ownership check.
             - route_id: api-user
               path: /api/v1/users/<int:user_id>
               methods:
                 - GET
               auth_required: true
-              description: Fetch one user record.
-              vulnerability_refs:
-                - webapp-idor-users
+              description: Fetch one user record. /api/v1/users/<id> performs no authorization check and returns an API key.
             - route_id: api-customers
               path: /api/v1/customers
               methods:
@@ -1750,45 +1664,32 @@ nodes:
               methods:
                 - POST
               auth_required: false
-              description: Issue a bearer token.
-              vulnerability_refs:
-                - webapp-weak-jwt
-                - webapp-hardcoded-secrets
+              description: Issue a bearer token. Tokens are signed with a guessable secret and never expire. The Flask session key and JWT secret are literals in the application source.
             - route_id: ping-tool
               path: /tools/ping
               methods:
                 - GET
                 - POST
               auth_required: true
-              description: Network diagnostic helper.
-              vulnerability_refs:
-                - webapp-cmdi-ping
+              description: Network diagnostic helper. The /tools/ping host parameter reaches a shell without sanitization.
             - route_id: search
               path: /search
               methods:
                 - GET
               auth_required: true
-              description: Search users by name, email, or department.
-              vulnerability_refs:
-                - webapp-sqli-search
-                - webapp-xss-reflected
+              description: Search users by name, email, or department. The query parameter is interpolated into SQL and rendered back into the page unescaped.
             - route_id: comment
               path: /comment
               methods:
                 - POST
               auth_required: true
-              description: Post a comment.
-              vulnerability_refs:
-                - webapp-xss-stored
+              description: Post a comment. Comment bodies are stored and rendered without sanitization.
             - route_id: debug
               path: /debug
               methods:
                 - GET
               auth_required: false
-              description: Debug information endpoint.
-              vulnerability_refs:
-                - webapp-debug-endpoint
-                - webapp-env-disclosure
+              description: Debug information endpoint. /debug is reachable in the running application. The application serves its own .env content.
             - route_id: robots
               path: /robots.txt
               methods:
@@ -1798,29 +1699,6 @@ nodes:
   ad:
     type: compute
     os: linux
-    source:
-      name: "aptl-ad"
-      version: local
-      artifact_requirement:
-        requirement_id: ad-image
-        explicitness: constrained
-        materialization_specifications:
-          - specification_id: ad
-            profile:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            digest: "sha256:8a891ee9c6483942c18116d135fba0e0aacfb4ec12da33cde6356ed32d0b5c46"
-            locked_input_ids: []
-        permitted_routes:
-          - mechanism:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            acquisition: none
-            timing: backend-preparation
     services:
       - {name: ldap, port: 389, protocol: tcp}
       - {name: kerberos, port: 88, protocol: tcp}
@@ -1832,16 +1710,6 @@ nodes:
       # fails with NT_STATUS_ACCESS_DENIED.
       linux_capabilities:
         add: [CAP_SYS_ADMIN, CAP_NET_ADMIN]
-      environment:
-        - {name: SAMBA_DOMAIN, value: TECHVAULT, value_classification: plain, provenance: compose}
-        - {name: SAMBA_REALM, value: TECHVAULT.LOCAL, value_classification: plain, provenance: compose}
-        - {name: SAMBA_ADMIN_PASSWORD, value: "Admin123!", value_classification: secret_fixture, provenance: compose}
-        - {name: DNS_FORWARDER, value: "172.20.1.22", value_classification: plain, provenance: compose}
-        - {name: SIEM_IP, value: "172.20.2.30", value_classification: plain, provenance: compose}
-        - {name: WAZUH_MANAGER, value: wazuh-manager, value_classification: plain, provenance: compose}
-        - {name: AGENT_NAME, value: aptl-ad-agent, value_classification: plain, provenance: compose}
-        - {name: LOG_PATHS, value: "/var/log/samba/log.samba,/var/log/samba/log.smbd,/var/log/samba/log.winbindd", value_classification: plain, provenance: compose}
-        - {name: LOG_FORMAT, value: syslog, value_classification: plain, provenance: compose}
       service_listeners:
         - service_listener_id: ad-ldap-listener
           service: ldap
@@ -1875,6 +1743,47 @@ nodes:
             - {service_id: techvault-ldap, service: ldap, protocol: ldap, address: ad, port: 389}
             - {service_id: techvault-kerberos, service: kerberos, protocol: kerberos, address: ad, port: 88}
             - {service_id: techvault-ad-rpc, service: smb, protocol: ad_ds_rpc, address: ad, port: 445}
+      filesystem_inventory:
+        - {path: /opt/flags/user.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
+      forwarding_agents:
+        - forwarding_agent_id: ad-samba-forwarder
+          implementation: wazuh_agent
+          agent_kind: log_forwarder
+          name: aptl-ad-agent
+          description: Tails the domain controller's Samba logs and ships them to the Wazuh manager, so directory and file-service activity reaches the SIEM.
+          sources:
+            - {source_id: samba-log, kind: tailed_path, location: /var/log/samba/log.samba, parse_format: syslog}
+            - {source_id: smbd-log, kind: tailed_path, location: /var/log/samba/log.smbd, parse_format: syslog}
+            - {source_id: winbindd-log, kind: tailed_path, location: /var/log/samba/log.winbindd, parse_format: syslog}
+          transforms:
+            - transform_id: samba-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: ad-samba-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: ad-samba-forwarder-manager
+              target_node_ref: wazuh-manager
+              ingestion_port: 1514
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
+        - forwarding_agent_id: ad-syslog-forwarder
+          implementation: rsyslog
+          agent_kind: log_forwarder
+          name: rsyslog
+          description: Forwards the domain controller's local syslog to the Wazuh manager's remote syslog listener.
+          sources:
+            - {source_id: local-syslog, kind: other, selector: "*.*", parse_format: syslog}
+          buffer_policy:
+            buffer_policy_id: ad-syslog-forwarder-buffer
+            crypto: none
+          ship_targets:
+            - target_id: ad-syslog-forwarder-manager
+              target_node_ref: wazuh-manager
+              ingestion_port: 514
+              protocol: udp
       operational_policy:
         restart: unless_stopped
         resource_limits:
@@ -1952,6 +1861,30 @@ nodes:
               origin: scenario
               can_login: true
               description: Application login the web tier authenticates as.
+      forwarding_agents:
+        - forwarding_agent_id: db-postgres-forwarder
+          implementation: wazuh_agent
+          agent_kind: log_forwarder
+          name: aptl-db-agent
+          description: Tails the customer database's PostgreSQL log and ships it to the Wazuh manager, so database activity reaches the SIEM.
+          sources:
+            - source_id: postgres-log
+              kind: tailed_path
+              location: /var/log/postgresql/postgresql-15-main.log
+              parse_format: syslog
+          transforms:
+            - transform_id: postgres-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: db-postgres-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: db-postgres-forwarder-manager
+              target_node_ref: wazuh-manager
+              ingestion_port: 1514
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
   workstation:
     type: compute
     os: linux
@@ -2172,15 +2105,17 @@ nodes:
         add: [CAP_NET_ADMIN]
       # Host port 5353 (53 is commonly already bound on the host by a local
       # resolver): both protocols, since DNS genuinely uses UDP for queries
-      # and TCP for zone transfers / large responses. dns is a deliberate
-      # attack-surface target like webapp, so host_ip is explicit
-      # all-interfaces rather than the loopback default meant for operator and
-      # management surfaces. dns also sits on aptl-security (not internal:
+      # and TCP for zone transfers / large responses. In-range actors resolve
+      # against dns over the scenario networks, never through this
+      # publication; it exists only so the operator can query the range from
+      # the lab host (dig @localhost -p 5353 techvault.local SOA). Like every
+      # other host publication in the pack it binds loopback, so it never
+      # lands on the operator's LAN. dns sits on aptl-security (not internal:
       # true), so unlike webapp this publishes correctly without a proxy.
       network:
         published_ports:
-          - {container_port: 53, protocol: tcp, host_port: 5353, host_ip: "0.0.0.0"}
-          - {container_port: 53, protocol: udp, host_port: 5353, host_ip: "0.0.0.0"}
+          - {container_port: 53, protocol: tcp, host_port: 5353, host_ip: "127.0.0.1"}
+          - {container_port: 53, protocol: udp, host_port: 5353, host_ip: "127.0.0.1"}
       service_manager_units:
         - {unit_id: named, unit_name: named.service, enabled_state: enabled, active_state: active}
       dns_services:
@@ -2295,126 +2230,6 @@ nodes:
           - {username: kali, primary_group: kali}
       service_manager_units:
         - {unit_id: ssh, unit_name: ssh.service, enabled_state: enabled, active_state: active}
-  kali-ssh-proxy:
-    type: compute
-    os: linux
-    description: >-
-      Operator SSH entry point into the red-team network. Bridges the control
-      network to Kali's SSH service so the range's SSH port is reachable without
-      attaching the operator's host to the red-team network directly. The image
-      defaults target Kali (172.20.4.30:22) and listen on 2023, so no runtime
-      environment override is required.
-    services:
-      - {name: ssh, port: 2023, protocol: tcp}
-    source:
-      name: "aptl-kali-ssh-proxy"
-      version: local
-      artifact_requirement:
-        requirement_id: kali-ssh-proxy-image
-        explicitness: constrained
-        materialization_specifications:
-          - specification_id: kali-ssh-proxy
-            profile:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            digest: "sha256:b09043cf4d4f192488aed48c23f68d260144579c53861ae7dd3dfb4810b73e97"
-            locked_input_ids: []
-        permitted_routes:
-          - mechanism:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            acquisition: none
-            timing: backend-preparation
-    runtime:
-      network:
-        published_ports:
-          - {container_port: 2023, protocol: tcp, host_port: 2023, host_ip: "127.0.0.1"}
-      service_listeners:
-        - service_listener_id: kali-ssh-proxy-listener
-          service: ssh
-          address: 0.0.0.0
-          port: 2023
-          protocol: tcp
-          scope: wildcard
-          published_port_refs:
-            - {container_port: 2023, protocol: tcp, host_port: 2023, host_ip: "127.0.0.1"}
-          provenance: operator
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 64 MiB
-  webapp-proxy:
-    type: compute
-    os: linux
-    description: >-
-      Operator HTTP entry point to the customer portal. Bridges the control
-      network to the webapp's service port on the DMZ so the portal is reachable
-      from the host while the DMZ itself stays internal. Reuses the SSH-proxy's
-      TCP-forwarder image (same contained build context) with an environment
-      override pointing at the webapp's stable node identity and port.
-    services:
-      - {name: http, port: 8080, protocol: tcp}
-    source:
-      name: "aptl-webapp-proxy"
-      version: local
-      artifact_requirement:
-        requirement_id: webapp-proxy-image
-        explicitness: constrained
-        materialization_specifications:
-          - specification_id: kali-ssh-proxy
-            profile:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            digest: "sha256:b09043cf4d4f192488aed48c23f68d260144579c53861ae7dd3dfb4810b73e97"
-            locked_input_ids: []
-        permitted_routes:
-          - mechanism:
-              mechanism: "materialization-specification"
-              profile: "aptl-contained-component-build"
-              version: "1"
-              digest: "sha256:e728ca8aa2805d5fca152df145d4c331578caffec9b7dfe58d0c86a20b9e9c76"
-            acquisition: none
-            timing: backend-preparation
-    runtime:
-      network:
-        published_ports:
-          - {container_port: 8080, protocol: tcp, host_port: 8080, host_ip: "127.0.0.1"}
-      environment:
-        - {name: APTL_PROXY_LISTEN_PORT, value: "8080", value_classification: plain, provenance: compose}
-        - {name: APTL_PROXY_TARGET_HOST, value: webapp, value_classification: plain, provenance: compose}
-        - {name: APTL_PROXY_TARGET_PORT, value: "8080", value_classification: plain, provenance: compose}
-      service_listeners:
-        - service_listener_id: webapp-proxy-listener
-          service: http
-          address: 0.0.0.0
-          port: 8080
-          protocol: tcp
-          scope: wildcard
-          published_port_refs:
-            - {container_port: 8080, protocol: tcp, host_port: 8080, host_ip: "127.0.0.1"}
-          provenance: operator
-      applications:
-        - application_id: webapp-proxy
-          service: http
-          protocol: http
-          routes:
-            - route_id: webapp-proxy-root
-              path: /
-              methods: [GET, POST]
-              auth_required: false
-              upstream_target:
-                target_node_ref: webapp
-                target_service: http
-                scheme: http
-                tls_terminated_here: false
-      operational_policy:
-        restart: unless_stopped
 
 realization:
   default: open
@@ -2487,14 +2302,6 @@ realization:
       concern: compute-substrate
       posture: exact
       domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/wazuh-sidecar-db
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/wazuh-sidecar-suricata
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
     - field_pointer: /nodes/webapp
       concern: compute-substrate
       posture: exact
@@ -2527,14 +2334,6 @@ realization:
       concern: compute-substrate
       posture: exact
       domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/kali-ssh-proxy
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/webapp-proxy
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
 
 infrastructure:
   security-net:
@@ -2545,9 +2344,6 @@ infrastructure:
     properties: {cidr: 172.20.2.0/24, gateway: 172.20.2.1, internal: true}
   redteam-net:
     properties: {cidr: 172.20.4.0/24, gateway: 172.20.4.1, internal: true}
-  control-net:
-    properties: {cidr: 172.20.5.0/24, gateway: 172.20.5.1, internal: false}
-
   wazuh-manager:
     links: [security-net, dmz-net, internal-net]
     dependencies: [wazuh-indexer]
@@ -2599,12 +2395,6 @@ infrastructure:
     dependencies: [shuffle-backend]
   shuffle-opensearch:
     links: [security-net]
-  wazuh-sidecar-db:
-    links: [security-net]
-    dependencies: [wazuh-manager, db]
-  wazuh-sidecar-suricata:
-    links: [security-net]
-    dependencies: [wazuh-manager, suricata]
 
   # Fixed addressing for the enterprise + attacker set: the DNS zones and the
   # seeded credentials and loot hardcode these. Without a pinned address the
@@ -2653,12 +2443,6 @@ infrastructure:
       - {redteam-net: 172.20.4.30}
       - {dmz-net: 172.20.1.30}
       - {internal-net: 172.20.2.35}
-  kali-ssh-proxy:
-    links: [control-net, redteam-net]
-    dependencies: [kali]
-  webapp-proxy:
-    links: [control-net, dmz-net]
-    dependencies: [webapp]
 
 # Stateful Wazuh prerequisites are authored RAES resources. The deployment
 # backend materializes and verifies these before either consumer starts.
@@ -2944,23 +2728,6 @@ persistent_volumes:
     consumers:
       - {node: suricata, mount_destination: /var/lib/suricata/rules/misp, access_mode: read_only}
       - {node: misp-suricata-sync, mount_destination: /var/lib/suricata/rules/misp, access_mode: read_write}
-  db_logs:
-    lifecycle: retain
-    access_mode: read_write_once
-      # PostgreSQL writes its cluster log under /var/log/postgresql here and the
-      # Wazuh sidecar tails it read-only at /logs: the telemetry hand-off that
-      # makes database activity visible to the SIEM.
-    consumers:
-      - {node: db, mount_destination: /var/log/postgresql, access_mode: read_write}
-      - {node: wazuh-sidecar-db, mount_destination: /logs, access_mode: read_only}
-  suricata_logs:
-    lifecycle: retain
-    access_mode: read_write_once
-      # Suricata writes eve.json here and the Wazuh sidecar tails it read-only:
-      # this volume is the telemetry hand-off between detection and shipping.
-    consumers:
-      - {node: suricata, mount_destination: /var/log/suricata, access_mode: read_write}
-      - {node: wazuh-sidecar-suricata, mount_destination: /logs, access_mode: read_only}
   thehive_cassandra_data:
     lifecycle: retain
     access_mode: read_write_once
@@ -3005,83 +2772,6 @@ features:
       version: local
     description: Wazuh, Suricata, MISP, TheHive, Cortex, and Shuffle services.
 
-vulnerabilities:
-  webapp-sqli-login:
-    name: SQL injection in login
-    description: Login form accepts intentionally vulnerable SQL input.
-    technical: true
-    class: CWE-89
-
-# Realizable content: every entry here is either bounded inline text or a
-# project-contained, checked-in source. No runtime-observed, dataset, or
-# captured-filesystem content is authored here. Both entries land on the
-# `fileshare` node, which mounts the `fileshare_data` named volume the content
-# realization backend seeds.
-  webapp-sqli-search:
-    name: SQL injection in search
-    description: The /search query parameter is interpolated into SQL. This is the path the range's detection chain exercises.
-    technical: true
-    class: CWE-89
-  webapp-cmdi-ping:
-    name: Command injection in the ping tool
-    description: The /tools/ping host parameter reaches a shell without sanitization.
-    technical: true
-    class: CWE-78
-  webapp-xss-reflected:
-    name: Reflected XSS in search results
-    description: The search query is rendered back into the page unescaped.
-    technical: true
-    class: CWE-79
-  webapp-xss-stored:
-    name: Stored XSS in comments
-    description: Comment bodies are stored and rendered without sanitization.
-    technical: true
-    class: CWE-79
-  webapp-idor-files:
-    name: IDOR on the file API
-    description: /api/v1/files/<id> performs no ownership check.
-    technical: true
-    class: CWE-639
-  webapp-idor-users:
-    name: IDOR on the user API
-    description: /api/v1/users/<id> performs no authorization check and returns an API key.
-    technical: true
-    class: CWE-639
-  webapp-missing-authz-admin:
-    name: Missing role check on the admin page
-    description: /admin is reachable by any authenticated user and exposes stored cloud credentials.
-    technical: true
-    class: CWE-862
-  webapp-weak-jwt:
-    name: Weak JWT secret with no expiry
-    description: Tokens are signed with a guessable secret and never expire.
-    technical: true
-    class: CWE-330
-  webapp-hardcoded-secrets:
-    name: Hardcoded application secrets
-    description: The Flask session key and JWT secret are literals in the application source.
-    technical: true
-    class: CWE-798
-  webapp-unrestricted-upload:
-    name: Unrestricted file upload
-    description: Uploads are neither type- nor size-checked, and the filename allows traversal.
-    technical: true
-    class: CWE-434
-  webapp-debug-endpoint:
-    name: Debug endpoint exposed
-    description: /debug is reachable in the running application.
-    technical: true
-    class: CWE-489
-  webapp-env-disclosure:
-    name: Environment file disclosure
-    description: The application serves its own .env content.
-    technical: true
-    class: CWE-538
-  webapp-verbose-errors:
-    name: Verbose error disclosure
-    description: Error responses reveal internal detail.
-    technical: true
-    class: CWE-209
 content:
   wazuh-indexer-opensearch-config:
     type: file
@@ -4197,6 +3887,18 @@ content:
 
       [Install]
       WantedBy=multi-user.target
+  ad-user-flag:
+    type: file
+    target: ad
+    path: /opt/flags/user.txt
+    text: "${flag_ad_user}"
+    sensitive: true
+  ad-root-flag:
+    type: file
+    target: ad
+    path: /root/root.txt
+    text: "${flag_ad_root}"
+    sensitive: true
 
 propositions:
   cortex-enrichment-ready:
@@ -4292,7 +3994,6 @@ evidence_requirements:
       - nodes.wazuh-manager.runtime.security_monitoring_managers.wazuh-manager.content_sets.suricata-rules
     scope_refs:
       - nodes.webapp.runtime.applications.techvault-portal
-      - vulnerabilities.webapp-sqli-login
       - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local
     scope: A fresh Kali-to-webapp POST /login containing UNION SELECT must yield Suricata signature_id 1000010 and Wazuh rule id 303020; unrelated alerts and aggregate counts do not satisfy this requirement.
     trigger_ref: nodes.webapp.runtime.applications.techvault-portal
@@ -4361,27 +4062,125 @@ relationships:
     target: techvault
     domain_controller: {}
 
+entities:
+  red-team:
+    name: Red Team
+    role: red
+    description: The attacking participant operating from Kali.
+
+agents:
+  red-team-operator:
+    entity: red-team
+    description: Red-team participant working from the Kali host.
+    interactive_access:
+      kali-ssh:
+        target_ref: kali
+        channel: ssh
+
 accounts:
-  ad-jessica-williams:
-    username: jessica.williams
+  ad-administrator:
+    username: Administrator
     node: ad
-    groups: [Sales, VPN-Users]
+    groups: ["Domain Admins"]
     password_strength: weak
-    mail: jessica.williams@techvault.local
-  ad-svc-sql:
-    username: svc-sql
+    description: Built-in domain administrator.
+    domain_ref: techvault
+  ad-sarah-mitchell:
+    username: sarah.mitchell
     node: ad
-    password_strength: weak
-    spn: MSSQLSvc/db.techvault.local:1433
+    groups: [Executives]
+    password_strength: strong
+    description: CEO.
+    mail: sarah.mitchell@techvault.local
+    domain_ref: techvault
+  ad-james-rodriguez:
+    username: james.rodriguez
+    node: ad
+    groups: [Executives, IT-Admins]
+    password_strength: strong
+    description: CTO.
+    mail: james.rodriguez@techvault.local
+    domain_ref: techvault
+  ad-lisa-chang:
+    username: lisa.chang
+    node: ad
+    groups: [Executives, Sales]
+    password_strength: medium
+    description: VP of Sales.
+    mail: lisa.chang@techvault.local
     domain_ref: techvault
   ad-emily-chen:
     username: emily.chen
     node: ad
     groups: [Engineering, IT-Admins, "Domain Admins"]
     password_strength: medium
+    description: DevOps Lead, over-privileged with Domain Admin.
     mail: emily.chen@techvault.local
+    domain_ref: techvault
+  ad-michael-thompson:
+    username: michael.thompson
+    node: ad
+    groups: [Engineering]
+    password_strength: weak
+    description: Senior Developer with a seasonal password.
+    mail: michael.thompson@techvault.local
+    domain_ref: techvault
+  ad-david-kim:
+    username: david.kim
+    node: ad
+    groups: [Engineering, IT-Admins]
+    password_strength: strong
+    description: Security Engineer.
+    mail: david.kim@techvault.local
+    domain_ref: techvault
+  ad-jessica-williams:
+    username: jessica.williams
+    node: ad
+    groups: [Sales, VPN-Users]
+    password_strength: weak
+    description: Customer Success Manager.
+    mail: jessica.williams@techvault.local
+    domain_ref: techvault
+  ad-robert-martinez:
+    username: robert.martinez
+    node: ad
+    groups: [Sales]
+    password_strength: medium
+    description: Marketing Manager.
+    mail: robert.martinez@techvault.local
+    domain_ref: techvault
+  ad-svc-sql:
+    username: svc-sql
+    node: ad
+    password_strength: weak
+    description: SQL Server service account, Kerberoastable.
+    spn: MSSQLSvc/db.techvault.local:1433
+    domain_ref: techvault
+  ad-svc-web:
+    username: svc-web
+    node: ad
+    password_strength: weak
+    description: Web application service account, Kerberoastable.
+    spn: HTTP/webapp.techvault.local
+    domain_ref: techvault
+  ad-svc-backup:
+    username: svc-backup
+    node: ad
+    groups: ["Domain Admins"]
+    password_strength: medium
+    description: Backup service account, over-privileged with Domain Admin.
+    domain_ref: techvault
+  ad-contractor-temp:
+    username: contractor.temp
+    node: ad
+    groups: [VPN-Users, Remote-Desktop, Engineering]
+    password_strength: weak
+    description: Abandoned external contractor account with a default password.
+    domain_ref: techvault
   ad-former-employee:
     username: former.employee
     node: ad
     password_strength: weak
+    description: Former employee account that should have been removed; still enabled.
     disabled: false
+    domain_ref: techvault

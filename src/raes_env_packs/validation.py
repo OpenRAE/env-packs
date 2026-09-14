@@ -17,6 +17,13 @@ from pathlib import Path
 
 import yaml
 from raes import SDLError, SDLParserLimits, parse_sdl, parse_sdl_file
+from raes.external_concept_subjects import external_concept_subjects
+from raes_contracts.contracts import ExternalConceptBindingDocumentModel
+from raes_contracts.external_concept_bindings import (
+    ExternalConceptResolutionOutcome,
+    ExternalConceptSchemeSnapshotModel,
+    admit_external_concept_bindings,
+)
 from yaml.events import (
     AliasEvent,
     CollectionEndEvent,
@@ -52,6 +59,10 @@ _PACK_MANIFEST = "pack.yaml"
 _CHALLENGES_FILE = "challenges/challenges.yaml"
 _KIT_MATERIALIZATIONS_FILE = "kit.materializations.json"
 _FILESYSTEM_CHANGED = "filesystem.changed"
+_SDL_SUFFIX = ".sdl.yaml"
+_BINDINGS_SUFFIX = ".bindings.json"
+_BINDINGS_INVALID = "sdl.bindings-invalid"
+_SCHEMES_SUFFIX = ".schemes.json"
 _METADATA_LIMIT_MESSAGE = "pack metadata exceeds the validation limit"
 _SECRET_KEY_FRAGMENTS = (
     "credential",
@@ -504,6 +515,8 @@ def _strict_json_member(
     rel: str,
     limits: PackValidationLimits,
     errors: _Errors,
+    *,
+    invalid_code: str = "kit-materializations.invalid",
 ) -> object | None:
     """Load one bounded JSON member without duplicate keys or non-finite numbers."""
 
@@ -534,7 +547,7 @@ def _strict_json_member(
         _check_json_shape(document, limits)
         return document
     except (ValueError, RecursionError):
-        errors.add("kit-materializations.invalid", rel)
+        errors.add(invalid_code, rel)
     except _pack_fs.PackFilesystemError as exc:
         if str(exc) == _METADATA_LIMIT_MESSAGE:
             errors.add("resource.metadata-limit", rel)
@@ -1189,6 +1202,158 @@ def _validate_challenges(
             )
 
 
+# A RAES monitoring corpus (``RuntimeSecurityMonitoringContentSet``) names its
+# files in ``file_refs`` and counts them in ``file_count``. The count is of
+# files, not of the rules, decoders, or queries inside them.
+_CONTENT_SET_REFS_MISSING = "content-set.file-refs.missing"
+_CONTENT_SET_COUNT_MISMATCH = "content-set.file-count-mismatch"
+_CONTENT_SET_REF_UNSUPPLIED = "content-set.file-ref.unsupplied"
+
+
+def _content_set_declarations(
+    scenario: object,
+) -> Iterator[tuple[str, str, object]]:
+    """Yield ``(node_id, field_prefix, content_set)`` for every declared corpus.
+
+    Sorted node order keeps the diagnostic stream stable across runs over the
+    same bytes.
+    """
+
+    nodes = getattr(scenario, "nodes", None)
+    if not isinstance(nodes, dict):
+        return
+    for node_id in sorted(nodes):
+        runtime = getattr(nodes[node_id], "runtime", None)
+        managers = getattr(runtime, "security_monitoring_managers", None) or []
+        for manager_index, manager in enumerate(managers):
+            content_sets = getattr(manager, "content_sets", None) or []
+            for set_index, content_set in enumerate(content_sets):
+                field_prefix = (
+                    f"nodes.{node_id}.runtime.security_monitoring_managers"
+                    f"[{manager_index}].content_sets[{set_index}]"
+                )
+                yield str(node_id), field_prefix, content_set
+
+
+def _enum_text(value: object) -> str:
+    """Return a RAES enum member's value, or the plain value, as text."""
+
+    return str(getattr(value, "value", value))
+
+
+def _content_row_supply(
+    scenario: object, node_id: str
+) -> tuple[set[str], list[str]]:
+    """Return the file paths and directory roots ``content`` rows put on a node.
+
+    A directory row materializes an archive whose members the SDL does not
+    list, so it supplies a root: any path beneath its destination.
+    """
+
+    files: set[str] = set()
+    roots: list[str] = []
+    content = getattr(scenario, "content", None)
+    for row in content.values() if isinstance(content, dict) else ():
+        if str(getattr(row, "target", "")) != node_id:
+            continue
+        row_type = _enum_text(getattr(row, "type", None))
+        if row_type == "file" and getattr(row, "path", ""):
+            files.add(str(row.path))
+        elif row_type == "directory" and getattr(row, "destination", ""):
+            roots.append(str(row.destination).rstrip("/") + "/")
+    return files, roots
+
+
+def _inventory_files(node: object) -> Iterator[str]:
+    """Yield the node's present, non-directory ``filesystem_inventory`` paths."""
+
+    runtime = getattr(node, "runtime", None)
+    for entry in getattr(runtime, "filesystem_inventory", None) or []:
+        if (
+            getattr(entry, "path", "")
+            and _enum_text(getattr(entry, "entry_type", None)) != "directory"
+            and _enum_text(getattr(entry, "presence", None)) == "present"
+        ):
+            yield str(entry.path)
+
+
+def _build_destinations(node: object) -> Iterator[str]:
+    """Yield the paths the node's image build copies files to."""
+
+    build = getattr(getattr(node, "source", None), "build", None)
+    for field_name in ("copied_sources", "source_inputs"):
+        for item in getattr(build, field_name, None) or []:
+            if getattr(item, "destination_path", ""):
+                yield str(item.destination_path)
+
+
+def _node_supplied_files(
+    scenario: object, node_id: str
+) -> tuple[frozenset[str], tuple[str, ...]]:
+    """Return the file paths and directory roots the scenario puts on a node."""
+
+    # RAES resolves file refs against the node's inventory and build
+    # destinations; the pack's content rows are what it ships onto the node.
+    node = scenario.nodes[node_id]
+    files, roots = _content_row_supply(scenario, node_id)
+    files.update(_inventory_files(node))
+    files.update(_build_destinations(node))
+    return frozenset(files), tuple(roots)
+
+
+def _check_content_set_count(
+    content_set: object, refs: list[str], prefix: str, rel: str, errors: _Errors
+) -> None:
+    """Require a resolved ``file_count`` to equal the corpus's distinct refs."""
+
+    declared = getattr(content_set, "file_count", None)
+    # RAES admits an unresolved variable reference as a string; only a
+    # resolved integer is comparable.
+    if not isinstance(declared, int) or isinstance(declared, bool):
+        return
+    if not refs:
+        errors.add(_CONTENT_SET_REFS_MISSING, rel, f"{prefix}.file_refs")
+    elif len(set(refs)) != declared:
+        errors.add(_CONTENT_SET_COUNT_MISMATCH, rel, f"{prefix}.file_count")
+
+
+def _validate_content_set_inventory(
+    scenario: object, rel: str, errors: _Errors
+) -> None:
+    """Check each monitoring corpus's declared files against what ships.
+
+    RAES realizes ``security_monitoring_managers`` as an exact configuration
+    requirement, and ``file_count`` and ``file_refs`` are both compared. A count
+    that disagrees with the files the scenario supplies cannot be truthfully
+    realized by any backend (issue #343). So a resolved ``file_count`` must be
+    backed by ``file_refs``, the count must equal the number of distinct refs,
+    and every ref must be a file the scenario puts on the manager's node. An
+    unresolved variable (RAES admits one where it requires an absolute path) is
+    not checked.
+    """
+
+    supplied: dict[str, tuple[frozenset[str], tuple[str, ...]]] = {}
+    for node_id, prefix, content_set in _content_set_declarations(scenario):
+        refs = [str(ref) for ref in getattr(content_set, "file_refs", None) or ()]
+        _check_content_set_count(content_set, refs, prefix, rel, errors)
+        if not refs:
+            continue
+        if node_id not in supplied:
+            supplied[node_id] = _node_supplied_files(scenario, node_id)
+        for index in _unsupplied_ref_indexes(refs, *supplied[node_id]):
+            errors.add(_CONTENT_SET_REF_UNSUPPLIED, rel, f"{prefix}.file_refs[{index}]")
+
+
+def _unsupplied_ref_indexes(
+    refs: list[str], files: frozenset[str], roots: tuple[str, ...]
+) -> Iterator[int]:
+    """Yield the index of each resolved ref that no supplied file or root covers."""
+
+    for index, ref in enumerate(refs):
+        if ref.startswith("/") and ref not in files and not ref.startswith(roots):
+            yield index
+
+
 def _open_validation_root(
     pack_root: str | os.PathLike[str], errors: _Errors
 ) -> tuple[str, int] | None:
@@ -1311,6 +1476,97 @@ def _parse_sdl_document(
     return scenario
 
 
+def _direct_sdl_companions(inventory: frozenset[str], suffix: str) -> list[str]:
+    """Return sorted direct ``sdl/`` members that carry one companion suffix."""
+
+    return sorted(
+        rel
+        for rel in inventory
+        if rel.startswith("sdl/") and rel.count("/") == 1 and rel.endswith(suffix)
+    )
+
+
+def _companion_sdl(rel: str, suffix: str) -> str:
+    """Return the SDL document a companion member belongs to."""
+
+    return rel[: -len(suffix)] + _SDL_SUFFIX
+
+
+def _load_scheme_snapshots(
+    root_fd: int, rel: str, limits: PackValidationLimits, errors: _Errors
+) -> tuple[ExternalConceptSchemeSnapshotModel, ...] | None:
+    """Load the pinned scheme snapshot list beside one bindings document."""
+
+    document = _strict_json_member(
+        root_fd, rel, limits, errors, invalid_code=_BINDINGS_INVALID
+    )
+    entries = document if isinstance(document, list) else None
+    if entries is None:
+        if document is not None:
+            errors.add(_BINDINGS_INVALID, rel)
+        return None
+    try:
+        return tuple(
+            ExternalConceptSchemeSnapshotModel.model_validate(item) for item in entries
+        )
+    except ValueError:
+        errors.add(_BINDINGS_INVALID, rel)
+    return None
+
+
+def _validate_concept_bindings(
+    root_fd: int,
+    inventory: frozenset[str],
+    scenarios: dict[str, object],
+    limits: PackValidationLimits,
+    errors: _Errors,
+) -> None:
+    """Admit each SDL document's external concept bindings through RAES.
+
+    ``sdl/<name>.bindings.json`` binds concepts to exact subjects of
+    ``sdl/<name>.sdl.yaml`` and resolves only against the pinned scheme
+    snapshots in ``sdl/<name>.schemes.json``. Anything short of a current,
+    exact resolution fails closed.
+    """
+
+    bindings = _direct_sdl_companions(inventory, _BINDINGS_SUFFIX)
+    bound = {_companion_sdl(rel, _BINDINGS_SUFFIX) for rel in bindings}
+    for rel in _direct_sdl_companions(inventory, _SCHEMES_SUFFIX):
+        if _companion_sdl(rel, _SCHEMES_SUFFIX) not in bound:
+            errors.add("sdl.bindings-orphan", rel)
+    for rel in bindings:
+        sdl_rel = _companion_sdl(rel, _BINDINGS_SUFFIX)
+        schemes_rel = sdl_rel[: -len(_SDL_SUFFIX)] + _SCHEMES_SUFFIX
+        if sdl_rel not in inventory:
+            errors.add("sdl.bindings-orphan", rel)
+            continue
+        if schemes_rel not in inventory:
+            errors.add("sdl.bindings-schemes-missing", rel)
+            continue
+        document = _strict_json_member(
+            root_fd, rel, limits, errors, invalid_code=_BINDINGS_INVALID
+        )
+        snapshots = _load_scheme_snapshots(root_fd, schemes_rel, limits, errors)
+        scenario = scenarios.get(sdl_rel)
+        if document is None or snapshots is None or scenario is None:
+            continue
+        try:
+            model = ExternalConceptBindingDocumentModel.model_validate(document)
+        except ValueError:
+            errors.add(_BINDINGS_INVALID, rel)
+            continue
+        report = admit_external_concept_bindings(
+            model,
+            subjects=external_concept_subjects(scenario),
+            scheme_snapshots=snapshots,
+        )
+        if any(
+            result.outcome is not ExternalConceptResolutionOutcome.RESOLVED_CURRENT
+            for result in report.results
+        ):
+            errors.add("sdl.bindings-unresolved", rel)
+
+
 def _validate_sdl_documents(
     root_fd: int,
     root: str,
@@ -1325,14 +1581,16 @@ def _validate_sdl_documents(
     documents = _direct_sdl_documents(inventory)
     if not documents:
         errors.add("sdl.missing", "sdl")
-    parsed: list[object] = []
+    parsed: dict[str, object] = {}
     for rel in documents:
         scenario = _parse_sdl_document(
             root_fd, root, rel, limits, errors, author_sdl=author_sdl
         )
         if scenario is not None:
-            parsed.append(scenario)
-    return tuple(parsed)
+            _validate_content_set_inventory(scenario, rel, errors)
+            parsed[rel] = scenario
+    _validate_concept_bindings(root_fd, inventory, parsed, limits, errors)
+    return tuple(parsed.values())
 
 
 def _load_optional_publication(

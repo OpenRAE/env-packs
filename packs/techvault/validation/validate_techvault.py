@@ -85,6 +85,9 @@ _FORWARDER_REF = (
     "nodes.misp-suricata-sync.runtime.forwarding_agents.misp-ioc-to-suricata"
 )
 _LOGIN_ROUTE_REF = "nodes.webapp.runtime.applications.techvault-portal"
+_LOGIN_ROUTE_SUBJECT = _LOGIN_ROUTE_REF + ".routes.login"
+_LOGIN_WEAKNESS_CONCEPT = "CWE-89"
+_BINDINGS_ARTIFACT = "techvault-pack-sdl-techvault-bindings-json"
 _WAZUH_RULES_REF = (
     "nodes.wazuh-manager.runtime.security_monitoring_managers.wazuh-manager."
     "content_sets.suricata-rules"
@@ -92,6 +95,9 @@ _WAZUH_RULES_REF = (
 _VARIABLE_REF = re.compile(r"\$([A-Z][A-Z0-9_]*)")
 _SID = re.compile(r"(?:^|;)\s*sid\s*:\s*(\d+)\s*;")
 _CONTAINER_SUBSTRATE = "operating-system-container"
+_LOOPBACK_HOST_IP = "127.0.0.1"
+_BUILD_MECHANISM = "materialization-specification"
+_SOURCE_SECTIONS = ("nodes", "features", "content")
 
 
 def _error(errors: list[str], code: str, detail: str) -> None:
@@ -388,6 +394,28 @@ def _validate_runtime_joins(
             _error(errors, "shared-volume-mismatch", name)
 
 
+def _login_route_is_sql_injectable(
+    pack_root: pathlib.Path, overrides: Mapping[str, bytes]
+) -> bool:
+    """The detection path needs its CWE-89 binding on the portal login route."""
+
+    try:
+        data = resolve_pack_artifact(pack_root, _BINDINGS_ARTIFACT).data
+    except (PackDigestError, OSError, ValueError):
+        data = b""
+    try:
+        document = json.loads(overrides.get(_BINDINGS_ARTIFACT, data))
+    except ValueError:
+        return False
+    return any(
+        _as_mapping(_as_mapping(binding).get("subject")).get("canonical_ref")
+        == _LOGIN_ROUTE_SUBJECT
+        and _as_mapping(_as_mapping(binding).get("scheme")).get("concept_id")
+        == _LOGIN_WEAKNESS_CONCEPT
+        for binding in _as_mapping(_as_mapping(document).get("bindings")).values()
+    )
+
+
 def _validate_evidence_contract(
     pack_root: pathlib.Path,
     sdl: Mapping[str, Any],
@@ -428,7 +456,6 @@ def _validate_evidence_contract(
         _error(errors, "detection-evidence-mismatch", "suricata-login-sqli-alert sources")
     if alert_evidence.get("trigger_ref") != _LOGIN_ROUTE_REF or not {
         _LOGIN_ROUTE_REF,
-        "vulnerabilities.webapp-sqli-login",
         _LOCAL_SOURCE_REF,
     } <= set(alert_evidence.get("scope_refs", [])):
         _error(errors, "detection-evidence-mismatch", "suricata-login-sqli-alert path")
@@ -436,28 +463,8 @@ def _validate_evidence_contract(
     if "1000010" not in scope or "303020" not in scope:
         _error(errors, "detection-evidence-mismatch", "expected alert identities")
 
-    nodes = _as_mapping(sdl.get("nodes"))
-    applications = _as_mapping(_as_mapping(nodes.get("webapp")).get("runtime")).get(
-        "applications", []
-    )
-    portal = next(
-        (
-            app
-            for app in applications
-            if isinstance(app, Mapping) and app.get("application_id") == "techvault-portal"
-        ),
-        {},
-    )
-    login = next(
-        (
-            route
-            for route in _as_mapping(portal).get("routes", [])
-            if isinstance(route, Mapping) and route.get("route_id") == "login"
-        ),
-        {},
-    )
-    if "webapp-sqli-login" not in _as_mapping(login).get("vulnerability_refs", []):
-        _error(errors, "detection-path-mismatch", "webapp login vulnerability")
+    if not _login_route_is_sql_injectable(pack_root, overrides):
+        _error(errors, "detection-path-mismatch", "webapp login weakness")
     try:
         wazuh_rules = resolve_pack_artifact(pack_root, "techvault-wazuh-suricata-rules").data
     except (PackDigestError, OSError, ValueError):
@@ -708,6 +715,67 @@ def validate_compute_substrate_contract(sdl: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+def _is_build_recipe(requirement: Mapping[str, Any]) -> bool:
+    if requirement.get("materialization_specifications"):
+        return True
+    routes = requirement.get("permitted_routes")
+    return any(
+        _as_mapping(_as_mapping(route).get("mechanism")).get("mechanism")
+        == _BUILD_MECHANISM
+        for route in (routes if isinstance(routes, list) else [])
+    )
+
+
+def validate_realization_method_contract(sdl: Mapping[str, Any]) -> list[str]:
+    """Keep TechVault declaring what exists, never a recipe for building it."""
+
+    errors: list[str] = []
+    for section in _SOURCE_SECTIONS:
+        for entry_id, value in _as_mapping(sdl.get(section)).items():
+            source = _as_mapping(_as_mapping(value).get("source"))
+            requirement = _as_mapping(source.get("artifact_requirement"))
+            if _is_build_recipe(requirement):
+                errors.append(
+                    "realization.build-recipe: "
+                    f"/{section}/{entry_id}/source/artifact_requirement"
+                )
+    return errors
+
+
+def _host_publications(
+    node_id: object, runtime: Mapping[str, Any]
+) -> list[tuple[str, object]]:
+    base = f"/nodes/{node_id}/runtime"
+    published = _as_mapping(runtime.get("network")).get("published_ports")
+    publications = [
+        (f"{base}/network/published_ports/{index}", item)
+        for index, item in enumerate(published if isinstance(published, list) else [])
+    ]
+    listeners = runtime.get("service_listeners")
+    for index, value in enumerate(listeners if isinstance(listeners, list) else []):
+        refs = _as_mapping(value).get("published_port_refs")
+        publications.extend(
+            (f"{base}/service_listeners/{index}/published_port_refs/{ref}", item)
+            for ref, item in enumerate(refs if isinstance(refs, list) else [])
+        )
+    return publications
+
+
+def validate_host_publication_contract(sdl: Mapping[str, Any]) -> list[str]:
+    """Keep every TechVault host publication off the operator's LAN."""
+
+    errors: list[str] = []
+    for node_id, value in _as_mapping(sdl.get("nodes")).items():
+        runtime = _as_mapping(_as_mapping(value).get("runtime"))
+        for pointer, item in _host_publications(node_id, runtime):
+            host_ip = _as_mapping(item).get("host_ip")
+            if host_ip != _LOOPBACK_HOST_IP:
+                errors.append(
+                    f"publication.non-loopback-host-ip: {pointer} host_ip {host_ip!r}"
+                )
+    return errors
+
+
 def validate() -> list[str]:
     root = pathlib.Path(__file__).resolve().parents[1]
     result = validate_pack(root)
@@ -721,6 +789,8 @@ def validate() -> list[str]:
         sdl_path = next((root / "sdl").glob("*.sdl.yaml"))
         sdl = yaml.safe_load(sdl_path.read_text(encoding="utf-8"))
         errors.extend(validate_compute_substrate_contract(sdl))
+        errors.extend(validate_realization_method_contract(sdl))
+        errors.extend(validate_host_publication_contract(sdl))
         errors.extend(validate_suricata_contract(root, sdl))
         errors.extend(validate_cortex_contract(root, sdl))
     return errors
