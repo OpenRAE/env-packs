@@ -3,8 +3,9 @@
 TechVault is the first-party RAES environment pack for the complete enterprise
 intrusion scenario authored in `sdl/techvault.sdl.yaml`. It includes the
 scenario's vulnerable customer portal, enterprise services, attacker host,
-defensive SOC, seeded data, and exact content artifacts needed by a consuming
-RAES backend.
+defensive SOC, seeded data, and exact content artifacts. It declares the
+in-world state a conforming realization must provide without selecting how a
+backend constructs or exposes that state.
 
 The pack is named `techvault`; backend and deployment product names are not part
 of its identity. A consumer validates the pack and its associated-artifact
@@ -12,10 +13,9 @@ manifest, then resolves each SDL `content.source` by opaque artifact id. No
 consumer is expected to recover content from this repository's checkout paths
 or from the former APTL source tree.
 
-APTL is being renamed to LilRAE. They are the same backend project across that
-rename, not separate layers around TechVault. The `aptl` repository, CLI/package
-names, and `APTL_*` environment variables in this pack are current compatibility
-identifiers; they do not make TechVault anything other than a scenario pack.
+Historical source attribution is recorded in `docs/lineage.md` and
+`docs/provenance-ledger.yaml`; no originating backend is part of TechVault's
+portable identity.
 
 ## Maturity
 
@@ -39,6 +39,18 @@ The pack-local satisfaction profile in
 by every exact content requirement. Tar assets are deterministic POSIX tar
 carriers whose members are materialized at the declared directory destination.
 
+## Portable realization boundary
+
+TechVault uses an open realization designation and carries no substrate
+constraints, machine images, build recipes, host-port publications, launch
+commands, environment-variable delivery, capability grants, backend mounts, or
+restart policy. Product and protocol versions are declared through typed RAES
+runtime state when they are known. A backend remains free to choose its own
+implementation while preserving those in-world facts and exact content bytes.
+That state includes service credential posture, certificate trust, and the
+final ownership and modes of scenario-significant files; it does not prescribe
+how a backend supplies a secret, installs trust, or reaches that final state.
+
 ## Flag values
 
 Each of `victim`, `workstation`, `webapp`, `fileshare`, and `ad` declares a user
@@ -57,30 +69,32 @@ per-run generated-value declaration is tracked in
 [rae#1276](https://github.com/OpenRAE/rae/issues/1276). The SDL owns these file
 declarations; TechVault does not duplicate them in a flag placement map.
 
+## Participant MCP sources
+
+TechVault ships immutable source bundles for the participant tools based on APTL
+commit `7c673a19f9fb6a3eb1d17305104196b600bd59cc`. The Kali workstation receives
+`aptl-mcp-common` and `mcp-red`; the separate SOC workstation receives the
+common package plus the seven defensive MCP packages. Each host declares a
+Node.js 22 runtime. The archives contain only source, package/build manifests,
+the upstream MIT license, and source metadata—no dependencies, generated build
+output, tests, backend configuration, or launch wrapper. The shared telemetry
+wrapper is adapted to emit only tool identity and status metadata; it never
+exports request, response, or error content. The SDL selects no installation or
+process-management method.
+
 ## Cortex enrichment contract
 
 TechVault ships one exact, dependency-free offline analyzer for scenario IP
-context. A one-shot initializer uses Cortex's supported API to migrate a clean
-database, create separate initializer and least-privilege TheHive identities,
-and enable the analyzer idempotently. TheHive then connects with the dedicated
-`read`/`analyze` identity. Both API keys are backend-generated artifact outputs
-injected by RAES `value_from` bindings; their bytes never appear in the SDL,
-pack, or evidence. Cortex owns its native Elasticsearch mapping; the portable
-scenario does not reproduce that vendor-internal schema.
-
-The native gate proves a clean start, analyzer execution for the scenario
-attacker IP, the returned attacker classification, and TheHive connector status
-`OK` using the exact declared images:
-
-```sh
-TECHVAULT_NATIVE_CORTEX=1 .venv/bin/python -m unittest \
-  tests.test_techvault_cortex_native.NativeCortexContractTests.test_exact_images_execute_enrichment_and_connect_thehive
-```
+context. Typed application state declares Cortex's analysis capability, the
+least-privilege TheHive service identity, and TheHive's Cortex connector. The
+backend realizes that state without an initializer node or credential-delivery
+recipe. Cortex owns its internal index schema; the portable scenario does not
+reproduce vendor-internal state.
 
 ## Suricata content contract
 
 The Suricata configuration and 16-rule TechVault local corpus are exact pack
-artifacts. The image-owned built-in rules remain a separate source. The four
+artifacts. Product-provided built-in rules remain a separate source. The four
 empty MISP files are clean-start seeds in an ephemeral shared volume; the
 declared MISP forwarding agent may replace them and reload the engine through
 the private Unix socket. A consumer must not source or copy replacement files
@@ -89,24 +103,11 @@ from an APTL/LilRAE checkout.
 Static validation joins the artifact identities, content placements, selected
 rule files, variables, engine inventory, generated-output path, SID namespace,
 shared volumes, reload target, and evidence requirements. Live readiness still
-requires Suricata's native configuration test and realized evidence showing the
+requires realized evidence showing a successful Suricata configuration and the
 selected sources and 16 active local SIDs. The declared behavioral probe sends
 a participant-equivalent SQL-injection request to `/login` and requires
 Suricata SID `1000010` plus the existing Wazuh correlation rule `303020`.
 Passing static validation does not by itself establish that live result.
-
-When Docker is available, run the native exact-image gate from the repository
-root with:
-
-```sh
-TECHVAULT_NATIVE_SURICATA=1 .venv/bin/python -m unittest \
-  tests.test_techvault_suricata_native.NativeSuricataContractTests.test_exact_image_accepts_all_declared_rule_sources
-```
-
-The gate derives the image digest, built-in path, and content mounts from the
-pack, verifies that the built-in file is non-empty inside that exact image, and
-requires Suricata's native configuration test to load all three selected source
-files with zero rule failures.
 
 ## Red-team session evidence
 

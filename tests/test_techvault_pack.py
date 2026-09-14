@@ -1,9 +1,7 @@
-"""First-party TechVault pack contract (issue #234).
+"""First-party TechVault pack contract.
 
-The checks in this module deliberately preserve the complete upstream SDL while
-moving its repository-local content dependencies behind immutable pack artifact
-identities.  They are regression guards for the migration, not a second source
-of RAES scenario semantics.
+These checks guard the portable in-world declarations and immutable content
+bindings without becoming a second source of RAES scenario semantics.
 """
 
 from __future__ import annotations
@@ -12,6 +10,7 @@ import copy
 import hashlib
 import io
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -32,6 +31,7 @@ from raes.realization_designation import (
 
 from raes_env_packs import PackDigestError, resolve_pack_artifact, validate_pack
 from raes_env_packs.digest import validate_pack_content_manifest
+from tools import build_techvault_mcp_artifacts as mcp_builder
 
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -102,7 +102,8 @@ _PACK_ARTIFACT_CONTENT_IDS = frozenset(
         "misp-suricata-sync-src",
         "cortex-analyzer-executable",
         "cortex-analyzer-definition",
-        "cortex-initializer-script",
+        "mcp-red-sources",
+        "mcp-blue-sources",
         "suricata-config",
         "suricata-local-rules",
         "suricata-misp-ioc-rules-seed",
@@ -137,7 +138,6 @@ _UNDERDECLARED_RUNTIME_NODES = frozenset(
     {
         "thehive",
         "cortex",
-        "cortex-initializer",
         "misp",
         "misp-db",
         "misp-redis",
@@ -161,301 +161,42 @@ def _canonical_json_digest(document: object) -> str:
 
 
 def _assert_shuffle_runtime_contract(test: unittest.TestCase, sdl: dict) -> None:
-    """Assert the exact closed Shuffle-to-OpenSearch authored contract."""
-    nodes = sdl["nodes"]
-    backend = nodes["shuffle-backend"]
-    opensearch = nodes["shuffle-opensearch"]
-
-    environment = {
-        item["name"]: item for item in backend["runtime"]["environment"]
-    }
-    expected_environment = {
-        "SHUFFLE_APP_SDK_TIMEOUT": {
-            "name": "SHUFFLE_APP_SDK_TIMEOUT",
-            "value": "120",
-            "value_classification": "plain",
-            "provenance": "compose",
-        },
-        "SHUFFLE_DEFAULT_APIKEY": {
-            "name": "SHUFFLE_DEFAULT_APIKEY",
-            "value": "31a211c4-ea5c-4a49-b022-5e2434e758a7",
-            "value_classification": "secret_fixture",
-            "provenance": "compose",
-        },
-        "SHUFFLE_DEFAULT_PASSWORD": {
-            "name": "SHUFFLE_DEFAULT_PASSWORD",
-            "value": "ShuffleAdmin2024!",
-            "value_classification": "secret_fixture",
-            "provenance": "compose",
-        },
-        "SHUFFLE_DEFAULT_USERNAME": {
-            "name": "SHUFFLE_DEFAULT_USERNAME",
-            "value": "admin",
-            "value_classification": "plain",
-            "provenance": "compose",
-        },
-        "SHUFFLE_OPENSEARCH_PASSWORD": {
-            "name": "SHUFFLE_OPENSEARCH_PASSWORD",
-            "value": "StrongPassword123!",
-            "value_classification": "secret_fixture",
-            "provenance": "compose",
-        },
-        "SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY": {
-            "name": "SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY",
-            "value": "true",
-            "value_classification": "plain",
-            "provenance": "compose",
-        },
-        "SHUFFLE_OPENSEARCH_URL": {
-            "name": "SHUFFLE_OPENSEARCH_URL",
-            "value": "https://shuffle-opensearch:9200",
-            "value_classification": "plain",
-            "provenance": "compose",
-        },
-        "SHUFFLE_OPENSEARCH_USERNAME": {
-            "name": "SHUFFLE_OPENSEARCH_USERNAME",
-            "value": "admin",
-            "value_classification": "plain",
-            "provenance": "compose",
-        },
-    }
-    test.assertEqual(environment, expected_environment)
-
-    opensearch_environment = {
-        item["name"]: item for item in opensearch["runtime"]["environment"]
-    }
-    bootstrap_password = opensearch_environment[
-        "OPENSEARCH_INITIAL_ADMIN_PASSWORD"
-    ]
-    test.assertEqual(bootstrap_password["value_classification"], "secret_fixture")
-    test.assertEqual(bootstrap_password["provenance"], "compose")
-    test.assertEqual(
-        environment["SHUFFLE_OPENSEARCH_PASSWORD"]["value"],
-        bootstrap_password["value"],
-    )
-
-    (datastore,) = opensearch["runtime"]["datastore_services"]
-    test.assertEqual(datastore["service"], "opensearch-rest")
-    test.assertEqual(datastore["protocol"], "https")
-    test.assertEqual(
-        datastore["nodes"],
-        [
-            {
-                "node_id": "shuffle-opensearch-node",
-                "name": "shuffle-opensearch",
-                "roles": ["data", "cluster_manager"],
-                "is_coordinator": True,
-                "endpoints": [
-                    {
-                        "endpoint_id": "shuffle-opensearch-client",
-                        "role": "client",
-                        "protocol": "https",
-                        "address": "shuffle-opensearch",
-                        "port": 9200,
-                    }
-                ],
-            }
-        ],
-    )
-    test.assertEqual(
-        datastore["transport_security"],
-        {
-            "transport_security_id": "shuffle-opensearch-tls",
-            "mode": "tls",
-            "client_verification": False,
-            "node_verification": False,
-            "description": (
-                "The disposable single-node datastore uses the selected image's "
-                "demo TLS material; Shuffle deliberately does not verify that "
-                "certificate on this internal hop."
-            ),
-        },
-    )
-
-    endpoint = datastore["nodes"][0]["endpoints"][0]
-    expected_url = f'{endpoint["protocol"]}://{endpoint["address"]}:{endpoint["port"]}'
-    test.assertEqual(environment["SHUFFLE_OPENSEARCH_URL"]["value"], expected_url)
-    test.assertEqual(
-        environment["SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY"]["value"],
-        str(not datastore["transport_security"]["client_verification"]).lower(),
-    )
+    """Assert Shuffle's typed in-world application and datastore state."""
+    backend = sdl["nodes"]["shuffle-backend"]
+    opensearch = sdl["nodes"]["shuffle-opensearch"]
+    for node in (backend, opensearch):
+        test.assertNotIn("environment", node["runtime"])
+        test.assertNotIn("container", node["runtime"])
 
     (application,) = backend["runtime"]["platform_applications"]
     test.assertEqual(application["platform_application_id"], "shuffle-soar")
-    test.assertEqual(application["service"], "shuffle-api")
     test.assertEqual(application["product"], "Shuffle")
+    test.assertEqual(application["version"], "unversioned")
     test.assertEqual(
-        application["capabilities"],
-        [
-            {
-                "capability_id": "workflow-automation",
-                "kind": "workflow_automation",
-            }
-        ],
-    )
-    test.assertEqual(
-        application["upstream_bindings"],
-        [
-            {
-                "binding_id": "shuffle-index-backend",
-                "role": "index_backend",
-                "target_node_ref": "shuffle-opensearch",
-                "target_service_ref": "opensearch-rest",
-            }
-        ],
+        application["upstream_bindings"][0]["target_node_ref"],
+        "shuffle-opensearch",
     )
 
-    (listener,) = backend["runtime"]["service_listeners"]
-    test.assertEqual(listener["service"], "shuffle-api")
-    test.assertEqual(listener["address"], "0.0.0.0")
-    test.assertEqual(listener["port"], 5001)
-    test.assertEqual(listener["protocol"], "tcp")
-    test.assertEqual(listener["scope"], "wildcard")
-    test.assertEqual(listener["provenance"], "operator")
-    readiness = listener["readiness"]
-    test.assertIn("authenticated Shuffle API", readiness["criteria"])
-    test.assertIn("write", readiness["criteria"])
-    test.assertIn("read", readiness["criteria"])
-    test.assertIn("OpenSearch", readiness["criteria"])
-
-    volumes = sdl["persistent_volumes"]
-    test.assertEqual(volumes["shuffle_data"]["lifecycle"], "retain")
-    test.assertEqual(volumes["shuffle_opensearch_data"]["lifecycle"], "retain")
-    test.assertEqual(
-        volumes["shuffle_data"]["consumers"],
-        [
-            {
-                "node": "shuffle-backend",
-                "mount_destination": "/shuffle-database",
-                "access_mode": "read_write",
-            }
-        ],
-    )
-    test.assertEqual(
-        volumes["shuffle_opensearch_data"]["consumers"],
-        [
-            {
-                "node": "shuffle-opensearch",
-                "mount_destination": "/usr/share/opensearch/data",
-                "access_mode": "read_write",
-            }
-        ],
-    )
+    (datastore,) = opensearch["runtime"]["datastore_services"]
+    test.assertEqual(datastore["engine"], "opensearch")
+    test.assertEqual(datastore["version"], "2.14.0")
+    test.assertEqual(datastore["protocol"], "https")
+    test.assertFalse(datastore["transport_security"]["client_verification"])
+    test.assertEqual(sdl["persistent_volumes"]["shuffle_data"]["lifecycle"], "retain")
 
 
 def _assert_shuffle_orborus_contract(test: unittest.TestCase, sdl: dict) -> None:
-    """Assert the portable Orborus configuration and runtime-image inventory."""
-    orborus = sdl["nodes"]["shuffle-orborus"]
-    runtime = orborus["runtime"]
-
-    expected_worker = (
-        "ghcr.io/shuffle/shuffle-worker@"
-        "sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd"
-    )
-    expected_http_app = (
-        "frikky/shuffle:http_1.4.0@"
-        "sha256:0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c"
-    )
-
-    environment = {item["name"]: item for item in runtime["environment"]}
-    expected_values = {
-        "BASE_URL": "http://shuffle-backend:5001",
-        "CLEANUP": "false",
-        "DOCKER_API_VERSION": "1.44",
-        "ENVIRONMENT_NAME": "Shuffle",
-        "SHUFFLE_APP_SDK_TIMEOUT": "300",
-        "SHUFFLE_AUTO_IMAGE_DOWNLOAD": "false",
-        "SHUFFLE_BASE_IMAGE_NAME": "frikky/shuffle",
-        "SHUFFLE_ORBORUS_EXECUTION_TIMEOUT": "600",
-        "SHUFFLE_WORKER_IMAGE": expected_worker,
-    }
-    test.assertEqual(set(environment), set(expected_values))
-    test.assertNotIn("ORBORUS_CONTAINER_NAME", environment)
-    for name, value in expected_values.items():
-        test.assertEqual(
-            environment[name],
-            {
-                "name": name,
-                "value": value,
-                "value_classification": "plain",
-                "provenance": "compose",
-            },
-        )
-
-    (authority,) = runtime["orchestration_authorities"]
-    test.assertEqual(authority["engine"], "docker")
-    test.assertEqual(authority["privilege_class"], "host_root_equivalent")
-    test.assertEqual(authority["control_interface_ref"], "docker-sock")
-    test.assertNotIn("realized_children", authority)
-    test.assertEqual(
-        environment["DOCKER_API_VERSION"]["value"],
-        authority["engine_api_version"],
-    )
-    test.assertEqual(
-        environment["ENVIRONMENT_NAME"]["value"],
-        authority["scope"]["environment_name"],
-    )
-
-    templates = {
-        item["template_id"]: item for item in authority["spawn_templates"]
-    }
-    test.assertEqual(
-        templates,
-        {
-            "shuffle-http-1-4-0": {
-                "template_id": "shuffle-http-1-4-0",
-                "image_ref": expected_http_app,
-                "purpose": "seeded HTTP workflow app execution",
-            },
-            "shuffle-worker": {
-                "template_id": "shuffle-worker",
-                "image_ref": expected_worker,
-                "purpose": "workflow execution",
-            },
-        },
-    )
-    test.assertEqual(
-        environment["SHUFFLE_WORKER_IMAGE"]["value"],
-        templates["shuffle-worker"]["image_ref"],
-    )
-    test.assertTrue(
-        templates["shuffle-http-1-4-0"]["image_ref"].startswith(
-            environment["SHUFFLE_BASE_IMAGE_NAME"]["value"] + ":"
-        )
-    )
-    test.assertEqual(
-        environment["SHUFFLE_ORBORUS_EXECUTION_TIMEOUT"]["value"],
-        authority["lifecycle_policy"]["execution_timeout"],
-    )
-    test.assertEqual(
-        environment["CLEANUP"]["value"],
-        authority["lifecycle_policy"]["cleanup"],
-    )
-
-    shuffle_api = next(
-        service
-        for service in sdl["nodes"]["shuffle-backend"]["services"]
-        if service["name"] == "shuffle-api"
-    )
-    test.assertEqual(
-        environment["BASE_URL"]["value"],
-        f'http://shuffle-backend:{shuffle_api["port"]}',
-    )
-
-    (control_interface,) = runtime["local_control_interfaces"]
-    test.assertEqual(
-        control_interface,
-        {
-            "control_interface_id": "docker-sock",
-            "path": "/var/run/docker.sock",
-            "kind": "unix_socket",
-            "access": "read_write",
-            "description": (
-                "The in-world Docker control endpoint used by Shuffle to "
-                "create workflow workloads."
-            ),
-        },
-    )
+    """Assert Orborus is an in-world component without a launch method."""
+    runtime = sdl["nodes"]["shuffle-orborus"]["runtime"]
+    (component,) = runtime["software_components"]
+    test.assertEqual(component["component_id"], "shuffle-orborus")
+    test.assertEqual(component["version"], "unversioned")
+    for field in (
+        "environment",
+        "local_control_interfaces",
+        "orchestration_authorities",
+    ):
+        test.assertNotIn(field, runtime)
 
 
 class TechVaultPackTests(unittest.TestCase):
@@ -493,7 +234,6 @@ class TechVaultPackTests(unittest.TestCase):
             "nodes": 29,
             "infrastructure": 29,
             "persistent_volumes": 19,
-            "features": 2,
             "propositions": 3,
             "assertions": 3,
             "observation_boundaries": 1,
@@ -502,16 +242,15 @@ class TechVaultPackTests(unittest.TestCase):
             "relationships": 2,
             "accounts": 14,
             "variables": 10,
-            "entities": 1,
-            "agents": 1,
+            "entities": 2,
+            "agents": 2,
         }
         for section, expected in expected_counts.items():
             with self.subTest(section=section):
                 self.assertEqual(len(sdl[section]), expected)
 
-        # This runtime-authority declaration is intentionally not a content
-        # acquisition path and must survive the pack migration.
-        self.assertIn("/var/run/docker.sock", _SDL.read_text(encoding="utf-8"))
+        self.assertNotIn("features", sdl)
+        self.assertNotIn("source", sdl["nodes"]["kali"])
 
     def test_realization_is_open_below_the_declared_contract(self) -> None:
         sdl = _load_sdl()
@@ -542,19 +281,7 @@ class TechVaultPackTests(unittest.TestCase):
                     "open-world",
                 )
 
-        # Open closure grants no licence to contradict: closure is orthogonal
-        # to posture, so the exact compute-substrate contract still binds every
-        # compute node.
-        compute = {
-            node_id
-            for node_id, node in sdl["nodes"].items()
-            if node["type"] != "switch"
-        }
-        self.assertEqual(len(scenario.realization.constraints), len(compute))
-        self.assertEqual(
-            {item.posture.value for item in scenario.realization.constraints},
-            {"exact"},
-        )
+        self.assertEqual(scenario.realization.constraints, ())
 
     def test_redteam_activity_is_declared_as_a_need_not_a_collector(self) -> None:
         requirement = _load_sdl()["evidence_requirements"]["redteam-session-transcript"]
@@ -597,11 +324,7 @@ class TechVaultPackTests(unittest.TestCase):
             with self.subTest(infrastructure=name):
                 self.assertEqual(removed & set(entry.get("dependencies", [])), set())
 
-        self.assertEqual(
-            {constraint["field_pointer"] for constraint in sdl["realization"]["constraints"]}
-            & {f"/nodes/{node_id}" for node_id in removed},
-            set(),
-        )
+        self.assertNotIn("constraints", sdl["realization"])
 
         for section in ("persistent_volumes", "generated_artifacts"):
             for name, entry in sdl[section].items():
@@ -644,153 +367,25 @@ class TechVaultPackTests(unittest.TestCase):
                     "measurement_apparatus",
                 )
 
-    def test_compute_nodes_require_container_substrate(self) -> None:
-        scenario = parse_sdl_file(_SDL)
-        sdl = _load_sdl()
-        compute_nodes = {
-            node_id
-            for node_id, node in sdl["nodes"].items()
-            if node["type"] != "switch"
-        }
-        expected_constraints = {
-            (
-                f"/nodes/{node_id}",
-                "compute-substrate",
-                "exact",
-                "exact",
-                "operating-system-container",
-            )
-            for node_id in compute_nodes
-        }
-        actual_constraints = {
-            (
-                constraint["field_pointer"],
-                constraint["concern"],
-                constraint["posture"],
-                constraint["domain"]["kind"],
-                constraint["domain"]["value"],
-            )
-            for constraint in sdl["realization"]["constraints"]
-            if constraint["concern"] == "compute-substrate"
-        }
-
-        self.assertEqual(len(scenario.nodes), 29)
-        self.assertEqual(len(compute_nodes), 25)
-        self.assertEqual(
-            {sdl["nodes"][node_id]["type"] for node_id in compute_nodes},
-            {"compute"},
-        )
-        self.assertEqual(actual_constraints, expected_constraints)
-
-    def test_pack_validator_rejects_compute_substrate_drift(self) -> None:
-        mutations = {
-            "legacy node type": lambda sdl: sdl["nodes"]["wazuh-manager"].update(
-                type="vm"
-            ),
-            "missing constraint": lambda sdl: sdl["realization"][
-                "constraints"
-            ].pop(),
-            "wrong substrate": lambda sdl: sdl["realization"]["constraints"][
-                0
-            ]["domain"].update(value="virtual-machine"),
-        }
-
-        for expected, mutate in mutations.items():
-            with self.subTest(expected=expected):
-                candidate = copy.deepcopy(_load_sdl())
-                mutate(candidate)
-                errors = _PACK_VALIDATOR.validate_compute_substrate_contract(
-                    candidate
-                )
-                self.assertTrue(
-                    any(expected in error for error in errors), errors
-                )
-
     def test_shuffle_runtime_contract_is_complete_and_consistent(self) -> None:
         _assert_shuffle_runtime_contract(self, _load_sdl())
 
     def test_shuffle_orborus_contract_is_complete_and_consistent(self) -> None:
         _assert_shuffle_orborus_contract(self, _load_sdl())
 
-    def test_shuffle_orborus_contract_rejects_content_and_backend_drift(self) -> None:
-        mutations = {
-            "missing environment": lambda sdl: sdl["nodes"]["shuffle-orborus"][
-                "runtime"
-            ].pop("environment"),
-            "mutable worker": lambda sdl: sdl["nodes"]["shuffle-orborus"][
-                "runtime"
-            ]["orchestration_authorities"][0]["spawn_templates"][0].update(
-                image_ref="ghcr.io/shuffle/shuffle-worker:latest"
-            ),
-            "missing app image": lambda sdl: sdl["nodes"]["shuffle-orborus"][
-                "runtime"
-            ]["orchestration_authorities"][0]["spawn_templates"].pop(),
-            "mismatched timeout": lambda sdl: sdl["nodes"]["shuffle-orborus"][
-                "runtime"
-            ]["orchestration_authorities"][0]["lifecycle_policy"].update(
-                execution_timeout="601"
-            ),
-            "host bind source": lambda sdl: sdl["nodes"]["shuffle-orborus"][
-                "runtime"
-            ]["local_control_interfaces"][0].update(
-                bind_source="/var/run/docker.sock"
-            ),
-            "predicted child": lambda sdl: sdl["nodes"]["shuffle-orborus"][
-                "runtime"
-            ]["orchestration_authorities"][0].update(
-                realized_children=[{"workload_id": "expected-worker"}]
-            ),
-            "runtime self identity": lambda sdl: sdl["nodes"]["shuffle-orborus"][
-                "runtime"
-            ]["environment"].append(
-                {
-                    "name": "ORBORUS_CONTAINER_NAME",
-                    "value": "native-holder",
-                    "value_classification": "plain",
-                    "provenance": "runtime",
-                }
-            ),
-        }
-
-        for name, mutate in mutations.items():
-            with self.subTest(name=name):
-                candidate = _load_sdl()
-                mutate(candidate)
-                with self.assertRaises((AssertionError, KeyError)):
-                    _assert_shuffle_orborus_contract(self, candidate)
-
-    def test_shuffle_runtime_contract_rejects_closed_state_drift(self) -> None:
-        mutations = {
-            "missing environment": lambda sdl: sdl["nodes"]["shuffle-backend"][
-                "runtime"
-            ]["environment"].pop(),
-            "excess environment": lambda sdl: sdl["nodes"]["shuffle-backend"][
-                "runtime"
-            ]["environment"].append({"name": "UNDECLARED", "value": "true"}),
-            "substituted endpoint": lambda sdl: sdl["nodes"]["shuffle-backend"][
-                "runtime"
-            ]["environment"][0].update({"value": "https://other:9200"}),
-            "credential mismatch": lambda sdl: next(
-                item
-                for item in sdl["nodes"]["shuffle-opensearch"]["runtime"][
-                    "environment"
-                ]
-                if item["name"] == "OPENSEARCH_INITIAL_ADMIN_PASSWORD"
-            ).update({"value": "different-fixture"}),
-            "verification mismatch": lambda sdl: sdl["nodes"][
-                "shuffle-opensearch"
-            ]["runtime"]["datastore_services"][0]["transport_security"].update(
-                {"client_verification": True}
-            ),
-        }
-
-        original = _load_sdl()
-        for name, mutate in mutations.items():
-            with self.subTest(mutation=name):
-                candidate = copy.deepcopy(original)
-                mutate(candidate)
-                with self.assertRaises((AssertionError, KeyError)):
-                    _assert_shuffle_runtime_contract(self, candidate)
+    def test_shuffle_contract_omits_backend_launch_controls(self) -> None:
+        sdl = _load_sdl()
+        for node_id in (
+            "shuffle-backend",
+            "shuffle-frontend",
+            "shuffle-opensearch",
+            "shuffle-orborus",
+        ):
+            with self.subTest(node=node_id):
+                runtime = sdl["nodes"][node_id]["runtime"]
+                self.assertNotIn("environment", runtime)
+                self.assertNotIn("container", runtime)
+                self.assertNotIn("orchestration_authorities", runtime)
 
     def test_all_original_content_obligations_are_accounted_for(self) -> None:
         content = _load_sdl()["content"]
@@ -807,10 +402,10 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline & materialized, set())
         self.assertEqual(sourced & materialized, set())
         self.assertEqual(inline | sourced | materialized, set(content))
-        self.assertEqual(len(inline), 23)
+        self.assertEqual(len(inline), 15)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
         self.assertEqual(materialized, set())
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 60)
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 53)
 
     def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
         sdl = _load_sdl()
@@ -1124,23 +719,21 @@ class TechVaultPackTests(unittest.TestCase):
                 ),
                 "suricata.generated-source-mismatch: misp-iocs",
             ),
-            "generated output mismatch": (
-                update_named(
-                    ("nodes", "misp-suricata-sync", "runtime", "environment"),
-                    "name",
-                    "RULES_OUT_PATH",
-                    {"value": "/tmp/misp.rules"},
-                ),
-                "suricata.generated-output-mismatch: RULES_OUT_PATH",
-            ),
             "SID namespace mismatch": (
                 update_named(
-                    ("nodes", "misp-suricata-sync", "runtime", "environment"),
-                    "name",
-                    "SID_BASE",
-                    {"value": "98000000"},
+                    (
+                        "nodes",
+                        "misp-suricata-sync",
+                        "runtime",
+                        "forwarding_agents",
+                        0,
+                        "transforms",
+                    ),
+                    "transform_id",
+                    "ioc-to-suricata-rules",
+                    {"sid_namespace": "98000000"},
                 ),
-                "suricata.sid-namespace-mismatch: SID_BASE",
+                "suricata.sid-namespace-mismatch: ioc-to-suricata-rules",
             ),
             "control channel path mismatch": (
                 update_named(
@@ -1173,15 +766,6 @@ class TechVaultPackTests(unittest.TestCase):
                     {"capabilities": []},
                 ),
                 "suricata.control-channel-mismatch: command-socket",
-            ),
-            "forwarder socket mismatch": (
-                update_named(
-                    ("nodes", "misp-suricata-sync", "runtime", "environment"),
-                    "name",
-                    "SURICATA_SOCKET_PATH",
-                    {"value": "/tmp/suricata-command.socket"},
-                ),
-                "suricata.control-channel-mismatch: SURICATA_SOCKET_PATH",
             ),
             "duplicate shared runtime mount": (
                 lambda sdl, assets: sdl["nodes"]["suricata"]["runtime"].setdefault(
@@ -1377,9 +961,8 @@ class TechVaultPackTests(unittest.TestCase):
         expected_runtime_keys = {
             "thehive": {"applications", "platform_applications", "service_listeners"},
             "cortex": {"applications", "platform_applications", "service_listeners"},
-            "cortex-initializer": {"container", "environment"},
             "misp": {"applications", "platform_applications", "service_listeners"},
-            "misp-db": {"database_services", "environment", "service_listeners"},
+            "misp-db": {"database_services", "service_listeners"},
             "misp-redis": {"datastore_services", "service_listeners"},
             "wazuh-dashboard": {
                 "applications",
@@ -1394,34 +977,19 @@ class TechVaultPackTests(unittest.TestCase):
             "shuffle-frontend": {"applications", "service_listeners"},
             "ad": {"identity_authorities", "service_listeners"},
         }
-        expected_policy = {
-            "thehive": ("unless_stopped", "1 GiB"),
-            "cortex": ("unless_stopped", "2 GiB"),
-            "cortex-initializer": ("no", None),
-            "misp": ("unless_stopped", "2 GiB"),
-            "misp-db": ("unless_stopped", "512 MiB"),
-            "misp-redis": ("unless_stopped", "128 MiB"),
-            "wazuh-dashboard": ("always", "1 GiB"),
-            "shuffle-backend": ("unless_stopped", "1 GiB"),
-            "shuffle-frontend": ("unless_stopped", "256 MiB"),
-            "ad": ("unless_stopped", "512 MiB"),
-        }
         self.assertEqual(set(expected_runtime_keys), _UNDERDECLARED_RUNTIME_NODES)
-        self.assertEqual(set(expected_policy), _UNDERDECLARED_RUNTIME_NODES)
 
         for node_name, required_keys in expected_runtime_keys.items():
             with self.subTest(node=node_name):
                 runtime = nodes[node_name]["runtime"]
                 self.assertLessEqual(required_keys, set(runtime))
-                policy = runtime["operational_policy"]
-                expected_restart, expected_memory = expected_policy[node_name]
-                self.assertEqual(policy["restart"], expected_restart)
-                if expected_memory is None:
-                    self.assertNotIn("resource_limits", policy)
-                else:
-                    self.assertEqual(
-                        policy["resource_limits"]["memory"], expected_memory
-                    )
+                for method_field in (
+                    "container",
+                    "environment",
+                    "mounts",
+                    "operational_policy",
+                ):
+                    self.assertNotIn(method_field, runtime)
 
                 listeners = {
                     listener["service"]: listener
@@ -1452,10 +1020,6 @@ class TechVaultPackTests(unittest.TestCase):
                 self.assertEqual(application["service"], service)
                 self.assertTrue(application["routes"])
 
-        thehive_command = nodes["thehive"]["runtime"]["container"]["command"]
-        thehive_index_backend = thehive_command[
-            thehive_command.index("--index-backend") + 1
-        ]
         thehive_bindings = {
             item["role"]: (item["target_node_ref"], item["target_service_ref"])
             for item in nodes["thehive"]["runtime"]["platform_applications"][0][
@@ -1463,31 +1027,16 @@ class TechVaultPackTests(unittest.TestCase):
             ]
         }
         self.assertEqual(
-            (thehive_index_backend, thehive_bindings),
-            (
-                "elasticsearch",
-                {
-                    "cql_backend": ("thehive-cassandra", "cassandra"),
-                    "index_backend": ("thehive-es", "elasticsearch"),
-                },
-            ),
+            thehive_bindings,
+            {
+                "cql_backend": ("thehive-cassandra", "cassandra"),
+                "index_backend": ("thehive-es", "elasticsearch"),
+                "backend_api": ("cortex", "cortex-api"),
+            },
         )
         self.assertEqual(
             infrastructure["thehive"]["dependencies"],
-            ["thehive-cassandra", "thehive-es", "cortex-initializer"],
-        )
-        self.assertNotIn("--secret", thehive_command)
-        thehive_environment = {
-            item["name"]: item
-            for item in nodes["thehive"]["runtime"]["environment"]
-        }
-        self.assertEqual(
-            thehive_environment["TH_SECRET"]["value_classification"],
-            "secret_fixture",
-        )
-        self.assertNotIn(
-            thehive_environment["TH_SECRET"]["value"],
-            thehive_command,
+            ["thehive-cassandra", "thehive-es", "cortex"],
         )
 
         misp_runtime = nodes["misp"]["runtime"]
@@ -1498,30 +1047,12 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(
             infrastructure["misp"]["dependencies"], ["misp-db", "misp-redis"]
         )
-        misp_environment = {
-            item["name"]: item for item in misp_runtime["environment"]
-        }
-        self.assertEqual(misp_environment["MYSQL_HOST"]["value"], "misp-db")
-        self.assertEqual(misp_environment["REDIS_HOST"]["value"], "misp-redis")
-        self.assertEqual(
-            misp_environment["MYSQL_PASSWORD"]["value_classification"],
-            "secret_fixture",
-        )
-
         (database,) = nodes["misp-db"]["runtime"]["database_services"]
         self.assertEqual(
             (database["service"], database["engine"], database["protocol"]),
             ("mysql", "mariadb", "mysql"),
         )
         self.assertEqual(database["databases"][0]["name"], "misp")
-        db_environment = {
-            item["name"]: item
-            for item in nodes["misp-db"]["runtime"]["environment"]
-        }
-        for name in ("MYSQL_PASSWORD", "MYSQL_ROOT_PASSWORD"):
-            self.assertEqual(
-                db_environment[name]["value_classification"], "secret_fixture"
-            )
 
         (redis,) = nodes["misp-redis"]["runtime"]["datastore_services"]
         self.assertEqual(
@@ -1542,6 +1073,7 @@ class TechVaultPackTests(unittest.TestCase):
             "thehive",
             "cortex",
             "misp",
+            "misp-suricata-sync",
             "misp-db",
             "wazuh-dashboard",
             "shuffle-backend",
@@ -1569,10 +1101,11 @@ class TechVaultPackTests(unittest.TestCase):
             "thehive": "/opt/thp/thehive/data",
             "cortex": "/opt/cortex/jobs",
             "misp": "/var/www/MISP/app/Config",
+            "misp-suricata-sync": "/opt/techvault/soc-certs",
             "misp-db": "/var/lib/mysql",
             "wazuh-dashboard": "/usr/share/wazuh-dashboard/data/wazuh/config",
             "shuffle-backend": "/shuffle-database",
-            "shuffle-frontend": "/opt/aptl/soc-certs",
+            "shuffle-frontend": "/opt/techvault/soc-certs",
             "ad": "/var/lib/samba",
         }
         self.assertEqual(set(expected_destinations), mount_owned_nodes)
@@ -1580,117 +1113,31 @@ class TechVaultPackTests(unittest.TestCase):
             self.assertIn(destination, declared_destinations[node_name])
 
         for node_name in _UNDERDECLARED_RUNTIME_NODES:
-            for item in nodes[node_name]["runtime"].get("environment", []):
-                self.assertIn("value_classification", item)
-                self.assertIn("provenance", item)
-                self.assertFalse(
-                    item.get("value", "").startswith(("/home/", "/Users/"))
-                )
-                if item["value_classification"] in {"operator_secret", "redacted"}:
-                    self.assertNotIn("value", item)
+            self.assertNotIn("environment", nodes[node_name]["runtime"])
 
-    def test_operator_soc_surfaces_are_loopback_published(self) -> None:
-        nodes = _load_sdl()["nodes"]
-        expected = {
-            "misp": {(443, 8443)},
-            "thehive": {(9000, 9000)},
-            "cortex": {(9001, 9001)},
-            "wazuh-dashboard": {(5601, 443)},
-            "shuffle-frontend": {(443, 3443), (80, 3001)},
-        }
-
-        for node_name, expected_ports in expected.items():
+    def test_internal_services_have_no_host_publication_contract(self) -> None:
+        for node_name, node in _load_sdl()["nodes"].items():
             with self.subTest(node=node_name):
-                published = nodes[node_name]["runtime"]["network"][
-                    "published_ports"
-                ]
-                self.assertEqual(
-                    {(item["container_port"], item["host_port"]) for item in published},
-                    expected_ports,
-                )
-                self.assertTrue(
-                    all(item["host_ip"] == "127.0.0.1" for item in published)
-                )
-
-    def test_dns_host_publication_is_loopback_for_both_protocols(self) -> None:
-        sdl = _load_sdl()
-        published = sdl["nodes"]["dns"]["runtime"]["network"]["published_ports"]
-
-        self.assertEqual(
-            {
-                (
-                    item["container_port"],
-                    item["protocol"],
-                    item["host_port"],
-                    item["host_ip"],
-                )
-                for item in published
-            },
-            {(53, "tcp", 5353, "127.0.0.1"), (53, "udp", 5353, "127.0.0.1")},
-        )
-        self.assertEqual(
-            _PACK_VALIDATOR.validate_host_publication_contract(sdl), []
-        )
-
-    def test_pack_validator_rejects_non_loopback_host_publications(self) -> None:
-        dns = "/nodes/dns/runtime/network/published_ports"
-        listener = (
-            "/nodes/thehive/runtime/service_listeners/0/published_port_refs/0"
-        )
-
-        def published(sdl: dict, node: str) -> list:
-            return sdl["nodes"][node]["runtime"]["network"]["published_ports"]
-
-        mutations = {
-            f"{dns}/0 host_ip '0.0.0.0'": lambda sdl: published(sdl, "dns")[
-                0
-            ].update(host_ip="0.0.0.0"),
-            f"{dns}/1 host_ip '0.0.0.0'": lambda sdl: published(sdl, "dns")[
-                1
-            ].update(host_ip="0.0.0.0"),
-            f"{dns}/1 host_ip None": lambda sdl: published(sdl, "dns")[1].pop(
-                "host_ip"
-            ),
-            f"{listener} host_ip '::'": lambda sdl: sdl["nodes"]["thehive"][
-                "runtime"
-            ]["service_listeners"][0]["published_port_refs"][0].update(
-                host_ip="::"
-            ),
-        }
-
-        for expected, mutate in mutations.items():
-            with self.subTest(expected=expected):
-                candidate = copy.deepcopy(_load_sdl())
-                mutate(candidate)
-                self.assertEqual(
-                    _PACK_VALIDATOR.validate_host_publication_contract(candidate),
-                    [f"publication.non-loopback-host-ip: {expected}"],
-                )
+                runtime = node.get("runtime", {})
+                self.assertNotIn("network", runtime)
+                for listener in runtime.get("service_listeners", []):
+                    self.assertNotIn("published_port_refs", listener)
 
     def test_cortex_provides_case_driven_offline_enrichment(self) -> None:
         sdl = _load_sdl()
         thehive = sdl["nodes"]["thehive"]
-        command = thehive["runtime"]["container"]["command"]
-        self.assertEqual(
-            command[command.index("--cortex-proto") + 1], "http"
+        thehive_app = thehive["runtime"]["platform_applications"][0]
+        cortex_binding = next(
+            item
+            for item in thehive_app["upstream_bindings"]
+            if item["role"] == "backend_api"
         )
+        self.assertEqual(cortex_binding["target_node_ref"], "cortex")
+        self.assertEqual(cortex_binding["target_service_ref"], "cortex-api")
+        (connector_declaration,) = thehive_app["connectors"]
+        self.assertEqual(connector_declaration["kind"], "analyzer_engine")
         self.assertEqual(
-            command[command.index("--cortex-hostnames") + 1], "cortex"
-        )
-        self.assertEqual(command[command.index("--cortex-port") + 1], "9001")
-
-        thehive_environment = {
-            item["name"]: item for item in thehive["runtime"]["environment"]
-        }
-        connector_key = thehive_environment["TH_CORTEX_KEYS"]
-        self.assertEqual(connector_key["value_classification"], "redacted")
-        self.assertNotIn("value", connector_key)
-        self.assertEqual(
-            connector_key["value_from"],
-            {
-                "generated_artifact": "cortex-service-credentials",
-                "output": "connector-api-key",
-            },
+            connector_declaration["credential_classification"], "redacted"
         )
 
         cortex = sdl["nodes"]["cortex"]
@@ -1732,54 +1179,9 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(connector["credential_classification"], "redacted")
         self.assertEqual(connector["backend_roles"], ["read", "analyze"])
         self.assertNotIn("orgadmin", connector["backend_roles"])
-        initializer_principal = principals["cortex-initializer-admin"]
-        self.assertEqual(initializer_principal["credential_classification"], "redacted")
-        self.assertEqual(
-            initializer_principal["backend_roles"], ["read", "analyze", "orgadmin"]
-        )
-
-        initializer = sdl["nodes"]["cortex-initializer"]
-        self.assertTrue(initializer["runtime"]["container"]["autoremove"])
-        initializer_environment = {
-            item["name"]: item for item in initializer["runtime"]["environment"]
-        }
-        self.assertEqual(
-            initializer_environment["CORTEX_CONNECTOR_KEY"]["value_from"],
-            connector_key["value_from"],
-        )
-        self.assertEqual(
-            initializer_environment["CORTEX_CONNECTOR_KEY"]["value_classification"],
-            "redacted",
-        )
-        self.assertNotEqual(
-            initializer_environment["CORTEX_ADMIN_KEY"]["value_from"],
-            connector_key["value_from"],
-        )
-        self.assertNotIn("value", initializer_environment["CORTEX_ADMIN_KEY"])
-
-        credential_artifact = sdl["generated_artifacts"][
-            "cortex-service-credentials"
-        ]
-        self.assertEqual(credential_artifact["generator"], "rendered_config")
-        self.assertEqual(credential_artifact["lifecycle"], "reuse_valid")
-        self.assertEqual(
-            {output["name"] for output in credential_artifact["outputs"]},
-            {"initializer-api-key", "connector-api-key"},
-        )
-        self.assertTrue(
-            all(
-                output["sensitivity"] == "secret"
-                for output in credential_artifact["outputs"]
-            )
-        )
-
-        self.assertIn(
-            "cortex-initializer", sdl["infrastructure"]["thehive"]["dependencies"]
-        )
-        self.assertEqual(
-            sdl["infrastructure"]["cortex-initializer"]["dependencies"],
-            ["cortex"],
-        )
+        self.assertEqual(set(principals), {"thehive-cortex-connector"})
+        self.assertNotIn("cortex-initializer", sdl["nodes"])
+        self.assertNotIn("cortex-initializer", sdl["infrastructure"])
 
         integrations = [
             relationship["service_integration"]
@@ -1797,7 +1199,6 @@ class TechVaultPackTests(unittest.TestCase):
         for content_id in (
             "cortex-analyzer-definition",
             "cortex-analyzer-executable",
-            "cortex-initializer-script",
         ):
             content = sdl["content"][content_id]
             requirement = content["source"]["artifact_requirement"]
@@ -1822,31 +1223,19 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertNotIn("cortex-index-init-script", sdl["content"])
         self.assertNotIn("cortex-job-index-schema", sdl["content"])
 
-        self.assertNotIn(
-            "datastore_services", sdl["nodes"]["thehive-es"]["runtime"]
-        )
+        (datastore,) = sdl["nodes"]["thehive-es"]["runtime"]["datastore_services"]
+        self.assertEqual(datastore["engine"], "elasticsearch")
+        self.assertEqual(datastore["version"], "7.17.28")
 
-        initializer = (
-            _PACK / "assets" / "content" / "cortex-initializer.py"
-        ).read_text(encoding="utf-8")
-        self.assertIn("/api/maintenance/migrate", initializer)
-        self.assertNotIn("cortex_6", initializer)
-        self.assertNotIn("_mapping", initializer)
+        self.assertFalse(
+            (_PACK / "assets" / "content" / "cortex-initializer.py").exists()
+        )
 
     def test_cortex_pack_validator_rejects_contract_mutations(self) -> None:
         original = _load_sdl()
         self.assertEqual(
             _PACK_VALIDATOR.validate_cortex_contract(_PACK, original), []
         )
-
-        def environments(candidate):
-            return {
-                node: {
-                    item["name"]: item
-                    for item in candidate["nodes"][node]["runtime"]["environment"]
-                }
-                for node in ("thehive", "cortex-initializer")
-            }
 
         def principals(candidate):
             return {
@@ -1856,43 +1245,39 @@ class TechVaultPackTests(unittest.TestCase):
             }
 
         def mutate(candidate, code):
-            env = environments(candidate)
             cortex_runtime = candidate["nodes"]["cortex"]["runtime"]
             if code == "connector-key-mismatch":
-                env["thehive"]["TH_CORTEX_KEYS"]["value_from"]["output"] = "initializer-api-key"
-            elif code == "initializer-key-invalid":
-                env["cortex-initializer"]["CORTEX_ADMIN_KEY"]["value_from"]["output"] = "connector-api-key"
-            elif code == "generated-credentials-invalid":
-                candidate["generated_artifacts"]["cortex-service-credentials"]["outputs"][0]["sensitivity"] = "public"
+                candidate["nodes"]["thehive"]["runtime"]["platform_applications"][
+                    0
+                ]["connectors"][0]["credential_classification"] = "plain"
+            elif code == "connector-binding-invalid":
+                candidate["nodes"]["thehive"]["runtime"]["platform_applications"][0]["upstream_bindings"] = []
             elif code == "application-missing":
                 cortex_runtime["platform_applications"][0]["platform_application_id"] = "other"
             elif code == "capability-missing":
                 cortex_runtime["platform_applications"][0]["capabilities"] = []
             elif code == "connector-principal-invalid":
                 principals(candidate)["thehive-cortex-connector"]["backend_roles"].append("orgadmin")
-            elif code == "initializer-principal-invalid":
-                principals(candidate)["cortex-initializer-admin"]["backend_roles"] = ["read"]
-            elif code == "initializer-not-oneshot":
-                candidate["nodes"]["cortex-initializer"]["runtime"]["container"]["autoremove"] = False
-            elif code == "docker-socket-forbidden":
-                candidate["nodes"]["cortex-initializer"]["runtime"]["container"]["mounts"] = ["/var/run/docker.sock"]
+            elif code == "unexpected-principal":
+                cortex_runtime["app_authorizations"][0]["principals"].append(
+                    {"principal_id": "initializer", "kind": "service_account"}
+                )
             elif code == "native-schema-leaked":
                 candidate["content"]["cortex-job-index-schema"] = {}
             elif code == "content-placement-mismatch":
-                candidate["content"]["cortex-initializer-script"]["path"] = "/tmp/initializer.py"
+                candidate["content"]["cortex-analyzer-definition"]["path"] = "/tmp/analyzer.json"
             elif code == "content-identity-mismatch":
-                candidate["content"]["cortex-initializer-script"]["source"]["artifact_requirement"]["exact_artifact"]["digest"] = "sha256:" + "0" * 64
+                candidate["content"]["cortex-analyzer-definition"]["source"][
+                    "artifact_requirement"
+                ]["exact_artifact"]["digest"] = "sha256:" + "0" * 64
 
         codes = (
             "connector-key-mismatch",
-            "initializer-key-invalid",
-            "generated-credentials-invalid",
+            "connector-binding-invalid",
             "application-missing",
             "capability-missing",
             "connector-principal-invalid",
-            "initializer-principal-invalid",
-            "initializer-not-oneshot",
-            "docker-socket-forbidden",
+            "unexpected-principal",
             "native-schema-leaked",
             "content-placement-mismatch",
             "content-identity-mismatch",
@@ -1998,7 +1383,7 @@ class TechVaultPackTests(unittest.TestCase):
 
     def test_generated_keys_and_certificates_enforce_output_boundaries(self) -> None:
         generated = _load_sdl()["generated_artifacts"]
-        self.assertEqual(len(generated), 7)
+        self.assertEqual(len(generated), 6)
 
         ssh = generated["techvault-ssh-keys"]
         self.assertEqual(ssh["generator"], "ssh_key_bundle")
@@ -2044,6 +1429,772 @@ _AD_ACCOUNT_ROSTER = {
 
 class TechVaultInWorldDeclarationTests(unittest.TestCase):
     """The pack states what exists in the scenario, never how it is built."""
+
+    def test_checked_in_sdl_contains_no_realization_method(self) -> None:
+        self.assertEqual(
+            _PACK_VALIDATOR.validate_realization_method_contract(_load_sdl()), []
+        )
+
+    def test_misp_sync_preserves_authentication_and_ca_trust_as_typed_state(
+        self,
+    ) -> None:
+        sdl = _load_sdl()
+        misp_runtime = sdl["nodes"]["misp"]["runtime"]
+        (misp_application,) = misp_runtime["platform_applications"]
+        self.assertEqual(
+            misp_application["authorization_ref"], "misp-api-authorization"
+        )
+        (authorization,) = misp_runtime["app_authorizations"]
+        self.assertEqual(
+            authorization["app_authorization_id"], "misp-api-authorization"
+        )
+        (principal,) = authorization["principals"]
+        self.assertEqual(principal["principal_id"], "misp-suricata-sync-api-key")
+        self.assertEqual(principal["kind"], "api_key")
+        self.assertEqual(principal["credential_classification"], "operator_secret")
+
+        sync_runtime = sdl["nodes"]["misp-suricata-sync"]["runtime"]
+        (sync_agent,) = sync_runtime["forwarding_agents"]
+        settings = {item["setting_id"]: item for item in sync_agent["settings"]}
+        self.assertEqual(
+            settings["misp-api-authentication"]["classification"],
+            "operator_secret",
+        )
+        self.assertEqual(
+            settings["misp-tls-verification"]["value"], "required"
+        )
+        self.assertEqual(
+            settings["misp-ca-trust-anchor"]["value"],
+            "/opt/techvault/soc-certs/lab-ca.pem",
+        )
+
+        consumers = {
+            consumer["node"]: consumer
+            for consumer in sdl["generated_artifacts"][
+                "techvault-soc-certificates"
+            ]["consumers"]
+        }
+        self.assertEqual(
+            consumers["misp-suricata-sync"]["selected_outputs"],
+            ["ca-certificate"],
+        )
+        inventory = {
+            item["path"]: item for item in sync_runtime["filesystem_inventory"]
+        }
+        self.assertEqual(
+            inventory["/opt/techvault/soc-certs/lab-ca.pem"]["mode"], "0644"
+        )
+
+    def test_workstation_loot_permissions_are_backend_neutral_state(self) -> None:
+        runtime = _load_sdl()["nodes"]["workstation"]["runtime"]
+        inventory = {item["path"]: item for item in runtime["filesystem_inventory"]}
+        expected = {
+            "/home/dev-user/.bash_history": "secret_fixture",
+            "/home/dev-user/.config/credentials.json": "secret_fixture",
+            "/home/dev-user/.pgpass": "secret_fixture",
+            "/home/dev-user/.ssh/id_rsa": "operator_secret",
+            "/home/dev-user/projects/techvault-portal/.env": "secret_fixture",
+        }
+        for path, sensitivity in expected.items():
+            with self.subTest(path=path):
+                entry = inventory[path]
+                self.assertEqual(entry["entry_type"], "file")
+                self.assertEqual(entry["owner_user"], "dev-user")
+                self.assertEqual(entry["owner_group"], "dev-user")
+                self.assertEqual(entry["mode"], "0600")
+                self.assertEqual(entry["sensitivity"], sensitivity)
+
+    def test_image_identities_are_replaced_by_product_versions(self) -> None:
+        sdl = _load_sdl()
+        self.assertTrue(all("source" not in node for node in sdl["nodes"].values()))
+        self.assertNotIn("features", sdl)
+
+        expected = {
+            "wazuh-manager": ("security_monitoring_managers", "4.12.0"),
+            "wazuh-indexer": ("datastore_services", "4.12.0"),
+            "wazuh-dashboard": ("platform_applications", "4.12.0"),
+            "suricata": ("network_detection_engines", "7.0"),
+            "misp": ("platform_applications", "2.5.44"),
+            "misp-db": ("database_services", "10.11"),
+            "misp-redis": ("datastore_services", "7"),
+            "thehive": ("platform_applications", "5.4"),
+            "thehive-cassandra": ("datastore_services", "4.1"),
+            "thehive-es": ("datastore_services", "7.17.28"),
+            "cortex": ("platform_applications", "3.1.8"),
+            "shuffle-backend": ("platform_applications", "unversioned"),
+            "shuffle-opensearch": ("datastore_services", "2.14.0"),
+        }
+        for node_id, (family, version) in expected.items():
+            with self.subTest(node=node_id):
+                self.assertEqual(
+                    sdl["nodes"][node_id]["runtime"][family][0]["version"],
+                    version,
+                )
+
+        software = {
+            component["component_id"]: component
+            for node_id in ("shuffle-frontend", "shuffle-orborus")
+            for component in sdl["nodes"][node_id]["runtime"][
+                "software_components"
+            ]
+        }
+        self.assertEqual(software["shuffle-frontend"]["version"], "unversioned")
+        self.assertEqual(software["shuffle-orborus"]["version"], "unversioned")
+
+    def test_wazuh_agents_are_declared_on_every_watched_host(self) -> None:
+        sdl = _load_sdl()
+        expected_sources = {
+            "ad": {
+                "/var/log/samba/log.samba",
+                "/var/log/samba/log.smbd",
+                "/var/log/samba/log.winbindd",
+            },
+            "db": {"/var/log/postgresql/postgresql-15-main.log"},
+            "suricata": {"/var/log/suricata/eve.json"},
+            "webapp": {"/var/log/gunicorn/access.log"},
+            "dns": {"/var/log/named/query.log", "/var/log/named/default.log"},
+            "fileshare": {
+                "/var/log/samba/log.samba",
+                "/var/log/samba/log.smbd",
+            },
+            "victim": {"/var/log/secure", "/var/log/messages"},
+        }
+        for node_id, paths in expected_sources.items():
+            with self.subTest(node=node_id):
+                agents = sdl["nodes"][node_id]["runtime"]["forwarding_agents"]
+                declared = {
+                    source["location"]
+                    for agent in agents
+                    if agent["implementation"] == "wazuh_agent"
+                    for source in agent["sources"]
+                    if source["kind"] == "tailed_path"
+                }
+                self.assertEqual(declared, paths)
+                self.assertTrue(
+                    all(
+                        target["target_node_ref"] == "wazuh-manager"
+                        for agent in agents
+                        if agent["implementation"] == "wazuh_agent"
+                        for target in agent["ship_targets"]
+                    )
+                )
+
+        manager_agents = {
+            agent["node_ref"]
+            for agent in sdl["nodes"]["wazuh-manager"]["runtime"][
+                "security_monitoring_managers"
+            ][0]["agents"]
+        }
+        self.assertEqual(manager_agents, set(expected_sources))
+
+    def test_victim_has_one_typed_log_handoff(self) -> None:
+        sdl = _load_sdl()
+        runtime = sdl["nodes"]["victim"]["runtime"]
+        self.assertNotIn("victim-rsyslog-forward", sdl["content"])
+        self.assertIn(
+            ("rsyslog", "rsyslog.service", "enabled", "active"),
+            {
+                (
+                    unit["unit_id"],
+                    unit["unit_name"],
+                    unit["enabled_state"],
+                    unit["active_state"],
+                )
+                for unit in runtime["service_manager_units"]
+            },
+        )
+        (agent,) = runtime["forwarding_agents"]
+        self.assertEqual(agent["implementation"], "wazuh_agent")
+        self.assertEqual(
+            {source["location"] for source in agent["sources"]},
+            {"/var/log/secure", "/var/log/messages"},
+        )
+        self.assertEqual(
+            {target["target_node_ref"] for target in agent["ship_targets"]},
+            {"wazuh-manager"},
+        )
+
+    def test_webapp_has_one_log_handoff_and_no_launch_recipe(self) -> None:
+        sdl = _load_sdl()
+        runtime = sdl["nodes"]["webapp"]["runtime"]
+        self.assertNotIn("service_manager_units", runtime)
+        self.assertNotIn("rsyslog", {item["name"] for item in runtime["packages"]})
+        for content_id in (
+            "webapp-rsyslog-forward",
+            "webapp-rsyslog-unit",
+            "webapp-service-unit",
+        ):
+            with self.subTest(content=content_id):
+                self.assertNotIn(content_id, sdl["content"])
+        self.assertEqual(
+            [
+                source["location"]
+                for agent in runtime["forwarding_agents"]
+                for source in agent["sources"]
+                if source["location"] == "/var/log/gunicorn/access.log"
+            ],
+            ["/var/log/gunicorn/access.log"],
+        )
+
+    def test_participant_mcp_sources_are_split_and_byte_bound(self) -> None:
+        sdl = _load_sdl()
+        declarations = {
+            "techvault-red-mcp-sources": (
+                "mcp-red-sources",
+                "kali",
+                {"aptl-mcp-common", "mcp-red"},
+            ),
+            "techvault-blue-mcp-sources": (
+                "mcp-blue-sources",
+                "soc-workstation",
+                {
+                    "aptl-mcp-common",
+                    "mcp-casemgmt",
+                    "mcp-indexer",
+                    "mcp-network",
+                    "mcp-reverse",
+                    "mcp-soar",
+                    "mcp-threatintel",
+                    "mcp-wazuh",
+                },
+            ),
+        }
+        for artifact_id, (content_id, target, roots) in declarations.items():
+            with self.subTest(artifact=artifact_id):
+                content = sdl["content"][content_id]
+                self.assertEqual(content["target"], target)
+                self.assertEqual(content["destination"], "/opt/techvault/mcp")
+                self.assertEqual(content["source"]["name"], artifact_id)
+                data = resolve_pack_artifact(_PACK, artifact_id).data
+                with tarfile.open(fileobj=io.BytesIO(data), mode="r:") as archive:
+                    members = archive.getmembers()
+                    names = {member.name for member in members}
+                    source_metadata = json.loads(
+                        archive.extractfile("SOURCE.json").read()
+                    )
+                    telemetry = archive.extractfile(
+                        "aptl-mcp-common/src/telemetry.ts"
+                    ).read().decode("utf-8")
+                self.assertIn("LICENSE", names)
+                self.assertIn("SOURCE.json", names)
+                self.assertEqual(
+                    {pathlib.PurePosixPath(name).parts[0] for name in names}
+                    - {"LICENSE", "SOURCE.json"},
+                    roots,
+                )
+                self.assertFalse(
+                    any(
+                        part in {"build", "node_modules", "tests"}
+                        or part == "docker-lab-config.json"
+                        for name in names
+                        for part in pathlib.PurePosixPath(name).parts
+                    )
+                )
+                self.assertTrue(
+                    all(
+                        member.isfile() or member.isdir()
+                        for member in members
+                    )
+                )
+                self.assertEqual(
+                    source_metadata["revision"],
+                    "7c673a19f9fb6a3eb1d17305104196b600bd59cc",
+                )
+                self.assertEqual(
+                    source_metadata["adaptations"][0]["path"],
+                    "aptl-mcp-common/src/telemetry.ts",
+                )
+                self.assertIn("'aptl.tool.payload.recorded': false", telemetry)
+                for content_attribute in (
+                    "aptl.tool.arguments",
+                    "aptl.tool.response",
+                    "exception.message",
+                    "exception.stacktrace",
+                ):
+                    self.assertNotIn(content_attribute, telemetry)
+                self.assertEqual([member.name for member in members], sorted(names))
+                for member in members:
+                    self.assertEqual((member.uid, member.gid, member.mtime), (0, 0, 0))
+                    self.assertEqual(member.mode, 0o644)
+
+    def test_mcp_builder_pins_commit_and_disables_git_replacements(self) -> None:
+        revision = mcp_builder.SOURCE_REVISION
+        completed = mcp_builder.subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=f"{revision}\n".encode(), stderr=b""
+        )
+        hostile_environment = {
+            "GIT_DIR": "/tmp/untrusted-git-dir",
+            "GIT_OBJECT_DIRECTORY": "/tmp/untrusted-objects",
+        }
+        with mock.patch.dict(
+            mcp_builder.os.environ, hostile_environment, clear=False
+        ), mock.patch.object(
+            mcp_builder.subprocess, "run", return_value=completed
+        ) as run:
+            mcp_builder._validate_revision(pathlib.Path("/tmp/source"), revision)
+
+        command = run.call_args.args[0]
+        environment = run.call_args.kwargs["env"]
+        self.assertIn("--no-replace-objects", command)
+        self.assertEqual(environment["GIT_NO_REPLACE_OBJECTS"], "1")
+        self.assertEqual(environment["GIT_CONFIG_GLOBAL"], os.devnull)
+        self.assertNotIn("GIT_DIR", environment)
+        self.assertNotIn("GIT_OBJECT_DIRECTORY", environment)
+
+        with self.assertRaisesRegex(ValueError, "reviewed immutable commit"):
+            mcp_builder._validate_revision(
+                pathlib.Path("/tmp/source"), "0" * 40
+            )
+
+    def test_mcp_builder_builds_archive_end_to_end_from_stubbed_git(self) -> None:
+        revision = mcp_builder.SOURCE_REVISION
+        members = {
+            "mcp/mcp-red/package.json": b'{"name":"mcp-red"}\n',
+            "mcp/mcp-red/src/index.ts": b"export const ready = true;\n",
+        }
+
+        def read_git(_repo: pathlib.Path, *args: str) -> bytes:
+            if args[0] == "rev-parse":
+                return f"{revision}\n".encode()
+            if args == ("show", f"{revision}:LICENSE"):
+                return b"MIT License\n"
+            if args[0] == "ls-tree":
+                prefix = args[-1]
+                return "".join(
+                    f"{name}\n" for name in members if name.startswith(prefix)
+                ).encode()
+            if args[0] == "show":
+                return members[args[1].split(":", 1)[1]]
+            raise AssertionError(f"unexpected git request: {args}")
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository_root = pathlib.Path(directory) / "repo"
+            asset_root = (
+                repository_root / "packs" / "techvault" / "assets" / "content"
+            )
+            asset_root.mkdir(parents=True)
+            destination = asset_root / "mcp-red-sources.tar"
+            with mock.patch.object(
+                mcp_builder, "_REPOSITORY_ROOT", repository_root
+            ), mock.patch.object(
+                mcp_builder, "_ASSET_ROOT", asset_root
+            ), mock.patch.object(
+                mcp_builder, "_git", side_effect=read_git
+            ):
+                mcp_builder.build_archive(
+                    pathlib.Path(directory) / "source",
+                    revision,
+                    ("mcp-red",),
+                    destination,
+                )
+
+            with tarfile.open(destination, mode="r:") as archive:
+                self.assertEqual(
+                    archive.getnames(),
+                    [
+                        "LICENSE",
+                        "SOURCE.json",
+                        "mcp-red/package.json",
+                        "mcp-red/src/index.ts",
+                    ],
+                )
+                metadata = json.load(archive.extractfile("SOURCE.json"))
+                self.assertEqual(metadata["revision"], revision)
+                self.assertEqual(metadata["packages"], ["mcp-red"])
+
+    def test_mcp_builder_rejects_unsafe_destination_paths(self) -> None:
+        revision = mcp_builder.SOURCE_REVISION
+
+        def resolve_revision(_repo: pathlib.Path, *args: str) -> bytes:
+            if args[0] == "rev-parse":
+                return f"{revision}\n".encode()
+            raise AssertionError(f"unexpected git request: {args}")
+
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = pathlib.Path(directory)
+            repository_root = temporary / "repo"
+            asset_root = (
+                repository_root / "packs" / "techvault" / "assets" / "content"
+            )
+            asset_root.mkdir(parents=True)
+            patches = (
+                mock.patch.object(mcp_builder, "_REPOSITORY_ROOT", repository_root),
+                mock.patch.object(mcp_builder, "_ASSET_ROOT", asset_root),
+                mock.patch.object(mcp_builder, "_git", side_effect=resolve_revision),
+            )
+            with patches[0], patches[1], patches[2]:
+                with self.subTest(destination="outside asset root"), self.assertRaisesRegex(
+                    ValueError, "outside the TechVault asset root"
+                ):
+                    mcp_builder.build_archive(
+                        temporary / "source",
+                        revision,
+                        ("mcp-red",),
+                        temporary / "mcp-red-sources.tar",
+                    )
+
+                symlink_destination = asset_root / "mcp-red-sources.tar"
+                symlink_destination.symlink_to(temporary / "outside.tar")
+                with self.subTest(destination="symlink"), self.assertRaisesRegex(
+                    ValueError, "must not be a symbolic link"
+                ):
+                    mcp_builder.build_archive(
+                        temporary / "source",
+                        revision,
+                        ("mcp-red",),
+                        symlink_destination,
+                    )
+
+            linked_asset_root = repository_root / "linked-content"
+            real_asset_root = temporary / "real-content"
+            real_asset_root.mkdir()
+            linked_asset_root.symlink_to(real_asset_root, target_is_directory=True)
+            with mock.patch.object(
+                mcp_builder, "_REPOSITORY_ROOT", repository_root
+            ), mock.patch.object(
+                mcp_builder, "_ASSET_ROOT", linked_asset_root
+            ), mock.patch.object(
+                mcp_builder, "_git", side_effect=resolve_revision
+            ), self.subTest(destination="symlinked parent"), self.assertRaisesRegex(
+                ValueError, "must not contain symbolic links"
+            ):
+                mcp_builder.build_archive(
+                    temporary / "source",
+                    revision,
+                    ("mcp-red",),
+                    linked_asset_root / "mcp-red-sources.tar",
+                )
+
+    def test_mcp_builder_rejects_incomplete_packages(self) -> None:
+        revision = mcp_builder.SOURCE_REVISION
+        incomplete_trees = {
+            "missing package manifest": "mcp/mcp-red/src/index.ts\n",
+            "missing source": "mcp/mcp-red/package.json\n",
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository_root = pathlib.Path(directory) / "repo"
+            asset_root = (
+                repository_root / "packs" / "techvault" / "assets" / "content"
+            )
+            asset_root.mkdir(parents=True)
+            destination = asset_root / "mcp-red-sources.tar"
+            for condition, tree in incomplete_trees.items():
+                def read_git(_repo: pathlib.Path, *args: str) -> bytes:
+                    if args[0] == "rev-parse":
+                        return f"{revision}\n".encode()
+                    if args == ("show", f"{revision}:LICENSE"):
+                        return b"MIT License\n"
+                    if args[0] == "ls-tree":
+                        return tree.encode()
+                    raise AssertionError(f"unexpected git request: {args}")
+
+                with self.subTest(condition=condition), mock.patch.object(
+                    mcp_builder, "_REPOSITORY_ROOT", repository_root
+                ), mock.patch.object(
+                    mcp_builder, "_ASSET_ROOT", asset_root
+                ), mock.patch.object(
+                    mcp_builder, "_git", side_effect=read_git
+                ), self.assertRaisesRegex(RuntimeError, "package is incomplete"):
+                    mcp_builder.build_archive(
+                        pathlib.Path(directory) / "source",
+                        revision,
+                        ("mcp-red",),
+                        destination,
+                    )
+
+    def test_mcp_builder_rejects_telemetry_adaptation_drift(self) -> None:
+        with self.subTest(condition="source hash"), self.assertRaisesRegex(
+            RuntimeError, "source changed unexpectedly"
+        ):
+            mcp_builder._adapt_source(
+                mcp_builder.COMMON_PACKAGE,
+                mcp_builder._TELEMETRY_PATH,
+                b"changed telemetry source\n",
+            )
+
+        duplicate_replacement = (
+            b"import { redact } from './redaction.js';\n\n"
+            b"import { redact } from './redaction.js';\n\n"
+        )
+        expected_hash = hashlib.sha256(duplicate_replacement).hexdigest()
+        with mock.patch.object(
+            mcp_builder, "_TELEMETRY_SOURCE_SHA256", expected_hash
+        ), self.subTest(condition="replacement count"), self.assertRaisesRegex(
+            RuntimeError, "adaptation no longer applies"
+        ):
+            mcp_builder._adapt_source(
+                mcp_builder.COMMON_PACKAGE,
+                mcp_builder._TELEMETRY_PATH,
+                duplicate_replacement,
+            )
+
+    def test_red_and_blue_agents_have_separate_workstations(self) -> None:
+        scenario = parse_sdl_file(_SDL)
+        self.assertEqual(scenario.entities["red-team"].role.value, "red")
+        self.assertEqual(scenario.entities["blue-team"].role.value, "blue")
+        expected = {
+            "red-team-operator": ("red-team", "kali"),
+            "blue-team-operator": ("blue-team", "soc-workstation"),
+        }
+        for agent_id, (entity_id, target) in expected.items():
+            with self.subTest(agent=agent_id):
+                agent = scenario.agents[agent_id]
+                self.assertEqual(agent.entity, entity_id)
+                self.assertEqual(
+                    {(item.target_ref, item.channel.value) for item in agent.interactive_access.values()},
+                    {(target, "ssh")},
+                )
+
+        for node_id, packages in {
+            "kali": {"aptl-mcp-common", "aptl-kali-mcp-server"},
+            "soc-workstation": {
+                "aptl-mcp-common",
+                "aptl-casemgmt-mcp-server",
+                "aptl-indexer-mcp-server",
+                "aptl-network-mcp-server",
+                "aptl-reverse-mcp-server",
+                "aptl-soar-mcp-server",
+                "aptl-threatintel-mcp-server",
+                "aptl-wazuh-mcp-server",
+            },
+        }.items():
+            with self.subTest(node=node_id):
+                components = scenario.nodes[node_id].runtime.software_components
+                self.assertIn(
+                    "nodejs",
+                    {component.component_id for component in components},
+                )
+                self.assertEqual(
+                    {
+                        component.name
+                        for component in components
+                        if component.component_id != "nodejs"
+                    },
+                    packages,
+                )
+
+    def test_pack_validator_rejects_every_realization_method_family(self) -> None:
+        sdl = _load_sdl()
+        mutations = {
+            "/realization/constraints/0": lambda candidate: candidate[
+                "realization"
+            ].update(
+                constraints=[
+                    {
+                        "field_pointer": "/nodes/kali",
+                        "concern": "compute-substrate",
+                        "posture": "exact",
+                        "domain": {
+                            "kind": "exact",
+                            "value": "operating-system-container",
+                        },
+                    }
+                ]
+            ),
+            "/nodes/kali/source": lambda candidate: candidate["nodes"][
+                "kali"
+            ].update(source={"name": "backend-image", "version": "latest"}),
+            "/features/example/source": lambda candidate: candidate.setdefault(
+                "features", {}
+            ).update(
+                example={
+                    "type": "service",
+                    "source": {"name": "backend-feature", "version": "local"},
+                }
+            ),
+            "/nodes/kali/runtime/environment": lambda candidate: candidate[
+                "nodes"
+            ]["kali"]["runtime"].update(
+                environment=[{"name": "DELIVERY_SETTING", "value": "value"}]
+            ),
+            "/nodes/kali/runtime/network/published_ports": lambda candidate: candidate[
+                "nodes"
+            ]["kali"]["runtime"].update(
+                network={
+                    "published_ports": [
+                        {
+                            "container_port": 22,
+                            "host_port": 2022,
+                            "protocol": "tcp",
+                        }
+                    ]
+                }
+            ),
+            "/nodes/kali/runtime/service_listeners/0/published_port_refs": lambda candidate: candidate[
+                "nodes"
+            ]["kali"]["runtime"].update(
+                service_listeners=[
+                    {
+                        "listener_id": "ssh",
+                        "service": "ssh",
+                        "published_port_refs": [{"host_port": 2022}],
+                    }
+                ]
+            ),
+            "/nodes/kali/runtime/container": lambda candidate: candidate["nodes"][
+                "kali"
+            ]["runtime"].update(container={"entrypoint": ["/bin/sh"]}),
+            "/nodes/kali/runtime/linux_capabilities": lambda candidate: candidate[
+                "nodes"
+            ]["kali"]["runtime"].update(
+                linux_capabilities={"add": ["CAP_NET_ADMIN"]}
+            ),
+            "/nodes/kali/runtime/mounts": lambda candidate: candidate["nodes"][
+                "kali"
+            ]["runtime"].update(
+                mounts=[
+                    {
+                        "target": "/work",
+                        "source": "backend-volume",
+                        "source_kind": "volume",
+                    }
+                ]
+            ),
+            "/nodes/kali/runtime/operational_policy": lambda candidate: candidate[
+                "nodes"
+            ]["kali"]["runtime"].update(
+                operational_policy={"restart": "always"}
+            ),
+            "/nodes/kali/runtime/orchestration_authorities": lambda candidate: candidate[
+                "nodes"
+            ]["kali"]["runtime"].update(
+                orchestration_authorities=[
+                    {
+                        "orchestration_authority_id": "backend-engine",
+                        "engine": "docker",
+                        "privilege_class": "host_root_equivalent",
+                    }
+                ]
+            ),
+            "/nodes/kali/runtime/local_control_interfaces": lambda candidate: candidate[
+                "nodes"
+            ]["kali"]["runtime"].update(
+                local_control_interfaces=[
+                    {
+                        "control_interface_id": "backend-socket",
+                        "path": "/var/run/docker.sock",
+                        "kind": "unix_socket",
+                        "access": "read_write",
+                    }
+                ]
+            ),
+            "/nodes/suricata/runtime/network_sensors/0/capture_mode": lambda candidate: candidate[
+                "nodes"
+            ]["suricata"]["runtime"]["network_sensors"][0].update(
+                capture_mode="af_packet"
+            ),
+            "/content/renamed-web-launch": lambda candidate: (
+                candidate["nodes"]["webapp"]["runtime"].update(
+                    service_manager_units=[
+                        {
+                            "unit_id": "renamed-web-launch",
+                            "unit_name": "renamed-web.service",
+                            "enabled_state": "enabled",
+                            "active_state": "active",
+                        }
+                    ]
+                ),
+                candidate["content"].update(
+                    {
+                        "renamed-web-launch": {
+                            "type": "file",
+                            "target": "webapp",
+                            "path": "/etc/systemd/system/renamed-web.service",
+                            "text": "[Service]\nExecStart=/opt/web/start\n",
+                        }
+                    }
+                ),
+            ),
+            "/content/renamed-web-drop-in": lambda candidate: candidate[
+                "content"
+            ].update(
+                {
+                    "renamed-web-drop-in": {
+                        "type": "file",
+                        "target": "webapp",
+                        "path": (
+                            "/etc/systemd/system/renamed-web.service.d/"
+                            "override.conf"
+                        ),
+                        "text": "[Service]\nExecStart=/opt/web/start\n",
+                    }
+                }
+            ),
+            "/content/renamed-unit-directory": lambda candidate: candidate[
+                "content"
+            ].update(
+                {
+                    "renamed-unit-directory": {
+                        "type": "directory",
+                        "target": "webapp",
+                        "destination": "/etc/systemd/system/generated-units",
+                        "source": {
+                            "name": "unit-directory",
+                            "version": "1",
+                        },
+                    }
+                }
+            ),
+        }
+        for pointer, mutate in mutations.items():
+            with self.subTest(pointer=pointer):
+                candidate = copy.deepcopy(sdl)
+                # Start from the intended clean policy surface so each mutation
+                # proves one diagnostic rather than inheriting the current SDL.
+                candidate["realization"] = {"default": "open"}
+                for node in candidate["nodes"].values():
+                    node.pop("source", None)
+                    runtime = node.get("runtime") or {}
+                    for field in (
+                        "environment",
+                        "network",
+                        "container",
+                        "linux_capabilities",
+                        "mounts",
+                        "operational_policy",
+                        "orchestration_authorities",
+                        "local_control_interfaces",
+                    ):
+                        runtime.pop(field, None)
+                    for listener in runtime.get("service_listeners", []):
+                        listener.pop("published_port_refs", None)
+                    for sensor in runtime.get("network_sensors", []):
+                        sensor.pop("capture_mode", None)
+                        sensor.pop("capture_interfaces", None)
+                    runtime["service_manager_units"] = [
+                        unit
+                        for unit in runtime.get("service_manager_units", [])
+                        if not unit.get("unit_id", "").startswith("aptl-")
+                        and not unit.get("unit_id", "").endswith("-bootstrap")
+                    ]
+                candidate["features"] = {}
+                mutate(candidate)
+                errors = _PACK_VALIDATOR.validate_realization_method_contract(
+                    candidate
+                )
+                self.assertTrue(
+                    any(error.endswith(pointer) for error in errors), errors
+                )
+
+    def test_realization_validator_does_not_classify_historical_identifiers(
+        self,
+    ) -> None:
+        candidate = copy.deepcopy(_load_sdl())
+        candidate["nodes"]["cortex-initializer"] = {
+            "type": "compute",
+            "os": "linux",
+            "services": [],
+        }
+        candidate["content"]["db-bootstrap-unit"] = {
+            "type": "file",
+            "target": "db",
+            "path": "/opt/techvault/bootstrap-notes.txt",
+            "text": "Scenario documentation, not a launch unit.\n",
+        }
+        self.assertEqual(
+            _PACK_VALIDATOR.validate_realization_method_contract(candidate), []
+        )
 
     def test_pack_validator_rejects_build_recipes(self) -> None:
         sdl = _load_sdl()
@@ -2422,8 +2573,18 @@ class TechVaultValidatorEntrypointTests(unittest.TestCase):
             "timing": "backend-preparation",
         }
 
-        def drop_substrate_constraint(sdl: dict) -> None:
-            sdl["realization"]["constraints"].pop()
+        def add_substrate_constraint(sdl: dict) -> None:
+            sdl["realization"]["constraints"] = [
+                {
+                    "field_pointer": "/nodes/kali",
+                    "concern": "compute-substrate",
+                    "posture": "exact",
+                    "domain": {
+                        "kind": "exact",
+                        "value": "operating-system-container",
+                    },
+                }
+            ]
 
         def add_build_recipe(sdl: dict) -> None:
             sdl["nodes"]["kali"]["source"] = {
@@ -2444,26 +2605,36 @@ class TechVaultValidatorEntrypointTests(unittest.TestCase):
             }
 
         def publish_on_every_interface(sdl: dict) -> None:
-            sdl["nodes"]["dns"]["runtime"]["network"]["published_ports"][0][
-                "host_ip"
-            ] = "0.0.0.0"
+            sdl["nodes"]["dns"]["runtime"]["network"] = {
+                "published_ports": [
+                    {
+                        "container_port": 53,
+                        "host_port": 5353,
+                        "host_ip": "0.0.0.0",
+                        "protocol": "tcp",
+                    }
+                ]
+            }
 
         def unrelated_suricata_alert(sdl: dict) -> None:
             sdl["evidence_requirements"]["suricata-login-sqli-alert"][
                 "scope"
             ] = "unrelated alert"
 
-        def long_lived_cortex_initializer(sdl: dict) -> None:
-            sdl["nodes"]["cortex-initializer"]["runtime"]["container"][
-                "autoremove"
-            ] = False
+        def add_delivery_content(sdl: dict) -> None:
+            sdl["content"]["renamed-db-launch"] = {
+                "type": "file",
+                "target": "db",
+                "path": "/etc/systemd/system/renamed-db.service",
+                "text": "delivery recipe",
+            }
 
         cases = {
-            "compute.constraint-missing": drop_substrate_constraint,
+            "realization.constraint": add_substrate_constraint,
             "realization.build-recipe": add_build_recipe,
-            "publication.non-loopback-host-ip": publish_on_every_interface,
+            "realization.host-publication": publish_on_every_interface,
             "suricata.detection-evidence-mismatch": unrelated_suricata_alert,
-            "cortex.initializer-not-oneshot": long_lived_cortex_initializer,
+            "realization.service-unit-content": add_delivery_content,
         }
         for code, mutate in cases.items():
             with self.subTest(code=code), tempfile.TemporaryDirectory() as directory:

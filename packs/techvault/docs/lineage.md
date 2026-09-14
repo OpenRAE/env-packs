@@ -2,16 +2,14 @@
 
 The full TechVault SDL and its tracked content were migrated from the APTL-era
 `origin/dev` at commit `3db5171f3e4add842efd1d81fa0d4fe078511b7e`.
-APTL is being renamed to LilRAE; they are one backend project, not separate
-products or layers. LilRAE remains a backend consumer, while TechVault is only a
-scenario pack and this repository is the editable authority for its
-distributable content.
+That project remains only a historical source and possible backend consumer;
+TechVault is a portable scenario pack, and this repository is the editable
+authority for its distributable content.
 
 The Suricata local corpus is the byte-identical 16-rule file from that pinned
 migration source. Its configuration preserves the source's variables,
-rule-file selection, outputs, application parsers, and command channel while
-retaining the environment pack's existing packet-acquisition stanza; capture
-and interface realization are governed separately by issue #284. The initial
+rule-file selection, outputs, application parsers, and command channel. Packet
+capture and interface selection are left to the realizing backend. The initial
 zero-indicator MISP rule file and three hash-list sidecars are also copied from
 the pinned source, then become mutable runtime state under the declared sync
 agent.
@@ -26,4 +24,18 @@ The APTL-era tracked workstation fixture omitted
 specification, and live smoke test all require it. The deterministic workstation
 archive restores the specification's two synthetic loot values
 (`DB_PASSWORD=techvault_db_pass` and `JWT_SECRET=techvault-jwt-weak`) rather than
-copying an ignored local environment file.
+copying an ignored local environment file. Runtime filesystem inventory retains
+the final `dev-user` ownership and restrictive modes that make `.pgpass` and
+the other planted credentials usable without shipping a corrective launch
+unit.
+
+The MISP synchronization source remains exact content, while its API principal,
+TLS-verification posture, and public CA trust are declared as typed runtime
+state. Credential bytes remain outside the pack.
+
+The participant MCP source bundles were copied from APTL commit
+`7c673a19f9fb6a3eb1d17305104196b600bd59cc`. The bundles preserve the package
+source and build manifests required by the Kali and SOC workstations while
+excluding backend configuration, dependencies, tests, and generated output.
+The shared telemetry source is adapted to export only tool identity and status
+metadata, never participant request, response, or error content.
