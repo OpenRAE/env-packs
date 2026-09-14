@@ -11,6 +11,30 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.0.0](https://github.com/OpenRAE/env-packs/compare/v5.2.0...v6.0.0) (2026-09-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* adopt RAES 4.1.0 and declare TechVault in-world facts ([#356](https://github.com/OpenRAE/env-packs/issues/356))
+
+### Features
+
+* adopt RAES 4.1.0 and declare TechVault in-world facts ([#356](https://github.com/OpenRAE/env-packs/issues/356)) ([c3e5407](https://github.com/OpenRAE/env-packs/commit/c3e5407aa6543c54593bad7be95fe31faff368a6))
+
+
+### Bug Fixes
+
+* **deps:** bump uvicorn from 0.52.1 to 0.52.4 ([#301](https://github.com/OpenRAE/env-packs/issues/301)) ([954d1a6](https://github.com/OpenRAE/env-packs/commit/954d1a65f62fcad80b0572b70b03ea888b7a7723))
+* **techvault:** bind the dns host publication to loopback ([#351](https://github.com/OpenRAE/env-packs/issues/351)) ([80119d6](https://github.com/OpenRAE/env-packs/commit/80119d67a76aef6342f21ef425b14bf9af1de5a6))
+* **techvault:** count wazuh corpus files, not definitions ([#350](https://github.com/OpenRAE/env-packs/issues/350)) ([77f120e](https://github.com/OpenRAE/env-packs/commit/77f120edfc14cd0878461ce1f034ebc4a013a239))
+* **techvault:** keep native identity out of the pack ([#345](https://github.com/OpenRAE/env-packs/issues/345)) ([c725c67](https://github.com/OpenRAE/env-packs/commit/c725c678050fdcc756607c1add3b7e0fe7d5a23e))
+
+
+### Documentation
+
+* **techvault:** remove obsolete capture mechanism contract ([#346](https://github.com/OpenRAE/env-packs/issues/346)) ([d4a9906](https://github.com/OpenRAE/env-packs/commit/d4a99061734ef0c8ec72c879939f91b71977f873))
+
 ## [5.2.0](https://github.com/OpenRAE/env-packs/compare/v5.1.0...v5.2.0) (2026-09-12)
 
 
