@@ -2378,8 +2378,11 @@ class TechVaultFlagDeclarationTests(unittest.TestCase):
                         instantiate_scenario(scenario, supplied)
 
     def test_pack_has_no_flag_delivery_machinery(self) -> None:
-        self.assertFalse(
-            "flaggen" in _SDL.read_text(encoding="utf-8").lower(),
+        # Report the diagnostic without dumping the SDL into test output.
+        self.longMessage = False
+        self.assertNotIn(
+            "flaggen",
+            _SDL.read_text(encoding="utf-8").lower(),
             "SDL retains a flag-generation reference",
         )
         scenario = parse_sdl_file(_SDL)
