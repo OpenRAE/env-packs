@@ -3,7 +3,7 @@
 -r build.in
 PyYAML>=6
 aces-sdl==0.23.1
-cyclonedx-bom==7.3.0
+cyclonedx-bom==7.3.1
 # Floor, not a pin: the historical closure pulls cryptography transitively
 # (aces-sdl, asyncssh, pyjwt) and the resolver would otherwise hold it at the
 # version this lock was first generated with, which is affected by
