@@ -11,6 +11,16 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.0.1](https://github.com/OpenRAE/env-packs/compare/v6.0.0...v6.0.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* declare TechVault flags as backend-provided values ([#362](https://github.com/OpenRAE/env-packs/issues/362)) ([15260b6](https://github.com/OpenRAE/env-packs/commit/15260b6e5461ca09d187c23dd7503030aa11f5b1))
+* **deps:** bump build from 1.6.0 to 1.6.1 ([#359](https://github.com/OpenRAE/env-packs/issues/359)) ([cb4ab38](https://github.com/OpenRAE/env-packs/commit/cb4ab382d05e4f667f8d95703c72806691e85a23))
+* keep TechVault realization backend-neutral ([#364](https://github.com/OpenRAE/env-packs/issues/364)) ([dec4306](https://github.com/OpenRAE/env-packs/commit/dec4306acbebaa0a430d9f17c931368352d25c2b))
+* leave TechVault evidence method unconstrained ([#366](https://github.com/OpenRAE/env-packs/issues/366)) ([524ab6f](https://github.com/OpenRAE/env-packs/commit/524ab6f65006a027b5cbb6ab28d5d6d7fef8d87e))
+
 ## [6.0.0](https://github.com/OpenRAE/env-packs/compare/v5.2.0...v6.0.0) (2026-09-14)
 
 
