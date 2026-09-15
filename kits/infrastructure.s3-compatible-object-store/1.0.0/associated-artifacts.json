@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "s3-compatible-object-store",
     "ref_version": null,
-    "ref_digest": "sha256:6d0c601881d2c8d49a07f351e1a07ac880158154b7298720762c21ed23700649",
+    "ref_digest": "sha256:26cb4e5331e11b85c9928dea96efa9b3caa70a99af3fa7ec7c7c0958acff8400",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:7f57384c266eeeaf09b8ad0a969a660269346ea58b44fcda4add419fb64677fa"
+  "set_digest": "sha256:ca9ab2e3543cb7f068322823daaf9703a0ca364992db31e250015f6642587965"
 }

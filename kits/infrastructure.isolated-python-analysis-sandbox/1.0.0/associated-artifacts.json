@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "isolated-python-analysis-sandbox",
     "ref_version": null,
-    "ref_digest": "sha256:ecefd3beb3dcebb15e13c009bb81cb7a398bd1bf57b868637d10d0b8b88b0efb",
+    "ref_digest": "sha256:bee34763248967ff904e99c477fbf965f5288465fa97eb4b30db210a6edadc75",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:fd832062b1c809bd72c2cf5324e08c2948fec8680b7b25d6d45134c12aa4fd6a"
+  "set_digest": "sha256:7d20505b942a88a4e7be36efd5d014d6262359cf418b8edb7dab2f3e2a434532"
 }

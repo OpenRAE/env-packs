@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "samba-active-directory-domain-controller",
     "ref_version": null,
-    "ref_digest": "sha256:11ad5f8883b16fbd136add3876946cf2990162b0ce2bb46e8f7fdfb12fba1925",
+    "ref_digest": "sha256:ef9f14e43e1dc57766be5bfc8fe4c9df28aba3420ce45f05aaa7fcf946ee7424",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:f2cb97237c36453817ba74e4f334373b0683cf1e6378462657f82661278191f4"
+  "set_digest": "sha256:47147abc86a584bb4f5548cb86805ea92a0bf8986620beb2321cde9ffd46d485"
 }

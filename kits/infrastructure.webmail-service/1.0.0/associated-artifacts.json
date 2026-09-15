@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "webmail-service",
     "ref_version": null,
-    "ref_digest": "sha256:b3f3621ff4fd3b454aee44b7c91c33a968660ba471d5e77c1201dfcf4dfd8ce2",
+    "ref_digest": "sha256:be888151f940ad08d8c91b7eb5cfb63b80fb0a846b5769efe092b7902af53aa8",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:995aaf497c400cd8d498436d1722b0d07e00c91641afbac3dac4e94a5b07e13c"
+  "set_digest": "sha256:a4daf623cbe16a93bb6233a21315ead451a720ad144401db0cdafcccd53d7592"
 }

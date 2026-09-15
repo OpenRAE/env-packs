@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "browser-workstation",
     "ref_version": null,
-    "ref_digest": "sha256:b576200d8f7d9896efe6b63dfb84430b227b651cbdf7977fe0dc2c16b0103aeb",
+    "ref_digest": "sha256:c420f119b457dde725a6e5da9e60021e9e049f61435c6ccb9a1a2c19067bd1c9",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:ab8fead802fd2c3bbc98411426bd2566d3f1c37c7f19a98973e0d5579a1bddce"
+  "set_digest": "sha256:cff93487a8ad49ebebe07fb7d98095cf58f4ab6dcda4de36beaf6f3a071a0d2d"
 }

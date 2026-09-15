@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "git-forge",
     "ref_version": null,
-    "ref_digest": "sha256:a3f5593f21a4e2dcfbee9345ee563efee0dc8d552164a2e45cb3c8def0d9809e",
+    "ref_digest": "sha256:439d6369cc4b8d1b6f90dc358176e736bc5e56f2b1f1a3c7d576d54ca4a1b452",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:a22007bcab3bea58c884bf00db43611cd70b612e8686929aa99d69b1d72d3e48"
+  "set_digest": "sha256:a0c0d4e9136e6733e463aef4ceed57d97026149d002f8dc56e7f36bdf819ade7"
 }

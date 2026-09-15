@@ -23,12 +23,12 @@ classifiers = [
 # raes is a hard, exactly-pinned dependency (ADR 0011): SDL is validated
 # *through RAES* (raes.parse_sdl_file), never a local restatement, and the
 # gate is fail-closed, so RAES cannot be optional. The pin tracks the latest
-# compatibility-tested RAES release -- currently the 3.x SDL contract corpus.
+# compatibility-tested RAES release -- currently the 5.x SDL contract corpus.
 # While those contracts are `stability: draft`, advancing the pin requires
 # compatibility tests against this package's validator and template, so a
 # downstream consumer resolves exactly the RAES runtime this release was
 # validated against.
-dependencies = ["PyYAML>=6", "raes==4.1.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
+dependencies = ["PyYAML>=6", "raes==5.0.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
 
 [project.urls]
 Homepage = "https://github.com/OpenRAE/env-packs"

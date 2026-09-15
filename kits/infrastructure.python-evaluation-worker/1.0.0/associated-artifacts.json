@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "python-evaluation-worker",
     "ref_version": null,
-    "ref_digest": "sha256:bba2db9cb1b20ae2d695018f15d5dd175e3125e6be3a8fc09fd408d150a45dcd",
+    "ref_digest": "sha256:70885710e1a33777f28564d7eb5d4075aed928a8e63d4a43d7c0a145309f8f72",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:2e5391170f07f98310c82f7ce434519dc1aadb1277ab47bb140faf9917350cc4"
+  "set_digest": "sha256:105440c496f07e5412057538c24d03d27ac8db774f18208813fc5ab5d09b2ce6"
 }

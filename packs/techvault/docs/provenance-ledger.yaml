@@ -17,6 +17,21 @@ sources:
     usage: generated-from
     attribution_required: false
     used: Pack manifests, satisfaction profile, validation, and documentation.
+  - source_id: aptl-techvault-mcps
+    name: TechVault participant MCP source packages
+    license: MIT
+    usage: adapted
+    attribution_required: true
+    attribution: Copyright (c) 2025 APTL Contributors
+    used: >-
+      Source and build manifests for aptl-mcp-common, mcp-red, mcp-wazuh,
+      mcp-indexer, mcp-network, mcp-casemgmt, mcp-soar, mcp-threatintel, and
+      mcp-reverse. Generated builds, dependencies, tests, and backend
+      configuration are excluded. The shared telemetry wrapper is adapted to
+      export only tool identity and status metadata, never request, response,
+      or error content.
+    url: https://github.com/Brad-Edwards/aptl
+    ref: 7c673a19f9fb6a3eb1d17305104196b600bd59cc
 artifacts:
   - artifact_id: scenario
     path: sdl/
@@ -33,6 +48,19 @@ artifacts:
     classification: open
     sources: [environment-pack-authorship]
     description: Exact pack artifact satisfaction profile.
+  - artifact_id: red-team-mcp-sources
+    path: assets/content/mcp-red-sources.tar
+    classification: open
+    sources: [aptl-techvault-mcps, environment-pack-authorship]
+    description: >-
+      Red-team stdio MCP source and shared library, available only on Kali.
+  - artifact_id: blue-team-mcp-sources
+    path: assets/content/mcp-blue-sources.tar
+    classification: open
+    sources: [aptl-techvault-mcps, environment-pack-authorship]
+    description: >-
+      Defensive stdio MCP source and shared library, available only on the SOC
+      workstation.
   - artifact_id: documentation
     path: docs/
     classification: open

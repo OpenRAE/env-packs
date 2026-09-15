@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "policy-engine",
     "ref_version": null,
-    "ref_digest": "sha256:010f5c2c93eee047de5f1e1f5fba8eac7277899921f2a30ec0cf0529b19458e5",
+    "ref_digest": "sha256:9294013691a7face3404149ea81b66d70087fc165ccfbbe859774e08f13cf3be",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:a7e43634c9c6d6fc1205925ee747dd32ad3f02ac49af90d4cdd8d626a41b82fc"
+  "set_digest": "sha256:8195337aab0e7ed76080e89e20bcba2b574a5c1deff5e68e6b29f7f0a5610bcb"
 }

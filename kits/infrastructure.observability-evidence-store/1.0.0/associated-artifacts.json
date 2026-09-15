@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "observability-evidence-store",
     "ref_version": null,
-    "ref_digest": "sha256:5a55d0059c45fe9ad31946666824740d28732316ca9de23780016830e6e716c7",
+    "ref_digest": "sha256:fd2acda9cee00e1097fe950880c4dfe99dd1a278dedb6729f84795fea42df2e0",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:4ea45a7ac4df94f5dcab51c7c777f90e667fd2046c80be641c216bee24d0f218"
+  "set_digest": "sha256:1bba204e40742ab15d6e948e69b039c533acdc1f164f4cb2c2f87a8038cfb5b8"
 }

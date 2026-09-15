@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "db1d7b33fdf6faa4b32f5355a71a0189041fff26efdb462147391ff21aeac8e0"
+        "value": "b1c308d14133f652e2238dac83547f59f1945720ea75a4f244e2905d8f9f65d9"
       },
-      "size_bytes": 4893,
+      "size_bytes": 6710,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -140,22 +140,6 @@
       "sensitivity": "internal",
       "description": null
     },
-    "techvault-flaggen-script": {
-      "artifact_id": "techvault-flaggen-script",
-      "role": "other",
-      "media_type": "text/x-shellscript",
-      "uri": "raes-environment-pack:/assets/content/flaggen.sh",
-      "checksum": {
-        "algorithm": "sha256",
-        "value": "5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38"
-      },
-      "size_bytes": 1862,
-      "created_at": "2026-08-02T00:00:00Z",
-      "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
-      "satisfies_refs": [],
-      "sensitivity": "internal",
-      "description": null
-    },
     "techvault-misp-sync-hatch-build": {
       "artifact_id": "techvault-misp-sync-hatch-build",
       "role": "other",
@@ -227,9 +211,9 @@
       "uri": "raes-environment-pack:/assets/content/suricata.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "37cbb226360af33f01ec4806ebbbb59fc318c6912472845831e954c0a324d471"
+        "value": "d1bf43326da10781b8b20c10c78ad2bbbc25a64c50019fd7933a56bb52b42471"
       },
-      "size_bytes": 2530,
+      "size_bytes": 2282,
       "created_at": "2026-09-03T00:00:00Z",
       "source": "environment-pack-author adapted from aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
       "satisfies_refs": [],
@@ -531,9 +515,9 @@
       "uri": "raes-environment-pack:/docs/lineage.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "32f0fef569a762b6c8d9155f0467aaaec36785a3342bc13abb984e5a34b4a610"
+        "value": "0571973983982a7f97a7c1acbafda23833139d3d24d18a8c5691b8dd53ac64d1"
       },
-      "size_bytes": 1639,
+      "size_bytes": 2348,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -547,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "afe40414ad63f712d6b02474c92a6f6e5584e0fbbd1e37605275c44b6b9068c4"
+        "value": "13245ec8a162782b8f1b2bd6e9efc4cae47f8844e6580bfe905ca6ab1dc960bc"
       },
-      "size_bytes": 2044,
+      "size_bytes": 3321,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -611,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "a66ba8592d6cf5ed1e75f7fa6324ab8c405e9eb3c8b781a4292c510b559a1c56"
+        "value": "8382aa1e539ffe126e5b40a3d8c84dbaaa98b4661b86291705a134a43035ce74"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -643,9 +627,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "52019010cede00bb7bb67a82649c1c96818a9bad7b5117bd2f0239cfcf466dc9"
+        "value": "0d9afbad6646107b88f00003634288e51675552a2ae0a83b0794bc9b3cc294d8"
       },
-      "size_bytes": 165962,
+      "size_bytes": 122474,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -675,9 +659,9 @@
       "uri": "raes-environment-pack:/validation/validate_techvault.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "16d951db9b087d0f682c4d95437dcc24144ebd844761d6a7a64d85c7d75fa059"
+        "value": "51b5af79b241475d1dae32efd1eb8974ef3c8a274d1886486893186105981acf"
       },
-      "size_bytes": 32427,
+      "size_bytes": 30927,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -716,22 +700,38 @@
       "sensitivity": "internal",
       "description": "Exact dependency-free offline Cortex analyzer executable."
     },
-    "techvault-cortex-initializer": {
-      "artifact_id": "techvault-cortex-initializer",
+    "techvault-red-mcp-sources": {
+      "artifact_id": "techvault-red-mcp-sources",
       "role": "other",
-      "media_type": "text/x-python",
-      "uri": "raes-environment-pack:/assets/content/cortex-initializer.py",
+      "media_type": "application/x-tar",
+      "uri": "raes-environment-pack:/assets/content/mcp-red-sources.tar",
       "checksum": {
         "algorithm": "sha256",
-        "value": "7ad7cb07259da52fbb7dfe5ea77b02874273d84d37b6abdb000858237a5ed96c"
+        "value": "3536a2fd58eab9a2bfdc0ad90be4fdfd45bba9db1ef4acb5a54ff76126e7788e"
       },
-      "size_bytes": 9452,
-      "created_at": "2026-08-02T00:00:00Z",
-      "source": "environment-pack-author",
+      "size_bytes": 593920,
+      "created_at": "2026-09-14T00:00:00Z",
+      "source": "aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc",
       "satisfies_refs": [],
       "sensitivity": "internal",
-      "description": "Idempotent bounded initializer for TechVault Cortex application state."
+      "description": "Exact red-team stdio MCP source packages for the Kali workstation."
+    },
+    "techvault-blue-mcp-sources": {
+      "artifact_id": "techvault-blue-mcp-sources",
+      "role": "other",
+      "media_type": "application/x-tar",
+      "uri": "raes-environment-pack:/assets/content/mcp-blue-sources.tar",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "74e850e04e5e428cc0bb4cd5e4a6480373cd1e9a2a686fb40a0e560cd941f111"
+      },
+      "size_bytes": 1116160,
+      "created_at": "2026-09-14T00:00:00Z",
+      "source": "aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:6300b3d539ab9c1e2287b9852e5408e1811516b818a7acf015f045cb3c9c5b89"
+  "set_digest": "sha256:edd3bb6252990aeaf506904767182d5a3ef2b3828a498fe64c897dccaf954934"
 }

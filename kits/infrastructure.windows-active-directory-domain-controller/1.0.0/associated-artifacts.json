@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "windows-active-directory-domain-controller",
     "ref_version": null,
-    "ref_digest": "sha256:c05225f5c9961a740713c478008202a3495c2430b2b61c3fdf5776a71492cf12",
+    "ref_digest": "sha256:a915d156bda90a09faf253ceee03511cb23fd21513c07d2157549c51ffcb68d5",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:cddcbfd6126f32e85799c54b3b52422af24bcc3dbd662b5da2a75b68c269d2d5"
+  "set_digest": "sha256:70525cda2d9270bef1f89e48a2e13c10f4742823b845a9cf9be92487ea2a57be"
 }

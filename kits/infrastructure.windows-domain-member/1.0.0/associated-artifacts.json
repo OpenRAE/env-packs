@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "windows-domain-member",
     "ref_version": null,
-    "ref_digest": "sha256:7f23244590d09d84092e290d4f11dea8769f21034814bf0d09a3942cf2676337",
+    "ref_digest": "sha256:99565f08584c8387d4da806aaadc413fbe8c9f64edc4519ed278120fe1442856",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:b7777b0388ec38093850b20d860605a81299ec537f35286f895c83f5beab59b6"
+  "set_digest": "sha256:82b3ce0e835c265555e69b3839617518b13a9081dfdd2cdc4eff5a445b67d2dd"
 }

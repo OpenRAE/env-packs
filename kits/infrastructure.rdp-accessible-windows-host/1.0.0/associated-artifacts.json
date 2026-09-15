@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "rdp-accessible-windows-host",
     "ref_version": null,
-    "ref_digest": "sha256:b53c166c1fcdcf18fb6afa4d2e3b128f6effc6db659f99d01032b3439c70939c",
+    "ref_digest": "sha256:ed1d4fc4722c127a8f84ad05eb1d6c23cca4d5012e7cfc3489946303d67744fb",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:6c663688e9230d9386b12f3959adacb22f82704767c348daa3a6f7da14a76b3d"
+  "set_digest": "sha256:f975805b3da751a3e3b282f4df66dd88d7cda5506b67448a9d7895de2ea1a648"
 }

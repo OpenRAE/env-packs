@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "inference-api-gateway",
     "ref_version": null,
-    "ref_digest": "sha256:1abf1c47801396244e28b84f5cce97d51f1c6cb841e723fe68d337cba3f64845",
+    "ref_digest": "sha256:8407cec70204babcdebc71cef1f681af2e2c73e2113aa43fec46271ec4ac9e99",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:b74bada690d37b8c86d5643eb700e308d4bd77d7d75dfe578d1d392661071424"
+  "set_digest": "sha256:6ac45e958b1bc82ae6ae85f8174d5b22481c166268de9c91932a8abc47f22417"
 }

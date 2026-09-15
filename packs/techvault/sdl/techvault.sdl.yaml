@@ -1,15 +1,41 @@
 name: techvault
-description: >
-  Operational RAES projection for the TechVault range. This SDL is the public
-  startup contract: it names the steady-state Compose services and networks
-  that the LilRAE backend realizes through the current `aptl lab start` command.
-  APTL is being renamed to LilRAE; they are one backend project, not separate
-  products or layers. There is no separate captured deep per-asset inventory
-  behind this scenario pack (ADR-046).
-
+description: >-
+  Portable TechVault scenario state: systems, identities, content, weaknesses, access, and evidence needs. A consuming backend chooses how to realize that state.
 # Flag values are provided per run by whoever instantiates the scenario; the
 # pack never authors them.
 variables:
+  flag_victim_user:
+    type: string
+    required: true
+    description: User-level flag value placed on victim.
+  flag_victim_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on victim.
+  flag_workstation_user:
+    type: string
+    required: true
+    description: User-level flag value placed on workstation.
+  flag_workstation_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on workstation.
+  flag_webapp_user:
+    type: string
+    required: true
+    description: User-level flag value placed on webapp.
+  flag_webapp_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on webapp.
+  flag_fileshare_user:
+    type: string
+    required: true
+    description: User-level flag value placed on fileshare.
+  flag_fileshare_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on fileshare.
   flag_ad_user:
     type: string
     required: true
@@ -18,7 +44,6 @@ variables:
     type: string
     required: true
     description: Root-level flag value placed on the domain controller.
-
 nodes:
   security-net:
     type: switch
@@ -32,68 +57,15 @@ nodes:
   redteam-net:
     type: switch
     description: Red-team operations network.
-
   wazuh-manager:
     type: compute
     os: linux
-    source:
-      name: "wazuh/wazuh-manager"
-      version: "4.12.0"
-      artifact_requirement:
-        requirement_id: wazuh-manager-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "wazuh/wazuh-manager"
-          version: "4.12.0"
-          digest: "sha256:dea2fa1e6d5062147b6a85b241f5f501c5f1ba4b817d12bda06f7870a89ad561"
-          media_type: "application/vnd.docker.distribution.manifest.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: wazuh-api, port: 55000, protocol: tcp}
       - {name: agent-events, port: 1514, protocol: tcp}
       - {name: agent-enrollment, port: 1515, protocol: tcp}
       - {name: syslog, port: 514, protocol: udp}
     runtime:
-      # Published on host loopback: agent enrollment (1514/1515), syslog
-      # (514/udp), and the manager API (55000). The authenticated readiness gate
-      # probes the API over the published 55000 binding, so this is required for
-      # a clean boot, not just operator convenience.
-      network:
-        published_ports:
-          - {container_port: 1514, protocol: tcp, host_port: 1514, host_ip: "127.0.0.1"}
-          - {container_port: 1515, protocol: tcp, host_port: 1515, host_ip: "127.0.0.1"}
-          - {container_port: 514, protocol: udp, host_port: 514, host_ip: "127.0.0.1"}
-          - {container_port: 55000, protocol: tcp, host_port: 55000, host_ip: "127.0.0.1"}
-      environment:
-        - name: INDEXER_URL
-          value: "https://wazuh-indexer:9200"
-        - name: INDEXER_USERNAME
-          value: ""
-          value_classification: operator_secret
-        - name: INDEXER_PASSWORD
-          value: ""
-          value_classification: operator_secret
-        - name: FILEBEAT_SSL_VERIFICATION_MODE
-          value: "full"
-        - name: SSL_CERTIFICATE_AUTHORITIES
-          value: "/etc/ssl/wazuh/root-ca-manager.pem"
-        - name: SSL_CERTIFICATE
-          value: "/etc/ssl/wazuh/wazuh.manager.pem"
-        - name: SSL_KEY
-          value: "/etc/ssl/wazuh/wazuh.manager-key.pem"
-        - name: API_USERNAME
-          value: ""
-          value_classification: operator_secret
-        - name: API_PASSWORD
-          value: ""
-          value_classification: operator_secret
       security_monitoring_managers:
         - security_monitoring_manager_id: wazuh-manager
           implementation: wazuh
@@ -149,17 +121,33 @@ nodes:
               enabled: true
           agents:
             - agent_id: suricata-agent
-              name: aptl-suricata-agent
+              name: techvault-suricata-agent
               node_ref: suricata
-              description: Ships Suricata EVE events; see that node's forwarding agent.
+              description: Ships Suricata EVE events; see that node’s forwarding agent.
             - agent_id: db-agent
-              name: aptl-db-agent
+              name: techvault-db-agent
               node_ref: db
-              description: Ships PostgreSQL logs; see that node's forwarding agent.
+              description: Ships PostgreSQL logs; see that node’s forwarding agent.
             - agent_id: ad-agent
-              name: aptl-ad-agent
+              name: techvault-ad-agent
               node_ref: ad
-              description: Ships the domain controller's Samba logs; see that node's forwarding agent.
+              description: Ships the domain controller’s Samba logs; see that node’s forwarding agent.
+            - agent_id: webapp-agent
+              name: techvault-webapp-agent
+              node_ref: webapp
+              description: Ships customer portal access logs; see that node’s forwarding agent.
+            - agent_id: dns-agent
+              name: techvault-dns-agent
+              node_ref: dns
+              description: Ships DNS service logs; see that node’s forwarding agent.
+            - agent_id: fileshare-agent
+              name: techvault-fileshare-agent
+              node_ref: fileshare
+              description: Ships file server Samba logs; see that node’s forwarding agent.
+            - agent_id: victim-agent
+              name: techvault-victim-agent
+              node_ref: victim
+              description: Ships victim authentication and system logs; see that node’s forwarding agent.
           content_sets:
             - content_id: webapp-rules
               kind: rule_corpus
@@ -255,36 +243,9 @@ nodes:
   wazuh-indexer:
     type: compute
     os: linux
-    source:
-      name: "wazuh/wazuh-indexer"
-      version: "4.12.0"
-      artifact_requirement:
-        requirement_id: wazuh-indexer-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "wazuh/wazuh-indexer"
-          version: "4.12.0"
-          digest: "sha256:3691b3b27658695aad0c6879b412a001caf233ebbc1a5ba15647053aa03a2299"
-          media_type: "application/vnd.docker.distribution.manifest.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: indexer-api, port: 9200, protocol: tcp}
     runtime:
-      # Published on host loopback. The authenticated readiness gate probes the
-      # indexer over this 9200 binding.
-      network:
-        published_ports:
-          - {container_port: 9200, protocol: tcp, host_port: 9200, host_ip: "127.0.0.1"}
-      environment:
-        - name: OPENSEARCH_JAVA_OPTS
-          value: "-Xms1g -Xmx1g"
       datastore_services:
         - datastore_service_id: wazuh-indexer
           engine: opensearch
@@ -326,62 +287,9 @@ nodes:
   wazuh-dashboard:
     type: compute
     os: linux
-    source:
-      name: "wazuh/wazuh-dashboard"
-      version: "4.12.0"
-      artifact_requirement:
-        requirement_id: wazuh-dashboard-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "wazuh/wazuh-dashboard"
-          version: "4.12.0"
-          digest: "sha256:8f5b50fde67a0b1c4d2321aa26b12bbc5cef21269cf4f6225746f0b946458bd7"
-          media_type: "application/vnd.docker.distribution.manifest.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: dashboard, port: 5601, protocol: tcp}
     runtime:
-      # The SOC dashboard is the operator-facing Wazuh UI, published on loopback
-      # 443 (host) -> 5601 (container).
-      network:
-        published_ports:
-          - {container_port: 5601, protocol: tcp, host_port: 443, host_ip: "127.0.0.1"}
-      environment:
-        - name: INDEXER_USERNAME
-          value: admin
-          value_classification: plain
-          provenance: compose
-        - name: INDEXER_PASSWORD
-          value: SecretPassword
-          value_classification: secret_fixture
-          provenance: compose
-        - name: DASHBOARD_USERNAME
-          value: kibanaserver
-          value_classification: plain
-          provenance: compose
-        - name: DASHBOARD_PASSWORD
-          value: kibanaserver
-          value_classification: secret_fixture
-          provenance: compose
-        - name: API_USERNAME
-          value: wazuh-wui
-          value_classification: plain
-          provenance: compose
-        - name: API_PASSWORD
-          value: WazuhPass123!
-          value_classification: secret_fixture
-          provenance: compose
-        - name: WAZUH_API_URL
-          value: "https://wazuh-manager"
-          value_classification: plain
-          provenance: compose
       service_listeners:
         - service_listener_id: dashboard-listener
           service: dashboard
@@ -389,8 +297,6 @@ nodes:
           port: 5601
           protocol: tcp
           scope: wildcard
-          published_port_refs:
-            - {container_port: 5601, protocol: tcp, host_port: 443, host_ip: "127.0.0.1"}
           provenance: operator
       applications:
         - application_id: wazuh-dashboard
@@ -418,54 +324,17 @@ nodes:
               role: data_source
               target_node_ref: wazuh-manager
               target_service_ref: wazuh-api
-      operational_policy:
-        restart: always
-        resource_limits:
-          memory: 1 GiB
-
+          version: 4.12.0
   suricata:
     type: compute
     os: linux
-    source:
-      name: "jasonish/suricata"
-      version: "sha256:d64c491f6eb5d03b6562d873b3c5303e4c17d5dc1d75b3761a68319f11527dc3"
-      artifact_requirement:
-        requirement_id: suricata-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "jasonish/suricata"
-          version: "sha256:d64c491f6eb5d03b6562d873b3c5303e4c17d5dc1d75b3761a68319f11527dc3"
-          digest: "sha256:d64c491f6eb5d03b6562d873b3c5303e4c17d5dc1d75b3761a68319f11527dc3"
-          media_type: "application/vnd.docker.distribution.manifest.list.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services: []
     runtime:
-      container:
-        # Run suricata directly rather than through the image's
-        # docker-entrypoint.sh: that wrapper chowns /etc/suricata/* on start,
-        # which fails on the read-only config content mount. suricata itself
-        # only reads the config, so a direct exec starts cleanly.
-        entrypoint:
-          - /bin/sh
-          - -c
-          - "exec suricata -c /etc/suricata/suricata.yaml --pcap"
-      linux_capabilities:
-        add: [CAP_NET_ADMIN, CAP_NET_RAW, CAP_SYS_NICE]
       network_sensors:
         - network_sensor_id: suricata-sensor
           implementation: suricata
           sensor_kind: ids
           monitoring_posture: passive
-          capture_mode: af_packet
-          capture_interfaces:
-            - any
           monitored_network_refs:
             - security-net
             - dmz-net
@@ -503,7 +372,7 @@ nodes:
               file_refs:
                 - /var/lib/suricata/rules/suricata.rules
               loaded: true
-              description: Image-owned ruleset from the node's exact Suricata artifact; the native author gate verifies this file in that digest.
+              description: Product-provided ruleset selected alongside Suricata 7.0.
             - source_id: techvault-local
               kind: local
               format: suricata_rule
@@ -590,11 +459,12 @@ nodes:
                 - rule_reload
               auth_required: false
               description: Where the MISP sync agent drives a reload after writing rules.
+          version: "7.0"
       forwarding_agents:
         - forwarding_agent_id: suricata-eve-forwarder
           implementation: wazuh_agent
           agent_kind: log_forwarder
-          name: aptl-suricata-agent
+          name: techvault-suricata-agent
           description: Tails Suricata's EVE output and ships it to the Wazuh manager. This is the hand-off that makes network detections visible to the SIEM.
           sources:
             - source_id: suricata-eve
@@ -617,41 +487,9 @@ nodes:
   misp:
     type: compute
     os: linux
-    source:
-      name: "ghcr.io/misp/misp-docker/misp-core"
-      version: "sha256:0eaa4e423d5cd965b7b76aa5665e81d5c05a35bc46a4ffec2ca52e0cfe627e86"
-      artifact_requirement:
-        requirement_id: misp-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "ghcr.io/misp/misp-docker/misp-core"
-          version: "sha256:0eaa4e423d5cd965b7b76aa5665e81d5c05a35bc46a4ffec2ca52e0cfe627e86"
-          digest: "sha256:0eaa4e423d5cd965b7b76aa5665e81d5c05a35bc46a4ffec2ca52e0cfe627e86"
-          media_type: "application/vnd.docker.distribution.manifest.list.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: https, port: 443, protocol: tcp}
     runtime:
-      network:
-        published_ports:
-          - {container_port: 443, protocol: tcp, host_port: 8443, host_ip: "127.0.0.1"}
-      environment:
-        - {name: MYSQL_HOST, value: misp-db, value_classification: plain, provenance: compose}
-        - {name: MYSQL_DATABASE, value: misp, value_classification: plain, provenance: compose}
-        - {name: MYSQL_USER, value: misp, value_classification: plain, provenance: compose}
-        - {name: MYSQL_PASSWORD, value: misp_db_password, value_classification: secret_fixture, provenance: compose}
-        - {name: REDIS_HOST, value: misp-redis, value_classification: plain, provenance: compose}
-        - {name: BASE_URL, value: "https://localhost", value_classification: plain, provenance: compose}
-        - {name: ADMIN_EMAIL, value: "admin@admin.test", value_classification: plain, provenance: compose}
-        - {name: ADMIN_PASSWORD, value: admin, value_classification: secret_fixture, provenance: compose}
-        - {name: ADMIN_KEY, value_classification: operator_secret, provenance: operator}
       service_listeners:
         - service_listener_id: misp-https-listener
           service: https
@@ -659,8 +497,6 @@ nodes:
           port: 443
           protocol: tcp
           scope: wildcard
-          published_port_refs:
-            - {container_port: 443, protocol: tcp, host_port: 8443, host_ip: "127.0.0.1"}
           provenance: operator
       applications:
         - application_id: misp-web
@@ -681,40 +517,22 @@ nodes:
               kind: threat_intelligence_management
             - capability_id: intelligence-exchange
               kind: intelligence_exchange
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 2 GiB
+          authorization_ref: misp-api-authorization
+          version: 2.5.44
+      app_authorizations:
+        - app_authorization_id: misp-api-authorization
+          auth_enabled: true
+          principals:
+            - principal_id: misp-suricata-sync-api-key
+              kind: api_key
+              credential_classification: operator_secret
+              description: The sync agent authenticates to MISP with a dedicated API key whose bytes are supplied through the backend's secret boundary.
   misp-db:
     type: compute
     os: linux
-    source:
-      name: "mariadb"
-      version: "sha256:be981e4113326ada8d6004174dd09eeaefc03094037f811182a52d4f2e737350"
-      artifact_requirement:
-        requirement_id: misp-db-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "mariadb"
-          version: "sha256:be981e4113326ada8d6004174dd09eeaefc03094037f811182a52d4f2e737350"
-          digest: "sha256:be981e4113326ada8d6004174dd09eeaefc03094037f811182a52d4f2e737350"
-          media_type: "application/vnd.oci.image.index.v1+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: mysql, port: 3306, protocol: tcp}
     runtime:
-      environment:
-        - {name: MYSQL_DATABASE, value: misp, value_classification: plain, provenance: compose}
-        - {name: MYSQL_USER, value: misp, value_classification: plain, provenance: compose}
-        - {name: MYSQL_PASSWORD, value: misp_db_password, value_classification: secret_fixture, provenance: compose}
-        - {name: MYSQL_ROOT_PASSWORD, value: misp_root_password, value_classification: secret_fixture, provenance: compose}
       service_listeners:
         - service_listener_id: mysql-listener
           service: mysql
@@ -734,32 +552,10 @@ nodes:
             - database_id: misp
               name: misp
               origin: scenario
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 512 MiB
+          version: "10.11"
   misp-redis:
     type: compute
     os: linux
-    source:
-      name: "redis"
-      version: "sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99"
-      artifact_requirement:
-        requirement_id: misp-redis-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "redis"
-          version: "sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99"
-          digest: "sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99"
-          media_type: "application/vnd.oci.image.index.v1+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: redis, port: 6379, protocol: tcp}
     runtime:
@@ -790,65 +586,18 @@ nodes:
             aof: false
             eviction: noeviction
             description: Ephemeral MISP cache with deterministic no-eviction behavior.
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 128 MiB
+          version: "7"
   misp-suricata-sync:
     type: compute
     os: linux
     services: []
     runtime:
-      # Names and classification only: a secret value is supplied by the
-      # operator environment through the existing secret boundary, never
-      # authored here and never carried in realization DTOs, argv, or logs.
-      environment:
-        - name: MISP_URL
-          value: "https://misp"
-          value_classification: plain
-          provenance: compose
-        - name: MISP_API_KEY
-          value_classification: operator_secret
-          provenance: compose
-        - name: MISP_VERIFY_SSL
-          # MISP serves a self-signed certificate in the lab and there is no lab
-          # CA, so the sync client must not verify TLS. Declaring it here makes
-          # it real range content the backend realizes and discloses, rather
-          # than leaking in from the operator environment out of band.
-          value: "false"
-          value_classification: plain
-          provenance: compose
-        - name: MISP_CA_CERT_PATH
-          value_classification: plain
-          provenance: compose
-        - name: IOC_TAG_FILTER
-          value: "aptl:enforce"
-          value_classification: plain
-          provenance: compose
-        - name: SYNC_INTERVAL_SECONDS
-          value: "300"
-          value_classification: plain
-          provenance: compose
-        - name: RULES_OUT_PATH
-          value: "/var/lib/suricata/rules/misp/misp-iocs.rules"
-          value_classification: plain
-          provenance: compose
-        - name: SURICATA_SOCKET_PATH
-          value: "/var/run/suricata/suricata-command.socket"
-          value_classification: plain
-          provenance: compose
-        - name: SID_BASE
-          value: "99000000"
-          value_classification: plain
-          provenance: compose
-        - name: LOG_LEVEL
-          value: "INFO"
-          value_classification: plain
-          provenance: compose
       packages:
         - {manager: apt, name: python3-pip, version: "*"}
       dependency_manifests:
         - {ecosystem: pip, path: /app/pyproject.toml, name: aptl-labs}
+      filesystem_inventory:
+        - {path: /opt/techvault/soc-certs/lab-ca.pem, entry_type: file, owner_user: root, owner_group: root, mode: "0644", sensitivity: plain}
       # The persistent-volume declarations below are the single mount
       # authority for the generated rules and private command socket.
       forwarding_agents:
@@ -861,11 +610,27 @@ nodes:
               kind: api_pull
               location: https://misp
               parse_format: misp_json
-              selector: aptl:enforce
+              selector: techvault:enforce
           transforms:
             - transform_id: ioc-to-suricata-rules
               kind: ioc_to_rule
               sid_namespace: '99000000'
+          settings:
+            - setting_id: misp-api-authentication
+              name: MISP API credential
+              provenance: unknown
+              classification: operator_secret
+              description: Credential posture for the declared misp-suricata-sync-api-key principal; secret bytes are not pack content.
+            - setting_id: misp-tls-verification
+              name: MISP TLS certificate verification
+              value: required
+              provenance: default
+              classification: plain
+            - setting_id: misp-ca-trust-anchor
+              name: MISP trusted CA certificate
+              value: /opt/techvault/soc-certs/lab-ca.pem
+              provenance: unknown
+              classification: plain
           reload_channels:
             - reload_channel_id: suricata-command-socket
               target_ref: nodes.suricata.runtime.network_detection_engines.suricata-engine.control_channels.command-socket
@@ -873,46 +638,9 @@ nodes:
   thehive:
     type: compute
     os: linux
-    source:
-      name: "strangebee/thehive"
-      version: "sha256:ba3212a89be79de6ec8e6e66b84f3c0801c3b8d726aacc767ad6257030df7a13"
-      artifact_requirement:
-        requirement_id: thehive-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "strangebee/thehive"
-          version: "sha256:ba3212a89be79de6ec8e6e66b84f3c0801c3b8d726aacc767ad6257030df7a13"
-          digest: "sha256:ba3212a89be79de6ec8e6e66b84f3c0801c3b8d726aacc767ad6257030df7a13"
-          media_type: "application/vnd.oci.image.index.v1+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: thehive-api, port: 9000, protocol: tcp}
     runtime:
-      network:
-        published_ports:
-          - {container_port: 9000, protocol: tcp, host_port: 9000, host_ip: "127.0.0.1"}
-      environment:
-        - name: JVM_OPTS
-          value: "-Xms512m -Xmx512m"
-          value_classification: plain
-          provenance: compose
-        - name: TH_SECRET
-          value: aptl-thehive-lab-secret-key-2024-purple
-          value_classification: secret_fixture
-          provenance: compose
-        - name: TH_CORTEX_KEYS
-          value_from:
-            generated_artifact: cortex-service-credentials
-            output: connector-api-key
-          value_classification: redacted
-          provenance: runtime
       service_listeners:
         - service_listener_id: thehive-api-listener
           service: thehive-api
@@ -920,8 +648,6 @@ nodes:
           port: 9000
           protocol: tcp
           scope: wildcard
-          published_port_refs:
-            - {container_port: 9000, protocol: tcp, host_port: 9000, host_ip: "127.0.0.1"}
           provenance: operator
       applications:
         - application_id: thehive-web
@@ -949,55 +675,21 @@ nodes:
               role: index_backend
               target_node_ref: thehive-es
               target_service_ref: elasticsearch
+            - binding_id: thehive-cortex-api
+              role: backend_api
+              target_node_ref: cortex
+              target_service_ref: cortex-api
+              description: Least-privilege analyzer execution and result retrieval.
           connectors:
             - connector_id: cortex-analyzer-engine
               kind: analyzer_engine
               enabled: true
               credential_classification: redacted
-      container:
-        # TheHive's declared backends are Cassandra for the graph store and
-        # local Lucene indexing over Elasticsearch. Cortex is admitted only
-        # after its one-shot initializer has enabled the exact offline analyzer
-        # and provisioned this connector's dedicated fixture identity.
-        command:
-          - "--cql-hostnames"
-          - "thehive-cassandra"
-          - "--index-backend"
-          - "elasticsearch"
-          - "--es-hostnames"
-          - "thehive-es"
-          - "--cortex-proto"
-          - "http"
-          - "--cortex-hostnames"
-          - "cortex"
-          - "--cortex-port"
-          - "9001"
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 1 GiB
+              description: TheHive uses the declared least-privilege Cortex service account; credential bytes are not pack content.
+          version: "5.4"
   thehive-cassandra:
     type: compute
     os: linux
-    source:
-      name: "cassandra"
-      version: "sha256:d25e8ee78d648fade002d0d176b7e8c953c69164b9f316ccbccf62f524c9dfbf"
-      artifact_requirement:
-        requirement_id: thehive-cassandra-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "cassandra"
-          version: "sha256:d25e8ee78d648fade002d0d176b7e8c953c69164b9f316ccbccf62f524c9dfbf"
-          digest: "sha256:d25e8ee78d648fade002d0d176b7e8c953c69164b9f316ccbccf62f524c9dfbf"
-          media_type: "application/vnd.oci.image.index.v1+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: cassandra, port: 9042, protocol: tcp}
     runtime:
@@ -1016,69 +708,23 @@ nodes:
   thehive-es:
     type: compute
     os: linux
-    source:
-      name: "docker.elastic.co/elasticsearch/elasticsearch"
-      version: "sha256:f2ce8a4c644a35762e6e115c9a373c5cd20df03c2dd75cb0a570011934cdffd1"
-      artifact_requirement:
-        requirement_id: thehive-es-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "docker.elastic.co/elasticsearch/elasticsearch"
-          version: "sha256:f2ce8a4c644a35762e6e115c9a373c5cd20df03c2dd75cb0a570011934cdffd1"
-          digest: "sha256:f2ce8a4c644a35762e6e115c9a373c5cd20df03c2dd75cb0a570011934cdffd1"
-          media_type: "application/vnd.docker.distribution.manifest.list.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: elasticsearch, port: 9200, protocol: tcp}
     runtime:
-      environment:
-        - name: discovery.type
-          value: single-node
-        - name: xpack.security.enabled
-          value: "false"
-        - name: cluster.routing.allocation.disk.threshold_enabled
-          value: "false"
-        # Cap the JVM heap: Elasticsearch otherwise auto-sizes to ~1/4 of host
-        # RAM (31 GB on a 125 GB host), which destabilizes the lab under load.
-        - name: ES_JAVA_OPTS
-          value: "-Xms512m -Xmx512m"
+      datastore_services:
+        - datastore_service_id: thehive-es
+          service: elasticsearch
+          engine: elasticsearch
+          data_model: unknown
+          protocol: http
+          version: 7.17.28
+          description: Search datastore for TheHive and Cortex state.
   cortex:
     type: compute
     os: linux
-    source:
-      name: "thehiveproject/cortex"
-      version: "sha256:ae8b3d72eb5de785513bc33492d93278c32b79d9ff89401463c3a9c577e0bc0b"
-      artifact_requirement:
-        requirement_id: cortex-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "thehiveproject/cortex"
-          version: "sha256:ae8b3d72eb5de785513bc33492d93278c32b79d9ff89401463c3a9c577e0bc0b"
-          digest: "sha256:ae8b3d72eb5de785513bc33492d93278c32b79d9ff89401463c3a9c577e0bc0b"
-          media_type: "application/vnd.docker.distribution.manifest.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: cortex-api, port: 9001, protocol: tcp}
     runtime:
-      environment:
-        - {name: job_directory, value: /opt/cortex/jobs, value_classification: plain, provenance: compose}
-      network:
-        published_ports:
-          - {container_port: 9001, protocol: tcp, host_port: 9001, host_ip: "127.0.0.1"}
       service_listeners:
         - service_listener_id: cortex-api-listener
           service: cortex-api
@@ -1086,8 +732,6 @@ nodes:
           port: 9001
           protocol: tcp
           scope: wildcard
-          published_port_refs:
-            - {container_port: 9001, protocol: tcp, host_port: 9001, host_ip: "127.0.0.1"}
           provenance: operator
       applications:
         - application_id: cortex-web
@@ -1121,104 +765,23 @@ nodes:
               target_node_ref: thehive-es
               target_service_ref: elasticsearch
           authorization_ref: cortex-rbac
+          version: 3.1.8
       app_authorizations:
         - app_authorization_id: cortex-rbac
           auth_enabled: true
           principals:
-            - principal_id: cortex-initializer-admin
-              kind: service_account
-              credential_classification: redacted
-              backend_roles: [read, analyze, orgadmin]
-              description: Dedicated bootstrap identity used only by the one-shot initializer.
             - principal_id: thehive-cortex-connector
               kind: service_account
               credential_classification: redacted
               backend_roles: [read, analyze]
               description: Dedicated least-privilege identity used by TheHive.
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 2 GiB
-  cortex-initializer:
-    type: compute
-    os: linux
-    source:
-      name: "thehiveproject/cortex"
-      version: "sha256:ae8b3d72eb5de785513bc33492d93278c32b79d9ff89401463c3a9c577e0bc0b"
-      artifact_requirement:
-        requirement_id: cortex-initializer-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "thehiveproject/cortex"
-          version: "sha256:ae8b3d72eb5de785513bc33492d93278c32b79d9ff89401463c3a9c577e0bc0b"
-          digest: "sha256:ae8b3d72eb5de785513bc33492d93278c32b79d9ff89401463c3a9c577e0bc0b"
-          media_type: "application/vnd.docker.distribution.manifest.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
-    services: []
-    runtime:
-      environment:
-        - {name: CORTEX_URL, value: "http://cortex:9001", value_classification: plain, provenance: compose}
-        - {name: CORTEX_ORGANIZATION, value: TechVault, value_classification: plain, provenance: compose}
-        - {name: CORTEX_ANALYZER_DEFINITION_ID, value: TechVaultScenarioContext_1_0, value_classification: plain, provenance: compose}
-        - {name: CORTEX_READY_TIMEOUT, value: "300", value_classification: plain, provenance: compose}
-        - name: CORTEX_ADMIN_KEY
-          value_from:
-            generated_artifact: cortex-service-credentials
-            output: initializer-api-key
-          value_classification: redacted
-          provenance: runtime
-        - name: CORTEX_CONNECTOR_KEY
-          value_from:
-            generated_artifact: cortex-service-credentials
-            output: connector-api-key
-          value_classification: redacted
-          provenance: runtime
-      container:
-        entrypoint: [python3, /opt/techvault/cortex-initializer.py]
-        autoremove: true
-      operational_policy:
-        restart: "no"
+          description: Cortex authorization state required by the scenario.
   shuffle-backend:
     type: compute
     os: linux
-    source:
-      name: "ghcr.io/shuffle/shuffle-backend"
-      version: "sha256:d4a5d2bf1f956955b68b099ba1c38997e4b257b2518215e0427f433515bea5c8"
-      artifact_requirement:
-        requirement_id: shuffle-backend-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "ghcr.io/shuffle/shuffle-backend"
-          version: "sha256:d4a5d2bf1f956955b68b099ba1c38997e4b257b2518215e0427f433515bea5c8"
-          digest: "sha256:d4a5d2bf1f956955b68b099ba1c38997e4b257b2518215e0427f433515bea5c8"
-          media_type: "application/vnd.oci.image.index.v1+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: shuffle-api, port: 5001, protocol: tcp}
     runtime:
-      environment:
-        - {name: SHUFFLE_OPENSEARCH_URL, value: "https://shuffle-opensearch:9200", value_classification: plain, provenance: compose}
-        - {name: SHUFFLE_OPENSEARCH_USERNAME, value: admin, value_classification: plain, provenance: compose}
-        - {name: SHUFFLE_OPENSEARCH_PASSWORD, value: "StrongPassword123!", value_classification: secret_fixture, provenance: compose}
-        - {name: SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY, value: "true", value_classification: plain, provenance: compose}
-        - {name: SHUFFLE_DEFAULT_USERNAME, value: admin, value_classification: plain, provenance: compose}
-        - {name: SHUFFLE_DEFAULT_PASSWORD, value: "ShuffleAdmin2024!", value_classification: secret_fixture, provenance: compose}
-        - {name: SHUFFLE_DEFAULT_APIKEY, value: "31a211c4-ea5c-4a49-b022-5e2434e758a7", value_classification: secret_fixture, provenance: compose}
-        - {name: SHUFFLE_APP_SDK_TIMEOUT, value: "120", value_classification: plain, provenance: compose}
       service_listeners:
         - service_listener_id: shuffle-api-listener
           service: shuffle-api
@@ -1243,6 +806,7 @@ nodes:
               role: index_backend
               target_node_ref: shuffle-opensearch
               target_service_ref: opensearch-rest
+          version: unversioned
       applications:
         - application_id: shuffle-api
           service: shuffle-api
@@ -1252,42 +816,13 @@ nodes:
               path: /api
               methods: [GET, POST]
               auth_required: true
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 1 GiB
   shuffle-frontend:
     type: compute
     os: linux
-    source:
-      name: "ghcr.io/shuffle/shuffle-frontend"
-      version: "sha256:4d700a6f0822cb081822bd2fa6c633080553bdd4313aed2c4bdce75b87e82836"
-      artifact_requirement:
-        requirement_id: shuffle-frontend-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "ghcr.io/shuffle/shuffle-frontend"
-          version: "sha256:4d700a6f0822cb081822bd2fa6c633080553bdd4313aed2c4bdce75b87e82836"
-          digest: "sha256:4d700a6f0822cb081822bd2fa6c633080553bdd4313aed2c4bdce75b87e82836"
-          media_type: "application/vnd.oci.image.index.v1+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: https, port: 443, protocol: tcp}
       - {name: http, port: 80, protocol: tcp}
     runtime:
-      network:
-        published_ports:
-          - {container_port: 443, protocol: tcp, host_port: 3443, host_ip: "127.0.0.1"}
-          - {container_port: 80, protocol: tcp, host_port: 3001, host_ip: "127.0.0.1"}
-      environment:
-        - {name: BACKEND_HOSTNAME, value: shuffle-backend, value_classification: plain, provenance: compose}
       service_listeners:
         - service_listener_id: shuffle-https-listener
           service: https
@@ -1295,8 +830,6 @@ nodes:
           port: 443
           protocol: tcp
           scope: wildcard
-          published_port_refs:
-            - {container_port: 443, protocol: tcp, host_port: 3443, host_ip: "127.0.0.1"}
           provenance: operator
         - service_listener_id: shuffle-http-listener
           service: http
@@ -1304,8 +837,6 @@ nodes:
           port: 80
           protocol: tcp
           scope: wildcard
-          published_port_refs:
-            - {container_port: 80, protocol: tcp, host_port: 3001, host_ip: "127.0.0.1"}
           provenance: operator
       applications:
         - application_id: shuffle-web
@@ -1321,103 +852,32 @@ nodes:
                 target_service: shuffle-api
                 scheme: http
                 tls_terminated_here: true
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 256 MiB
+      software_components:
+        - component_id: shuffle-frontend
+          name: Shuffle frontend
+          version: unversioned
+          component_type: application
+          provenance: self_reported
+          description: The captured upstream release did not expose a semantic product version, so the pack does not infer one.
   shuffle-orborus:
     type: compute
     os: linux
-    source:
-      name: "ghcr.io/shuffle/shuffle-orborus"
-      version: "sha256:94e61e7916aea28351fce3851f26f14fb85204f1567a8807d137321418366dba"
-      artifact_requirement:
-        requirement_id: shuffle-orborus-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "ghcr.io/shuffle/shuffle-orborus"
-          version: "sha256:94e61e7916aea28351fce3851f26f14fb85204f1567a8807d137321418366dba"
-          digest: "sha256:94e61e7916aea28351fce3851f26f14fb85204f1567a8807d137321418366dba"
-          media_type: "application/vnd.docker.distribution.manifest.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services: []
     runtime:
-      environment:
-        - {name: BASE_URL, value: "http://shuffle-backend:5001", value_classification: plain, provenance: compose}
-        - {name: CLEANUP, value: "false", value_classification: plain, provenance: compose}
-        - {name: DOCKER_API_VERSION, value: "1.44", value_classification: plain, provenance: compose}
-        - {name: ENVIRONMENT_NAME, value: "Shuffle", value_classification: plain, provenance: compose}
-        - {name: SHUFFLE_APP_SDK_TIMEOUT, value: "300", value_classification: plain, provenance: compose}
-        - {name: SHUFFLE_AUTO_IMAGE_DOWNLOAD, value: "false", value_classification: plain, provenance: compose}
-        - {name: SHUFFLE_BASE_IMAGE_NAME, value: "frikky/shuffle", value_classification: plain, provenance: compose}
-        - {name: SHUFFLE_ORBORUS_EXECUTION_TIMEOUT, value: "600", value_classification: plain, provenance: compose}
-        - {name: SHUFFLE_WORKER_IMAGE, value: "ghcr.io/shuffle/shuffle-worker@sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd", value_classification: plain, provenance: compose}
-      orchestration_authorities:
-        - orchestration_authority_id: shuffle-orborus
-          engine: docker
-          engine_api_version: '1.44'
-          name: Shuffle worker orchestrator
-          privilege_class: host_root_equivalent
-          description: Authorizes Shuffle workflow workers and seeded app workloads through the declared in-world Docker control endpoint.
-          scope:
-            environment_name: Shuffle
-            description: The TechVault Shuffle workflow environment.
-          spawn_templates:
-            - template_id: shuffle-worker
-              image_ref: ghcr.io/shuffle/shuffle-worker@sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd
-              purpose: workflow execution
-            - template_id: shuffle-http-1-4-0
-              image_ref: frikky/shuffle:http_1.4.0@sha256:0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c
-              purpose: seeded HTTP workflow app execution
-          lifecycle_policy:
-            execution_timeout: '600'
-            cleanup: 'false'
-            description: Per-execution ceiling from SHUFFLE_ORBORUS_EXECUTION_TIMEOUT.
-          control_interface_ref: docker-sock
-      local_control_interfaces:
-        - control_interface_id: docker-sock
-          path: /var/run/docker.sock
-          kind: unix_socket
-          access: read_write
-          description: The in-world Docker control endpoint used by Shuffle to create workflow workloads.
+      software_components:
+        - component_id: shuffle-orborus
+          name: Shuffle Orborus
+          version: unversioned
+          component_type: application
+          provenance: self_reported
+          description: Shuffle workflow execution coordinator; the captured upstream release did not expose a semantic product version.
   shuffle-opensearch:
     type: compute
     os: linux
-    source:
-      name: "opensearchproject/opensearch"
-      version: "sha256:466a49f379bb8889af29d615475e69b7b990898c6987d28470cd7105df9046ff"
-      artifact_requirement:
-        requirement_id: shuffle-opensearch-image
-        explicitness: exact
-        exact_artifact:
-          artifact_id: "opensearchproject/opensearch"
-          version: "sha256:466a49f379bb8889af29d615475e69b7b990898c6987d28470cd7105df9046ff"
-          digest: "sha256:466a49f379bb8889af29d615475e69b7b990898c6987d28470cd7105df9046ff"
-          media_type: "application/vnd.docker.distribution.manifest.list.v2+json"
-        permitted_routes:
-          - mechanism:
-              mechanism: "exact-artifact"
-              profile: "aptl-oci-exact-pull"
-              version: "1"
-              digest: "sha256:041966e3e607d90c1237bdbbf1a7a8b48de397ea134405094318f41521b8dfea"
-            acquisition: pull
-            timing: backend-preparation
     services:
       - {name: opensearch-rest, port: 9200, protocol: tcp}
       - {name: opensearch-transport, port: 9300, protocol: tcp}
     runtime:
-      environment:
-        - {name: OPENSEARCH_JAVA_OPTS, value: "-Xms512m -Xmx512m", value_classification: plain, provenance: compose}
-        - {name: discovery.type, value: single-node, value_classification: plain, provenance: compose}
-        - {name: cluster.routing.allocation.disk.threshold_enabled, value: "false", value_classification: plain, provenance: compose}
-        - {name: OPENSEARCH_INITIAL_ADMIN_PASSWORD, value: "StrongPassword123!", value_classification: secret_fixture, provenance: compose}
       datastore_services:
         - datastore_service_id: shuffle-opensearch
           service: opensearch-rest
@@ -1442,7 +902,7 @@ nodes:
             mode: tls
             client_verification: false
             node_verification: false
-            description: The disposable single-node datastore uses the selected image's demo TLS material; Shuffle deliberately does not verify that certificate on this internal hop.
+            description: The scenario datastore uses TLS on its internal service; the Shuffle client deliberately does not verify that certificate.
           partitions:
             - partition_id: workflowqueue
               kind: index
@@ -1500,100 +960,24 @@ nodes:
               partition_ref: users
               top_level_field_count: 30
               description: SOAR user record mapping.
-
   webapp:
     type: compute
     os: linux
     services:
       - {name: http, port: 8080, protocol: tcp}
     runtime:
-      # Bind mounts of project keys and certificates are not restated here:
-      # they are already authored as content placements, which carry
-      # containment and sensitivity handling a raw bind does not.
-      mounts:
-        - {target: /var/log/gunicorn, source: webapp_logs, source_kind: volume}
-      # Names and classification only: a secret value is supplied by the
-      # operator environment through the existing secret boundary, never
-      # authored here and never carried in realization DTOs, argv, or logs.
-      environment:
-        - name: DB_HOST
-          value: "172.20.2.11"
-          value_classification: plain
-          provenance: compose
-        - name: DB_PORT
-          value: "5432"
-          value_classification: plain
-          provenance: compose
-        - name: DB_NAME
-          value: "techvault"
-          value_classification: plain
-          provenance: compose
-        - name: DB_USER
-          value: "techvault"
-          value_classification: plain
-          provenance: compose
-        - name: DB_PASSWORD
-          value: "techvault_db_pass"
-          value_classification: secret_fixture
-          provenance: compose
-        - name: FLASK_ENV
-          value: "production"
-          value_classification: plain
-          provenance: compose
-        - name: SIEM_IP
-          value: "172.20.2.30"
-          value_classification: plain
-          provenance: compose
-        - name: WAZUH_MANAGER
-          value: "wazuh.manager"
-          value_classification: plain
-          provenance: compose
-        - name: AGENT_NAME
-          value: "aptl-webapp-agent"
-          value_classification: plain
-          provenance: compose
-        - name: LOG_PATHS
-          value: "/var/log/gunicorn/access.log"
-          value_classification: plain
-          provenance: compose
-        - name: LOG_FORMAT
-          value: "syslog"
-          value_classification: plain
-          provenance: compose
       packages:
         - {manager: apt, name: python3-flask, version: "*"}
         - {manager: apt, name: python3-gunicorn, version: "*"}
         - {manager: apt, name: python3-psycopg2, version: "*"}
         - {manager: apt, name: python3-jwt, version: "*"}
-        # rsyslog forwards gunicorn's access log to the Wazuh manager's syslog
-        # port (172.20.2.30:514) so webapp SQLi/XSS/cmd-injection fire rules
-        # 302010/302020/302030. The manager accepts remote syslog on 514 from
-        # 172.20.0.0/16, and the web-accesslog decoder plus the custom rules
-        # process those lines.
-        - {manager: apt, name: rsyslog, version: "*"}
-        # iptables reverts blanket kali source-IP DROPs left by Wazuh active
-        # response. The node already declares CAP_NET_ADMIN for that; without
-        # the tool itself the chain cannot be inspected or cleared.
+        # iptables is present so Wazuh active-response state can be inspected
+        # and cleared inside the scenario when required.
         - {manager: apt, name: iptables, version: "*"}
       filesystem_inventory:
+        - {path: /app/user.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
         - {path: /var/log/gunicorn, entry_type: directory}
-      # Reverting blanket kali source-IP DROPs on this node's INPUT chain needs
-      # CAP_NET_ADMIN, which Docker's default capability set does not grant.
-      linux_capabilities:
-        add: [CAP_NET_ADMIN]
-      # webapp is a deliberate attack-surface target for in-range actors, who
-      # reach it over the scenario networks, so it declares no
-      # published_ports here.
-      service_manager_units:
-        - {unit_id: webapp, unit_name: webapp.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (see the flag-generator content below).
-        - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
-        # Custom rsyslog unit (below): the stock rsyslog.service carries systemd
-        # sandboxing (ProtectKernelTunables/RestrictNamespaces/...) that fails
-        # 226/NAMESPACE under restricted capabilities, and a drop-in would need
-        # a daemon-reload that does not run here. A fresh unit file loads on
-        # start (like webapp.service) with no sandboxing.
-        - {unit_id: aptl-rsyslog, unit_name: aptl-rsyslog.service, enabled_state: enabled, active_state: active}
       applications:
         - application_id: techvault-portal
           service: http
@@ -1696,6 +1080,30 @@ nodes:
                 - GET
               auth_required: false
               description: Robots file.
+      forwarding_agents:
+        - forwarding_agent_id: webapp-access-forwarder
+          implementation: wazuh_agent
+          agent_kind: log_forwarder
+          name: techvault-webapp-agent
+          description: Tails the customer portal access log and ships it to the Wazuh manager.
+          sources:
+            - source_id: gunicorn-access
+              kind: tailed_path
+              location: /var/log/gunicorn/access.log
+              parse_format: syslog
+          transforms:
+            - transform_id: webapp-access-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: webapp-access-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: webapp-access-forwarder-manager
+              target_node_ref: wazuh-manager
+              ingestion_port: 1514
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
   ad:
     type: compute
     os: linux
@@ -1704,12 +1112,6 @@ nodes:
       - {name: kerberos, port: 88, protocol: tcp}
       - {name: smb, port: 445, protocol: tcp}
     runtime:
-      # Samba AD DC provisioning sets NT ACLs (security.NTACL xattrs) on the
-      # sysvol during `samba-tool domain provision`, which needs CAP_SYS_ADMIN;
-      # NET_ADMIN is for the DC's own network setup. Without them provisioning
-      # fails with NT_STATUS_ACCESS_DENIED.
-      linux_capabilities:
-        add: [CAP_SYS_ADMIN, CAP_NET_ADMIN]
       service_listeners:
         - service_listener_id: ad-ldap-listener
           service: ldap
@@ -1750,7 +1152,7 @@ nodes:
         - forwarding_agent_id: ad-samba-forwarder
           implementation: wazuh_agent
           agent_kind: log_forwarder
-          name: aptl-ad-agent
+          name: techvault-ad-agent
           description: Tails the domain controller's Samba logs and ships them to the Wazuh manager, so directory and file-service activity reaches the SIEM.
           sources:
             - {source_id: samba-log, kind: tailed_path, location: /var/log/samba/log.samba, parse_format: syslog}
@@ -1784,42 +1186,16 @@ nodes:
               target_node_ref: wazuh-manager
               ingestion_port: 514
               protocol: udp
-      operational_policy:
-        restart: unless_stopped
-        resource_limits:
-          memory: 512 MiB
   db:
     type: compute
     os: linux
     services:
       - {name: postgres, port: 5432, protocol: tcp}
     runtime:
-      # Bind mounts of project keys and certificates are not restated here:
-      # they are already authored as content placements, which carry
-      # containment and sensitivity handling a raw bind does not.
-      mounts:
-        - {target: /var/lib/postgresql/data, source: db_data, source_kind: volume}
-      # Names and classification only: a secret value is supplied by the
-      # operator environment through the existing secret boundary, never
-      # authored here and never carried in realization DTOs, argv, or logs.
-      environment:
-        - name: POSTGRES_DB
-          value: "techvault"
-          value_classification: plain
-          provenance: compose
-        - name: POSTGRES_USER
-          value: "techvault"
-          value_classification: plain
-          provenance: compose
-        - name: POSTGRES_PASSWORD
-          value: "techvault_db_pass"
-          value_classification: secret_fixture
-          provenance: compose
       packages:
         - {manager: apt, name: postgresql, version: "*"}
       service_manager_units:
         - {unit_id: postgresql, unit_name: postgresql.service, enabled_state: enabled, active_state: active}
-        - {unit_id: db-bootstrap, unit_name: db-bootstrap.service, enabled_state: enabled, active_state: active}
       database_services:
         - database_service_id: techvault-db
           engine: postgresql
@@ -1865,7 +1241,7 @@ nodes:
         - forwarding_agent_id: db-postgres-forwarder
           implementation: wazuh_agent
           agent_kind: log_forwarder
-          name: aptl-db-agent
+          name: techvault-db-agent
           description: Tails the customer database's PostgreSQL log and ships it to the Wazuh manager, so database activity reaches the SIEM.
           sources:
             - source_id: postgres-log
@@ -1891,23 +1267,6 @@ nodes:
     services:
       - {name: ssh, port: 22, protocol: tcp}
     runtime:
-      # Bind mounts of project keys and certificates are not restated here:
-      # they are already authored as content placements, which carry
-      # containment and sensitivity handling a raw bind does not.
-      mounts:
-        - {target: /var/log, source: workstation_logs, source_kind: volume}
-      # Names and classification only: a secret value is supplied by the
-      # operator environment through the existing secret boundary, never
-      # authored here and never carried in realization DTOs, argv, or logs.
-      environment:
-        - name: SIEM_IP
-          value: "172.20.2.30"
-          value_classification: plain
-          provenance: compose
-        - name: LABADMIN_SSH_KEY_FILE
-          value: "/keys/aptl_lab_key.pub"
-          value_classification: plain
-          provenance: compose
       packages:
         - {manager: dnf, name: openssh-server, version: "*"}
         # openssh-clients (the `ssh` binary) + postgresql (the `psql` client)
@@ -1928,64 +1287,34 @@ nodes:
           # credential loot the red-team exercise mines; separate from the
           # labadmin admin account. Loot placed via content below.
           - {username: dev-user, primary_group: dev-user, supplemental_groups: [wheel]}
+      filesystem_inventory:
+        - {path: /home/dev-user, entry_type: directory, owner_user: dev-user, owner_group: dev-user, mode: "0755", sensitivity: plain}
+        - {path: /home/dev-user/.bash_history, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0600", sensitivity: secret_fixture}
+        - {path: /home/dev-user/.config/credentials.json, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0600", sensitivity: secret_fixture}
+        - {path: /home/dev-user/.pgpass, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0600", sensitivity: secret_fixture}
+        - {path: /home/dev-user/.ssh, entry_type: directory, owner_user: dev-user, owner_group: dev-user, mode: "0700", sensitivity: operator_secret}
+        - {path: /home/dev-user/.ssh/id_rsa, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0600", sensitivity: operator_secret}
+        - {path: /home/dev-user/projects/techvault-portal/.env, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0600", sensitivity: secret_fixture}
+        - {path: /home/dev-user/user.txt, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
       service_manager_units:
         - {unit_id: sshd, unit_name: sshd.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (see the flag-generator content below).
-        - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
-        # Fix dev-user loot ownership + secret-file perms after the content copy
-        # (the directory copy lands as labadmin:labadmin 664; .pgpass at 664 is
-        # ignored by psql, and dev-user's home should be dev-user-owned).
-        - {unit_id: aptl-workstation-loot, unit_name: aptl-workstation-loot.service, enabled_state: enabled, active_state: active}
   fileshare:
     type: compute
     os: linux
     services:
       - {name: smb, port: 445, protocol: tcp}
     runtime:
-      # Bind mounts of project keys and certificates are not restated here:
-      # they are already authored as content placements, which carry
-      # containment and sensitivity handling a raw bind does not.
-      mounts:
-        - {target: /srv/shares, source: fileshare_data, source_kind: volume}
-        - {target: /var/log/samba, source: fileshare_logs, source_kind: volume}
-      # Names and classification only: a secret value is supplied by the
-      # operator environment through the existing secret boundary, never
-      # authored here and never carried in realization DTOs, argv, or logs.
-      environment:
-        - name: SIEM_IP
-          value: "172.20.0.10"
-          value_classification: plain
-          provenance: compose
-        - name: WAZUH_MANAGER
-          value: "wazuh.manager"
-          value_classification: plain
-          provenance: compose
-        - name: AGENT_NAME
-          value: "aptl-fileshare-agent"
-          value_classification: plain
-          provenance: compose
-        - name: LOG_PATHS
-          value: "/var/log/samba/log.samba-bgqd,/var/log/samba/log.*"
-          value_classification: plain
-          provenance: compose
-        - name: LOG_FORMAT
-          value: "syslog"
-          value_classification: plain
-          provenance: compose
       packages:
-        # iptables reverts active-response DROPs here; the node declares
-        # CAP_NET_ADMIN for it, so the tool must be present or the chain
-        # cannot be inspected or cleared.
+        # iptables is present so active-response state can be inspected and
+        # cleared inside the scenario when required.
         - {manager: apt, name: iptables, version: "*"}
         - {manager: apt, name: samba, version: "*"}
-      # Reverting blanket kali source-IP DROPs on this node's INPUT chain
-      # needs CAP_NET_ADMIN.
-      linux_capabilities:
-        add: [CAP_NET_ADMIN]
+      filesystem_inventory:
+        - {path: /srv/shares/shared/user-flag.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
       service_manager_units:
         - {unit_id: smbd, unit_name: smbd.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (see the flag-generator content below).
-        - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
       file_services:
         - file_service_id: techvault-fileshare
           protocol: smb
@@ -2059,63 +1388,48 @@ nodes:
               kind: group
               name: IT-Admins
               origin: provisioned
+      forwarding_agents:
+        - forwarding_agent_id: fileshare-samba-forwarder
+          implementation: wazuh_agent
+          agent_kind: log_forwarder
+          name: techvault-fileshare-agent
+          description: Tails the file server Samba logs and ships them to the Wazuh manager.
+          sources:
+            - source_id: fileshare-samba-log
+              kind: tailed_path
+              location: /var/log/samba/log.samba
+              parse_format: syslog
+            - source_id: fileshare-smbd-log
+              kind: tailed_path
+              location: /var/log/samba/log.smbd
+              parse_format: syslog
+          transforms:
+            - transform_id: fileshare-samba-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: fileshare-samba-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: fileshare-samba-forwarder-manager
+              target_node_ref: wazuh-manager
+              ingestion_port: 1514
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
   dns:
     type: compute
     os: linux
     services:
       - {name: dns, port: 53, protocol: udp}
     runtime:
-      # Bind mounts of project keys and certificates are not restated here:
-      # they are already authored as content placements, which carry
-      # containment and sensitivity handling a raw bind does not.
-      mounts:
-        - {target: /var/log/named, source: dns_logs, source_kind: volume}
-      # Names and classification only: a secret value is supplied by the
-      # operator environment through the existing secret boundary, never
-      # authored here and never carried in realization DTOs, argv, or logs.
-      environment:
-        - name: WAZUH_MANAGER
-          value: "wazuh.manager"
-          value_classification: plain
-          provenance: compose
-        - name: AGENT_NAME
-          value: "aptl-dns-agent"
-          value_classification: plain
-          provenance: compose
-        - name: LOG_PATHS
-          value: "/var/log/named/query.log,/var/log/named/default.log"
-          value_classification: plain
-          provenance: compose
-        - name: LOG_FORMAT
-          value: "syslog"
-          value_classification: plain
-          provenance: compose
       packages:
-        # iptables reverts active-response DROPs here; the node declares
-        # CAP_NET_ADMIN for it, so the tool must be present or the chain
-        # cannot be inspected or cleared.
+        # iptables is present so active-response state can be inspected and
+        # cleared inside the scenario when required.
         - {manager: apt, name: iptables, version: "*"}
         - {manager: apt, name: bind9, version: "*"}
         - {manager: apt, name: dnsutils, version: "*"}
       filesystem_inventory:
         - {path: /var/log/named, entry_type: directory, owner_user: bind, owner_group: bind}
-      # Reverting blanket kali source-IP DROPs on this node's INPUT chain
-      # needs CAP_NET_ADMIN.
-      linux_capabilities:
-        add: [CAP_NET_ADMIN]
-      # Host port 5353 (53 is commonly already bound on the host by a local
-      # resolver): both protocols, since DNS genuinely uses UDP for queries
-      # and TCP for zone transfers / large responses. In-range actors resolve
-      # against dns over the scenario networks, never through this
-      # publication; it exists only so the operator can query the range from
-      # the lab host (dig @localhost -p 5353 techvault.local SOA). Like every
-      # other host publication in the pack it binds loopback, so it never
-      # lands on the operator's LAN. dns sits on aptl-security (not internal:
-      # true), so unlike webapp this publishes correctly without a proxy.
-      network:
-        published_ports:
-          - {container_port: 53, protocol: tcp, host_port: 5353, host_ip: "127.0.0.1"}
-          - {container_port: 53, protocol: udp, host_port: 5353, host_ip: "127.0.0.1"}
       service_manager_units:
         - {unit_id: named, unit_name: named.service, enabled_state: enabled, active_state: active}
       dns_services:
@@ -2138,66 +1452,91 @@ nodes:
               purpose: reverse
               provenance: zone_file
               description: Reverse zone for the range address space.
+      forwarding_agents:
+        - forwarding_agent_id: dns-query-forwarder
+          implementation: wazuh_agent
+          agent_kind: log_forwarder
+          name: techvault-dns-agent
+          description: Tails the DNS query and service logs and ships them to the Wazuh manager.
+          sources:
+            - source_id: dns-query-log
+              kind: tailed_path
+              location: /var/log/named/query.log
+              parse_format: syslog
+            - source_id: dns-default-log
+              kind: tailed_path
+              location: /var/log/named/default.log
+              parse_format: syslog
+          transforms:
+            - transform_id: dns-log-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: dns-query-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: dns-query-forwarder-manager
+              target_node_ref: wazuh-manager
+              ingestion_port: 1514
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
   victim:
     type: compute
     os: linux
     services:
       - {name: ssh, port: 22, protocol: tcp}
     runtime:
-      # Bind mounts of project keys and certificates are not restated here:
-      # they are already authored as content placements, which carry
-      # containment and sensitivity handling a raw bind does not.
-      mounts:
-        - {target: /var/log, source: victim_logs, source_kind: volume}
-      # Names and classification only: a secret value is supplied by the
-      # operator environment through the existing secret boundary, never
-      # authored here and never carried in realization DTOs, argv, or logs.
-      environment:
-        - name: SIEM_IP
-          value: "172.20.2.30"
-          value_classification: plain
-          provenance: compose
-        - name: LABADMIN_SSH_KEY_FILE
-          value: "/keys/aptl_lab_key.pub"
-          value_classification: plain
-          provenance: compose
       packages:
         - {manager: dnf, name: openssh-server, version: "*"}
         - {manager: dnf, name: sudo, version: "*"}
-        # rsyslog forwards the victim's syslog to the Wazuh manager
-        # (172.20.2.30:514) so host events (auth failures, the smoke
-        # log-ingestion probe) reach the SIEM.
+        # rsyslog records authentication and system events locally; the typed
+        # Wazuh forwarding agent below performs the SIEM hand-off.
         - {manager: dnf, name: rsyslog, version: "*"}
       local_identity:
         groups:
           - {name: labadmin}
         users:
           - {username: labadmin, primary_group: labadmin, supplemental_groups: [wheel]}
+      filesystem_inventory:
+        - {path: /home/labadmin/user.txt, entry_type: file, owner_user: labadmin, owner_group: labadmin, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
       service_manager_units:
         - {unit_id: sshd, unit_name: sshd.service, enabled_state: enabled, active_state: active}
-        - {unit_id: aptl-rsyslog, unit_name: aptl-rsyslog.service, enabled_state: enabled, active_state: active}
-        # Per-boot CTF flags (see the flag-generator content below).
-        - {unit_id: aptl-flaggen, unit_name: aptl-flaggen.service, enabled_state: enabled, active_state: active}
-
+        - {unit_id: rsyslog, unit_name: rsyslog.service, enabled_state: enabled, active_state: active}
+      forwarding_agents:
+        - forwarding_agent_id: victim-system-forwarder
+          implementation: wazuh_agent
+          agent_kind: log_forwarder
+          name: techvault-victim-agent
+          description: Tails victim authentication and system logs and ships them to the Wazuh manager, including the smoke-test probe.
+          sources:
+            - source_id: victim-auth-log
+              kind: tailed_path
+              location: /var/log/secure
+              parse_format: syslog
+            - source_id: victim-system-log
+              kind: tailed_path
+              location: /var/log/messages
+              parse_format: syslog
+          transforms:
+            - transform_id: victim-syslog-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: victim-system-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: victim-system-forwarder-manager
+              target_node_ref: wazuh-manager
+              ingestion_port: 1514
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
   kali:
     type: compute
     os: linux
     services:
       - {name: ssh, port: 22, protocol: tcp}
     runtime:
-      # Bind mounts of project keys and certificates are not restated here:
-      # they are already authored as content placements, which carry
-      # containment and sensitivity handling a raw bind does not.
-      mounts:
-        - {target: /home/kali/operations, source: kali_operations, source_kind: volume}
-      # Names and classification only: a secret value is supplied by the
-      # operator environment through the existing secret boundary, never
-      # authored here and never carried in realization DTOs, argv, or logs.
-      environment:
-        - name: VICTIM_IP
-          value: "172.20.2.20"
-          value_classification: plain
-          provenance: compose
       packages:
         - {manager: apt, name: openssh-server, version: "*"}
         # iputils-ping: reachability checks ICMP-ping every shared-network
@@ -2230,111 +1569,103 @@ nodes:
           - {username: kali, primary_group: kali}
       service_manager_units:
         - {unit_id: ssh, unit_name: ssh.service, enabled_state: enabled, active_state: active}
-
+      software_components:
+        - component_id: nodejs
+          name: Node.js
+          version: "22"
+          component_type: platform
+          provenance: self_reported
+          description: Runtime for the participant’s stdio MCP servers.
+        - component_id: aptl-mcp-common
+          name: aptl-mcp-common
+          version: 0.1.0
+          component_type: library
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/aptl-mcp-common/package-lock.json
+        - component_id: mcp-red
+          name: aptl-kali-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-red/package-lock.json
+          description: Red-team stdio tools available only on the Kali workstation.
+  soc-workstation:
+    type: compute
+    description: Blue-team analyst workstation containing the defensive stdio MCP sources.
+    os: linux
+    services:
+      - name: ssh
+        port: 22
+        protocol: tcp
+    runtime:
+      local_identity:
+        groups:
+          - name: analyst
+        users:
+          - username: analyst
+            primary_group: analyst
+      service_manager_units:
+        - unit_id: ssh
+          unit_name: ssh.service
+          enabled_state: enabled
+          active_state: active
+      software_components:
+        - component_id: nodejs
+          name: Node.js
+          version: "22"
+          component_type: platform
+          provenance: self_reported
+          description: Runtime for the participant’s stdio MCP servers.
+        - component_id: aptl-mcp-common
+          name: aptl-mcp-common
+          version: 0.1.0
+          component_type: library
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/aptl-mcp-common/package-lock.json
+        - component_id: mcp-casemgmt
+          name: aptl-casemgmt-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-casemgmt/package-lock.json
+        - component_id: mcp-indexer
+          name: aptl-indexer-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-indexer/package-lock.json
+        - component_id: mcp-network
+          name: aptl-network-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-network/package-lock.json
+        - component_id: mcp-reverse
+          name: aptl-reverse-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-reverse/package-lock.json
+        - component_id: mcp-soar
+          name: aptl-soar-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-soar/package-lock.json
+        - component_id: mcp-threatintel
+          name: aptl-threatintel-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-threatintel/package-lock.json
+        - component_id: mcp-wazuh
+          name: aptl-wazuh-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-wazuh/package-lock.json
 realization:
   default: open
-  constraints:
-    - field_pointer: /nodes/wazuh-manager
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/wazuh-indexer
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/wazuh-dashboard
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/suricata
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/misp
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/misp-db
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/misp-redis
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/misp-suricata-sync
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/thehive
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/thehive-cassandra
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/thehive-es
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/cortex
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/cortex-initializer
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/shuffle-backend
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/shuffle-frontend
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/shuffle-orborus
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/shuffle-opensearch
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/webapp
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/ad
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/db
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/workstation
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/fileshare
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/dns
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/victim
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-    - field_pointer: /nodes/kali
-      concern: compute-substrate
-      posture: exact
-      domain: {kind: exact, value: operating-system-container}
-
 infrastructure:
   security-net:
     properties: {cidr: 172.20.0.0/24, gateway: 172.20.0.1, internal: false}
@@ -2358,7 +1689,6 @@ infrastructure:
   wazuh-dashboard:
     links: [security-net]
     dependencies: [wazuh-indexer, wazuh-manager]
-
   suricata:
     links: [security-net, dmz-net, internal-net]
   misp:
@@ -2373,7 +1703,7 @@ infrastructure:
     dependencies: [misp, suricata]
   thehive:
     links: [security-net]
-    dependencies: [thehive-cassandra, thehive-es, cortex-initializer]
+    dependencies: [thehive-cassandra, thehive-es, cortex]
   thehive-cassandra:
     links: [security-net]
   thehive-es:
@@ -2381,9 +1711,6 @@ infrastructure:
   cortex:
     links: [security-net]
     dependencies: [thehive-es]
-  cortex-initializer:
-    links: [security-net]
-    dependencies: [cortex]
   shuffle-backend:
     links: [security-net]
     dependencies: [shuffle-opensearch]
@@ -2395,7 +1722,6 @@ infrastructure:
     dependencies: [shuffle-backend]
   shuffle-opensearch:
     links: [security-net]
-
   # Fixed addressing for the enterprise + attacker set: the DNS zones and the
   # seeded credentials and loot hardcode these. Without a pinned address the
   # node is auto-allocated and drifts.
@@ -2436,27 +1762,20 @@ infrastructure:
     dependencies: [wazuh-manager]
     properties:
       - {internal-net: 172.20.2.20}
-
   kali:
     links: [redteam-net, dmz-net, internal-net]
     properties:
       - {redteam-net: 172.20.4.30}
       - {dmz-net: 172.20.1.30}
       - {internal-net: 172.20.2.35}
-
+  soc-workstation:
+    links:
+      - security-net
+    properties:
+      - security-net: 172.20.0.40
 # Stateful Wazuh prerequisites are authored RAES resources. The deployment
 # backend materializes and verifies these before either consumer starts.
 generated_artifacts:
-  # A backend generates and retains these values, then injects the selected
-  # outputs directly into the initializer and TheHive environments. Raw API
-  # keys never enter the portable SDL, compiled observations, or pack bytes.
-  cortex-service-credentials:
-    generator: rendered_config
-    lifecycle: reuse_valid
-    provenance: techvault:cortex-service-credentials/v1
-    outputs:
-      - {name: initializer-api-key, path: cortex/initializer-api-key, sensitivity: secret}
-      - {name: connector-api-key, path: cortex/connector-api-key, sensitivity: secret}
   wazuh-indexer-certs:
     generator: certificate_bundle
     lifecycle: reuse_valid
@@ -2508,7 +1827,6 @@ generated_artifacts:
         access_mode: read_only
         selected_outputs: [manager-config]
     ordering_dependencies: [generated_artifacts.wazuh-manager-certs]
-
   # Backend-produced access material. The operator private key remains inside
   # the producer. Each node receives only the output subset needed for its
   # declared SSH path; no private key is copied into this pack.
@@ -2556,7 +1874,6 @@ generated_artifacts:
         mount_destination: /home
         access_mode: read_only
         selected_outputs: [kali-authorized-keys, kali-pivot-private-key]
-
   # The SOC trust chain is separate from Wazuh's certificate bundles. Its CA
   # private key is producer-private, while each service selects only the public
   # CA and its own leaf/keystore material.
@@ -2592,64 +1909,25 @@ generated_artifacts:
         sensitivity: secret
     consumers:
       - node: misp
-        mount_destination: /opt/aptl/soc-certs
+        mount_destination: /opt/techvault/soc-certs
         access_mode: read_only
         selected_outputs: [ca-certificate, misp-certificate, misp-private-key]
+      - node: misp-suricata-sync
+        mount_destination: /opt/techvault/soc-certs
+        access_mode: read_only
+        selected_outputs: [ca-certificate]
       - node: thehive
-        mount_destination: /opt/aptl/soc-certs
+        mount_destination: /opt/techvault/soc-certs
         access_mode: read_only
         selected_outputs: [ca-certificate, thehive-keystore, thehive-keystore-password]
       - node: cortex
-        mount_destination: /opt/aptl/soc-certs
+        mount_destination: /opt/techvault/soc-certs
         access_mode: read_only
         selected_outputs: [ca-certificate]
       - node: shuffle-frontend
-        mount_destination: /opt/aptl/soc-certs
+        mount_destination: /opt/techvault/soc-certs
         access_mode: read_only
         selected_outputs: [ca-certificate, shuffle-certificate, shuffle-private-key]
-
-  # Per-node flag signing keys are backend-produced and never ship as pack
-  # bytes. The producer retains its seed; each node receives only its own key,
-  # and the scoring backend can validate the corresponding aptl:v2 HMAC token.
-  techvault-flag-signing-keys:
-    generator: rendered_config
-    lifecycle: regenerate_on_change
-    provenance: techvault:flag-signing-profile/v2
-    outputs:
-      - name: signing-seed
-        path: internal/signing-seed
-        sensitivity: secret
-        disposition: producer_private
-      - name: victim-signing-key
-        path: victim.key
-        sensitivity: secret
-      - name: workstation-signing-key
-        path: workstation.key
-        sensitivity: secret
-      - name: webapp-signing-key
-        path: webapp.key
-        sensitivity: secret
-      - name: fileshare-signing-key
-        path: fileshare.key
-        sensitivity: secret
-    consumers:
-      - node: victim
-        mount_destination: /run/techvault/flag-signing
-        access_mode: read_only
-        selected_outputs: [victim-signing-key]
-      - node: workstation
-        mount_destination: /run/techvault/flag-signing
-        access_mode: read_only
-        selected_outputs: [workstation-signing-key]
-      - node: webapp
-        mount_destination: /run/techvault/flag-signing
-        access_mode: read_only
-        selected_outputs: [webapp-signing-key]
-      - node: fileshare
-        mount_destination: /run/techvault/flag-signing
-        access_mode: read_only
-        selected_outputs: [fileshare-signing-key]
-
 persistent_volumes:
   wazuh-indexer-data:
     lifecycle: retain
@@ -2675,7 +1953,6 @@ persistent_volumes:
         mount_destination: /var/ossec/logs
         access_mode: read_write
     ordering_dependencies: [persistent_volumes.wazuh-manager-etc]
-
   ad_data:
     lifecycle: retain
     access_mode: read_write_once
@@ -2758,20 +2035,6 @@ persistent_volumes:
     access_mode: read_write_once
     consumers:
       - {node: wazuh-dashboard, mount_destination: /usr/share/wazuh-dashboard/plugins/wazuh/public/assets/custom, access_mode: read_write}
-features:
-  techvault-webapp-service:
-    type: service
-    source:
-      name: aptl-webapp
-      version: local
-    description: TechVault vulnerable customer portal service.
-  techvault-defensive-stack:
-    type: service
-    source:
-      name: aptl-soc-stack
-      version: local
-    description: Wazuh, Suricata, MISP, TheHive, Cortex, and Shuffle services.
-
 content:
   wazuh-indexer-opensearch-config:
     type: file
@@ -3057,7 +2320,7 @@ content:
         exact_artifact:
           artifact_id: techvault-suricata-config
           version: 0.1.0
-          digest: sha256:37cbb226360af33f01ec4806ebbbb59fc318c6912472845831e954c0a324d471
+          digest: sha256:d1bf43326da10781b8b20c10c78ad2bbbc25a64c50019fd7933a56bb52b42471
           media_type: application/yaml
         permitted_routes:
           - mechanism: &suricata-content-copy
@@ -3168,7 +2431,7 @@ content:
     path: /etc/cortex/application.conf
     text: |
       # Elasticsearch backend (thehive-es on the security network). Cortex
-      # 3.1.8 expects search.uri; HTTP-only in-network on aptl-security.
+      # 3.1.8 expects search.uri; HTTP-only on the scenario security network.
       search {
         index = "cortex"
         uri = "http://thehive-es:9200"
@@ -3214,29 +2477,6 @@ content:
           artifact_id: techvault-cortex-analyzer-executable
           version: 0.1.0
           digest: sha256:ce6962465bc7bdd6394b4df3785685a8cf32f22689671dfda644540ffc51f152
-          media_type: text/x-python
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  cortex-initializer-script:
-    type: file
-    target: cortex-initializer
-    path: /opt/techvault/cortex-initializer.py
-    source:
-      name: techvault-cortex-initializer
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-cortex-initializer-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-cortex-initializer
-          version: 0.1.0
-          digest: sha256:7ad7cb07259da52fbb7dfe5ea77b02874273d84d37b6abdb000858237a5ed96c
           media_type: text/x-python
         permitted_routes:
           - mechanism:
@@ -3361,81 +2601,6 @@ content:
               digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
             acquisition: copy
             timing: pack-ingestion
-  webapp-service-unit:
-    type: file
-    target: webapp
-    path: /etc/systemd/system/webapp.service
-    text: |
-      [Unit]
-      Description=TechVault webapp (gunicorn)
-      After=network.target
-
-      [Service]
-      WorkingDirectory=/app
-      ExecStart=/usr/bin/python3 -m gunicorn --bind 0.0.0.0:8080 --workers 2 --access-logfile /var/log/gunicorn/access.log --error-logfile - app:app
-      Restart=always
-
-      [Install]
-      WantedBy=multi-user.target
-  # rsyslog forward configs. imfile reads gunicorn's access log and forwards
-  # every message to the Wazuh manager's remote-syslog port; the access lines
-  # are what the web-accesslog decoder and rules 302010/302020/302030 match.
-  # victim forwards its host syslog so auth failures and the smoke
-  # log-ingestion probe reach the SIEM.
-  webapp-rsyslog-forward:
-    type: file
-    target: webapp
-    path: /etc/rsyslog.d/90-aptl-forward.conf
-    text: |
-      module(load="imfile")
-      # Forward gunicorn access lines RAW (no syslog program tag) so the
-      # manager's built-in web-accesslog decoder matches them and rules
-      # 302010/302020/302030 fire. A program tag (e.g. "gunicorn:") makes the
-      # manager's predecoder claim the line as that program and the
-      # web-accesslog decoder then no longer matches (verified live).
-      template(name="aptl_rawfwd" type="string" string="<134>%timestamp:::date-rfc3164% %hostname% %msg%\n")
-      input(type="imfile"
-            File="/var/log/gunicorn/access.log"
-            Tag="webapp"
-            ruleset="aptl_fwd")
-      ruleset(name="aptl_fwd") {
-        action(type="omfwd" Target="172.20.2.30" Port="514" Protocol="udp" Template="aptl_rawfwd")
-      }
-  victim-rsyslog-forward:
-    type: file
-    target: victim
-    path: /etc/rsyslog.d/90-aptl-forward.conf
-    text: |
-      *.* @172.20.2.30:514
-  # Custom rsyslog units for the generic systemd nodes (see the
-  # service_manager_units note on webapp): a fresh unit with no sandboxing so
-  # systemd can start rsyslogd under restricted capabilities.
-  webapp-rsyslog-unit:
-    type: file
-    target: webapp
-    path: /etc/systemd/system/aptl-rsyslog.service
-    text: |
-      [Unit]
-      Description=APTL rsyslog log forwarder
-      After=network.target
-      [Service]
-      ExecStart=/usr/sbin/rsyslogd -n
-      Restart=always
-      [Install]
-      WantedBy=multi-user.target
-  victim-rsyslog-unit:
-    type: file
-    target: victim
-    path: /etc/systemd/system/aptl-rsyslog.service
-    text: |
-      [Unit]
-      Description=APTL rsyslog log forwarder
-      After=network.target
-      [Service]
-      ExecStart=/usr/sbin/rsyslogd -n
-      Restart=always
-      [Install]
-      WantedBy=multi-user.target
   dns-named-conf:
     type: file
     target: dns
@@ -3637,44 +2802,6 @@ content:
               digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
             acquisition: copy
             timing: pack-ingestion
-  db-bootstrap-script:
-    type: file
-    target: db
-    path: /opt/db-bootstrap.sh
-    text: |
-      #!/bin/bash
-      set -e
-      PG_CONF=$(find /etc/postgresql -maxdepth 3 -name postgresql.conf | head -n1)
-      PG_HBA=$(find /etc/postgresql -maxdepth 3 -name pg_hba.conf | head -n1)
-      sed -i "s/^#\?listen_addresses.*/listen_addresses = '*'/" "$PG_CONF"
-      grep -q "^host techvault techvault " "$PG_HBA" || echo "host techvault techvault 0.0.0.0/0 md5" >> "$PG_HBA"
-      systemctl restart postgresql
-      for i in $(seq 1 30); do
-        su -s /bin/bash postgres -c "pg_isready -q" && break
-        sleep 1
-      done
-      su -s /bin/bash postgres -c "psql -tAc \"SELECT 1 FROM pg_roles WHERE rolname='techvault'\"" | grep -q 1 || \
-        su -s /bin/bash postgres -c "psql -c \"CREATE USER techvault WITH PASSWORD 'techvault_db_pass';\""
-      su -s /bin/bash postgres -c "psql -tAc \"SELECT 1 FROM pg_database WHERE datname='techvault'\"" | grep -q 1 || \
-        su -s /bin/bash postgres -c "psql -c \"CREATE DATABASE techvault OWNER techvault;\""
-      PGPASSWORD=techvault_db_pass psql -h 127.0.0.1 -U techvault -d techvault -f /opt/db-init/01-schema.sql
-      PGPASSWORD=techvault_db_pass psql -h 127.0.0.1 -U techvault -d techvault -f /opt/db-init/02-seed-data.sql
-  db-bootstrap-unit:
-    type: file
-    target: db
-    path: /etc/systemd/system/db-bootstrap.service
-    text: |
-      [Unit]
-      Description=TechVault database bootstrap (create techvault DB/user, load schema+seed)
-      After=postgresql.service
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      ExecStart=/bin/bash /opt/db-bootstrap.sh
-
-      [Install]
-      WantedBy=multi-user.target
   # victim and workstation authorize both the operator control-plane key and
   # the kali pivot key (target_authorized_keys is the two combined, generated
   # at lab standup). kali itself is authorized with only the control-plane key,
@@ -3685,208 +2812,55 @@ content:
   # scenario lateral movement, workstation -> victim), so it gets its own
   # combined file instead of sharing target_authorized_keys with workstation.
   # ---------------------------------------------------------------------------
-  # CTF flag generation. The still-image AD node generates per-boot signed
-  # flags at container start; the image-free generic nodes (victim,
-  # workstation, webapp, fileshare) reproduce it with a oneshot systemd unit
-  # running the shared flag generator. Scoring reads
-  # /home/labadmin|dev-user/user.txt, /app/user.txt,
-  # /srv/shares/shared/user-flag.txt, and /root/root.txt and verifies the
-  # aptl:v2 HMAC-SHA-256 token. One script; each node's unit selects its
-  # backend-generated signing-key file through Environment=.
-  # ---------------------------------------------------------------------------
-  victim-flaggen-script:
+  # Flag files receive per-run values from the instantiating backend.
+  victim-user-flag:
     type: file
     target: victim
-    path: /usr/local/sbin/aptl-flaggen.sh
-    source:
-      name: techvault-flaggen-script
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-flaggen-script-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-flaggen-script
-          version: 0.1.0
-          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
-          media_type: text/x-shellscript
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  workstation-flaggen-script:
-    type: file
-    target: workstation
-    path: /usr/local/sbin/aptl-flaggen.sh
-    source:
-      name: techvault-flaggen-script
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-flaggen-script-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-flaggen-script
-          version: 0.1.0
-          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
-          media_type: text/x-shellscript
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  webapp-flaggen-script:
-    type: file
-    target: webapp
-    path: /usr/local/sbin/aptl-flaggen.sh
-    source:
-      name: techvault-flaggen-script
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-flaggen-script-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-flaggen-script
-          version: 0.1.0
-          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
-          media_type: text/x-shellscript
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  fileshare-flaggen-script:
-    type: file
-    target: fileshare
-    path: /usr/local/sbin/aptl-flaggen.sh
-    source:
-      name: techvault-flaggen-script
-      version: 0.1.0
-      artifact_requirement:
-        requirement_id: techvault-flaggen-script-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-flaggen-script
-          version: 0.1.0
-          digest: sha256:5480c40f9fe908c9acb2c57fda494684e33776f5df70aea09ec6e58be8893e38
-          media_type: text/x-shellscript
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  victim-flaggen-unit:
+    path: /home/labadmin/user.txt
+    text: "${flag_victim_user}"
+    sensitive: true
+  victim-root-flag:
     type: file
     target: victim
-    path: /etc/systemd/system/aptl-flaggen.service
-    text: |
-      [Unit]
-      Description=APTL CTF flag generator
-      After=local-fs.target
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/victim.key
-      Environment=APTL_FLAG_NODE=victim
-      Environment=APTL_FLAG_USER_PATH=/home/labadmin/user.txt
-      Environment=APTL_FLAG_USER_OWNER=labadmin:labadmin
-      ExecStart=/bin/bash /usr/local/sbin/aptl-flaggen.sh
-
-      [Install]
-      WantedBy=multi-user.target
-  workstation-flaggen-unit:
+    path: /root/root.txt
+    text: "${flag_victim_root}"
+    sensitive: true
+  workstation-user-flag:
     type: file
     target: workstation
-    path: /etc/systemd/system/aptl-flaggen.service
-    text: |
-      [Unit]
-      Description=APTL CTF flag generator
-      After=local-fs.target
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/workstation.key
-      Environment=APTL_FLAG_NODE=workstation
-      Environment=APTL_FLAG_USER_PATH=/home/dev-user/user.txt
-      Environment=APTL_FLAG_USER_OWNER=dev-user:dev-user
-      ExecStart=/bin/bash /usr/local/sbin/aptl-flaggen.sh
-
-      [Install]
-      WantedBy=multi-user.target
-  webapp-flaggen-unit:
+    path: /home/dev-user/user.txt
+    text: "${flag_workstation_user}"
+    sensitive: true
+  workstation-root-flag:
+    type: file
+    target: workstation
+    path: /root/root.txt
+    text: "${flag_workstation_root}"
+    sensitive: true
+  webapp-user-flag:
     type: file
     target: webapp
-    path: /etc/systemd/system/aptl-flaggen.service
-    text: |
-      [Unit]
-      Description=APTL CTF flag generator
-      After=local-fs.target
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/webapp.key
-      Environment=APTL_FLAG_NODE=webapp
-      Environment=APTL_FLAG_USER_PATH=/app/user.txt
-      Environment=APTL_FLAG_USER_OWNER=root:root
-      ExecStart=/bin/bash /usr/local/sbin/aptl-flaggen.sh
-
-      [Install]
-      WantedBy=multi-user.target
-  fileshare-flaggen-unit:
+    path: /app/user.txt
+    text: "${flag_webapp_user}"
+    sensitive: true
+  webapp-root-flag:
+    type: file
+    target: webapp
+    path: /root/root.txt
+    text: "${flag_webapp_root}"
+    sensitive: true
+  fileshare-user-flag:
     type: file
     target: fileshare
-    path: /etc/systemd/system/aptl-flaggen.service
-    text: |
-      [Unit]
-      Description=APTL CTF flag generator
-      After=local-fs.target
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      Environment=APTL_FLAG_KEY_FILE=/run/techvault/flag-signing/fileshare.key
-      Environment=APTL_FLAG_NODE=fileshare
-      Environment=APTL_FLAG_USER_PATH=/srv/shares/shared/user-flag.txt
-      Environment=APTL_FLAG_USER_OWNER=root:root
-      ExecStart=/bin/bash /usr/local/sbin/aptl-flaggen.sh
-
-      [Install]
-      WantedBy=multi-user.target
-  # Finalizes dev-user loot after the directory copy: the copy lands the home
-  # as labadmin:labadmin 664, but psql ignores a group/world-readable .pgpass
-  # and dev-user's home should be dev-user-owned. chown + tighten the secret
-  # files to 600. Best-effort per file so a fixture reshuffle never fails the
-  # whole boot.
-  workstation-loot-unit:
+    path: /srv/shares/shared/user-flag.txt
+    text: "${flag_fileshare_user}"
+    sensitive: true
+  fileshare-root-flag:
     type: file
-    target: workstation
-    path: /etc/systemd/system/aptl-workstation-loot.service
-    text: |
-      [Unit]
-      Description=APTL workstation dev-user loot ownership + perms
-      After=local-fs.target
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      ExecStart=/bin/bash -c 'chown -R dev-user:dev-user /home/dev-user 2>/dev/null; for f in /home/dev-user/.pgpass /home/dev-user/.ssh/id_rsa /home/dev-user/.bash_history /home/dev-user/.config/credentials.json /home/dev-user/projects/techvault-portal/.env; do [ -f "$f" ] && chmod 600 "$f"; done; true'
-
-      [Install]
-      WantedBy=multi-user.target
+    target: fileshare
+    path: /root/root.txt
+    text: "${flag_fileshare_root}"
+    sensitive: true
   ad-user-flag:
     type: file
     target: ad
@@ -3899,7 +2873,52 @@ content:
     path: /root/root.txt
     text: "${flag_ad_root}"
     sensitive: true
-
+  mcp-red-sources:
+    type: directory
+    target: kali
+    destination: /opt/techvault/mcp
+    source:
+      name: techvault-red-mcp-sources
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-red-mcp-sources-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-red-mcp-sources
+          version: 0.1.0
+          digest: sha256:3536a2fd58eab9a2bfdc0ad90be4fdfd45bba9db1ef4acb5a54ff76126e7788e
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  mcp-blue-sources:
+    type: directory
+    target: soc-workstation
+    destination: /opt/techvault/mcp
+    source:
+      name: techvault-blue-mcp-sources
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-blue-mcp-sources-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-blue-mcp-sources
+          version: 0.1.0
+          digest: sha256:74e850e04e5e428cc0bb4cd5e4a6480373cd1e9a2a686fb40a0e560cd941f111
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
 propositions:
   cortex-enrichment-ready:
     description: The exact TechVault analyzer executes offline and TheHive reports its authenticated Cortex connector ready.
@@ -3931,7 +2950,6 @@ propositions:
       semantic_ref: urn:raes:observable:network-detection-alert-observed
       expected: true
     evidence_requirements: [suricata-login-sqli-alert]
-
 assertions:
   cortex-enrichment-ready:
     proposition: cortex-enrichment-ready
@@ -3942,14 +2960,12 @@ assertions:
   suricata-login-sqli-detected:
     proposition: suricata-login-sqli-detected
     role: postcondition
-
 observation_boundaries:
   participant-cortex-enrichment-view:
     projection_basis: ordinary operator access through TheHive and Cortex APIs
     observable_refs: [nodes.cortex, nodes.thehive]
     redaction_policy: preserve analyzer identity and bounded result status while removing credentials
-    latency_profile: available after one-shot Cortex initialization
-
+    latency_profile: available after Cortex reaches its declared ready state
 evidence_requirements:
   cortex-enrichment-readback:
     description: Records the exact enabled analyzer identity, a successful bounded report for the scenario attacker IP, and TheHive's Cortex connector status without credentials or full report bodies.
@@ -3969,7 +2985,7 @@ evidence_requirements:
     retention: run_lifetime
     loss_disclosure: required
   suricata-local-rule-readiness:
-    description: Records admitted content identities, native configuration success, selected files, and the loaded 16-SID local corpus without recording rule bodies or host paths.
+    description: Records admitted content identities, configuration success, selected files, and the loaded 16-SID local corpus without recording rule bodies or host paths.
     source_refs:
       - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.suricata-builtin
       - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local
@@ -3977,7 +2993,7 @@ evidence_requirements:
       - nodes.suricata
       - content.suricata-config
       - content.suricata-local-rules
-    scope: Exact image and content identities and realized-byte digests, native Suricata configuration result, selected source paths, and active local SIDs and count.
+    scope: Exact content identities and realized-byte digests, Suricata configuration result, selected source paths, and active local SIDs and count.
     boundary_kind: system_under_test
     channel: log
     artifact_role: network_detection_rule_readiness
@@ -4008,16 +3024,12 @@ evidence_requirements:
     loss_disclosure: required
   redteam-session-transcript:
     description: >-
-      Records the red team's interactive command-line activity, the commands
-      issued and the responses returned, so research can reconstruct what the
-      red team actually did.
+      Records the red team's interactive command-line activity, the commands issued and the responses returned, so research can reconstruct what the red team actually did.
     source_class: apparatus
     scope_refs:
       - nodes.kali
     scope: >-
-      Every interactive shell session on the red-team workstation, with the
-      commands issued and the responses returned, attributable to a session
-      and ordered in time.
+      Every interactive shell session on the red-team workstation, with the commands issued and the responses returned, attributable to a session and ordered in time.
     window: the full run, from range readiness through teardown
     channel: participant_output
     artifact_role: participant_session_transcript
@@ -4027,7 +3039,6 @@ evidence_requirements:
     integrity: chain_of_custody
     retention: run_lifetime
     loss_disclosure: required
-
 # Realizable accounts: the deployment backend ensures these groups, users,
 # memberships, and non-secret attributes on the resolved `ad` node and verifies
 # them by read-after-write. Declares identity only (no password material); the
@@ -4042,7 +3053,6 @@ identity_domains:
     dns_name: techvault.local
     netbios_name: TECHVAULT
     authority_account_ref: ad-emily-chen
-
 relationships:
   thehive-uses-cortex-enrichment:
     type: connects_to
@@ -4061,13 +3071,15 @@ relationships:
     source: ad
     target: techvault
     domain_controller: {}
-
 entities:
   red-team:
     name: Red Team
     role: red
     description: The attacking participant operating from Kali.
-
+  blue-team:
+    name: Blue Team
+    role: blue
+    description: Defensive participant operating from the SOC workstation.
 agents:
   red-team-operator:
     entity: red-team
@@ -4076,7 +3088,13 @@ agents:
       kali-ssh:
         target_ref: kali
         channel: ssh
-
+  blue-team-operator:
+    entity: blue-team
+    description: Blue-team participant using the defensive stdio MCP tools from the SOC workstation.
+    interactive_access:
+      soc-workstation-ssh:
+        target_ref: soc-workstation
+        channel: ssh
 accounts:
   ad-administrator:
     username: Administrator
