@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "image-inference-service",
     "ref_version": null,
-    "ref_digest": "sha256:dabdc75d2139208edee56391ba6d358a0c7f51ec8122bf1a2a722ecdee152750",
+    "ref_digest": "sha256:a092c81339e53f0bfa8ba22d6c4f2c3884c7ec14f496a28cd4e10443e3bbbbc2",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:35a349c7fb6d879fcdff7fe0843b09b6dfd798bb02fbc16e1a9fd05ff1175b9e"
+  "set_digest": "sha256:8706eed14b702d34df3ae7e7a7e9f3dac216e3ba7091a865fbc36209246d9b7a"
 }

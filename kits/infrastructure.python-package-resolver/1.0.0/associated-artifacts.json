@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "python-package-resolver",
     "ref_version": null,
-    "ref_digest": "sha256:124e140c4917f31673fad083150c31656aa53a01f561467c1c0f662a1a4dc910",
+    "ref_digest": "sha256:3e618a0468d647b8a3fc8c7ed5da6ce1651ca61f4541bf6b5d9d17d96e0bcfde",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:06b6cad6090f733529b08ce818540dfbd372611a261f27247049022581244d33"
+  "set_digest": "sha256:7e748a7ce76b25065ed010343cccb8248bbd76e5b659064d165a1911f6b0820d"
 }

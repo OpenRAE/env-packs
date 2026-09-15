@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "notebook-environment",
     "ref_version": null,
-    "ref_digest": "sha256:31bc95d47c4175c2faf6e7a24ccb24b85c5d55603ab9347f36570b6d6de80ca7",
+    "ref_digest": "sha256:c5c3d0c5cd4073a5e5eb881ab1d6b69f87592ec120af7072f95b74cf99aebd9f",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:1de99945af9b8c38fe3abe335e69b5c977c67b74142b38f361bb8e99799f58a6"
+  "set_digest": "sha256:b3efab84e46c7c34b26b14e0402d192926eda0f3f181964b765444d5254f5e6c"
 }

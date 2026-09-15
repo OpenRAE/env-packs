@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "wazuh-security-monitoring-stack",
     "ref_version": null,
-    "ref_digest": "sha256:e3f094abacf0089803f2b68824848560189c9d329ec47fdb9cb32e2d7baac11a",
+    "ref_digest": "sha256:e6846817a66cd1e29dd8c2ec6835909e03aafd19e29ba5b810f1e55cabdde7b6",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:af2dc1c8ed95f8a4950e45901ad22019738525a634c3ce618d226ad99c4aaf0f"
+  "set_digest": "sha256:4e4a76e0885b3978591d8a05f5af30979096bf3c07cefb93d9b8d3ed3344968d"
 }

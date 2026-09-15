@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "postgresql-database",
     "ref_version": null,
-    "ref_digest": "sha256:6ed88470223dcc216936b7fa07916c0d2979bb9719dba9f79f33a66cb0713d44",
+    "ref_digest": "sha256:8e87cb9fa4742c2b1758fe2a351dff579763332db93e8def770b17d332d2a5c2",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:fc40a0c3bf7c5ab45aba8227a19393eeb3036c4ca7ee022954dc06c28e7e42de"
+  "set_digest": "sha256:0606b32c25ddb7df7a529d9a8b2bfb1e87e678277010b1c87493a3bfac07937a"
 }

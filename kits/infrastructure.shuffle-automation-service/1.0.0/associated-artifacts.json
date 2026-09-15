@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "shuffle-automation-service",
     "ref_version": null,
-    "ref_digest": "sha256:f186e48ae1ab251b29415a41925f0960f4429a85d4f6a2473f3150cbc7bbd53b",
+    "ref_digest": "sha256:7d44d72c7b5084279407ed67077981893041bfd96e21febdff53f66c1050654e",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:0aaca05f1d6960fb9925b238b45e0d700e98f6149468d0e4313bfc8fc23508d1"
+  "set_digest": "sha256:e197a9742c6b8d897f85947283e1ff6745055bd23f2ef248fc732a562525eb41"
 }

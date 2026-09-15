@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "smb-file-service",
     "ref_version": null,
-    "ref_digest": "sha256:710d396b9cae96355998f54ba0ced576f8a1a9e1f366b3d91f017be564785a21",
+    "ref_digest": "sha256:cb8d718f856b379e8c1ebd18a275222ac0acd9a9fe718d29233cc6ce1494250e",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:858316cd5b4508fe048a48ec9421b30647b99c57f655777b4090623aa5f6e825"
+  "set_digest": "sha256:fb8b865d36812fd9a18c43998c23382d3aa2b3572f2603d3a552fd50063eec02"
 }

@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "issue-tracker",
     "ref_version": null,
-    "ref_digest": "sha256:ebf3089388a7ea05241c13d4c8392efa027a2a258a020ebedc9fa4a2edff2b68",
+    "ref_digest": "sha256:7e572dbaf046005783c81e47a5751f5f82d7afb5a50e0e10a337426c70bfcc1a",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:ae2e58ca7159afb7707b1656d315526b774866115871e8ee26201db1016da8e4"
+  "set_digest": "sha256:d1ac1a3ad02d9a9959cac37f0c6967cfc86a496e42abab96df5072b77c22559c"
 }
