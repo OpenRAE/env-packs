@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "authoritative-dns-service",
     "ref_version": null,
-    "ref_digest": "sha256:01156026ad528a7c6552f1af469ed6b837cb30d8ea6ba4cc54d56f603cd989db",
+    "ref_digest": "sha256:cb8fdb26ee2bc1834c305b5338d2bf29c912e52113fef03969bb43ad5bd9d75a",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:2287a620e31e585249cc91c888feda70a1442c14c951aceab9831b1d1eba1f37"
+  "set_digest": "sha256:031f60908d4510101ac300b7888c950e44aa5e74ca964b576d7453840ce45b86"
 }

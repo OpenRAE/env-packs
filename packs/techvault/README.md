@@ -51,6 +51,13 @@ That state includes service credential posture, certificate trust, and the
 final ownership and modes of scenario-significant files; it does not prescribe
 how a backend supplies a secret, installs trust, or reaches that final state.
 
+TechVault likewise does not select where realization evidence is collected.
+The backend must authoritatively corroborate the declared state at the RAES
+verification scope, but may use native control-plane readback, daemon
+observation, guest observation, or another admitted method. It selects the
+least intrusive complete method allowed by realization scope; omission of a
+collection-method floor does not make evidence optional.
+
 ## Flag values
 
 Each of `victim`, `workstation`, `webapp`, `fileshare`, and `ad` declares a user

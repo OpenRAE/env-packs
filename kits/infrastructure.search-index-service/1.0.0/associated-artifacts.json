@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "search-index-service",
     "ref_version": null,
-    "ref_digest": "sha256:8863fcf1d16b530fa89cdad584cef9f47c98bff370657de4e82c19b220dc971c",
+    "ref_digest": "sha256:4657b52375081aa4ac08b9baf2d0fbdb09b72078fd3716549274dbecc43f405a",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:8f204a150c09d134e938b5f4268c8c5a47f0e3655c0f717b8c6df9f8163c34e5"
+  "set_digest": "sha256:ddad896b3cea7a220ba014e17f3369ae4bccdf9cbfdf87e0d2c551e33f1636a0"
 }

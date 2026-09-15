@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "suricata-network-intrusion-detection-sensor",
     "ref_version": null,
-    "ref_digest": "sha256:338d47476a1bb5f55e5d2eb581d2913030ccda6748e4fbd94f655441f5503414",
+    "ref_digest": "sha256:c8e01b4ac6c419bd3f7984c26e314599be73aa83207b08b8f96e110578ede804",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:ba37e62811a57264b638ecc8bf6bb7c34ad5971d37625dcf656a93cbd3665b33"
+  "set_digest": "sha256:a907e95de865fffe861fca60128b6bc1ca8efefc98f29ea549ebad38e7da574a"
 }

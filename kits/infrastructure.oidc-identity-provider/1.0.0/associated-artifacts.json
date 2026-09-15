@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "oidc-identity-provider",
     "ref_version": null,
-    "ref_digest": "sha256:cddce3f60b5cb46382e070af2137aeb9d0a4b1e19353aa0d71a8d7f781c0ec4d",
+    "ref_digest": "sha256:526bca334749972853e7026dc1de0b5590e9ecf8bfdb6e4acd8e1458c8e09cf8",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:aae3fb9f78f5862dc11d1aebf730f53f68d90951f73ff03c514738197aa2cc0a"
+  "set_digest": "sha256:96ca922bf4d7973d90555fccd3b668951cc2b902291f5a62c105ceb5d247e4bd"
 }

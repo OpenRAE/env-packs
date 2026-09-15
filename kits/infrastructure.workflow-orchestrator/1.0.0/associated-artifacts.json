@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "workflow-orchestrator",
     "ref_version": null,
-    "ref_digest": "sha256:8e091a8d945e4372993bf9734420a4af5ae74d0d0b8a99e32f9a25f2e414575d",
+    "ref_digest": "sha256:969c83d886e69567c96218d2f92a4bb8d0d65cd8a1760b9609d31e951512f99e",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:26b0a4e66c6a95edfc48b0ad9dc3bbdfdb2141a97dcbfa46a276e1d0a1369c62"
+  "set_digest": "sha256:f0a7c4cd92fda51dcbc305ef3c7198404fb4d1d545ac308c68d44ba7a6e05a9f"
 }

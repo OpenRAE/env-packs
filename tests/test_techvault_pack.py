@@ -28,6 +28,19 @@ from raes.realization_designation import (
     designation_records,
     resolve_realization_designation,
 )
+from raes_contracts.apparatus import (
+    RealizationObservationCapability,
+    RealizationSupportDeclaration,
+)
+from raes_contracts.vocabulary import (
+    ObservationStrength,
+    RealizationSupportMode,
+    RealizationVerificationScope,
+)
+from raes_processor.compiler import compile_scenario_runtime_model
+from raes_processor.semantics.realization_observation_admission import (
+    has_required_observation_support,
+)
 
 from raes_env_packs import PackDigestError, resolve_pack_artifact, validate_pack
 from raes_env_packs.digest import validate_pack_content_manifest
@@ -1433,6 +1446,85 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
     def test_checked_in_sdl_contains_no_realization_method(self) -> None:
         self.assertEqual(
             _PACK_VALIDATOR.validate_realization_method_contract(_load_sdl()), []
+        )
+
+    def test_compiled_verification_leaves_authoritative_source_open(self) -> None:
+        sdl = _load_sdl()
+        model = compile_scenario_runtime_model(
+            parse_sdl_file(_SDL),
+            parameters={name: f"test-{name}" for name in sdl["variables"]},
+        )
+        by_field = {
+            requirement.field_path: requirement
+            for requirement in model.realization_requirements
+        }
+        expected_scopes = {
+            "nodes.wazuh-manager.os": RealizationVerificationScope.PRESENCE,
+            (
+                "nodes.misp-suricata-sync.runtime.forwarding_agents"
+            ): RealizationVerificationScope.CONFIGURATION,
+            (
+                "nodes.wazuh-dashboard.runtime.applications"
+            ): RealizationVerificationScope.CONFIGURATION,
+            (
+                "nodes.suricata.runtime.network_sensors"
+            ): RealizationVerificationScope.CONFIGURATION,
+        }
+
+        for field_path, expected_scope in expected_scopes.items():
+            with self.subTest(field_path=field_path):
+                requirement = by_field[field_path]
+                self.assertEqual(requirement.verification_scope, expected_scope)
+                self.assertIsNone(requirement.required_observation_strength)
+
+    def test_unconstrained_source_requires_authoritative_observation(self) -> None:
+        model = compile_scenario_runtime_model(
+            parse_sdl_file(_SDL),
+            parameters={
+                name: f"test-{name}" for name in _load_sdl()["variables"]
+            },
+        )
+        requirement = next(
+            requirement
+            for requirement in model.realization_requirements
+            if requirement.field_path
+            == "nodes.wazuh-dashboard.runtime.applications"
+        )
+        for source, admitted in (
+            (ObservationStrength.DRIVER_REPORTED, False),
+            (ObservationStrength.DAEMON_OBSERVED, True),
+            (ObservationStrength.GUEST_OBSERVED, True),
+        ):
+            declaration = RealizationSupportDeclaration(
+                domain=requirement.domain,
+                support_mode=RealizationSupportMode.OPEN_REALIZATION,
+                supported_constraint_kinds=frozenset(
+                    {requirement.requirement_kind}
+                ),
+                disclosure_kinds=frozenset({"runtime-snapshot-v1"}),
+                observation_capabilities={
+                    requirement.requirement_kind: RealizationObservationCapability(
+                        verification_scope=RealizationVerificationScope.CONFIGURATION,
+                        observation_strength=source,
+                    )
+                },
+            )
+            with self.subTest(source=source.value):
+                self.assertEqual(
+                    has_required_observation_support(
+                        requirement,
+                        [declaration],
+                        observation_kind=requirement.requirement_kind,
+                    ),
+                    admitted,
+                )
+
+        self.assertFalse(
+            has_required_observation_support(
+                requirement,
+                [],
+                observation_kind=requirement.requirement_kind,
+            )
         )
 
     def test_misp_sync_preserves_authentication_and_ca_trust_as_typed_state(

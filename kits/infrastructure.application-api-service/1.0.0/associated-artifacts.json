@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "application-api-service",
     "ref_version": null,
-    "ref_digest": "sha256:13eb0996c74d4c4c7f5c85089b6fc4491fe47a28fc5c1ba5255fba159639a7b5",
+    "ref_digest": "sha256:590aeebe95eab710a02885ee16bc987c94a17d808fa74af9e2daf1e2444b4065",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:39ba63f5683eee278ad9b1bd9ea084c891078c9ad48790a2b6fb4f4f54afca7b"
+  "set_digest": "sha256:9df87e7a80cf581de2095ebe1349748f86d586f15d3604472a61cec84448047f"
 }

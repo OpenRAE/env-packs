@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "telemetry-collector",
     "ref_version": null,
-    "ref_digest": "sha256:4694665df5f8eb07b140000cd08472bcc09ef1218929a661697614050bcc6463",
+    "ref_digest": "sha256:4d438213d4b1f0620513622f5d146f6b52cb8c4a4d854fdc38d4d5ceaf16419a",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:3af2f7b7fdf27163d29a1a3da371152022752effcd1ee06ed8df8b38b4740fd2"
+  "set_digest": "sha256:578f96a88f502e1d587472147d0b12e85db156725dba3ae56e5e25bd2a81532b"
 }

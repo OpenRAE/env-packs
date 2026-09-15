@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "lab-portal",
     "ref_version": null,
-    "ref_digest": "sha256:da87e6fbe9cdfcdaf385062679012f8616b12ef583950523ca297ea44045ad1e",
+    "ref_digest": "sha256:dd372c75e51a73ec2723e45974c93bf44d07b8ba02fef1b74585afd431a6f4a1",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:45f4e70a65d7e47fbde9d8eef06d6f783bc181f2dcb8f1c176f220a5082ae514"
+  "set_digest": "sha256:d158c77aa22e70b04cf1a8af324979974f48fabf3e506511fa01e74c6b57da08"
 }

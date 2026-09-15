@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "ssh-accessible-linux-host",
     "ref_version": null,
-    "ref_digest": "sha256:290daa55a7106c409a14e928539e039a271da05015e3d5ba6744a01032a72f62",
+    "ref_digest": "sha256:d64756fb8b87a0f7977668a76303606be76743085e5d83984b4d8ca77ea535af",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:bd0ecfaa15a145b74b41adc8635264b3d8af23e5d469708e6cb4ea5e56fd04c1"
+  "set_digest": "sha256:9a8f0ca6f27d3e9d1b6b117a98b3816fde95750106a05aeabebc8a2e9a94c85b"
 }

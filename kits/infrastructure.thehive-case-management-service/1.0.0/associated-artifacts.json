@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "thehive-case-management-service",
     "ref_version": null,
-    "ref_digest": "sha256:3df4c7b8ffe5502470dda49a9c86226dd9ecdc6ac7c8236c29e6c59270e35673",
+    "ref_digest": "sha256:51ce2f0e7c9c87e800090c9d8caa8f9e14c7304a3f4592f53d45cb5dc085ccb9",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:4ba0b11ddbcd8219987c99ff06e8500712698dec2b13156d0763ae6be126744a"
+  "set_digest": "sha256:b5d7b791e645ef9fd8766c8eca186896df5f91e921caeaa8aaaaebb7f05ce0d9"
 }

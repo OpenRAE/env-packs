@@ -8,7 +8,7 @@
     "ref_kind": "scenario-snapshot",
     "ref_id": "smtp-imap-mail-service",
     "ref_version": null,
-    "ref_digest": "sha256:aaddf9465effcdae6cf17683733b9a94478adc896f0a8f53139e66ba59173175",
+    "ref_digest": "sha256:3bd71e0b7efeafd4880cf1dddbf3a12e61831e08919d2f5ce2d709c15e5b1096",
     "ref_path": null
   },
   "artifacts": {
@@ -109,5 +109,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:4f0b684a95f9ff04ed46fe72bd109af237d2fdd0359841ba81661c5dff99ec60"
+  "set_digest": "sha256:69a6c5adc299145326a2b35c62a386f625522899aed1b0b6ce482edebbfaccd0"
 }
