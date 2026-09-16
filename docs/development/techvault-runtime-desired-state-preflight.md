@@ -5,6 +5,17 @@ turning this repository into a second RAES schema authority or a LilRAE
 configuration repository. This note records the modeling boundary and the
 cross-cutting gates for that work. It is not an implementation plan.
 
+## Superseded host-publication guidance
+
+Issue #373 supersedes this note's advice that TechVault retain loopback host
+publications. TechVault's current open, backend-neutral realization declares
+in-world transport through RAES `Node.services`, typed service references,
+`RuntimeServiceListener` where listener state matters, and infrastructure
+links. It declares no `RuntimeNetworkRealization.published_ports` or listener
+`published_port_refs`. Host interface selection, host-port allocation, reverse
+proxying, and the decision to publish at all belong to the realizing deployer.
+See [TechVault internal service ports](techvault-internal-service-ports-preflight.md).
+
 ## Superseded backend-observability scope
 
 Issue #337 supersedes this note's treatment of `aptl-otel-collector`,
@@ -87,11 +98,11 @@ not in a new pack validator.
 | Layer | Required outcome |
 | --- | --- |
 | RAES source/shape/semantics | Parse through the pinned `raes.parse_sdl` and `parse_sdl_file` paths. Preserve closed models, portable identifiers, unique ids/environment names, service and network references, generated-value references, mount collision checks, and realization constraints. Add no local SDL schema, parser, enum, or exception hierarchy. |
-| Authentication surfaces | Operator-facing publications remain explicit and loopback-only. Internal listeners remain internal/network-scoped. A listener or open port does not imply anonymous access, authenticated readiness, or authorization. Application/datastore bindings must agree with the effective scheme, service, and authentication posture. |
+| Authentication surfaces | TechVault declares no operator-facing host publication. Internal listeners remain in-world facts, and a listener or service port does not imply anonymous access, authenticated readiness, or authorization. Application/datastore bindings must agree with the effective scheme, service, and authentication posture. |
 | Secret shape and lifecycle | Use `RuntimeEnvironmentVariable.value_classification` and `value_from`. `operator_secret` and `redacted` values carry no authored secret value; a generated value is referenced by one output from every consumer that must share it. Use `secret_fixture` only for an intentional synthetic scenario credential. Do not coordinate two consumers through an environment-variable name convention. |
 | OS/container exposure | No secret belongs in container command/entrypoint arguments, a healthcheck command, logs, diagnostics, evidence, or an environment dump. The existing TheHive `--secret` literal and the historical Redis `--requirepass` argv pattern must not be copied as the completed design; use an image-supported environment/configuration carrier or raise an upstream expressivity gap. Account for `/proc`, container inspection, child inheritance, shell tracing, UID/GID access, modes, and crash output. |
 | TLS and generated material | Keep certificate/key/password outputs in the existing generated-artifact authority, select only the outputs each node needs, and mount them read-only. Effective application configuration must reference the declared in-container destinations and the endpoint scheme must match. Never place a host certificate path or trust-store coordinate in SDL. |
-| Network exposure | Use `RuntimeNetworkRealization.published_ports` for intended host publication and retain `127.0.0.1` for operator-only surfaces. `0.0.0.0` is valid as an in-container listener address, not as evidence that a host port should be globally published. No implicit `publish_all_ports`. |
+| Network exposure | Superseded for TechVault by issue #373: express transport through `Node.services`, typed service references, listeners where they are authored in-world facts, and infrastructure links. Do not author `RuntimeNetworkRealization.published_ports` or listener `published_port_refs`; `0.0.0.0` remains an in-world listener address, not a host-publication request. |
 | Capabilities and namespaces | Preserve least privilege: Samba's existing provisioning/network capabilities and Kali capture's capture-only capabilities stay scoped to those nodes. The capture sidecar shares only Kali's network namespace; no PID-namespace or capture-volume exposure to Kali is introduced. |
 | Static pack validation | `validate_pack()` is the consumer authority and returns bounded, payload-free `Diagnostic`/`ValidationResult` records. Author CI composes it with the RAES file-backed parse, pack-local validators/tests, visibility scan, anti-extension guard, provenance, and manifest checks. Unexpected defects still raise instead of becoming input errors. |
 | Content identity | `validate_pack_content_manifest()` and `PackDigestError` own byte/set/parent validation. An SDL-only change is rebound with `tools/refresh_pack_sdl_binding.py`; a changed or added pack member requires full `derive_pack_content_manifest()` derivation. Do not hand-patch independent checksums, sizes, or the set digest. |
@@ -119,7 +130,7 @@ Static tests can prove that all 33 compute nodes have an admitted container
 substrate, that the issue's 16 functional areas carry their selected existing
 RAES contracts, and that service, endpoint, dependency, environment,
 mount/persistence, secret, listener, and platform joins agree. They can also
-prove that host publications stay loopback-only and that no backend fields or
+prove that host-publication carriers are absent and that no backend fields or
 host paths were added. They cannot prove that LilRAE created containers,
 resolved operator inputs, generated secrets, enforced OS permissions, reached
 readiness, or persisted data. Those are admitted-plan realization and observed
