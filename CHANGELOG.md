@@ -11,6 +11,20 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.1.0](https://github.com/OpenRAE/env-packs/compare/v6.0.1...v6.1.0) (2026-09-16)
+
+
+### Features
+
+* **techvault:** declare Wazuh endpoint readiness ([#370](https://github.com/OpenRAE/env-packs/issues/370)) ([dab1fa8](https://github.com/OpenRAE/env-packs/commit/dab1fa8cd4a209e8c001efda0f72b81cda4ebfbf))
+
+
+### Bug Fixes
+
+* **techvault:** complete MISP runtime contract ([#372](https://github.com/OpenRAE/env-packs/issues/372)) ([f68c80e](https://github.com/OpenRAE/env-packs/commit/f68c80e9a7923309f54189bc67d561d2a766acd5))
+* **techvault:** lock internal service ports ([#374](https://github.com/OpenRAE/env-packs/issues/374)) ([39245e7](https://github.com/OpenRAE/env-packs/commit/39245e7c37befbe01cc1077a77a41f067b5afbb2))
+* **techvault:** restore Orborus runtime control contract ([#371](https://github.com/OpenRAE/env-packs/issues/371)) ([585a427](https://github.com/OpenRAE/env-packs/commit/585a427029c86ca59f4aeea5ffbc382d6eea7ca8))
+
 ## [6.0.1](https://github.com/OpenRAE/env-packs/compare/v6.0.0...v6.0.1) (2026-09-15)
 
 
