@@ -34,20 +34,21 @@ choice would make the scenario select runtime implementation.
 
 The same distinction applies even though `ORBORUS_CONTAINER_NAME` is a
 product-recognized environment key. A backend may use that key while realizing
-the selected Orborus image, but its need to do so does not turn the resolved
-native value or its injection mechanism into scenario content. Product-specific
-bootstrap handling belongs behind the backend's implementation boundary.
+its chosen Orborus implementation, but its need to do so does not turn the
+resolved native value or its injection mechanism into scenario content.
+Product-specific bootstrap handling belongs behind the backend's implementation
+boundary.
 
 ## Existing portable contract
 
 The TechVault SDL already declares the parts that affect the scenario:
 
-- the Orborus node and its exact image;
+- the Orborus node and in-world software component;
 - the in-world Shuffle backend relationship;
-- exact worker and application image inventory;
-- workflow execution and cleanup settings;
-- the in-world Docker control endpoint and its RAES orchestration-authority
-  classification; and
+- the required in-world control interface and descriptive orchestration
+  authority;
+- the exact authorized worker and seeded application inventory;
+- the Shuffle workflow/application meaning and service topology; and
 - the scenario assertions and evidence requirements used to judge the exercise.
 
 It deliberately declares an open realization below those authored facts. The
@@ -56,18 +57,20 @@ namespace, or bootstrap description. A backend may add machinery below the
 portable contract, but it may not contradict the declared content or treat
 backend-added state as authored SDL.
 
-The existing `_assert_shuffle_orborus_contract()` test keeps the Orborus
-environment set closed. Issue #331 adds an explicit regression assertion that
-the native-holder environment key and runtime-derived binding remain absent.
-That is the correct static test in this repository: adding the binding would be
-the regression.
+The existing `_assert_shuffle_orborus_contract()` test locks the portable
+component, control interface, authority, and workload inventory. The TechVault
+validator keeps the native holder identity, product environment, host bind
+source, engine API choice, mounts, node sources, and observed children absent.
+That is the correct static boundary: adding the self-identity binding or a
+backend launch mechanism would be the regression.
 
 ## Runtime acceptance boundary
 
 Pack validation can prove that TechVault:
 
 - contains no backend-native name or self-identity binding;
-- preserves its exact in-game Orborus and Shuffle content;
+- preserves its in-game Orborus component, required authority, and Shuffle
+  relationships;
 - carries no predicted child observations; and
 - remains valid under the pinned RAES release.
 
@@ -77,17 +80,17 @@ configuration. Nor can this repository's static checks prove that a live
 workflow completed or produced a correlated case. Those are realization and
 live-conformance observations.
 
-A backend claiming support for this scenario must either realize the selected
-Orborus image successfully using its own machinery or reject the scenario
-before side effects with a bounded diagnostic. It must not ask the pack to
-choose a native name, encode a backend naming convention, or pretend that a
-portable node id is the observed native identity.
+A backend claiming support for this scenario must either realize the authored
+Orborus control and authority contract using its own machinery or reject the
+scenario before side effects with a bounded diagnostic. It must not ask the
+pack to choose a native name, encode a backend naming convention, or pretend
+that a portable node id is the observed native identity.
 
 ## Security and reliability guardrails
 
-- A native identity is not a credential or authority grant. The existing RAES
-  orchestration-authority and control-interface declarations remain the only
-  portable authority claims.
+- A native identity is not a credential or authority grant. The portable SDL
+  describes the required Docker control and host-root-equivalent authority;
+  the backend separately owns admission and the mechanism that grants it.
 - Native allocation, collision handling, namespace selection, and stale-name
   detection remain backend responsibilities and fail closed.
 - Runtime diagnostics must not dump complete environment maps, credentials,
