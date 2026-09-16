@@ -32,6 +32,7 @@ from raes_contracts.apparatus import (
     RealizationObservationCapability,
     RealizationSupportDeclaration,
 )
+from raes_contracts.realization_structure import evaluate_realization_constraint
 from raes_contracts.vocabulary import (
     ObservationStrength,
     RealizationSupportMode,
@@ -246,11 +247,11 @@ class TechVaultPackTests(unittest.TestCase):
         expected_counts = {
             "nodes": 29,
             "infrastructure": 29,
-            "persistent_volumes": 19,
-            "propositions": 3,
-            "assertions": 3,
+            "persistent_volumes": 27,
+            "propositions": 4,
+            "assertions": 4,
             "observation_boundaries": 1,
-            "evidence_requirements": 4,
+            "evidence_requirements": 5,
             "identity_domains": 1,
             "relationships": 2,
             "accounts": 14,
@@ -461,6 +462,297 @@ class TechVaultPackTests(unittest.TestCase):
                 ".content_sets[0].file_count",
                 validate_pack(staged).errors,
             )
+
+    def test_wazuh_endpoint_agent_contract_is_complete(self) -> None:
+        sdl = _load_sdl()
+        # The current RAE parser must admit the actual authored contract.
+        scenario = parse_sdl_file(_SDL)
+        endpoints = {"webapp", "ad", "dns", "fileshare", "victim", "workstation"}
+        owners = endpoints | {"db", "suricata"}
+        forwarders = {
+            owner: [agent for agent in node.get("runtime", {}).get("forwarding_agents", [])
+                    if agent.get("implementation") == "wazuh_agent"]
+            for owner, node in sdl["nodes"].items()
+            if any(agent.get("implementation") == "wazuh_agent"
+                   for agent in node.get("runtime", {}).get("forwarding_agents", []))
+        }
+        self.assertEqual(set(forwarders), owners)
+        for owner in owners:
+            with self.subTest(owner=owner):
+                (agent,) = forwarders[owner]
+                self.assertEqual(agent["name"], f"techvault-{owner}-agent")
+                self.assertEqual(agent["agent_kind"], "log_forwarder")
+                self.assertEqual(agent["version"], "4.12.0")
+                self.assertEqual(
+                    {target["target_service_ref"] for target in agent["ship_targets"]},
+                    {"agent-events", "agent-enrollment"},
+                )
+                component = next(
+                    item for item in scenario.nodes[owner].runtime.software_components
+                    if item.component_id == "wazuh-agent"
+                )
+                self.assertEqual(component.name, "Wazuh agent")
+                self.assertEqual(component.version, "4.12.0")
+                self.assertEqual(component.presence.value, "required")
+                # A software outcome must not silently choose acquisition.
+                self.assertFalse(component.model_fields_set & {
+                    "package", "package_ref", "package_manager", "package_name",
+                    "package_version", "repository_refs", "provenance", "hashes",
+                })
+                state = sdl["persistent_volumes"][f"wazuh-agent-{owner}-state"]
+                self.assertEqual(state["lifecycle"], "retain")
+                self.assertEqual(state["access_mode"], "read_write_once")
+                self.assertEqual(state["consumers"], [{
+                    "node": owner, "mount_destination": "/var/ossec/etc",
+                    "access_mode": "read_write",
+                }])
+        manager = sdl["nodes"]["wazuh-manager"]["runtime"]["security_monitoring_managers"][0]
+        self.assertEqual(len(manager["agents"]), 8)
+        self.assertEqual(
+            {(agent["node_ref"], agent["name"], agent["status"]) for agent in manager["agents"]},
+            {(owner, f"techvault-{owner}-agent", "active") for owner in owners},
+        )
+        self.assertEqual(_PACK_VALIDATOR.validate_wazuh_agent_contract(sdl), [])
+        self.assertEqual(_PACK_VALIDATOR.validate_realization_method_contract(sdl), [])
+
+    def test_wazuh_endpoint_agent_contract_rejects_closed_state_drift(self) -> None:
+        original = _load_sdl()
+
+        def mutate(sdl: dict, case: str) -> None:
+            runtime = sdl["nodes"]["webapp"]["runtime"]
+            agent = runtime["forwarding_agents"][0]
+            manager = sdl["nodes"]["wazuh-manager"]["runtime"]["security_monitoring_managers"][0]
+            if case == "missing":
+                runtime["forwarding_agents"] = []
+            elif case == "extra":
+                sdl["nodes"]["kali"]["runtime"]["forwarding_agents"] = [copy.deepcopy(agent)]
+            elif case == "duplicate-forwarder":
+                runtime["forwarding_agents"].append(copy.deepcopy(agent))
+            elif case == "identity":
+                agent["name"] = "ephemeral-agent"
+            elif case == "duplicate-name":
+                agent["name"] = "techvault-dns-agent"
+            elif case == "stale-member":
+                manager["agents"][0]["node_ref"] = "missing-node"
+            elif case == "missing-member":
+                manager["agents"].pop()
+            elif case == "duplicate-member":
+                manager["agents"].append(copy.deepcopy(manager["agents"][0]))
+            elif case == "disconnected":
+                manager["agents"][0]["status"] = "disconnected"
+            elif case == "source":
+                agent["sources"][0]["location"] = ""
+            elif case == "missing-sources":
+                agent["sources"] = []
+            elif case == "duplicate-source":
+                agent["sources"].append(copy.deepcopy(agent["sources"][0]))
+            elif case == "network-as-endpoint":
+                agent["sources"][0]["parse_format"] = "eve_json"
+            elif case == "target":
+                agent["ship_targets"][0]["target_service_ref"] = "agent-enrollment"
+            elif case == "target-port":
+                agent["ship_targets"][0]["ingestion_port"] = 9999
+            elif case == "listener":
+                manager["listeners"][0]["role"] = "api"
+            elif case == "missing-software":
+                runtime["software_components"] = []
+            elif case == "optional-software":
+                runtime["software_components"][0]["presence"] = "optional"
+            elif case == "version":
+                runtime["software_components"][0]["version"] = "3.0.0"
+            elif case == "shared-state":
+                sdl["persistent_volumes"]["wazuh-agent-webapp-state"]["consumers"].append(
+                    {"node": "dns", "mount_destination": "/var/ossec/etc", "access_mode": "read_write"}
+                )
+            elif case == "ephemeral-state":
+                sdl["persistent_volumes"]["wazuh-agent-webapp-state"]["lifecycle"] = "ephemeral"
+            elif case == "missing-log":
+                runtime["filesystem_inventory"] = []
+            elif case == "dependency":
+                sdl["infrastructure"]["webapp"]["dependencies"].remove("wazuh-manager")
+            elif case == "readiness-missing":
+                sdl["propositions"].pop("wazuh-agents-ready")
+            elif case == "readiness-any":
+                sdl["propositions"]["wazuh-agents-ready"]["quantifier"] = "any"
+            elif case == "readiness-subject":
+                sdl["propositions"]["wazuh-agents-ready"]["subjects"].pop()
+            elif case == "readiness-evidence":
+                sdl["evidence_requirements"]["wazuh-agent-readiness"]["source_refs"].pop()
+            elif case == "readiness-assertion":
+                sdl["assertions"]["wazuh-agents-ready"]["polarity"] = "negative"
+
+        cases = {
+            "forwarder-owner-set-mismatch": ["missing", "extra", "duplicate-forwarder"],
+            "identity-mismatch": ["identity"],
+            "enrollment-name-duplicate": ["duplicate-name"],
+            "manager-membership-mismatch": [
+                "stale-member", "missing-member", "duplicate-member", "disconnected",
+            ],
+            "source-contract-mismatch": [
+                "source", "missing-sources", "duplicate-source", "network-as-endpoint", "missing-log",
+            ],
+            "target-contract-mismatch": ["target", "target-port", "listener"],
+            "software-mismatch": ["missing-software", "optional-software", "version"],
+            "persistence-mismatch": ["shared-state", "ephemeral-state"],
+            "lifecycle-mismatch": ["dependency"],
+            "readiness-mismatch": [
+                "readiness-missing", "readiness-any", "readiness-subject",
+                "readiness-evidence", "readiness-assertion",
+            ],
+        }
+        self.assertEqual(_PACK_VALIDATOR.validate_wazuh_agent_contract(original), [])
+        for code, mutations in cases.items():
+            for case in mutations:
+                with self.subTest(mutation=case):
+                    candidate = copy.deepcopy(original)
+                    mutate(candidate, case)
+                    errors = _PACK_VALIDATOR.validate_wazuh_agent_contract(candidate)
+                    self.assertTrue(any(error.startswith(f"wazuh.{code}:") for error in errors), errors)
+
+    def test_wazuh_contract_rejects_independent_field_drift(self) -> None:
+        original = _load_sdl()
+        runtime = ("nodes", "webapp", "runtime")
+        agent = (*runtime, "forwarding_agents", 0)
+        manager = ("nodes", "wazuh-manager", "runtime", "security_monitoring_managers", 0)
+        volume = ("persistent_volumes", "wazuh-agent-webapp-state")
+        proposition = ("propositions", "wazuh-agents-ready")
+        predicate = (*proposition, "predicate")
+        assertion = ("assertions", "wazuh-agents-ready")
+        evidence = ("evidence_requirements", "wazuh-agent-readiness")
+        cases = [
+            ("identity-mismatch", (*agent, "agent_kind"), "sensor"),
+            ("manager-membership-mismatch", (*manager, "agents", 1, "agent_id"),
+             original["nodes"]["wazuh-manager"]["runtime"]["security_monitoring_managers"][0]["agents"][0]["agent_id"]),
+            ("source-contract-mismatch", (*agent, "sources", 0, "kind"), "network"),
+            ("source-contract-mismatch", (*agent, "transforms"), []),
+            ("source-contract-mismatch", (*agent, "buffer_policy", "crypto"), "none"),
+            ("software-mismatch", (*runtime, "software_components", 0, "name"), "Other agent"),
+            ("software-mismatch", (*runtime, "software_components", 0, "component_type"), "library"),
+            ("software-mismatch", (*agent, "version"), "3.0.0"),
+            ("persistence-mismatch", (*volume, "access_mode"), "read_write_many"),
+            ("persistence-mismatch", (*volume, "consumers", 0, "mount_destination"), "/tmp/agent"),
+            ("persistence-mismatch", (*volume, "consumers", 0, "access_mode"), "read_only"),
+            ("readiness-mismatch", (*proposition, "basis"), "declared_state"),
+            ("readiness-mismatch", (*proposition, "evidence_requirements"), []),
+            ("readiness-mismatch", (*predicate, "kind"), "numeric"),
+            ("readiness-mismatch", (*predicate, "property"), "health"),
+            ("readiness-mismatch", (*predicate, "semantic_ref"), "urn:techvault:observable:health"),
+            ("readiness-mismatch", (*predicate, "operator"), "not_equals"),
+            ("readiness-mismatch", (*predicate, "expected"), False),
+            ("readiness-mismatch", (*assertion, "proposition"), "other-proposition"),
+            ("readiness-mismatch", (*assertion, "role"), "objective"),
+            ("readiness-mismatch", (*evidence, "scope_refs"), []),
+            ("readiness-mismatch", (*evidence, "channel"), "stdout"),
+            ("readiness-mismatch", (*evidence, "redaction"), "none"),
+            ("readiness-mismatch", (*evidence, "loss_disclosure"), "optional"),
+        ]
+        # Exercise each leg independently: a malformed port must not mask a
+        # missing protocol or secret-classification check on either target.
+        for index, target in enumerate(original["nodes"]["webapp"]["runtime"]["forwarding_agents"][0]["ship_targets"]):
+            service_name = target["target_service_ref"]
+            enrollment = service_name == "agent-enrollment"
+            port_field = "enrollment_port" if enrollment else "ingestion_port"
+            other_port = "ingestion_port" if enrollment else "enrollment_port"
+            target_path = (*agent, "ship_targets", index)
+            for field, value in (("target_node_ref", "dns"), (port_field, 9999),
+                                 (other_port, 9999), ("protocol", "udp")):
+                cases.append(("target-contract-mismatch", (*target_path, field), value))
+            if enrollment:
+                cases.append(("target-contract-mismatch",
+                              (*target_path, "enrollment_identity_classification"), "plain"))
+            manager_node = original["nodes"]["wazuh-manager"]
+            service_index = next(i for i, item in enumerate(manager_node["services"])
+                                 if item["name"] == service_name)
+            listeners = manager_node["runtime"]["security_monitoring_managers"][0]["listeners"]
+            listener_index = next(i for i, item in enumerate(listeners)
+                                  if item["service"] == service_name)
+            for field, value in (("port", 9999), ("protocol", "udp")):
+                cases.append(("target-contract-mismatch",
+                              ("nodes", "wazuh-manager", "services", service_index, field), value))
+            for field, value in (("role", "api"), ("protocol", "udp")):
+                cases.append(("target-contract-mismatch",
+                              (*manager, "listeners", listener_index, field), value))
+
+        self.assertEqual(_PACK_VALIDATOR.validate_wazuh_agent_contract(original), [])
+        for code, path, value in cases:
+            with self.subTest(path=path):
+                candidate = copy.deepcopy(original)
+                parent = candidate
+                for key in path[:-1]:
+                    parent = parent[key]
+                parent[path[-1]] = value
+                errors = _PACK_VALIDATOR.validate_wazuh_agent_contract(candidate)
+                self.assertTrue(any(error.startswith(f"wazuh.{code}:") for error in errors), errors)
+
+    def test_wazuh_compilation_preserves_required_configuration(self) -> None:
+        scenario = parse_sdl_file(_SDL)
+        model = compile_scenario_runtime_model(
+            scenario, parameters={name: f"test-{name}" for name in _load_sdl()["variables"]},
+        )
+        requirements = {item.field_path: item for item in model.realization_requirements}
+        owners = {"webapp", "ad", "dns", "fileshare", "victim", "workstation", "db", "suricata"}
+        fields = [
+            f"nodes.{owner}.runtime.{field}" for owner in owners
+            for field in ("forwarding_agents",)
+        ] + ["nodes.wazuh-manager.runtime.security_monitoring_managers"]
+        for field in fields:
+            with self.subTest(field=field):
+                self.assertIn(field, requirements)
+                self.assertEqual(
+                    requirements[field].verification_scope, RealizationVerificationScope.CONFIGURATION,
+                )
+                self.assertIsNone(requirements[field].required_observation_strength)
+
+        # Software outcomes use RAE's recursive constraint document, not the
+        # forwarding concern's verification-scope carrier.
+        for owner in owners:
+            requirement = requirements[f"nodes.{owner}.runtime.software_components"]
+            document = requirement.constraint_document
+            with self.subTest(software_owner=owner):
+                self.assertIsNotNone(document)
+                (member,) = document.root.members
+                self.assertEqual(member.identity, ("wazuh-agent",))
+                self.assertEqual(member.constraint.presence.value, "required")
+                self.assertEqual(member.constraint.fields["version"].value, "4.12.0")
+                self.assertEqual(member.constraint.fields["package"].kind, "delegated")
+                actual = [{
+                    "component_id": "wazuh-agent", "name": "Wazuh agent",
+                    "component_type": "application", "version": "4.12.0",
+                }]
+                self.assertTrue(evaluate_realization_constraint(document, actual).conformant)
+                self.assertFalse(evaluate_realization_constraint(document, []).conformant)
+                actual[0]["version"] = "3.0.0"
+                self.assertFalse(evaluate_realization_constraint(document, actual).conformant)
+
+        manager_document = requirements[
+            "nodes.wazuh-manager.runtime.security_monitoring_managers"
+        ].constraint_document
+        actual_managers = scenario.nodes["wazuh-manager"].runtime.model_dump(mode="json")[
+            "security_monitoring_managers"
+        ]
+        self.assertTrue(evaluate_realization_constraint(manager_document, actual_managers).conformant)
+        for drift in ("missing", "stale"):
+            observed = copy.deepcopy(actual_managers)
+            agents = observed[0]["agents"]
+            if drift == "missing":
+                agents.pop()
+            else:
+                agents[0]["node_ref"] = "kali"
+            with self.subTest(observed_inventory=drift):
+                self.assertFalse(evaluate_realization_constraint(manager_document, observed).conformant)
+
+        # Connection status is observational in RAE, not configuration. The
+        # pack's observed-state assertion carries the readiness obligation.
+        proposition = model.propositions["evaluation.proposition.wazuh-agents-ready"]
+        self.assertEqual(proposition.evaluation_basis, "observed_state")
+        self.assertEqual(proposition.quantifier, "all")
+        self.assertEqual(set(proposition.subject_addresses), {f"provision.node.{owner}" for owner in owners})
+        self.assertEqual(proposition.evidence_requirement_refs, ("wazuh-agent-readiness",))
+        self.assertEqual(proposition.unresolved_evidence_channel_refs, ())
+        self.assertEqual(proposition.evidence_channels, ("file_artifact",))
+        assertion = model.assertions["evaluation.assertion.wazuh-agents-ready"]
+        self.assertEqual(assertion.role, "precondition")
+        self.assertEqual(assertion.proposition_address, proposition.address)
 
     def test_suricata_content_contract_is_complete(self) -> None:
         errors = _PACK_VALIDATOR.validate_suricata_contract(_PACK, _load_sdl())
@@ -1650,6 +1942,7 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
                 "/var/log/samba/log.smbd",
             },
             "victim": {"/var/log/secure", "/var/log/messages"},
+            "workstation": {"/var/log/secure", "/var/log/messages"},
         }
         for node_id, paths in expected_sources.items():
             with self.subTest(node=node_id):
@@ -2436,6 +2729,7 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
                     )
                     for agent in sdl["nodes"][node_id]["runtime"]["forwarding_agents"]
                     for target in agent["ship_targets"]
+                    if "ingestion_port" in target
                 }
                 self.assertEqual(declared, agents)
 
@@ -2721,12 +3015,18 @@ class TechVaultValidatorEntrypointTests(unittest.TestCase):
                 "text": "delivery recipe",
             }
 
+        def remove_wazuh_manager_member(sdl: dict) -> None:
+            sdl["nodes"]["wazuh-manager"]["runtime"][
+                "security_monitoring_managers"
+            ][0]["agents"].pop()
+
         cases = {
             "realization.constraint": add_substrate_constraint,
             "realization.build-recipe": add_build_recipe,
             "realization.host-publication": publish_on_every_interface,
             "suricata.detection-evidence-mismatch": unrelated_suricata_alert,
             "realization.service-unit-content": add_delivery_content,
+            "wazuh.manager-membership-mismatch": remove_wazuh_manager_member,
         }
         for code, mutate in cases.items():
             with self.subTest(code=code), tempfile.TemporaryDirectory() as directory:

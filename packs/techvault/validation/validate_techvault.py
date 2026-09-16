@@ -127,6 +127,74 @@ _FORBIDDEN_SENSOR_FIELDS = {
     "capture_mode": "packet-acquisition",
 }
 
+_WAZUH_ENDPOINT_OWNERS = frozenset(
+    {"webapp", "ad", "dns", "fileshare", "victim", "workstation"}
+)
+_WAZUH_AGENT_SPECS = {
+    "webapp": {
+        "name": "techvault-webapp-agent",
+        "state_volume": "wazuh-agent-webapp-state",
+        "sources": {
+            ("gunicorn-access", "/var/log/gunicorn/access.log", "syslog"),
+        },
+    },
+    "ad": {
+        "name": "techvault-ad-agent",
+        "state_volume": "wazuh-agent-ad-state",
+        "sources": {
+            ("samba-log", "/var/log/samba/log.samba", "syslog"),
+            ("smbd-log", "/var/log/samba/log.smbd", "syslog"),
+            ("winbindd-log", "/var/log/samba/log.winbindd", "syslog"),
+        },
+    },
+    "dns": {
+        "name": "techvault-dns-agent",
+        "state_volume": "wazuh-agent-dns-state",
+        "sources": {
+            ("dns-query-log", "/var/log/named/query.log", "syslog"),
+            ("dns-default-log", "/var/log/named/default.log", "syslog"),
+        },
+    },
+    "fileshare": {
+        "name": "techvault-fileshare-agent",
+        "state_volume": "wazuh-agent-fileshare-state",
+        "sources": {
+            ("fileshare-samba-log", "/var/log/samba/log.samba", "syslog"),
+            ("fileshare-smbd-log", "/var/log/samba/log.smbd", "syslog"),
+        },
+    },
+    "victim": {
+        "name": "techvault-victim-agent",
+        "state_volume": "wazuh-agent-victim-state",
+        "sources": {
+            ("victim-auth-log", "/var/log/secure", "syslog"),
+            ("victim-system-log", "/var/log/messages", "syslog"),
+        },
+    },
+    "workstation": {
+        "name": "techvault-workstation-agent",
+        "state_volume": "wazuh-agent-workstation-state",
+        "sources": {
+            ("workstation-auth-log", "/var/log/secure", "syslog"),
+            ("workstation-system-log", "/var/log/messages", "syslog"),
+        },
+    },
+    "db": {
+        "name": "techvault-db-agent",
+        "state_volume": "wazuh-agent-db-state",
+        "sources": {
+            ("postgres-log", "/var/log/postgresql/postgresql-15-main.log", "syslog"),
+        },
+    },
+    "suricata": {
+        "name": "techvault-suricata-agent",
+        "state_volume": "wazuh-agent-suricata-state",
+        "sources": {
+            ("suricata-eve", "/var/log/suricata/eve.json", "eve_json"),
+        },
+    },
+}
+
 
 def _error(errors: list[str], code: str, detail: str) -> None:
     errors.append(f"suricata.{code}: {detail}")
@@ -134,6 +202,10 @@ def _error(errors: list[str], code: str, detail: str) -> None:
 
 def _cortex_error(errors: list[str], code: str, detail: str) -> None:
     errors.append(f"cortex.{code}: {detail}")
+
+
+def _wazuh_error(errors: list[str], code: str, detail: str) -> None:
+    errors.append(f"wazuh.{code}: {detail}")
 
 
 def _as_mapping(value: object) -> Mapping[str, Any]:
@@ -493,6 +565,272 @@ def _validate_evidence_contract(
         _error(errors, "detection-path-mismatch", "Wazuh rule 303020")
 
 
+def _wazuh_forwarders_by_owner(
+    nodes: Mapping[str, Any], errors: list[str]
+) -> dict[str, Mapping[str, Any]]:
+    result: dict[str, Mapping[str, Any]] = {}
+    for owner, raw_node in nodes.items():
+        runtime = _as_mapping(_as_mapping(raw_node).get("runtime"))
+        agents = [
+            _as_mapping(agent)
+            for agent in runtime.get("forwarding_agents", [])
+            if isinstance(agent, Mapping)
+            and agent.get("implementation") == "wazuh_agent"
+        ]
+        if not agents:
+            continue
+        if len(agents) != 1:
+            _wazuh_error(errors, "forwarder-owner-set-mismatch", str(owner))
+        result[str(owner)] = agents[0]
+    if set(result) != set(_WAZUH_AGENT_SPECS):
+        _wazuh_error(
+            errors,
+            "forwarder-owner-set-mismatch",
+            ",".join(sorted(set(result) ^ set(_WAZUH_AGENT_SPECS))),
+        )
+    return result
+
+
+def _validate_wazuh_manager_membership(
+    nodes: Mapping[str, Any],
+    forwarders: Mapping[str, Mapping[str, Any]],
+    errors: list[str],
+) -> None:
+    manager_runtime = _as_mapping(_as_mapping(nodes.get("wazuh-manager")).get("runtime"))
+    managers = [
+        _as_mapping(manager)
+        for manager in manager_runtime.get("security_monitoring_managers", [])
+        if isinstance(manager, Mapping)
+        and manager.get("security_monitoring_manager_id") == "wazuh-manager"
+    ]
+    if len(managers) != 1:
+        _wazuh_error(errors, "manager-membership-mismatch", "wazuh-manager")
+        return
+
+    agents = [
+        _as_mapping(agent)
+        for agent in managers[0].get("agents", [])
+        if isinstance(agent, Mapping)
+    ]
+    actual_pairs = {(agent.get("node_ref"), agent.get("name")) for agent in agents}
+    expected_pairs = {
+        (owner, spec["name"]) for owner, spec in _WAZUH_AGENT_SPECS.items()
+    }
+    if actual_pairs != expected_pairs or len(agents) != len(expected_pairs):
+        _wazuh_error(errors, "manager-membership-mismatch", "owner/name bijection")
+    agent_ids = [agent.get("agent_id") for agent in agents]
+    names = [agent.get("name") for agent in agents]
+    if len(agent_ids) != len(set(agent_ids)) or len(names) != len(set(names)):
+        _wazuh_error(errors, "manager-membership-mismatch", "duplicate identity")
+    for agent in agents:
+        if agent.get("status") != "active":
+            _wazuh_error(
+                errors,
+                "manager-membership-mismatch",
+                str(agent.get("agent_id", "unknown")),
+            )
+    for owner, forwarder in forwarders.items():
+        if (owner, forwarder.get("name")) not in actual_pairs:
+            _wazuh_error(errors, "manager-membership-mismatch", owner)
+
+
+def _validate_wazuh_targets(
+    manager_node: Mapping[str, Any],
+    owner: str,
+    agent: Mapping[str, Any],
+    errors: list[str],
+) -> None:
+    services = {
+        service.get("name"): _as_mapping(service)
+        for service in manager_node.get("services", [])
+        if isinstance(service, Mapping)
+    }
+    runtime = _as_mapping(manager_node.get("runtime"))
+    managers = runtime.get("security_monitoring_managers", [])
+    manager = _as_mapping(managers[0]) if isinstance(managers, list) and managers else {}
+    listeners = {
+        listener.get("service"): _as_mapping(listener)
+        for listener in manager.get("listeners", [])
+        if isinstance(listener, Mapping)
+    }
+    targets = {
+        target.get("target_service_ref"): _as_mapping(target)
+        for target in agent.get("ship_targets", [])
+        if isinstance(target, Mapping)
+    }
+    expected = {
+        "agent-events": ("agent_event_ingestion", "ingestion_port", 1514),
+        "agent-enrollment": ("agent_enrollment", "enrollment_port", 1515),
+    }
+    if set(targets) != set(expected) or len(agent.get("ship_targets", [])) != 2:
+        _wazuh_error(errors, "target-contract-mismatch", owner)
+        return
+    for service_name, (role, port_field, expected_port) in expected.items():
+        target = targets[service_name]
+        service = services.get(service_name, {})
+        listener = listeners.get(service_name, {})
+        other_port = "enrollment_port" if port_field == "ingestion_port" else "ingestion_port"
+        if (
+            target.get("target_node_ref") != "wazuh-manager"
+            or target.get(port_field) != expected_port
+            or target.get(other_port) is not None
+            or target.get("protocol") != "tcp"
+            or service.get("port") != expected_port
+            or service.get("protocol") != "tcp"
+            or listener.get("role") != role
+            or listener.get("protocol") != "tcp"
+        ):
+            _wazuh_error(errors, "target-contract-mismatch", f"{owner}:{service_name}")
+        if service_name == "agent-enrollment" and target.get(
+            "enrollment_identity_classification"
+        ) != "operator_secret":
+            _wazuh_error(errors, "target-contract-mismatch", f"{owner}:enrollment")
+
+
+def _validate_wazuh_realization(
+    sdl: Mapping[str, Any],
+    owner: str,
+    spec: Mapping[str, Any],
+    agent: Mapping[str, Any],
+    errors: list[str],
+) -> None:
+    nodes = _as_mapping(sdl.get("nodes"))
+    node = _as_mapping(nodes.get(owner))
+    runtime = _as_mapping(node.get("runtime"))
+    actual_sources = {
+        (
+            source.get("source_id"),
+            source.get("location"),
+            source.get("parse_format"),
+        )
+        for source in agent.get("sources", [])
+        if isinstance(source, Mapping)
+        and source.get("kind") == "tailed_path"
+        and str(source.get("location", "")).strip()
+    }
+    if actual_sources != spec["sources"] or len(agent.get("sources", [])) != len(spec["sources"]):
+        _wazuh_error(errors, "source-contract-mismatch", owner)
+    if owner in _WAZUH_ENDPOINT_OWNERS and any(
+        source[2] == "eve_json" for source in actual_sources
+    ):
+        _wazuh_error(errors, "source-contract-mismatch", f"{owner}:network-evidence")
+    transforms = [
+        transform
+        for transform in agent.get("transforms", [])
+        if isinstance(transform, Mapping) and transform.get("kind") == "parse"
+    ]
+    buffer = _as_mapping(agent.get("buffer_policy"))
+    if len(transforms) != 1 or buffer.get("crypto") != "aes":
+        _wazuh_error(errors, "source-contract-mismatch", f"{owner}:processing")
+
+    inventory = {
+        item.get("path")
+        for item in runtime.get("filesystem_inventory", [])
+        if isinstance(item, Mapping) and item.get("entry_type") == "file"
+    }
+    # Suricata already owns its EVE source through the typed output stream.
+    inventory.update(
+        stream.get("path")
+        for engine in runtime.get("network_detection_engines", [])
+        if isinstance(engine, Mapping)
+        for stream in engine.get("output_streams", [])
+        if isinstance(stream, Mapping)
+    )
+    if any(location not in inventory for _, location, _ in spec["sources"]):
+        _wazuh_error(errors, "source-contract-mismatch", f"{owner}:unrealized-path")
+
+    volumes = _as_mapping(sdl.get("persistent_volumes"))
+    state_volume = _as_mapping(volumes.get(str(spec["state_volume"])))
+    expected_consumer = {
+        "node": owner,
+        "mount_destination": "/var/ossec/etc",
+        "access_mode": "read_write",
+    }
+    if (
+        state_volume.get("lifecycle") != "retain"
+        or state_volume.get("access_mode") != "read_write_once"
+        or state_volume.get("consumers") != [expected_consumer]
+    ):
+        _wazuh_error(errors, "persistence-mismatch", owner)
+
+    infrastructure = _as_mapping(_as_mapping(sdl.get("infrastructure")).get(owner))
+    if "wazuh-manager" not in infrastructure.get("dependencies", []):
+        _wazuh_error(errors, "lifecycle-mismatch", f"{owner}:dependency")
+
+    components = [
+        item for item in runtime.get("software_components", [])
+        if isinstance(item, Mapping) and item.get("component_id") == "wazuh-agent"
+    ]
+    if len(components) != 1 or (
+        components[0].get("name") != "Wazuh agent"
+        or components[0].get("component_type") != "application"
+        or components[0].get("presence", "required") != "required"
+        or components[0].get("version") != "4.12.0"
+        or agent.get("version") != "4.12.0"
+    ):
+        _wazuh_error(errors, "software-mismatch", owner)
+
+
+def _validate_wazuh_readiness(
+    sdl: Mapping[str, Any],
+    forwarders: Mapping[str, Mapping[str, Any]],
+    errors: list[str],
+) -> None:
+    proposition = _as_mapping(_as_mapping(sdl.get("propositions")).get("wazuh-agents-ready"))
+    assertion = _as_mapping(_as_mapping(sdl.get("assertions")).get("wazuh-agents-ready"))
+    evidence = _as_mapping(_as_mapping(sdl.get("evidence_requirements")).get("wazuh-agent-readiness"))
+    predicate = _as_mapping(proposition.get("predicate"))
+    subjects = {f"nodes.{owner}" for owner in _WAZUH_AGENT_SPECS}
+    manager_ref = "nodes.wazuh-manager.runtime.security_monitoring_managers.wazuh-manager"
+    sources = {manager_ref} | {
+        f"nodes.{owner}.runtime.forwarding_agents.{agent.get('forwarding_agent_id')}"
+        for owner, agent in forwarders.items()
+    }
+    if (
+        proposition.get("basis") != "observed_state"
+        or proposition.get("quantifier", "all") != "all"
+        or set(proposition.get("subjects", [])) != subjects
+        or proposition.get("evidence_requirements") != ["wazuh-agent-readiness"]
+        or predicate.get("kind") != "boolean"
+        or predicate.get("property") != "wazuh-agent-ready"
+        or predicate.get("semantic_ref") != "urn:techvault:observable:wazuh-agent-ready"
+        or predicate.get("operator", "equals") != "equals"
+        or predicate.get("expected") is not True
+        or assertion.get("proposition") != "wazuh-agents-ready"
+        or assertion.get("role") != "precondition"
+        or assertion.get("polarity", "positive") != "positive"
+        or set(evidence.get("source_refs", [])) != sources
+        or set(evidence.get("scope_refs", [])) != subjects | {"nodes.wazuh-manager"}
+        or evidence.get("channel") != "file_artifact"
+        or evidence.get("redaction") != "redact_secrets"
+        or evidence.get("loss_disclosure") != "required"
+    ):
+        _wazuh_error(errors, "readiness-mismatch", "wazuh-agents-ready")
+
+
+def validate_wazuh_agent_contract(sdl: Mapping[str, Any]) -> list[str]:
+    """Validate TechVault's closed joins around RAES-owned Wazuh models."""
+
+    errors: list[str] = []
+    nodes = _as_mapping(sdl.get("nodes"))
+    forwarders = _wazuh_forwarders_by_owner(nodes, errors)
+    names = [agent.get("name") for agent in forwarders.values()]
+    if len(names) != len(set(names)):
+        _wazuh_error(errors, "enrollment-name-duplicate", "forwarding agents")
+    manager_node = _as_mapping(nodes.get("wazuh-manager"))
+    for owner, spec in _WAZUH_AGENT_SPECS.items():
+        agent = forwarders.get(owner)
+        if agent is None:
+            continue
+        if agent.get("name") != spec["name"] or agent.get("agent_kind") != "log_forwarder":
+            _wazuh_error(errors, "identity-mismatch", owner)
+        _validate_wazuh_targets(manager_node, owner, agent, errors)
+        _validate_wazuh_realization(sdl, owner, spec, agent, errors)
+    _validate_wazuh_manager_membership(nodes, forwarders, errors)
+    _validate_wazuh_readiness(sdl, forwarders, errors)
+    return errors
+
+
 def validate_suricata_contract(
     pack_root: pathlib.Path,
     sdl: Mapping[str, Any],
@@ -773,6 +1111,7 @@ def validate() -> list[str]:
         errors.extend(validate_realization_method_contract(sdl))
         errors.extend(validate_suricata_contract(root, sdl))
         errors.extend(validate_cortex_contract(root, sdl))
+        errors.extend(validate_wazuh_agent_contract(sdl))
     return errors
 
 
