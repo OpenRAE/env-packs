@@ -22,6 +22,9 @@ User-facing documentation is under [`public/`](public/index.md).
 - [TechVault Kali capture and shell-access preflight](development/techvault-kali-capture-shell-preflight.md)
   — SDL authoring, runtime realization, evidence, and capability-handling
   guardrails for issue #282.
+- [TechVault MISP runtime-contract preflight](development/techvault-misp-runtime-contract-preflight.md)
+  — MISP, MariaDB, Redis, trust, readiness, and backend-realization ownership
+  for issue #280.
 - [TechVault Shuffle runtime-contract preflight](development/techvault-shuffle-runtime-contract-preflight.md)
   — application/datastore, trust, secret, readiness, and realization guardrails
   for issue #281.

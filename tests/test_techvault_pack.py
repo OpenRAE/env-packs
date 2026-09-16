@@ -199,6 +199,161 @@ def _assert_shuffle_runtime_contract(test: unittest.TestCase, sdl: dict) -> None
     test.assertEqual(sdl["persistent_volumes"]["shuffle_data"]["lifecycle"], "retain")
 
 
+def _assert_misp_runtime_contract(test: unittest.TestCase, sdl: dict) -> None:
+    """Assert MISP's authored state without prescribing backend realization."""
+
+    nodes = sdl["nodes"]
+    misp_runtime = nodes["misp"]["runtime"]
+    (application,) = misp_runtime["platform_applications"]
+    test.assertEqual(
+        {
+            binding["binding_id"]: (
+                binding["role"],
+                binding["target_node_ref"],
+                binding["target_service_ref"],
+            )
+            for binding in application["upstream_bindings"]
+        },
+        {
+            "misp-relational-store": ("data_source", "misp-db", "mysql"),
+            "misp-cache-store": ("data_source", "misp-redis", "redis"),
+        },
+    )
+    test.assertEqual(
+        application["settings"],
+        [
+            {
+                "setting_id": "misp-canonical-url",
+                "name": "Canonical MISP URL",
+                "value": "https://misp.techvault.local",
+                "provenance": "runtime",
+                "classification": "plain",
+                "description": (
+                    "Participant-visible HTTPS identity reported by MISP; the "
+                    "backend chooses how the selected component realizes it."
+                ),
+            }
+        ],
+    )
+
+    (listener,) = misp_runtime["service_listeners"]
+    test.assertEqual(
+        listener["readiness"],
+        {
+            "probe": "misp-authenticated-api-operation",
+            "criteria": (
+                "A certificate-verified, authenticated MISP API write and read "
+                "succeeds through the declared MariaDB and Redis services."
+            ),
+            "evidence_refs": ["misp-authenticated-api-readiness"],
+            "description": (
+                "Application readiness requires the real authenticated data "
+                "paths, not only a listener or login page."
+            ),
+        },
+    )
+
+    (authorization,) = misp_runtime["app_authorizations"]
+    test.assertEqual(authorization["resource_vocabulary"], "app_resource")
+    test.assertTrue(authorization["auth_enabled"])
+    principals = {
+        principal["principal_id"]: principal
+        for principal in authorization["principals"]
+    }
+    test.assertEqual(set(principals), {"misp-administrator", "misp-suricata-sync-api-key"})
+    test.assertEqual(principals["misp-administrator"]["kind"], "user")
+    test.assertEqual(
+        principals["misp-administrator"]["credential_classification"],
+        "operator_secret",
+    )
+    test.assertEqual(
+        principals["misp-suricata-sync-api-key"]["credential_classification"],
+        "operator_secret",
+    )
+
+    (database,) = nodes["misp-db"]["runtime"]["database_services"]
+    test.assertEqual(
+        database["roles"],
+        [
+            {
+                "role_id": "misp-application-role",
+                "name": "misp",
+                "role_type": "application",
+                "origin": "scenario",
+                "can_login": True,
+                "description": "Application role used by MISP for its declared database.",
+            }
+        ],
+    )
+    test.assertEqual(
+        database["grants"],
+        [
+            {
+                "grantee_role_ref": "misp-application-role",
+                "object_type": "database",
+                "object_ref": "misp",
+                "privileges": ["ALL"],
+                "with_grant_option": False,
+                "description": "MISP owns its application database without grant delegation.",
+            }
+        ],
+    )
+
+    database_edge = sdl["relationships"]["misp-uses-database"]
+    test.assertEqual(
+        database_edge["database_access"],
+        {
+            "role_ref": "misp-application-role",
+            "auth_method": "password",
+            "description": (
+                "MISP authenticates as the declared application role; the open "
+                "backend selects and applies the credential bytes consistently."
+            ),
+        },
+    )
+
+    redis_runtime = nodes["misp-redis"]["runtime"]
+    (datastore,) = redis_runtime["datastore_services"]
+    test.assertEqual(datastore["authorization_ref"], "misp-redis-authorization")
+    (redis_authorization,) = redis_runtime["app_authorizations"]
+    test.assertEqual(redis_authorization["resource_vocabulary"], "redis_acl")
+    test.assertTrue(redis_authorization["auth_enabled"])
+    test.assertEqual(
+        [
+            (
+                principal["principal_id"],
+                principal["kind"],
+                principal["credential_classification"],
+            )
+            for principal in redis_authorization["principals"]
+        ],
+        [("misp-cache-client", "service_account", "redacted")],
+    )
+
+    generated = sdl["generated_artifacts"]["techvault-soc-certificates"]
+    (misp_consumer,) = [
+        consumer for consumer in generated["consumers"] if consumer["node"] == "misp"
+    ]
+    test.assertEqual(misp_consumer["access_mode"], "read_only")
+    test.assertEqual(
+        set(misp_consumer["selected_outputs"]),
+        {"ca-certificate", "misp-certificate", "misp-private-key"},
+    )
+    test.assertNotIn("ca-private-key", misp_consumer["selected_outputs"])
+
+    readiness = sdl["evidence_requirements"]["misp-authenticated-api-readiness"]
+    test.assertEqual(readiness["channel"], "api_response")
+    test.assertEqual(readiness["redaction"], "redact_secrets")
+    test.assertEqual(
+        sdl["propositions"]["misp-authenticated-api-ready"]["evidence_requirements"],
+        ["misp-authenticated-api-readiness"],
+    )
+    test.assertEqual(
+        sdl["assertions"]["misp-authenticated-api-ready"],
+        {"proposition": "misp-authenticated-api-ready", "role": "postcondition"},
+    )
+
+
 def _assert_shuffle_orborus_contract(test: unittest.TestCase, sdl: dict) -> None:
     """Assert Orborus declares its portable authority, not its realization."""
     runtime = sdl["nodes"]["shuffle-orborus"]["runtime"]
@@ -306,12 +461,12 @@ class TechVaultPackTests(unittest.TestCase):
             "nodes": 29,
             "infrastructure": 29,
             "persistent_volumes": 27,
-            "propositions": 4,
-            "assertions": 4,
+            "propositions": 5,
+            "assertions": 5,
             "observation_boundaries": 1,
-            "evidence_requirements": 5,
+            "evidence_requirements": 6,
             "identity_domains": 1,
-            "relationships": 2,
+            "relationships": 3,
             "accounts": 14,
             "variables": 10,
             "entities": 2,
@@ -1548,6 +1703,196 @@ class TechVaultPackTests(unittest.TestCase):
         for node_name in _UNDERDECLARED_RUNTIME_NODES:
             self.assertNotIn("environment", nodes[node_name]["runtime"])
 
+    def test_misp_runtime_contract_is_complete_and_backend_neutral(self) -> None:
+        sdl = _load_sdl()
+        _assert_misp_runtime_contract(self, sdl)
+        self.assertEqual(_PACK_VALIDATOR.validate_misp_contract(sdl), [])
+
+        serialized = yaml.safe_dump(
+            {
+                "nodes": {
+                    node: sdl["nodes"][node]
+                    for node in ("misp", "misp-db", "misp-redis")
+                },
+                "relationships": {
+                    "misp-uses-database": sdl["relationships"][
+                        "misp-uses-database"
+                    ]
+                },
+            }
+        )
+        for implementation_detail in (
+            "MYSQL_",
+            "REDIS_",
+            "ADMIN_",
+            "BASE_URL",
+            "requirepass",
+            "/etc/nginx/certs",
+        ):
+            with self.subTest(implementation_detail=implementation_detail):
+                self.assertNotIn(implementation_detail, serialized)
+
+    def test_misp_contract_validator_rejects_inconsistent_closed_state(self) -> None:
+        original = _load_sdl()
+
+        def misp_application(candidate: dict) -> dict:
+            return candidate["nodes"]["misp"]["runtime"][
+                "platform_applications"
+            ][0]
+
+        def redis_authorization(candidate: dict) -> dict:
+            return candidate["nodes"]["misp-redis"]["runtime"][
+                "app_authorizations"
+            ][0]
+
+        mutations = {
+            "database-binding-missing": (
+                lambda candidate: misp_application(candidate)[
+                    "upstream_bindings"
+                ].pop(0),
+                "misp.binding-invalid",
+            ),
+            "binding-substituted": (
+                lambda candidate: misp_application(candidate)[
+                    "upstream_bindings"
+                ][0].__setitem__("target_service_ref", "redis"),
+                "misp.binding-invalid",
+            ),
+            "binding-excess": (
+                lambda candidate: misp_application(candidate)[
+                    "upstream_bindings"
+                ].append(
+                    {
+                        "binding_id": "unexpected-store",
+                        "role": "data_source",
+                        "target_node_ref": "misp-db",
+                        "target_service_ref": "mysql",
+                    }
+                ),
+                "misp.binding-invalid",
+            ),
+            "database-role-missing": (
+                lambda candidate: candidate["nodes"]["misp-db"]["runtime"][
+                    "database_services"
+                ][0].__setitem__("roles", []),
+                "misp.database-invalid",
+            ),
+            "database-grant-substituted": (
+                lambda candidate: candidate["nodes"]["misp-db"]["runtime"][
+                    "database_services"
+                ][0]["grants"][0].__setitem__("object_ref", "other"),
+                "misp.database-invalid",
+            ),
+            "database-auth-disabled": (
+                lambda candidate: candidate["relationships"][
+                    "misp-uses-database"
+                ]["database_access"].__setitem__("auth_method", "trust"),
+                "misp.database-access-invalid",
+            ),
+            "misp-api-principal-substituted": (
+                lambda candidate: candidate["nodes"]["misp"]["runtime"][
+                    "app_authorizations"
+                ][0]["principals"][0].__setitem__(
+                    "credential_classification", "redacted"
+                ),
+                "misp.principal-invalid",
+            ),
+            "misp-api-grant-substituted": (
+                lambda candidate: candidate["nodes"]["misp"]["runtime"][
+                    "app_authorizations"
+                ][0]["permission_grants"][1].__setitem__("actions", ["manage"]),
+                "misp.principal-invalid",
+            ),
+            "redis-authorization-disabled": (
+                lambda candidate: redis_authorization(candidate).__setitem__(
+                    "auth_enabled", False
+                ),
+                "misp.redis-authorization-invalid",
+            ),
+            "redis-grant-substituted": (
+                lambda candidate: redis_authorization(candidate)[
+                    "permission_grants"
+                ][0].__setitem__("actions", ["read"]),
+                "misp.redis-authorization-invalid",
+            ),
+            "redis-principal-substituted": (
+                lambda candidate: redis_authorization(candidate)[
+                    "principals"
+                ][0].__setitem__("principal_id", "other-client"),
+                "misp.redis-authorization-invalid",
+            ),
+            "redis-principal-excess": (
+                lambda candidate: redis_authorization(candidate)[
+                    "principals"
+                ].append(
+                    {
+                        "principal_id": "unexpected-client",
+                        "kind": "service_account",
+                        "credential_classification": "redacted",
+                    }
+                ),
+                "misp.redis-authorization-invalid",
+            ),
+            "certificate-missing": (
+                lambda candidate: next(
+                    consumer
+                    for consumer in candidate["generated_artifacts"][
+                        "techvault-soc-certificates"
+                    ]["consumers"]
+                    if consumer["node"] == "misp"
+                )["selected_outputs"].remove("misp-certificate"),
+                "misp.certificate-selection-invalid",
+            ),
+            "ca-private-key-exposed": (
+                lambda candidate: next(
+                    consumer
+                    for consumer in candidate["generated_artifacts"][
+                        "techvault-soc-certificates"
+                    ]["consumers"]
+                    if consumer["node"] == "misp"
+                )["selected_outputs"].append("ca-private-key"),
+                "misp.certificate-selection-invalid",
+            ),
+            "certificate-path-substituted": (
+                lambda candidate: next(
+                    output
+                    for output in candidate["generated_artifacts"][
+                        "techvault-soc-certificates"
+                    ]["outputs"]
+                    if output["name"] == "misp-certificate"
+                ).__setitem__("path", "misp/other.pem"),
+                "misp.certificate-selection-invalid",
+            ),
+            "canonical-url-substituted": (
+                lambda candidate: misp_application(candidate)["settings"][
+                    0
+                ].__setitem__("value", "http://misp"),
+                "misp.setting-invalid",
+            ),
+            "readiness-evidence-missing": (
+                lambda candidate: candidate["nodes"]["misp"]["runtime"][
+                    "service_listeners"
+                ][0]["readiness"].__setitem__("evidence_refs", []),
+                "misp.readiness-invalid",
+            ),
+            "readiness-observation-substituted": (
+                lambda candidate: candidate["evidence_requirements"][
+                    "misp-authenticated-api-readiness"
+                ].__setitem__("channel", "log"),
+                "misp.evidence-invalid",
+            ),
+        }
+
+        for name, (mutate, expected_code) in mutations.items():
+            with self.subTest(mutation=name):
+                candidate = copy.deepcopy(original)
+                mutate(candidate)
+                errors = _PACK_VALIDATOR.validate_misp_contract(candidate)
+                self.assertTrue(
+                    any(expected_code in error for error in errors),
+                    errors,
+                )
+
     def test_internal_services_have_no_host_publication_contract(self) -> None:
         for node_name, node in _load_sdl()["nodes"].items():
             with self.subTest(node=node_name):
@@ -2013,7 +2358,9 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
         self.assertEqual(
             authorization["app_authorization_id"], "misp-api-authorization"
         )
-        (principal,) = authorization["principals"]
+        principal = {
+            item["principal_id"]: item for item in authorization["principals"]
+        }["misp-suricata-sync-api-key"]
         self.assertEqual(principal["principal_id"], "misp-suricata-sync-api-key")
         self.assertEqual(principal["kind"], "api_key")
         self.assertEqual(principal["credential_classification"], "operator_secret")
@@ -3188,6 +3535,11 @@ class TechVaultValidatorEntrypointTests(unittest.TestCase):
                 "scope"
             ] = "unrelated alert"
 
+        def substitute_misp_canonical_url(sdl: dict) -> None:
+            sdl["nodes"]["misp"]["runtime"]["platform_applications"][0][
+                "settings"
+            ][0]["value"] = "http://misp"
+
         def add_delivery_content(sdl: dict) -> None:
             sdl["content"]["renamed-db-launch"] = {
                 "type": "file",
@@ -3206,6 +3558,7 @@ class TechVaultValidatorEntrypointTests(unittest.TestCase):
             "realization.build-recipe": add_build_recipe,
             "realization.host-publication": publish_on_every_interface,
             "suricata.detection-evidence-mismatch": unrelated_suricata_alert,
+            "misp.setting-invalid": substitute_misp_canonical_url,
             "realization.service-unit-content": add_delivery_content,
             "wazuh.manager-membership-mismatch": remove_wazuh_manager_member,
         }

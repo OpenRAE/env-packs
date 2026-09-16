@@ -522,6 +522,11 @@ nodes:
           port: 443
           protocol: tcp
           scope: wildcard
+          readiness:
+            probe: misp-authenticated-api-operation
+            criteria: A certificate-verified, authenticated MISP API write and read succeeds through the declared MariaDB and Redis services.
+            evidence_refs: [misp-authenticated-api-readiness]
+            description: Application readiness requires the real authenticated data paths, not only a listener or login page.
           provenance: operator
       applications:
         - application_id: misp-web
@@ -542,16 +547,63 @@ nodes:
               kind: threat_intelligence_management
             - capability_id: intelligence-exchange
               kind: intelligence_exchange
+          upstream_bindings:
+            - binding_id: misp-relational-store
+              role: data_source
+              target_node_ref: misp-db
+              target_service_ref: mysql
+            - binding_id: misp-cache-store
+              role: data_source
+              target_node_ref: misp-redis
+              target_service_ref: redis
+          settings:
+            - setting_id: misp-canonical-url
+              name: Canonical MISP URL
+              value: https://misp.techvault.local
+              provenance: runtime
+              classification: plain
+              description: Participant-visible HTTPS identity reported by MISP; the backend chooses how the selected component realizes it.
           authorization_ref: misp-api-authorization
           version: 2.5.44
       app_authorizations:
         - app_authorization_id: misp-api-authorization
+          resource_vocabulary: app_resource
           auth_enabled: true
           principals:
+            - principal_id: misp-administrator
+              kind: user
+              name: admin@admin.test
+              credential_classification: operator_secret
+              description: Operator-supplied MISP administrator identity; credential bytes are not pack content.
             - principal_id: misp-suricata-sync-api-key
               kind: api_key
               credential_classification: operator_secret
               description: The sync agent authenticates to MISP with a dedicated API key whose bytes are supplied through the backend's secret boundary.
+          roles:
+            - role_id: misp-administrator-role
+              name: MISP administrator
+            - role_id: misp-sync-reader-role
+              name: MISP synchronization reader
+          permission_grants:
+            - grant_id: misp-administrator-access
+              role_ref: misp-administrator-role
+              resource_kind: app_resource
+              actions: [manage]
+              resource_patterns: ['*']
+              effect: allow
+            - grant_id: misp-sync-read-access
+              role_ref: misp-sync-reader-role
+              resource_kind: app_resource
+              actions: [read]
+              resource_patterns: [attributes/*, events/*]
+              effect: allow
+          role_mappings:
+            - mapping_id: misp-administrator-mapping
+              role_ref: misp-administrator-role
+              users: [misp-administrator]
+            - mapping_id: misp-sync-reader-mapping
+              role_ref: misp-sync-reader-role
+              users: [misp-suricata-sync-api-key]
   misp-db:
     type: compute
     os: linux
@@ -577,6 +629,20 @@ nodes:
             - database_id: misp
               name: misp
               origin: scenario
+          roles:
+            - role_id: misp-application-role
+              name: misp
+              role_type: application
+              origin: scenario
+              can_login: true
+              description: Application role used by MISP for its declared database.
+          grants:
+            - grantee_role_ref: misp-application-role
+              object_type: database
+              object_ref: misp
+              privileges: [ALL]
+              with_grant_option: false
+              description: MISP owns its application database without grant delegation.
           version: "10.11"
   misp-redis:
     type: compute
@@ -611,7 +677,31 @@ nodes:
             aof: false
             eviction: noeviction
             description: Ephemeral MISP cache with deterministic no-eviction behavior.
+          authorization_ref: misp-redis-authorization
           version: "7"
+      app_authorizations:
+        - app_authorization_id: misp-redis-authorization
+          resource_vocabulary: redis_acl
+          auth_enabled: true
+          principals:
+            - principal_id: misp-cache-client
+              kind: service_account
+              credential_classification: redacted
+              description: Backend-selected value-free credential used only by MISP for its cache service.
+          roles:
+            - role_id: misp-cache-role
+              name: MISP cache read/write
+          permission_grants:
+            - grant_id: misp-cache-access
+              role_ref: misp-cache-role
+              resource_kind: redis_acl
+              actions: [read, write]
+              resource_patterns: ['*']
+              effect: allow
+          role_mappings:
+            - mapping_id: misp-cache-client-mapping
+              role_ref: misp-cache-role
+              users: [misp-cache-client]
   misp-suricata-sync:
     type: compute
     os: linux
@@ -633,7 +723,7 @@ nodes:
           sources:
             - source_id: misp-attributes
               kind: api_pull
-              location: https://misp
+              location: https://misp.techvault.local
               parse_format: misp_json
               selector: techvault:enforce
           transforms:
@@ -3148,6 +3238,20 @@ content:
             acquisition: copy
             timing: pack-ingestion
 propositions:
+  misp-authenticated-api-ready:
+    description: MISP serves its canonical HTTPS identity and completes an authenticated API write and read through the declared MariaDB and Redis services.
+    subjects:
+      - nodes.misp.runtime.platform_applications.misp-threat-intelligence
+      - nodes.misp-db.runtime.database_services.misp-db
+      - nodes.misp-redis.runtime.datastore_services.misp-redis
+    basis: observed_state
+    quantifier: all
+    predicate:
+      kind: boolean
+      property: misp-authenticated-api-ready
+      semantic_ref: urn:techvault:observable:misp-authenticated-api-ready
+      expected: true
+    evidence_requirements: [misp-authenticated-api-readiness]
   wazuh-agents-ready:
     description: Each monitored host has one active, uniquely enrolled Wazuh identity and readable host-correlated telemetry, including after restart or recreation.
     subjects: [nodes.webapp, nodes.ad, nodes.dns, nodes.fileshare, nodes.victim, nodes.workstation, nodes.db, nodes.suricata]
@@ -3190,6 +3294,9 @@ propositions:
       expected: true
     evidence_requirements: [suricata-login-sqli-alert]
 assertions:
+  misp-authenticated-api-ready:
+    proposition: misp-authenticated-api-ready
+    role: postcondition
   wazuh-agents-ready:
     proposition: wazuh-agents-ready
     role: precondition
@@ -3209,6 +3316,30 @@ observation_boundaries:
     redaction_policy: preserve analyzer identity and bounded result status while removing credentials
     latency_profile: available after Cortex reaches its declared ready state
 evidence_requirements:
+  misp-authenticated-api-readiness:
+    description: Records bounded authenticated MISP, MariaDB, Redis, and TLS readiness results without configuration bodies or credential material.
+    source_refs:
+      - nodes.misp.runtime.platform_applications.misp-threat-intelligence
+      - nodes.misp-db.runtime.database_services.misp-db
+      - nodes.misp-redis.runtime.datastore_services.misp-redis
+    scope_refs: [nodes.misp, nodes.misp-db, nodes.misp-redis]
+    scope: >-
+      On a clean realization, record the canonical MISP URL and certificate
+      verification result, an authenticated API write/read result, the declared
+      database identity and application-role access result, and authenticated
+      Redis access with the declared cache policy. Missing, anonymous,
+      substituted, stale, or contradictory state fails readiness. Report only
+      bounded statuses, stable identities, and correlation ids; omit backend
+      choices, credential values, and configuration bodies.
+    boundary_kind: system_under_test
+    channel: api_response
+    media_types: [application/json]
+    artifact_role: service_materialization_readback
+    sensitivity: plain
+    redaction: redact_secrets
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
   wazuh-agent-readiness:
     description: Per-host enrollment and telemetry readiness without enrollment credentials or raw log content.
     source_refs:
@@ -3328,6 +3459,14 @@ identity_domains:
     netbios_name: TECHVAULT
     authority_account_ref: ad-emily-chen
 relationships:
+  misp-uses-database:
+    type: connects_to
+    source: nodes.misp.runtime.applications.misp-web
+    target: nodes.misp-db.runtime.database_services.misp-db
+    database_access:
+      role_ref: misp-application-role
+      auth_method: password
+      description: MISP authenticates as the declared application role; the open backend selects and applies the credential bytes consistently.
   thehive-uses-cortex-enrichment:
     type: connects_to
     source: thehive
