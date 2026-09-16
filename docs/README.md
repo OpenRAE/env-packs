@@ -22,12 +22,15 @@ User-facing documentation is under [`public/`](public/index.md).
 - [TechVault Kali capture and shell-access preflight](development/techvault-kali-capture-shell-preflight.md)
   — SDL authoring, runtime realization, evidence, and capability-handling
   guardrails for issue #282.
+- [TechVault MISP runtime-contract preflight](development/techvault-misp-runtime-contract-preflight.md)
+  — MISP, MariaDB, Redis, trust, readiness, and backend-realization ownership
+  for issue #280.
 - [TechVault Shuffle runtime-contract preflight](development/techvault-shuffle-runtime-contract-preflight.md)
   — application/datastore, trust, secret, readiness, and realization guardrails
   for issue #281.
 - [TechVault Shuffle Orborus offline-runtime preflight](development/techvault-shuffle-orborus-offline-runtime-preflight.md)
-  — portable Orborus content/configuration and APTL realization ownership for
-  issue #285.
+  — portable Orborus control/authority declarations and LilRAE realization
+  ownership for issue #285.
 - [TechVault Orborus self-identity binding preflight](development/techvault-orborus-self-identity-preflight.md)
   — why native holder identities stay outside portable pack content for issue
   #331.

@@ -32,6 +32,7 @@ from raes_contracts.apparatus import (
     RealizationObservationCapability,
     RealizationSupportDeclaration,
 )
+from raes_contracts.realization_structure import evaluate_realization_constraint
 from raes_contracts.vocabulary import (
     ObservationStrength,
     RealizationSupportMode,
@@ -198,18 +199,231 @@ def _assert_shuffle_runtime_contract(test: unittest.TestCase, sdl: dict) -> None
     test.assertEqual(sdl["persistent_volumes"]["shuffle_data"]["lifecycle"], "retain")
 
 
+def _assert_misp_runtime_contract(test: unittest.TestCase, sdl: dict) -> None:
+    """Assert MISP's authored state without prescribing backend realization."""
+
+    nodes = sdl["nodes"]
+    misp_runtime = nodes["misp"]["runtime"]
+    (application,) = misp_runtime["platform_applications"]
+    test.assertEqual(
+        {
+            binding["binding_id"]: (
+                binding["role"],
+                binding["target_node_ref"],
+                binding["target_service_ref"],
+            )
+            for binding in application["upstream_bindings"]
+        },
+        {
+            "misp-relational-store": ("data_source", "misp-db", "mysql"),
+            "misp-cache-store": ("data_source", "misp-redis", "redis"),
+        },
+    )
+    test.assertEqual(
+        application["settings"],
+        [
+            {
+                "setting_id": "misp-canonical-url",
+                "name": "Canonical MISP URL",
+                "value": "https://misp.techvault.local",
+                "provenance": "runtime",
+                "classification": "plain",
+                "description": (
+                    "Participant-visible HTTPS identity reported by MISP; the "
+                    "backend chooses how the selected component realizes it."
+                ),
+            }
+        ],
+    )
+
+    (listener,) = misp_runtime["service_listeners"]
+    test.assertEqual(
+        listener["readiness"],
+        {
+            "probe": "misp-authenticated-api-operation",
+            "criteria": (
+                "A certificate-verified, authenticated MISP API write and read "
+                "succeeds through the declared MariaDB and Redis services."
+            ),
+            "evidence_refs": ["misp-authenticated-api-readiness"],
+            "description": (
+                "Application readiness requires the real authenticated data "
+                "paths, not only a listener or login page."
+            ),
+        },
+    )
+
+    (authorization,) = misp_runtime["app_authorizations"]
+    test.assertEqual(authorization["resource_vocabulary"], "app_resource")
+    test.assertTrue(authorization["auth_enabled"])
+    principals = {
+        principal["principal_id"]: principal
+        for principal in authorization["principals"]
+    }
+    test.assertEqual(set(principals), {"misp-administrator", "misp-suricata-sync-api-key"})
+    test.assertEqual(principals["misp-administrator"]["kind"], "user")
+    test.assertEqual(
+        principals["misp-administrator"]["credential_classification"],
+        "operator_secret",
+    )
+    test.assertEqual(
+        principals["misp-suricata-sync-api-key"]["credential_classification"],
+        "operator_secret",
+    )
+
+    (database,) = nodes["misp-db"]["runtime"]["database_services"]
+    test.assertEqual(
+        database["roles"],
+        [
+            {
+                "role_id": "misp-application-role",
+                "name": "misp",
+                "role_type": "application",
+                "origin": "scenario",
+                "can_login": True,
+                "description": "Application role used by MISP for its declared database.",
+            }
+        ],
+    )
+    test.assertEqual(
+        database["grants"],
+        [
+            {
+                "grantee_role_ref": "misp-application-role",
+                "object_type": "database",
+                "object_ref": "misp",
+                "privileges": ["ALL"],
+                "with_grant_option": False,
+                "description": "MISP owns its application database without grant delegation.",
+            }
+        ],
+    )
+
+    database_edge = sdl["relationships"]["misp-uses-database"]
+    test.assertEqual(
+        database_edge["database_access"],
+        {
+            "role_ref": "misp-application-role",
+            "auth_method": "password",
+            "description": (
+                "MISP authenticates as the declared application role; the open "
+                "backend selects and applies the credential bytes consistently."
+            ),
+        },
+    )
+
+    redis_runtime = nodes["misp-redis"]["runtime"]
+    (datastore,) = redis_runtime["datastore_services"]
+    test.assertEqual(datastore["authorization_ref"], "misp-redis-authorization")
+    (redis_authorization,) = redis_runtime["app_authorizations"]
+    test.assertEqual(redis_authorization["resource_vocabulary"], "redis_acl")
+    test.assertTrue(redis_authorization["auth_enabled"])
+    test.assertEqual(
+        [
+            (
+                principal["principal_id"],
+                principal["kind"],
+                principal["credential_classification"],
+            )
+            for principal in redis_authorization["principals"]
+        ],
+        [("misp-cache-client", "service_account", "redacted")],
+    )
+
+    generated = sdl["generated_artifacts"]["techvault-soc-certificates"]
+    (misp_consumer,) = [
+        consumer for consumer in generated["consumers"] if consumer["node"] == "misp"
+    ]
+    test.assertEqual(misp_consumer["access_mode"], "read_only")
+    test.assertEqual(
+        set(misp_consumer["selected_outputs"]),
+        {"ca-certificate", "misp-certificate", "misp-private-key"},
+    )
+    test.assertNotIn("ca-private-key", misp_consumer["selected_outputs"])
+
+    readiness = sdl["evidence_requirements"]["misp-authenticated-api-readiness"]
+    test.assertEqual(readiness["channel"], "api_response")
+    test.assertEqual(readiness["redaction"], "redact_secrets")
+    test.assertEqual(
+        sdl["propositions"]["misp-authenticated-api-ready"]["evidence_requirements"],
+        ["misp-authenticated-api-readiness"],
+    )
+    test.assertEqual(
+        sdl["assertions"]["misp-authenticated-api-ready"],
+        {"proposition": "misp-authenticated-api-ready", "role": "postcondition"},
+    )
+
+
 def _assert_shuffle_orborus_contract(test: unittest.TestCase, sdl: dict) -> None:
-    """Assert Orborus is an in-world component without a launch method."""
+    """Assert Orborus declares its portable authority, not its realization."""
     runtime = sdl["nodes"]["shuffle-orborus"]["runtime"]
     (component,) = runtime["software_components"]
     test.assertEqual(component["component_id"], "shuffle-orborus")
     test.assertEqual(component["version"], "unversioned")
-    for field in (
-        "environment",
-        "local_control_interfaces",
-        "orchestration_authorities",
-    ):
-        test.assertNotIn(field, runtime)
+
+    test.assertNotIn("environment", runtime)
+    (control_interface,) = runtime["local_control_interfaces"]
+    test.assertEqual(
+        {
+            key: value
+            for key, value in control_interface.items()
+            if key != "description"
+        },
+        {
+            "control_interface_id": "docker-sock",
+            "path": "/var/run/docker.sock",
+            "kind": "unix_socket",
+            "access": "read_write",
+        },
+    )
+    test.assertNotIn("bind_source", control_interface)
+    test.assertNotIn("protocol", control_interface)
+
+    (authority,) = runtime["orchestration_authorities"]
+    test.assertEqual(authority["orchestration_authority_id"], "shuffle-orborus")
+    test.assertEqual(authority["control_interface_ref"], "docker-sock")
+    test.assertEqual(authority["engine"], "docker")
+    test.assertEqual(authority["privilege_class"], "host_root_equivalent")
+    test.assertEqual(authority["scope"]["environment_name"], "Shuffle")
+    test.assertEqual(
+        authority["lifecycle_policy"],
+        {
+            "execution_timeout": "600",
+            "cleanup": "false",
+            "description": (
+                "Shuffle workflow executions have a bounded lifetime and "
+                "retain failed workloads for scenario-visible diagnosis."
+            ),
+        },
+    )
+    test.assertNotIn("engine_api_version", authority)
+    test.assertNotIn("realized_children", authority)
+
+    templates = {
+        template["template_id"]: template
+        for template in authority["spawn_templates"]
+    }
+    test.assertEqual(
+        templates,
+        {
+            "shuffle-worker": {
+                "template_id": "shuffle-worker",
+                "image_ref": (
+                    "ghcr.io/shuffle/shuffle-worker@sha256:"
+                    "fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd"
+                ),
+                "purpose": "workflow execution",
+            },
+            "shuffle-http-1-4-0": {
+                "template_id": "shuffle-http-1-4-0",
+                "image_ref": (
+                    "frikky/shuffle:http_1.4.0@sha256:"
+                    "0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c"
+                ),
+                "purpose": "seeded HTTP workflow app execution",
+            },
+        },
+    )
 
 
 class TechVaultPackTests(unittest.TestCase):
@@ -246,13 +460,13 @@ class TechVaultPackTests(unittest.TestCase):
         expected_counts = {
             "nodes": 29,
             "infrastructure": 29,
-            "persistent_volumes": 19,
-            "propositions": 3,
-            "assertions": 3,
+            "persistent_volumes": 27,
+            "propositions": 5,
+            "assertions": 5,
             "observation_boundaries": 1,
-            "evidence_requirements": 4,
+            "evidence_requirements": 6,
             "identity_domains": 1,
-            "relationships": 2,
+            "relationships": 3,
             "accounts": 14,
             "variables": 10,
             "entities": 2,
@@ -386,6 +600,68 @@ class TechVaultPackTests(unittest.TestCase):
     def test_shuffle_orborus_contract_is_complete_and_consistent(self) -> None:
         _assert_shuffle_orborus_contract(self, _load_sdl())
 
+    def test_shuffle_orborus_production_contract_is_valid(self) -> None:
+        self.assertEqual(
+            _PACK_VALIDATOR.validate_shuffle_orborus_contract(_load_sdl()), []
+        )
+
+    def test_shuffle_orborus_contract_rejects_drift(self) -> None:
+        original = _load_sdl()
+        runtime_path = ("nodes", "shuffle-orborus", "runtime")
+        interface_path = (*runtime_path, "local_control_interfaces", 0)
+        authority_path = (*runtime_path, "orchestration_authorities", 0)
+        cases = (
+            ("interface-invalid", (*interface_path, "path"), "/run/docker.sock"),
+            (
+                "backend-field",
+                (*interface_path, "bind_source"),
+                "/var/run/docker.sock",
+            ),
+            (
+                "authority-invalid",
+                (*authority_path, "control_interface_ref"),
+                "other",
+            ),
+            (
+                "authority-invalid",
+                (*authority_path, "privilege_class"),
+                "unknown",
+            ),
+            ("backend-field", (*authority_path, "engine_api_version"), "1.44"),
+            (
+                "spawn-template-invalid",
+                (*authority_path, "spawn_templates", 0, "image_ref"),
+                "ghcr.io/shuffle/shuffle-worker:latest",
+            ),
+            (
+                "lifecycle-invalid",
+                (*authority_path, "lifecycle_policy", "cleanup"),
+                "true",
+            ),
+            (
+                "backend-field",
+                (*authority_path, "realized_children"),
+                [{"workload_id": "observed-worker"}],
+            ),
+        )
+        for code, path, value in cases:
+            with self.subTest(path=path):
+                candidate = copy.deepcopy(original)
+                parent = candidate
+                for key in path[:-1]:
+                    parent = parent[key]
+                parent[path[-1]] = value
+                errors = _PACK_VALIDATOR.validate_shuffle_orborus_contract(
+                    candidate
+                )
+                self.assertTrue(
+                    any(
+                        error.startswith(f"shuffle-orborus.{code}:")
+                        for error in errors
+                    ),
+                    errors,
+                )
+
     def test_shuffle_contract_omits_backend_launch_controls(self) -> None:
         sdl = _load_sdl()
         for node_id in (
@@ -398,7 +674,15 @@ class TechVaultPackTests(unittest.TestCase):
                 runtime = sdl["nodes"][node_id]["runtime"]
                 self.assertNotIn("environment", runtime)
                 self.assertNotIn("container", runtime)
-                self.assertNotIn("orchestration_authorities", runtime)
+                if node_id == "shuffle-orborus":
+                    (control_interface,) = runtime["local_control_interfaces"]
+                    (authority,) = runtime["orchestration_authorities"]
+                    self.assertNotIn("bind_source", control_interface)
+                    self.assertNotIn("engine_api_version", authority)
+                    self.assertNotIn("realized_children", authority)
+                else:
+                    self.assertNotIn("local_control_interfaces", runtime)
+                    self.assertNotIn("orchestration_authorities", runtime)
 
     def test_all_original_content_obligations_are_accounted_for(self) -> None:
         content = _load_sdl()["content"]
@@ -461,6 +745,297 @@ class TechVaultPackTests(unittest.TestCase):
                 ".content_sets[0].file_count",
                 validate_pack(staged).errors,
             )
+
+    def test_wazuh_endpoint_agent_contract_is_complete(self) -> None:
+        sdl = _load_sdl()
+        # The current RAE parser must admit the actual authored contract.
+        scenario = parse_sdl_file(_SDL)
+        endpoints = {"webapp", "ad", "dns", "fileshare", "victim", "workstation"}
+        owners = endpoints | {"db", "suricata"}
+        forwarders = {
+            owner: [agent for agent in node.get("runtime", {}).get("forwarding_agents", [])
+                    if agent.get("implementation") == "wazuh_agent"]
+            for owner, node in sdl["nodes"].items()
+            if any(agent.get("implementation") == "wazuh_agent"
+                   for agent in node.get("runtime", {}).get("forwarding_agents", []))
+        }
+        self.assertEqual(set(forwarders), owners)
+        for owner in owners:
+            with self.subTest(owner=owner):
+                (agent,) = forwarders[owner]
+                self.assertEqual(agent["name"], f"techvault-{owner}-agent")
+                self.assertEqual(agent["agent_kind"], "log_forwarder")
+                self.assertEqual(agent["version"], "4.12.0")
+                self.assertEqual(
+                    {target["target_service_ref"] for target in agent["ship_targets"]},
+                    {"agent-events", "agent-enrollment"},
+                )
+                component = next(
+                    item for item in scenario.nodes[owner].runtime.software_components
+                    if item.component_id == "wazuh-agent"
+                )
+                self.assertEqual(component.name, "Wazuh agent")
+                self.assertEqual(component.version, "4.12.0")
+                self.assertEqual(component.presence.value, "required")
+                # A software outcome must not silently choose acquisition.
+                self.assertFalse(component.model_fields_set & {
+                    "package", "package_ref", "package_manager", "package_name",
+                    "package_version", "repository_refs", "provenance", "hashes",
+                })
+                state = sdl["persistent_volumes"][f"wazuh-agent-{owner}-state"]
+                self.assertEqual(state["lifecycle"], "retain")
+                self.assertEqual(state["access_mode"], "read_write_once")
+                self.assertEqual(state["consumers"], [{
+                    "node": owner, "mount_destination": "/var/ossec/etc",
+                    "access_mode": "read_write",
+                }])
+        manager = sdl["nodes"]["wazuh-manager"]["runtime"]["security_monitoring_managers"][0]
+        self.assertEqual(len(manager["agents"]), 8)
+        self.assertEqual(
+            {(agent["node_ref"], agent["name"], agent["status"]) for agent in manager["agents"]},
+            {(owner, f"techvault-{owner}-agent", "active") for owner in owners},
+        )
+        self.assertEqual(_PACK_VALIDATOR.validate_wazuh_agent_contract(sdl), [])
+        self.assertEqual(_PACK_VALIDATOR.validate_realization_method_contract(sdl), [])
+
+    def test_wazuh_endpoint_agent_contract_rejects_closed_state_drift(self) -> None:
+        original = _load_sdl()
+
+        def mutate(sdl: dict, case: str) -> None:
+            runtime = sdl["nodes"]["webapp"]["runtime"]
+            agent = runtime["forwarding_agents"][0]
+            manager = sdl["nodes"]["wazuh-manager"]["runtime"]["security_monitoring_managers"][0]
+            if case == "missing":
+                runtime["forwarding_agents"] = []
+            elif case == "extra":
+                sdl["nodes"]["kali"]["runtime"]["forwarding_agents"] = [copy.deepcopy(agent)]
+            elif case == "duplicate-forwarder":
+                runtime["forwarding_agents"].append(copy.deepcopy(agent))
+            elif case == "identity":
+                agent["name"] = "ephemeral-agent"
+            elif case == "duplicate-name":
+                agent["name"] = "techvault-dns-agent"
+            elif case == "stale-member":
+                manager["agents"][0]["node_ref"] = "missing-node"
+            elif case == "missing-member":
+                manager["agents"].pop()
+            elif case == "duplicate-member":
+                manager["agents"].append(copy.deepcopy(manager["agents"][0]))
+            elif case == "disconnected":
+                manager["agents"][0]["status"] = "disconnected"
+            elif case == "source":
+                agent["sources"][0]["location"] = ""
+            elif case == "missing-sources":
+                agent["sources"] = []
+            elif case == "duplicate-source":
+                agent["sources"].append(copy.deepcopy(agent["sources"][0]))
+            elif case == "network-as-endpoint":
+                agent["sources"][0]["parse_format"] = "eve_json"
+            elif case == "target":
+                agent["ship_targets"][0]["target_service_ref"] = "agent-enrollment"
+            elif case == "target-port":
+                agent["ship_targets"][0]["ingestion_port"] = 9999
+            elif case == "listener":
+                manager["listeners"][0]["role"] = "api"
+            elif case == "missing-software":
+                runtime["software_components"] = []
+            elif case == "optional-software":
+                runtime["software_components"][0]["presence"] = "optional"
+            elif case == "version":
+                runtime["software_components"][0]["version"] = "3.0.0"
+            elif case == "shared-state":
+                sdl["persistent_volumes"]["wazuh-agent-webapp-state"]["consumers"].append(
+                    {"node": "dns", "mount_destination": "/var/ossec/etc", "access_mode": "read_write"}
+                )
+            elif case == "ephemeral-state":
+                sdl["persistent_volumes"]["wazuh-agent-webapp-state"]["lifecycle"] = "ephemeral"
+            elif case == "missing-log":
+                runtime["filesystem_inventory"] = []
+            elif case == "dependency":
+                sdl["infrastructure"]["webapp"]["dependencies"].remove("wazuh-manager")
+            elif case == "readiness-missing":
+                sdl["propositions"].pop("wazuh-agents-ready")
+            elif case == "readiness-any":
+                sdl["propositions"]["wazuh-agents-ready"]["quantifier"] = "any"
+            elif case == "readiness-subject":
+                sdl["propositions"]["wazuh-agents-ready"]["subjects"].pop()
+            elif case == "readiness-evidence":
+                sdl["evidence_requirements"]["wazuh-agent-readiness"]["source_refs"].pop()
+            elif case == "readiness-assertion":
+                sdl["assertions"]["wazuh-agents-ready"]["polarity"] = "negative"
+
+        cases = {
+            "forwarder-owner-set-mismatch": ["missing", "extra", "duplicate-forwarder"],
+            "identity-mismatch": ["identity"],
+            "enrollment-name-duplicate": ["duplicate-name"],
+            "manager-membership-mismatch": [
+                "stale-member", "missing-member", "duplicate-member", "disconnected",
+            ],
+            "source-contract-mismatch": [
+                "source", "missing-sources", "duplicate-source", "network-as-endpoint", "missing-log",
+            ],
+            "target-contract-mismatch": ["target", "target-port", "listener"],
+            "software-mismatch": ["missing-software", "optional-software", "version"],
+            "persistence-mismatch": ["shared-state", "ephemeral-state"],
+            "lifecycle-mismatch": ["dependency"],
+            "readiness-mismatch": [
+                "readiness-missing", "readiness-any", "readiness-subject",
+                "readiness-evidence", "readiness-assertion",
+            ],
+        }
+        self.assertEqual(_PACK_VALIDATOR.validate_wazuh_agent_contract(original), [])
+        for code, mutations in cases.items():
+            for case in mutations:
+                with self.subTest(mutation=case):
+                    candidate = copy.deepcopy(original)
+                    mutate(candidate, case)
+                    errors = _PACK_VALIDATOR.validate_wazuh_agent_contract(candidate)
+                    self.assertTrue(any(error.startswith(f"wazuh.{code}:") for error in errors), errors)
+
+    def test_wazuh_contract_rejects_independent_field_drift(self) -> None:
+        original = _load_sdl()
+        runtime = ("nodes", "webapp", "runtime")
+        agent = (*runtime, "forwarding_agents", 0)
+        manager = ("nodes", "wazuh-manager", "runtime", "security_monitoring_managers", 0)
+        volume = ("persistent_volumes", "wazuh-agent-webapp-state")
+        proposition = ("propositions", "wazuh-agents-ready")
+        predicate = (*proposition, "predicate")
+        assertion = ("assertions", "wazuh-agents-ready")
+        evidence = ("evidence_requirements", "wazuh-agent-readiness")
+        cases = [
+            ("identity-mismatch", (*agent, "agent_kind"), "sensor"),
+            ("manager-membership-mismatch", (*manager, "agents", 1, "agent_id"),
+             original["nodes"]["wazuh-manager"]["runtime"]["security_monitoring_managers"][0]["agents"][0]["agent_id"]),
+            ("source-contract-mismatch", (*agent, "sources", 0, "kind"), "network"),
+            ("source-contract-mismatch", (*agent, "transforms"), []),
+            ("source-contract-mismatch", (*agent, "buffer_policy", "crypto"), "none"),
+            ("software-mismatch", (*runtime, "software_components", 0, "name"), "Other agent"),
+            ("software-mismatch", (*runtime, "software_components", 0, "component_type"), "library"),
+            ("software-mismatch", (*agent, "version"), "3.0.0"),
+            ("persistence-mismatch", (*volume, "access_mode"), "read_write_many"),
+            ("persistence-mismatch", (*volume, "consumers", 0, "mount_destination"), "/tmp/agent"),
+            ("persistence-mismatch", (*volume, "consumers", 0, "access_mode"), "read_only"),
+            ("readiness-mismatch", (*proposition, "basis"), "declared_state"),
+            ("readiness-mismatch", (*proposition, "evidence_requirements"), []),
+            ("readiness-mismatch", (*predicate, "kind"), "numeric"),
+            ("readiness-mismatch", (*predicate, "property"), "health"),
+            ("readiness-mismatch", (*predicate, "semantic_ref"), "urn:techvault:observable:health"),
+            ("readiness-mismatch", (*predicate, "operator"), "not_equals"),
+            ("readiness-mismatch", (*predicate, "expected"), False),
+            ("readiness-mismatch", (*assertion, "proposition"), "other-proposition"),
+            ("readiness-mismatch", (*assertion, "role"), "objective"),
+            ("readiness-mismatch", (*evidence, "scope_refs"), []),
+            ("readiness-mismatch", (*evidence, "channel"), "stdout"),
+            ("readiness-mismatch", (*evidence, "redaction"), "none"),
+            ("readiness-mismatch", (*evidence, "loss_disclosure"), "optional"),
+        ]
+        # Exercise each leg independently: a malformed port must not mask a
+        # missing protocol or secret-classification check on either target.
+        for index, target in enumerate(original["nodes"]["webapp"]["runtime"]["forwarding_agents"][0]["ship_targets"]):
+            service_name = target["target_service_ref"]
+            enrollment = service_name == "agent-enrollment"
+            port_field = "enrollment_port" if enrollment else "ingestion_port"
+            other_port = "ingestion_port" if enrollment else "enrollment_port"
+            target_path = (*agent, "ship_targets", index)
+            for field, value in (("target_node_ref", "dns"), (port_field, 9999),
+                                 (other_port, 9999), ("protocol", "udp")):
+                cases.append(("target-contract-mismatch", (*target_path, field), value))
+            if enrollment:
+                cases.append(("target-contract-mismatch",
+                              (*target_path, "enrollment_identity_classification"), "plain"))
+            manager_node = original["nodes"]["wazuh-manager"]
+            service_index = next(i for i, item in enumerate(manager_node["services"])
+                                 if item["name"] == service_name)
+            listeners = manager_node["runtime"]["security_monitoring_managers"][0]["listeners"]
+            listener_index = next(i for i, item in enumerate(listeners)
+                                  if item["service"] == service_name)
+            for field, value in (("port", 9999), ("protocol", "udp")):
+                cases.append(("target-contract-mismatch",
+                              ("nodes", "wazuh-manager", "services", service_index, field), value))
+            for field, value in (("role", "api"), ("protocol", "udp")):
+                cases.append(("target-contract-mismatch",
+                              (*manager, "listeners", listener_index, field), value))
+
+        self.assertEqual(_PACK_VALIDATOR.validate_wazuh_agent_contract(original), [])
+        for code, path, value in cases:
+            with self.subTest(path=path):
+                candidate = copy.deepcopy(original)
+                parent = candidate
+                for key in path[:-1]:
+                    parent = parent[key]
+                parent[path[-1]] = value
+                errors = _PACK_VALIDATOR.validate_wazuh_agent_contract(candidate)
+                self.assertTrue(any(error.startswith(f"wazuh.{code}:") for error in errors), errors)
+
+    def test_wazuh_compilation_preserves_required_configuration(self) -> None:
+        scenario = parse_sdl_file(_SDL)
+        model = compile_scenario_runtime_model(
+            scenario, parameters={name: f"test-{name}" for name in _load_sdl()["variables"]},
+        )
+        requirements = {item.field_path: item for item in model.realization_requirements}
+        owners = {"webapp", "ad", "dns", "fileshare", "victim", "workstation", "db", "suricata"}
+        fields = [
+            f"nodes.{owner}.runtime.{field}" for owner in owners
+            for field in ("forwarding_agents",)
+        ] + ["nodes.wazuh-manager.runtime.security_monitoring_managers"]
+        for field in fields:
+            with self.subTest(field=field):
+                self.assertIn(field, requirements)
+                self.assertEqual(
+                    requirements[field].verification_scope, RealizationVerificationScope.CONFIGURATION,
+                )
+                self.assertIsNone(requirements[field].required_observation_strength)
+
+        # Software outcomes use RAE's recursive constraint document, not the
+        # forwarding concern's verification-scope carrier.
+        for owner in owners:
+            requirement = requirements[f"nodes.{owner}.runtime.software_components"]
+            document = requirement.constraint_document
+            with self.subTest(software_owner=owner):
+                self.assertIsNotNone(document)
+                (member,) = document.root.members
+                self.assertEqual(member.identity, ("wazuh-agent",))
+                self.assertEqual(member.constraint.presence.value, "required")
+                self.assertEqual(member.constraint.fields["version"].value, "4.12.0")
+                self.assertEqual(member.constraint.fields["package"].kind, "delegated")
+                actual = [{
+                    "component_id": "wazuh-agent", "name": "Wazuh agent",
+                    "component_type": "application", "version": "4.12.0",
+                }]
+                self.assertTrue(evaluate_realization_constraint(document, actual).conformant)
+                self.assertFalse(evaluate_realization_constraint(document, []).conformant)
+                actual[0]["version"] = "3.0.0"
+                self.assertFalse(evaluate_realization_constraint(document, actual).conformant)
+
+        manager_document = requirements[
+            "nodes.wazuh-manager.runtime.security_monitoring_managers"
+        ].constraint_document
+        actual_managers = scenario.nodes["wazuh-manager"].runtime.model_dump(mode="json")[
+            "security_monitoring_managers"
+        ]
+        self.assertTrue(evaluate_realization_constraint(manager_document, actual_managers).conformant)
+        for drift in ("missing", "stale"):
+            observed = copy.deepcopy(actual_managers)
+            agents = observed[0]["agents"]
+            if drift == "missing":
+                agents.pop()
+            else:
+                agents[0]["node_ref"] = "kali"
+            with self.subTest(observed_inventory=drift):
+                self.assertFalse(evaluate_realization_constraint(manager_document, observed).conformant)
+
+        # Connection status is observational in RAE, not configuration. The
+        # pack's observed-state assertion carries the readiness obligation.
+        proposition = model.propositions["evaluation.proposition.wazuh-agents-ready"]
+        self.assertEqual(proposition.evaluation_basis, "observed_state")
+        self.assertEqual(proposition.quantifier, "all")
+        self.assertEqual(set(proposition.subject_addresses), {f"provision.node.{owner}" for owner in owners})
+        self.assertEqual(proposition.evidence_requirement_refs, ("wazuh-agent-readiness",))
+        self.assertEqual(proposition.unresolved_evidence_channel_refs, ())
+        self.assertEqual(proposition.evidence_channels, ("file_artifact",))
+        assertion = model.assertions["evaluation.assertion.wazuh-agents-ready"]
+        self.assertEqual(assertion.role, "precondition")
+        self.assertEqual(assertion.proposition_address, proposition.address)
 
     def test_suricata_content_contract_is_complete(self) -> None:
         errors = _PACK_VALIDATOR.validate_suricata_contract(_PACK, _load_sdl())
@@ -1128,13 +1703,249 @@ class TechVaultPackTests(unittest.TestCase):
         for node_name in _UNDERDECLARED_RUNTIME_NODES:
             self.assertNotIn("environment", nodes[node_name]["runtime"])
 
+    def test_misp_runtime_contract_is_complete_and_backend_neutral(self) -> None:
+        sdl = _load_sdl()
+        _assert_misp_runtime_contract(self, sdl)
+        self.assertEqual(_PACK_VALIDATOR.validate_misp_contract(sdl), [])
+
+        serialized = yaml.safe_dump(
+            {
+                "nodes": {
+                    node: sdl["nodes"][node]
+                    for node in ("misp", "misp-db", "misp-redis")
+                },
+                "relationships": {
+                    "misp-uses-database": sdl["relationships"][
+                        "misp-uses-database"
+                    ]
+                },
+            }
+        )
+        for implementation_detail in (
+            "MYSQL_",
+            "REDIS_",
+            "ADMIN_",
+            "BASE_URL",
+            "requirepass",
+            "/etc/nginx/certs",
+        ):
+            with self.subTest(implementation_detail=implementation_detail):
+                self.assertNotIn(implementation_detail, serialized)
+
+    def test_misp_contract_validator_rejects_inconsistent_closed_state(self) -> None:
+        original = _load_sdl()
+
+        def misp_application(candidate: dict) -> dict:
+            return candidate["nodes"]["misp"]["runtime"][
+                "platform_applications"
+            ][0]
+
+        def redis_authorization(candidate: dict) -> dict:
+            return candidate["nodes"]["misp-redis"]["runtime"][
+                "app_authorizations"
+            ][0]
+
+        mutations = {
+            "database-binding-missing": (
+                lambda candidate: misp_application(candidate)[
+                    "upstream_bindings"
+                ].pop(0),
+                "misp.binding-invalid",
+            ),
+            "binding-substituted": (
+                lambda candidate: misp_application(candidate)[
+                    "upstream_bindings"
+                ][0].__setitem__("target_service_ref", "redis"),
+                "misp.binding-invalid",
+            ),
+            "binding-excess": (
+                lambda candidate: misp_application(candidate)[
+                    "upstream_bindings"
+                ].append(
+                    {
+                        "binding_id": "unexpected-store",
+                        "role": "data_source",
+                        "target_node_ref": "misp-db",
+                        "target_service_ref": "mysql",
+                    }
+                ),
+                "misp.binding-invalid",
+            ),
+            "database-role-missing": (
+                lambda candidate: candidate["nodes"]["misp-db"]["runtime"][
+                    "database_services"
+                ][0].__setitem__("roles", []),
+                "misp.database-invalid",
+            ),
+            "database-grant-substituted": (
+                lambda candidate: candidate["nodes"]["misp-db"]["runtime"][
+                    "database_services"
+                ][0]["grants"][0].__setitem__("object_ref", "other"),
+                "misp.database-invalid",
+            ),
+            "database-auth-disabled": (
+                lambda candidate: candidate["relationships"][
+                    "misp-uses-database"
+                ]["database_access"].__setitem__("auth_method", "trust"),
+                "misp.database-access-invalid",
+            ),
+            "misp-api-principal-substituted": (
+                lambda candidate: candidate["nodes"]["misp"]["runtime"][
+                    "app_authorizations"
+                ][0]["principals"][0].__setitem__(
+                    "credential_classification", "redacted"
+                ),
+                "misp.principal-invalid",
+            ),
+            "misp-api-grant-substituted": (
+                lambda candidate: candidate["nodes"]["misp"]["runtime"][
+                    "app_authorizations"
+                ][0]["permission_grants"][1].__setitem__("actions", ["manage"]),
+                "misp.principal-invalid",
+            ),
+            "redis-authorization-disabled": (
+                lambda candidate: redis_authorization(candidate).__setitem__(
+                    "auth_enabled", False
+                ),
+                "misp.redis-authorization-invalid",
+            ),
+            "redis-grant-substituted": (
+                lambda candidate: redis_authorization(candidate)[
+                    "permission_grants"
+                ][0].__setitem__("actions", ["read"]),
+                "misp.redis-authorization-invalid",
+            ),
+            "redis-principal-substituted": (
+                lambda candidate: redis_authorization(candidate)[
+                    "principals"
+                ][0].__setitem__("principal_id", "other-client"),
+                "misp.redis-authorization-invalid",
+            ),
+            "redis-principal-excess": (
+                lambda candidate: redis_authorization(candidate)[
+                    "principals"
+                ].append(
+                    {
+                        "principal_id": "unexpected-client",
+                        "kind": "service_account",
+                        "credential_classification": "redacted",
+                    }
+                ),
+                "misp.redis-authorization-invalid",
+            ),
+            "certificate-missing": (
+                lambda candidate: next(
+                    consumer
+                    for consumer in candidate["generated_artifacts"][
+                        "techvault-soc-certificates"
+                    ]["consumers"]
+                    if consumer["node"] == "misp"
+                )["selected_outputs"].remove("misp-certificate"),
+                "misp.certificate-selection-invalid",
+            ),
+            "ca-private-key-exposed": (
+                lambda candidate: next(
+                    consumer
+                    for consumer in candidate["generated_artifacts"][
+                        "techvault-soc-certificates"
+                    ]["consumers"]
+                    if consumer["node"] == "misp"
+                )["selected_outputs"].append("ca-private-key"),
+                "misp.certificate-selection-invalid",
+            ),
+            "certificate-path-substituted": (
+                lambda candidate: next(
+                    output
+                    for output in candidate["generated_artifacts"][
+                        "techvault-soc-certificates"
+                    ]["outputs"]
+                    if output["name"] == "misp-certificate"
+                ).__setitem__("path", "misp/other.pem"),
+                "misp.certificate-selection-invalid",
+            ),
+            "canonical-url-substituted": (
+                lambda candidate: misp_application(candidate)["settings"][
+                    0
+                ].__setitem__("value", "http://misp"),
+                "misp.setting-invalid",
+            ),
+            "readiness-evidence-missing": (
+                lambda candidate: candidate["nodes"]["misp"]["runtime"][
+                    "service_listeners"
+                ][0]["readiness"].__setitem__("evidence_refs", []),
+                "misp.readiness-invalid",
+            ),
+            "readiness-observation-substituted": (
+                lambda candidate: candidate["evidence_requirements"][
+                    "misp-authenticated-api-readiness"
+                ].__setitem__("channel", "log"),
+                "misp.evidence-invalid",
+            ),
+        }
+
+        for name, (mutate, expected_code) in mutations.items():
+            with self.subTest(mutation=name):
+                candidate = copy.deepcopy(original)
+                mutate(candidate)
+                errors = _PACK_VALIDATOR.validate_misp_contract(candidate)
+                self.assertTrue(
+                    any(expected_code in error for error in errors),
+                    errors,
+                )
+
     def test_internal_services_have_no_host_publication_contract(self) -> None:
         for node_name, node in _load_sdl()["nodes"].items():
             with self.subTest(node=node_name):
                 runtime = node.get("runtime", {})
-                self.assertNotIn("network", runtime)
+                self.assertNotIn(
+                    "published_ports",
+                    runtime.get("network", {}),
+                )
                 for listener in runtime.get("service_listeners", []):
                     self.assertNotIn("published_port_refs", listener)
+
+    def test_internal_service_ports_are_not_host_translations(self) -> None:
+        nodes = _load_sdl()["nodes"]
+        expected = {
+            "wazuh-manager": {
+                ("wazuh-api", 55000, "tcp"),
+                ("agent-events", 1514, "tcp"),
+                ("agent-enrollment", 1515, "tcp"),
+                ("syslog", 514, "udp"),
+            },
+            "wazuh-indexer": {("indexer-api", 9200, "tcp")},
+            "wazuh-dashboard": {("dashboard", 5601, "tcp")},
+            "misp": {("https", 443, "tcp")},
+            "thehive": {("thehive-api", 9000, "tcp")},
+            "cortex": {("cortex-api", 9001, "tcp")},
+            "shuffle-frontend": {
+                ("https", 443, "tcp"),
+                ("http", 80, "tcp"),
+            },
+        }
+
+        for node_name, expected_services in expected.items():
+            with self.subTest(node=node_name):
+                self.assertEqual(
+                    {
+                        (service["name"], service["port"], service["protocol"])
+                        for service in nodes[node_name]["services"]
+                    },
+                    expected_services,
+                )
+
+    def test_realization_validator_allows_nonpublication_network_facts(
+        self,
+    ) -> None:
+        candidate = copy.deepcopy(_load_sdl())
+        candidate["nodes"]["kali"]["runtime"]["network"] = {
+            "description": "In-world network fact with no host publication",
+        }
+
+        self.assertEqual(
+            _PACK_VALIDATOR.validate_realization_method_contract(candidate),
+            [],
+        )
 
     def test_cortex_provides_case_driven_offline_enrichment(self) -> None:
         sdl = _load_sdl()
@@ -1448,6 +2259,59 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
             _PACK_VALIDATOR.validate_realization_method_contract(_load_sdl()), []
         )
 
+    def test_compiler_preserves_orborus_authority_as_portable_desired_state(
+        self,
+    ) -> None:
+        sdl = _load_sdl()
+        model = compile_scenario_runtime_model(
+            parse_sdl_file(_SDL),
+            parameters={name: f"test-{name}" for name in sdl["variables"]},
+        )
+        by_field = {
+            requirement.field_path: requirement
+            for requirement in model.realization_requirements
+        }
+        interface = by_field[
+            "nodes.shuffle-orborus.runtime.local_control_interfaces"
+        ]
+        authority = by_field[
+            "nodes.shuffle-orborus.runtime.orchestration_authorities"
+        ]
+        self.assertEqual(
+            interface.verification_scope,
+            RealizationVerificationScope.CONFIGURATION,
+        )
+        self.assertEqual(
+            authority.verification_scope,
+            RealizationVerificationScope.CONFIGURATION,
+        )
+
+        interface_document = interface.constraint_document.model_dump(mode="json")
+        interface_fields = interface_document["root"]["items"][0]["fields"]
+        self.assertEqual(interface_fields["path"]["value"], "/var/run/docker.sock")
+        self.assertEqual(interface_fields["access"]["value"], "read_write")
+        self.assertEqual(
+            interface_fields["bind_source_present"]["kind"], "delegated"
+        )
+
+        authority_document = authority.constraint_document.model_dump(mode="json")
+        authority_fields = authority_document["root"]["members"][0][
+            "constraint"
+        ]["fields"]
+        self.assertEqual(
+            authority_fields["privilege_class"]["value"],
+            "host_root_equivalent",
+        )
+        self.assertEqual(
+            authority_fields["engine_api_version"]["kind"], "delegated"
+        )
+        template_members = authority_fields["spawn_templates"]["members"]
+        self.assertEqual(
+            {tuple(member["identity"]) for member in template_members},
+            {("shuffle-worker",), ("shuffle-http-1-4-0",)},
+        )
+        self.assertNotIn("realized_children", authority_fields)
+
     def test_compiled_verification_leaves_authoritative_source_open(self) -> None:
         sdl = _load_sdl()
         model = compile_scenario_runtime_model(
@@ -1540,7 +2404,9 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
         self.assertEqual(
             authorization["app_authorization_id"], "misp-api-authorization"
         )
-        (principal,) = authorization["principals"]
+        principal = {
+            item["principal_id"]: item for item in authorization["principals"]
+        }["misp-suricata-sync-api-key"]
         self.assertEqual(principal["principal_id"], "misp-suricata-sync-api-key")
         self.assertEqual(principal["kind"], "api_key")
         self.assertEqual(principal["credential_classification"], "operator_secret")
@@ -1650,6 +2516,7 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
                 "/var/log/samba/log.smbd",
             },
             "victim": {"/var/log/secure", "/var/log/messages"},
+            "workstation": {"/var/log/secure", "/var/log/messages"},
         }
         for node_id, paths in expected_sources.items():
             with self.subTest(node=node_id):
@@ -2436,6 +3303,7 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
                     )
                     for agent in sdl["nodes"][node_id]["runtime"]["forwarding_agents"]
                     for target in agent["ship_targets"]
+                    if "ingestion_port" in target
                 }
                 self.assertEqual(declared, agents)
 
@@ -2713,6 +3581,11 @@ class TechVaultValidatorEntrypointTests(unittest.TestCase):
                 "scope"
             ] = "unrelated alert"
 
+        def substitute_misp_canonical_url(sdl: dict) -> None:
+            sdl["nodes"]["misp"]["runtime"]["platform_applications"][0][
+                "settings"
+            ][0]["value"] = "http://misp"
+
         def add_delivery_content(sdl: dict) -> None:
             sdl["content"]["renamed-db-launch"] = {
                 "type": "file",
@@ -2721,12 +3594,19 @@ class TechVaultValidatorEntrypointTests(unittest.TestCase):
                 "text": "delivery recipe",
             }
 
+        def remove_wazuh_manager_member(sdl: dict) -> None:
+            sdl["nodes"]["wazuh-manager"]["runtime"][
+                "security_monitoring_managers"
+            ][0]["agents"].pop()
+
         cases = {
             "realization.constraint": add_substrate_constraint,
             "realization.build-recipe": add_build_recipe,
             "realization.host-publication": publish_on_every_interface,
             "suricata.detection-evidence-mismatch": unrelated_suricata_alert,
+            "misp.setting-invalid": substitute_misp_canonical_url,
             "realization.service-unit-content": add_delivery_content,
+            "wazuh.manager-membership-mismatch": remove_wazuh_manager_member,
         }
         for code, mutate in cases.items():
             with self.subTest(code=code), tempfile.TemporaryDirectory() as directory:

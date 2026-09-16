@@ -122,9 +122,98 @@ _FORBIDDEN_RUNTIME_FIELDS = {
     "operational_policy": "operational-policy",
     "orchestration_authorities": "orchestration-authority",
 }
+_PORTABLE_RUNTIME_FIELD_EXCEPTIONS = {
+    "shuffle-orborus": frozenset(
+        {"local_control_interfaces", "orchestration_authorities"}
+    ),
+}
+_SHUFFLE_ORBORUS_TEMPLATES = {
+    "shuffle-worker": {
+        "image_ref": (
+            "ghcr.io/shuffle/shuffle-worker@sha256:"
+            "fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd"
+        ),
+        "purpose": "workflow execution",
+    },
+    "shuffle-http-1-4-0": {
+        "image_ref": (
+            "frikky/shuffle:http_1.4.0@sha256:"
+            "0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c"
+        ),
+        "purpose": "seeded HTTP workflow app execution",
+    },
+}
 _FORBIDDEN_SENSOR_FIELDS = {
     "capture_interfaces": "packet-acquisition",
     "capture_mode": "packet-acquisition",
+}
+
+_WAZUH_ENDPOINT_OWNERS = frozenset(
+    {"webapp", "ad", "dns", "fileshare", "victim", "workstation"}
+)
+_WAZUH_AGENT_SPECS = {
+    "webapp": {
+        "name": "techvault-webapp-agent",
+        "state_volume": "wazuh-agent-webapp-state",
+        "sources": {
+            ("gunicorn-access", "/var/log/gunicorn/access.log", "syslog"),
+        },
+    },
+    "ad": {
+        "name": "techvault-ad-agent",
+        "state_volume": "wazuh-agent-ad-state",
+        "sources": {
+            ("samba-log", "/var/log/samba/log.samba", "syslog"),
+            ("smbd-log", "/var/log/samba/log.smbd", "syslog"),
+            ("winbindd-log", "/var/log/samba/log.winbindd", "syslog"),
+        },
+    },
+    "dns": {
+        "name": "techvault-dns-agent",
+        "state_volume": "wazuh-agent-dns-state",
+        "sources": {
+            ("dns-query-log", "/var/log/named/query.log", "syslog"),
+            ("dns-default-log", "/var/log/named/default.log", "syslog"),
+        },
+    },
+    "fileshare": {
+        "name": "techvault-fileshare-agent",
+        "state_volume": "wazuh-agent-fileshare-state",
+        "sources": {
+            ("fileshare-samba-log", "/var/log/samba/log.samba", "syslog"),
+            ("fileshare-smbd-log", "/var/log/samba/log.smbd", "syslog"),
+        },
+    },
+    "victim": {
+        "name": "techvault-victim-agent",
+        "state_volume": "wazuh-agent-victim-state",
+        "sources": {
+            ("victim-auth-log", "/var/log/secure", "syslog"),
+            ("victim-system-log", "/var/log/messages", "syslog"),
+        },
+    },
+    "workstation": {
+        "name": "techvault-workstation-agent",
+        "state_volume": "wazuh-agent-workstation-state",
+        "sources": {
+            ("workstation-auth-log", "/var/log/secure", "syslog"),
+            ("workstation-system-log", "/var/log/messages", "syslog"),
+        },
+    },
+    "db": {
+        "name": "techvault-db-agent",
+        "state_volume": "wazuh-agent-db-state",
+        "sources": {
+            ("postgres-log", "/var/log/postgresql/postgresql-15-main.log", "syslog"),
+        },
+    },
+    "suricata": {
+        "name": "techvault-suricata-agent",
+        "state_volume": "wazuh-agent-suricata-state",
+        "sources": {
+            ("suricata-eve", "/var/log/suricata/eve.json", "eve_json"),
+        },
+    },
 }
 
 
@@ -134,6 +223,18 @@ def _error(errors: list[str], code: str, detail: str) -> None:
 
 def _cortex_error(errors: list[str], code: str, detail: str) -> None:
     errors.append(f"cortex.{code}: {detail}")
+
+
+def _misp_error(errors: list[str], code: str, detail: str) -> None:
+    errors.append(f"misp.{code}: {detail}")
+
+
+def _wazuh_error(errors: list[str], code: str, detail: str) -> None:
+    errors.append(f"wazuh.{code}: {detail}")
+
+
+def _shuffle_orborus_error(errors: list[str], code: str, detail: str) -> None:
+    errors.append(f"shuffle-orborus.{code}: {detail}")
 
 
 def _as_mapping(value: object) -> Mapping[str, Any]:
@@ -493,6 +594,272 @@ def _validate_evidence_contract(
         _error(errors, "detection-path-mismatch", "Wazuh rule 303020")
 
 
+def _wazuh_forwarders_by_owner(
+    nodes: Mapping[str, Any], errors: list[str]
+) -> dict[str, Mapping[str, Any]]:
+    result: dict[str, Mapping[str, Any]] = {}
+    for owner, raw_node in nodes.items():
+        runtime = _as_mapping(_as_mapping(raw_node).get("runtime"))
+        agents = [
+            _as_mapping(agent)
+            for agent in runtime.get("forwarding_agents", [])
+            if isinstance(agent, Mapping)
+            and agent.get("implementation") == "wazuh_agent"
+        ]
+        if not agents:
+            continue
+        if len(agents) != 1:
+            _wazuh_error(errors, "forwarder-owner-set-mismatch", str(owner))
+        result[str(owner)] = agents[0]
+    if set(result) != set(_WAZUH_AGENT_SPECS):
+        _wazuh_error(
+            errors,
+            "forwarder-owner-set-mismatch",
+            ",".join(sorted(set(result) ^ set(_WAZUH_AGENT_SPECS))),
+        )
+    return result
+
+
+def _validate_wazuh_manager_membership(
+    nodes: Mapping[str, Any],
+    forwarders: Mapping[str, Mapping[str, Any]],
+    errors: list[str],
+) -> None:
+    manager_runtime = _as_mapping(_as_mapping(nodes.get("wazuh-manager")).get("runtime"))
+    managers = [
+        _as_mapping(manager)
+        for manager in manager_runtime.get("security_monitoring_managers", [])
+        if isinstance(manager, Mapping)
+        and manager.get("security_monitoring_manager_id") == "wazuh-manager"
+    ]
+    if len(managers) != 1:
+        _wazuh_error(errors, "manager-membership-mismatch", "wazuh-manager")
+        return
+
+    agents = [
+        _as_mapping(agent)
+        for agent in managers[0].get("agents", [])
+        if isinstance(agent, Mapping)
+    ]
+    actual_pairs = {(agent.get("node_ref"), agent.get("name")) for agent in agents}
+    expected_pairs = {
+        (owner, spec["name"]) for owner, spec in _WAZUH_AGENT_SPECS.items()
+    }
+    if actual_pairs != expected_pairs or len(agents) != len(expected_pairs):
+        _wazuh_error(errors, "manager-membership-mismatch", "owner/name bijection")
+    agent_ids = [agent.get("agent_id") for agent in agents]
+    names = [agent.get("name") for agent in agents]
+    if len(agent_ids) != len(set(agent_ids)) or len(names) != len(set(names)):
+        _wazuh_error(errors, "manager-membership-mismatch", "duplicate identity")
+    for agent in agents:
+        if agent.get("status") != "active":
+            _wazuh_error(
+                errors,
+                "manager-membership-mismatch",
+                str(agent.get("agent_id", "unknown")),
+            )
+    for owner, forwarder in forwarders.items():
+        if (owner, forwarder.get("name")) not in actual_pairs:
+            _wazuh_error(errors, "manager-membership-mismatch", owner)
+
+
+def _validate_wazuh_targets(
+    manager_node: Mapping[str, Any],
+    owner: str,
+    agent: Mapping[str, Any],
+    errors: list[str],
+) -> None:
+    services = {
+        service.get("name"): _as_mapping(service)
+        for service in manager_node.get("services", [])
+        if isinstance(service, Mapping)
+    }
+    runtime = _as_mapping(manager_node.get("runtime"))
+    managers = runtime.get("security_monitoring_managers", [])
+    manager = _as_mapping(managers[0]) if isinstance(managers, list) and managers else {}
+    listeners = {
+        listener.get("service"): _as_mapping(listener)
+        for listener in manager.get("listeners", [])
+        if isinstance(listener, Mapping)
+    }
+    targets = {
+        target.get("target_service_ref"): _as_mapping(target)
+        for target in agent.get("ship_targets", [])
+        if isinstance(target, Mapping)
+    }
+    expected = {
+        "agent-events": ("agent_event_ingestion", "ingestion_port", 1514),
+        "agent-enrollment": ("agent_enrollment", "enrollment_port", 1515),
+    }
+    if set(targets) != set(expected) or len(agent.get("ship_targets", [])) != 2:
+        _wazuh_error(errors, "target-contract-mismatch", owner)
+        return
+    for service_name, (role, port_field, expected_port) in expected.items():
+        target = targets[service_name]
+        service = services.get(service_name, {})
+        listener = listeners.get(service_name, {})
+        other_port = "enrollment_port" if port_field == "ingestion_port" else "ingestion_port"
+        if (
+            target.get("target_node_ref") != "wazuh-manager"
+            or target.get(port_field) != expected_port
+            or target.get(other_port) is not None
+            or target.get("protocol") != "tcp"
+            or service.get("port") != expected_port
+            or service.get("protocol") != "tcp"
+            or listener.get("role") != role
+            or listener.get("protocol") != "tcp"
+        ):
+            _wazuh_error(errors, "target-contract-mismatch", f"{owner}:{service_name}")
+        if service_name == "agent-enrollment" and target.get(
+            "enrollment_identity_classification"
+        ) != "operator_secret":
+            _wazuh_error(errors, "target-contract-mismatch", f"{owner}:enrollment")
+
+
+def _validate_wazuh_realization(
+    sdl: Mapping[str, Any],
+    owner: str,
+    spec: Mapping[str, Any],
+    agent: Mapping[str, Any],
+    errors: list[str],
+) -> None:
+    nodes = _as_mapping(sdl.get("nodes"))
+    node = _as_mapping(nodes.get(owner))
+    runtime = _as_mapping(node.get("runtime"))
+    actual_sources = {
+        (
+            source.get("source_id"),
+            source.get("location"),
+            source.get("parse_format"),
+        )
+        for source in agent.get("sources", [])
+        if isinstance(source, Mapping)
+        and source.get("kind") == "tailed_path"
+        and str(source.get("location", "")).strip()
+    }
+    if actual_sources != spec["sources"] or len(agent.get("sources", [])) != len(spec["sources"]):
+        _wazuh_error(errors, "source-contract-mismatch", owner)
+    if owner in _WAZUH_ENDPOINT_OWNERS and any(
+        source[2] == "eve_json" for source in actual_sources
+    ):
+        _wazuh_error(errors, "source-contract-mismatch", f"{owner}:network-evidence")
+    transforms = [
+        transform
+        for transform in agent.get("transforms", [])
+        if isinstance(transform, Mapping) and transform.get("kind") == "parse"
+    ]
+    buffer = _as_mapping(agent.get("buffer_policy"))
+    if len(transforms) != 1 or buffer.get("crypto") != "aes":
+        _wazuh_error(errors, "source-contract-mismatch", f"{owner}:processing")
+
+    inventory = {
+        item.get("path")
+        for item in runtime.get("filesystem_inventory", [])
+        if isinstance(item, Mapping) and item.get("entry_type") == "file"
+    }
+    # Suricata already owns its EVE source through the typed output stream.
+    inventory.update(
+        stream.get("path")
+        for engine in runtime.get("network_detection_engines", [])
+        if isinstance(engine, Mapping)
+        for stream in engine.get("output_streams", [])
+        if isinstance(stream, Mapping)
+    )
+    if any(location not in inventory for _, location, _ in spec["sources"]):
+        _wazuh_error(errors, "source-contract-mismatch", f"{owner}:unrealized-path")
+
+    volumes = _as_mapping(sdl.get("persistent_volumes"))
+    state_volume = _as_mapping(volumes.get(str(spec["state_volume"])))
+    expected_consumer = {
+        "node": owner,
+        "mount_destination": "/var/ossec/etc",
+        "access_mode": "read_write",
+    }
+    if (
+        state_volume.get("lifecycle") != "retain"
+        or state_volume.get("access_mode") != "read_write_once"
+        or state_volume.get("consumers") != [expected_consumer]
+    ):
+        _wazuh_error(errors, "persistence-mismatch", owner)
+
+    infrastructure = _as_mapping(_as_mapping(sdl.get("infrastructure")).get(owner))
+    if "wazuh-manager" not in infrastructure.get("dependencies", []):
+        _wazuh_error(errors, "lifecycle-mismatch", f"{owner}:dependency")
+
+    components = [
+        item for item in runtime.get("software_components", [])
+        if isinstance(item, Mapping) and item.get("component_id") == "wazuh-agent"
+    ]
+    if len(components) != 1 or (
+        components[0].get("name") != "Wazuh agent"
+        or components[0].get("component_type") != "application"
+        or components[0].get("presence", "required") != "required"
+        or components[0].get("version") != "4.12.0"
+        or agent.get("version") != "4.12.0"
+    ):
+        _wazuh_error(errors, "software-mismatch", owner)
+
+
+def _validate_wazuh_readiness(
+    sdl: Mapping[str, Any],
+    forwarders: Mapping[str, Mapping[str, Any]],
+    errors: list[str],
+) -> None:
+    proposition = _as_mapping(_as_mapping(sdl.get("propositions")).get("wazuh-agents-ready"))
+    assertion = _as_mapping(_as_mapping(sdl.get("assertions")).get("wazuh-agents-ready"))
+    evidence = _as_mapping(_as_mapping(sdl.get("evidence_requirements")).get("wazuh-agent-readiness"))
+    predicate = _as_mapping(proposition.get("predicate"))
+    subjects = {f"nodes.{owner}" for owner in _WAZUH_AGENT_SPECS}
+    manager_ref = "nodes.wazuh-manager.runtime.security_monitoring_managers.wazuh-manager"
+    sources = {manager_ref} | {
+        f"nodes.{owner}.runtime.forwarding_agents.{agent.get('forwarding_agent_id')}"
+        for owner, agent in forwarders.items()
+    }
+    if (
+        proposition.get("basis") != "observed_state"
+        or proposition.get("quantifier", "all") != "all"
+        or set(proposition.get("subjects", [])) != subjects
+        or proposition.get("evidence_requirements") != ["wazuh-agent-readiness"]
+        or predicate.get("kind") != "boolean"
+        or predicate.get("property") != "wazuh-agent-ready"
+        or predicate.get("semantic_ref") != "urn:techvault:observable:wazuh-agent-ready"
+        or predicate.get("operator", "equals") != "equals"
+        or predicate.get("expected") is not True
+        or assertion.get("proposition") != "wazuh-agents-ready"
+        or assertion.get("role") != "precondition"
+        or assertion.get("polarity", "positive") != "positive"
+        or set(evidence.get("source_refs", [])) != sources
+        or set(evidence.get("scope_refs", [])) != subjects | {"nodes.wazuh-manager"}
+        or evidence.get("channel") != "file_artifact"
+        or evidence.get("redaction") != "redact_secrets"
+        or evidence.get("loss_disclosure") != "required"
+    ):
+        _wazuh_error(errors, "readiness-mismatch", "wazuh-agents-ready")
+
+
+def validate_wazuh_agent_contract(sdl: Mapping[str, Any]) -> list[str]:
+    """Validate TechVault's closed joins around RAES-owned Wazuh models."""
+
+    errors: list[str] = []
+    nodes = _as_mapping(sdl.get("nodes"))
+    forwarders = _wazuh_forwarders_by_owner(nodes, errors)
+    names = [agent.get("name") for agent in forwarders.values()]
+    if len(names) != len(set(names)):
+        _wazuh_error(errors, "enrollment-name-duplicate", "forwarding agents")
+    manager_node = _as_mapping(nodes.get("wazuh-manager"))
+    for owner, spec in _WAZUH_AGENT_SPECS.items():
+        agent = forwarders.get(owner)
+        if agent is None:
+            continue
+        if agent.get("name") != spec["name"] or agent.get("agent_kind") != "log_forwarder":
+            _wazuh_error(errors, "identity-mismatch", owner)
+        _validate_wazuh_targets(manager_node, owner, agent, errors)
+        _validate_wazuh_realization(sdl, owner, spec, agent, errors)
+    _validate_wazuh_manager_membership(nodes, forwarders, errors)
+    _validate_wazuh_readiness(sdl, forwarders, errors)
+    return errors
+
+
 def validate_suricata_contract(
     pack_root: pathlib.Path,
     sdl: Mapping[str, Any],
@@ -512,6 +879,424 @@ def validate_suricata_contract(
     )
     _validate_runtime_joins(sdl, config, local, errors)
     _validate_evidence_contract(pack_root, sdl, errors, artifact_overrides or {})
+    return errors
+
+
+def validate_misp_contract(sdl: Mapping[str, Any]) -> list[str]:
+    """Validate TechVault's closed, provider-neutral MISP contract."""
+
+    errors: list[str] = []
+    nodes = _as_mapping(sdl.get("nodes"))
+    misp_runtime = _as_mapping(_as_mapping(nodes.get("misp")).get("runtime"))
+
+    applications = misp_runtime.get("platform_applications", [])
+    application = _as_mapping(
+        applications[0]
+        if isinstance(applications, list) and len(applications) == 1
+        else {}
+    )
+    expected_bindings = {
+        "misp-relational-store": ("data_source", "misp-db", "mysql"),
+        "misp-cache-store": ("data_source", "misp-redis", "redis"),
+    }
+    bindings = application.get("upstream_bindings", [])
+    actual_bindings = {
+        str(item.get("binding_id")): (
+            item.get("role"),
+            item.get("target_node_ref"),
+            item.get("target_service_ref"),
+        )
+        for item in bindings
+        if isinstance(item, Mapping)
+    }
+    if (
+        len(bindings) != len(expected_bindings)
+        or actual_bindings != expected_bindings
+    ):
+        _misp_error(errors, "binding-invalid", "platform upstream bindings")
+
+    settings = application.get("settings", [])
+    if not isinstance(settings, list) or len(settings) != 1:
+        _misp_error(errors, "setting-invalid", "canonical URL inventory")
+    else:
+        setting = _as_mapping(settings[0])
+        if {
+            "setting_id": setting.get("setting_id"),
+            "name": setting.get("name"),
+            "value": setting.get("value"),
+            "provenance": setting.get("provenance"),
+            "classification": setting.get("classification"),
+        } != {
+            "setting_id": "misp-canonical-url",
+            "name": "Canonical MISP URL",
+            "value": "https://misp.techvault.local",
+            "provenance": "runtime",
+            "classification": "plain",
+        }:
+            _misp_error(errors, "setting-invalid", "canonical URL state")
+
+    listeners = misp_runtime.get("service_listeners", [])
+    listener = _as_mapping(
+        listeners[0]
+        if isinstance(listeners, list) and len(listeners) == 1
+        else {}
+    )
+    readiness = _as_mapping(listener.get("readiness"))
+    if (
+        listener.get("service_listener_id") != "misp-https-listener"
+        or readiness.get("probe") != "misp-authenticated-api-operation"
+        or readiness.get("evidence_refs")
+        != ["misp-authenticated-api-readiness"]
+        or readiness.get("criteria")
+        != (
+            "A certificate-verified, authenticated MISP API write and read "
+            "succeeds through the declared MariaDB and Redis services."
+        )
+    ):
+        _misp_error(errors, "readiness-invalid", "authenticated API readiness")
+
+    authorizations = misp_runtime.get("app_authorizations", [])
+    authorization = _as_mapping(
+        authorizations[0]
+        if isinstance(authorizations, list) and len(authorizations) == 1
+        else {}
+    )
+    principal_shape = {
+        str(item.get("principal_id")): (
+            item.get("kind"),
+            item.get("name", ""),
+            item.get("credential_classification"),
+        )
+        for item in authorization.get("principals", [])
+        if isinstance(item, Mapping)
+    }
+    expected_principals = {
+        "misp-administrator": ("user", "admin@admin.test", "operator_secret"),
+        "misp-suricata-sync-api-key": ("api_key", "", "operator_secret"),
+    }
+    authorization_shape = {
+        "roles": {
+            str(item.get("role_id")): item.get("name")
+            for item in authorization.get("roles", [])
+            if isinstance(item, Mapping)
+        },
+        "permission_grants": {
+            str(item.get("grant_id")): (
+                item.get("role_ref"),
+                item.get("resource_kind"),
+                item.get("actions"),
+                item.get("resource_patterns"),
+                item.get("effect"),
+            )
+            for item in authorization.get("permission_grants", [])
+            if isinstance(item, Mapping)
+        },
+        "role_mappings": {
+            str(item.get("mapping_id")): (
+                item.get("role_ref"),
+                item.get("users"),
+            )
+            for item in authorization.get("role_mappings", [])
+            if isinstance(item, Mapping)
+        },
+    }
+    expected_authorization_shape = {
+        "roles": {
+            "misp-administrator-role": "MISP administrator",
+            "misp-sync-reader-role": "MISP synchronization reader",
+        },
+        "permission_grants": {
+            "misp-administrator-access": (
+                "misp-administrator-role",
+                "app_resource",
+                ["manage"],
+                ["*"],
+                "allow",
+            ),
+            "misp-sync-read-access": (
+                "misp-sync-reader-role",
+                "app_resource",
+                ["read"],
+                ["attributes/*", "events/*"],
+                "allow",
+            ),
+        },
+        "role_mappings": {
+            "misp-administrator-mapping": (
+                "misp-administrator-role",
+                ["misp-administrator"],
+            ),
+            "misp-sync-reader-mapping": (
+                "misp-sync-reader-role",
+                ["misp-suricata-sync-api-key"],
+            ),
+        },
+    }
+    if (
+        authorization.get("app_authorization_id") != "misp-api-authorization"
+        or authorization.get("resource_vocabulary") != "app_resource"
+        or authorization.get("auth_enabled") is not True
+        or principal_shape != expected_principals
+        or authorization_shape != expected_authorization_shape
+        or len(authorization.get("principals", [])) != len(expected_principals)
+        or any(
+            len(authorization.get(field, [])) != len(expected)
+            for field, expected in expected_authorization_shape.items()
+        )
+    ):
+        _misp_error(errors, "principal-invalid", "MISP authorization inventory")
+
+    db_runtime = _as_mapping(_as_mapping(nodes.get("misp-db")).get("runtime"))
+    database_services = db_runtime.get("database_services", [])
+    database = _as_mapping(
+        database_services[0]
+        if isinstance(database_services, list) and len(database_services) == 1
+        else {}
+    )
+    databases = database.get("databases", [])
+    roles = database.get("roles", [])
+    grants = database.get("grants", [])
+    logical_database = _as_mapping(
+        databases[0] if isinstance(databases, list) and len(databases) == 1 else {}
+    )
+    role = _as_mapping(roles[0] if isinstance(roles, list) and len(roles) == 1 else {})
+    grant = _as_mapping(
+        grants[0] if isinstance(grants, list) and len(grants) == 1 else {}
+    )
+    if (
+        database.get("database_service_id") != "misp-db"
+        or database.get("service") != "mysql"
+        or database.get("engine") != "mariadb"
+        or database.get("protocol") != "mysql"
+        or {
+            "database_id": logical_database.get("database_id"),
+            "name": logical_database.get("name"),
+            "origin": logical_database.get("origin"),
+        }
+        != {"database_id": "misp", "name": "misp", "origin": "scenario"}
+        or {
+            "role_id": role.get("role_id"),
+            "name": role.get("name"),
+            "role_type": role.get("role_type"),
+            "origin": role.get("origin"),
+            "can_login": role.get("can_login"),
+        }
+        != {
+            "role_id": "misp-application-role",
+            "name": "misp",
+            "role_type": "application",
+            "origin": "scenario",
+            "can_login": True,
+        }
+        or {
+            "grantee_role_ref": grant.get("grantee_role_ref"),
+            "object_type": grant.get("object_type"),
+            "object_ref": grant.get("object_ref"),
+            "privileges": grant.get("privileges"),
+            "with_grant_option": grant.get("with_grant_option"),
+        }
+        != {
+            "grantee_role_ref": "misp-application-role",
+            "object_type": "database",
+            "object_ref": "misp",
+            "privileges": ["ALL"],
+            "with_grant_option": False,
+        }
+    ):
+        _misp_error(errors, "database-invalid", "MariaDB logical state")
+
+    relationships = _as_mapping(sdl.get("relationships"))
+    database_relationship = _as_mapping(relationships.get("misp-uses-database"))
+    database_access = _as_mapping(database_relationship.get("database_access"))
+    if {
+        "type": database_relationship.get("type"),
+        "source": database_relationship.get("source"),
+        "target": database_relationship.get("target"),
+        "role_ref": database_access.get("role_ref"),
+        "auth_method": database_access.get("auth_method"),
+    } != {
+        "type": "connects_to",
+        "source": "nodes.misp.runtime.applications.misp-web",
+        "target": "nodes.misp-db.runtime.database_services.misp-db",
+        "role_ref": "misp-application-role",
+        "auth_method": "password",
+    }:
+        _misp_error(errors, "database-access-invalid", "MISP database access")
+
+    redis_runtime = _as_mapping(
+        _as_mapping(nodes.get("misp-redis")).get("runtime")
+    )
+    datastores = redis_runtime.get("datastore_services", [])
+    datastore = _as_mapping(
+        datastores[0]
+        if isinstance(datastores, list) and len(datastores) == 1
+        else {}
+    )
+    redis_authorizations = redis_runtime.get("app_authorizations", [])
+    redis_authorization = _as_mapping(
+        redis_authorizations[0]
+        if isinstance(redis_authorizations, list)
+        and len(redis_authorizations) == 1
+        else {}
+    )
+    redis_principals = redis_authorization.get("principals", [])
+    redis_principal = _as_mapping(
+        redis_principals[0]
+        if isinstance(redis_principals, list) and len(redis_principals) == 1
+        else {}
+    )
+    redis_authorization_shape = {
+        "roles": {
+            str(item.get("role_id")): item.get("name")
+            for item in redis_authorization.get("roles", [])
+            if isinstance(item, Mapping)
+        },
+        "permission_grants": {
+            str(item.get("grant_id")): (
+                item.get("role_ref"),
+                item.get("resource_kind"),
+                item.get("actions"),
+                item.get("resource_patterns"),
+                item.get("effect"),
+            )
+            for item in redis_authorization.get("permission_grants", [])
+            if isinstance(item, Mapping)
+        },
+        "role_mappings": {
+            str(item.get("mapping_id")): (
+                item.get("role_ref"),
+                item.get("users"),
+            )
+            for item in redis_authorization.get("role_mappings", [])
+            if isinstance(item, Mapping)
+        },
+    }
+    if (
+        datastore.get("authorization_ref") != "misp-redis-authorization"
+        or redis_authorization.get("app_authorization_id")
+        != "misp-redis-authorization"
+        or redis_authorization.get("resource_vocabulary") != "redis_acl"
+        or redis_authorization.get("auth_enabled") is not True
+        or {
+            "principal_id": redis_principal.get("principal_id"),
+            "kind": redis_principal.get("kind"),
+            "credential_classification": redis_principal.get(
+                "credential_classification"
+            ),
+        }
+        != {
+            "principal_id": "misp-cache-client",
+            "kind": "service_account",
+            "credential_classification": "redacted",
+        }
+        or redis_authorization_shape
+        != {
+            "roles": {"misp-cache-role": "MISP cache read/write"},
+            "permission_grants": {
+                "misp-cache-access": (
+                    "misp-cache-role",
+                    "redis_acl",
+                    ["read", "write"],
+                    ["*"],
+                    "allow",
+                )
+            },
+            "role_mappings": {
+                "misp-cache-client-mapping": (
+                    "misp-cache-role",
+                    ["misp-cache-client"],
+                )
+            },
+        }
+    ):
+        _misp_error(
+            errors,
+            "redis-authorization-invalid",
+            "Redis authorization inventory",
+        )
+
+    generated = _as_mapping(sdl.get("generated_artifacts"))
+    certificates = _as_mapping(generated.get("techvault-soc-certificates"))
+    outputs = {
+        str(item.get("name")): (
+            item.get("path"),
+            item.get("sensitivity"),
+            item.get("disposition", ""),
+        )
+        for item in certificates.get("outputs", [])
+        if isinstance(item, Mapping)
+    }
+    consumers = [
+        item
+        for item in certificates.get("consumers", [])
+        if isinstance(item, Mapping) and item.get("node") == "misp"
+    ]
+    certificate_consumer = _as_mapping(consumers[0] if len(consumers) == 1 else {})
+    if (
+        any(
+            outputs.get(name) != expected
+            for name, expected in {
+                "ca-private-key": ("lab-ca.key", "secret", "producer_private"),
+                "ca-certificate": ("lab-ca.pem", "public", ""),
+                "misp-certificate": ("misp/server.pem", "public", ""),
+                "misp-private-key": ("misp/server.key", "secret", ""),
+            }.items()
+        )
+        or len(consumers) != 1
+        or certificate_consumer.get("access_mode") != "read_only"
+        or set(certificate_consumer.get("selected_outputs", []))
+        != {"ca-certificate", "misp-certificate", "misp-private-key"}
+    ):
+        _misp_error(
+            errors,
+            "certificate-selection-invalid",
+            "MISP certificate outputs",
+        )
+
+    requirements = _as_mapping(sdl.get("evidence_requirements"))
+    evidence = _as_mapping(requirements.get("misp-authenticated-api-readiness"))
+    expected_sources = {
+        "nodes.misp.runtime.platform_applications.misp-threat-intelligence",
+        "nodes.misp-db.runtime.database_services.misp-db",
+        "nodes.misp-redis.runtime.datastore_services.misp-redis",
+    }
+    if (
+        evidence.get("channel") != "api_response"
+        or evidence.get("redaction") != "redact_secrets"
+        or evidence.get("boundary_kind") != "system_under_test"
+        or set(evidence.get("source_refs", [])) != expected_sources
+        or len(evidence.get("source_refs", [])) != len(expected_sources)
+    ):
+        _misp_error(errors, "evidence-invalid", "authenticated readiness evidence")
+
+    propositions = _as_mapping(sdl.get("propositions"))
+    proposition = _as_mapping(propositions.get("misp-authenticated-api-ready"))
+    assertions = _as_mapping(sdl.get("assertions"))
+    assertion = _as_mapping(assertions.get("misp-authenticated-api-ready"))
+    if (
+        proposition.get("evidence_requirements")
+        != ["misp-authenticated-api-readiness"]
+        or assertion.get("proposition") != "misp-authenticated-api-ready"
+        or assertion.get("role") != "postcondition"
+    ):
+        _misp_error(errors, "readiness-invalid", "readiness proposition")
+
+    sync_runtime = _as_mapping(
+        _as_mapping(nodes.get("misp-suricata-sync")).get("runtime")
+    )
+    forwarding_agents = sync_runtime.get("forwarding_agents", [])
+    forwarding_agent = _as_mapping(
+        forwarding_agents[0]
+        if isinstance(forwarding_agents, list) and len(forwarding_agents) == 1
+        else {}
+    )
+    sources = forwarding_agent.get("sources", [])
+    sync_source = _as_mapping(
+        sources[0] if isinstance(sources, list) and len(sources) == 1 else {}
+    )
+    if sync_source.get("location") != "https://misp.techvault.local":
+        _misp_error(errors, "setting-invalid", "sync canonical URL")
+
     return errors
 
 
@@ -666,6 +1451,104 @@ def _is_installed_service_manager_unit(value: Mapping[str, Any]) -> bool:
     return False
 
 
+def validate_shuffle_orborus_contract(sdl: Mapping[str, Any]) -> list[str]:
+    """Validate Orborus's portable authority without prescribing realization."""
+
+    errors: list[str] = []
+    runtime = _as_mapping(
+        _as_mapping(_as_mapping(sdl.get("nodes")).get("shuffle-orborus")).get(
+            "runtime"
+        )
+    )
+    interfaces = runtime.get("local_control_interfaces")
+    interface_values = interfaces if isinstance(interfaces, list) else []
+    interface = _as_mapping(
+        interface_values[0] if len(interface_values) == 1 else None
+    )
+    if (
+        len(interface_values) != 1
+        or interface.get("control_interface_id") != "docker-sock"
+        or interface.get("path") != "/var/run/docker.sock"
+        or interface.get("kind") != "unix_socket"
+        or interface.get("access") != "read_write"
+    ):
+        _shuffle_orborus_error(
+            errors,
+            "interface-invalid",
+            "/nodes/shuffle-orborus/runtime/local_control_interfaces",
+        )
+    for field in ("bind_source", "bind_source_sensitivity", "protocol"):
+        if field in interface:
+            _shuffle_orborus_error(
+                errors,
+                "backend-field",
+                "/nodes/shuffle-orborus/runtime/"
+                f"local_control_interfaces/0/{field}",
+            )
+
+    authorities = runtime.get("orchestration_authorities")
+    authority_values = authorities if isinstance(authorities, list) else []
+    authority = _as_mapping(
+        authority_values[0] if len(authority_values) == 1 else None
+    )
+    scope = _as_mapping(authority.get("scope"))
+    if (
+        len(authority_values) != 1
+        or authority.get("orchestration_authority_id") != "shuffle-orborus"
+        or authority.get("control_interface_ref") != "docker-sock"
+        or authority.get("engine") != "docker"
+        or authority.get("privilege_class") != "host_root_equivalent"
+        or scope.get("environment_name") != "Shuffle"
+    ):
+        _shuffle_orborus_error(
+            errors,
+            "authority-invalid",
+            "/nodes/shuffle-orborus/runtime/orchestration_authorities",
+        )
+    for field in ("engine_api_version", "realized_children"):
+        if field in authority:
+            _shuffle_orborus_error(
+                errors,
+                "backend-field",
+                "/nodes/shuffle-orborus/runtime/"
+                f"orchestration_authorities/0/{field}",
+            )
+
+    templates = authority.get("spawn_templates")
+    template_values = templates if isinstance(templates, list) else []
+    actual_templates = {
+        template.get("template_id"): {
+            "image_ref": template.get("image_ref"),
+            "purpose": template.get("purpose"),
+        }
+        for value in template_values
+        if (template := _as_mapping(value)).get("template_id")
+    }
+    if (
+        len(template_values) != len(_SHUFFLE_ORBORUS_TEMPLATES)
+        or actual_templates != _SHUFFLE_ORBORUS_TEMPLATES
+    ):
+        _shuffle_orborus_error(
+            errors,
+            "spawn-template-invalid",
+            "/nodes/shuffle-orborus/runtime/orchestration_authorities/0/"
+            "spawn_templates",
+        )
+
+    lifecycle = _as_mapping(authority.get("lifecycle_policy"))
+    if (
+        lifecycle.get("execution_timeout") != "600"
+        or lifecycle.get("cleanup") != "false"
+    ):
+        _shuffle_orborus_error(
+            errors,
+            "lifecycle-invalid",
+            "/nodes/shuffle-orborus/runtime/orchestration_authorities/0/"
+            "lifecycle_policy",
+        )
+    return errors
+
+
 def validate_realization_method_contract(sdl: Mapping[str, Any]) -> list[str]:
     """Reject structurally explicit realization choices from TechVault."""
 
@@ -696,8 +1579,11 @@ def validate_realization_method_contract(sdl: Mapping[str, Any]) -> list[str]:
                 errors.append(f"realization.node-source: {base}/source")
 
         runtime = _as_mapping(node.get("runtime"))
+        portable_exceptions = _PORTABLE_RUNTIME_FIELD_EXCEPTIONS.get(
+            str(node_id), frozenset()
+        )
         for field, code in _FORBIDDEN_RUNTIME_FIELDS.items():
-            if field in runtime:
+            if field in runtime and field not in portable_exceptions:
                 errors.append(f"realization.{code}: {base}/runtime/{field}")
 
         network = _as_mapping(runtime.get("network"))
@@ -771,8 +1657,11 @@ def validate() -> list[str]:
         sdl_path = next((root / "sdl").glob("*.sdl.yaml"))
         sdl = yaml.safe_load(sdl_path.read_text(encoding="utf-8"))
         errors.extend(validate_realization_method_contract(sdl))
+        errors.extend(validate_shuffle_orborus_contract(sdl))
+        errors.extend(validate_misp_contract(sdl))
         errors.extend(validate_suricata_contract(root, sdl))
         errors.extend(validate_cortex_contract(root, sdl))
+        errors.extend(validate_wazuh_agent_contract(sdl))
     return errors
 
 
