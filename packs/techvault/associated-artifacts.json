@@ -483,9 +483,9 @@
       "uri": "raes-environment-pack:/docs/concepts.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "78926adc1a74de23dbe3cd1e8e2e1aecac3b8b4767f5674ae36d6bcdf3b902ea"
+        "value": "02d717fe2ce04e8dd9994b55bd526109fdcc5fa2d09e73d3565ee2d0981fccb0"
       },
-      "size_bytes": 1002,
+      "size_bytes": 2215,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -595,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "8382aa1e539ffe126e5b40a3d8c84dbaaa98b4661b86291705a134a43035ce74"
+        "value": "9e3db45ae30fd9d4ef38cafae7676adef8c3ea943ce6e08e6e01efd359a4578b"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -627,9 +627,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "0d9afbad6646107b88f00003634288e51675552a2ae0a83b0794bc9b3cc294d8"
+        "value": "cea1ae829eae1f835fddded7a3c3a6de22fc464b86edcd2eb89a64771aa8031d"
       },
-      "size_bytes": 122474,
+      "size_bytes": 133759,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -659,9 +659,9 @@
       "uri": "raes-environment-pack:/validation/validate_techvault.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "51b5af79b241475d1dae32efd1eb8974ef3c8a274d1886486893186105981acf"
+        "value": "fd1d76ea37f4f542a3c5a850aaf13d3337be6c6f9e99f52d6e72cbcca6b6a7e5"
       },
-      "size_bytes": 30927,
+      "size_bytes": 44773,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -733,5 +733,5 @@
       "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:edd3bb6252990aeaf506904767182d5a3ef2b3828a498fe64c897dccaf954934"
+  "set_digest": "sha256:d029c06ad4c9e1ff40f3779de8b0a5a64f0030b430805ef4c29dbdb817ff8f15"
 }
