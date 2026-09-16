@@ -200,17 +200,75 @@ def _assert_shuffle_runtime_contract(test: unittest.TestCase, sdl: dict) -> None
 
 
 def _assert_shuffle_orborus_contract(test: unittest.TestCase, sdl: dict) -> None:
-    """Assert Orborus is an in-world component without a launch method."""
+    """Assert Orborus declares its portable authority, not its realization."""
     runtime = sdl["nodes"]["shuffle-orborus"]["runtime"]
     (component,) = runtime["software_components"]
     test.assertEqual(component["component_id"], "shuffle-orborus")
     test.assertEqual(component["version"], "unversioned")
-    for field in (
-        "environment",
-        "local_control_interfaces",
-        "orchestration_authorities",
-    ):
-        test.assertNotIn(field, runtime)
+
+    test.assertNotIn("environment", runtime)
+    (control_interface,) = runtime["local_control_interfaces"]
+    test.assertEqual(
+        {
+            key: value
+            for key, value in control_interface.items()
+            if key != "description"
+        },
+        {
+            "control_interface_id": "docker-sock",
+            "path": "/var/run/docker.sock",
+            "kind": "unix_socket",
+            "access": "read_write",
+        },
+    )
+    test.assertNotIn("bind_source", control_interface)
+    test.assertNotIn("protocol", control_interface)
+
+    (authority,) = runtime["orchestration_authorities"]
+    test.assertEqual(authority["orchestration_authority_id"], "shuffle-orborus")
+    test.assertEqual(authority["control_interface_ref"], "docker-sock")
+    test.assertEqual(authority["engine"], "docker")
+    test.assertEqual(authority["privilege_class"], "host_root_equivalent")
+    test.assertEqual(authority["scope"]["environment_name"], "Shuffle")
+    test.assertEqual(
+        authority["lifecycle_policy"],
+        {
+            "execution_timeout": "600",
+            "cleanup": "false",
+            "description": (
+                "Shuffle workflow executions have a bounded lifetime and "
+                "retain failed workloads for scenario-visible diagnosis."
+            ),
+        },
+    )
+    test.assertNotIn("engine_api_version", authority)
+    test.assertNotIn("realized_children", authority)
+
+    templates = {
+        template["template_id"]: template
+        for template in authority["spawn_templates"]
+    }
+    test.assertEqual(
+        templates,
+        {
+            "shuffle-worker": {
+                "template_id": "shuffle-worker",
+                "image_ref": (
+                    "ghcr.io/shuffle/shuffle-worker@sha256:"
+                    "fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd"
+                ),
+                "purpose": "workflow execution",
+            },
+            "shuffle-http-1-4-0": {
+                "template_id": "shuffle-http-1-4-0",
+                "image_ref": (
+                    "frikky/shuffle:http_1.4.0@sha256:"
+                    "0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c"
+                ),
+                "purpose": "seeded HTTP workflow app execution",
+            },
+        },
+    )
 
 
 class TechVaultPackTests(unittest.TestCase):
@@ -387,6 +445,68 @@ class TechVaultPackTests(unittest.TestCase):
     def test_shuffle_orborus_contract_is_complete_and_consistent(self) -> None:
         _assert_shuffle_orborus_contract(self, _load_sdl())
 
+    def test_shuffle_orborus_production_contract_is_valid(self) -> None:
+        self.assertEqual(
+            _PACK_VALIDATOR.validate_shuffle_orborus_contract(_load_sdl()), []
+        )
+
+    def test_shuffle_orborus_contract_rejects_drift(self) -> None:
+        original = _load_sdl()
+        runtime_path = ("nodes", "shuffle-orborus", "runtime")
+        interface_path = (*runtime_path, "local_control_interfaces", 0)
+        authority_path = (*runtime_path, "orchestration_authorities", 0)
+        cases = (
+            ("interface-invalid", (*interface_path, "path"), "/run/docker.sock"),
+            (
+                "backend-field",
+                (*interface_path, "bind_source"),
+                "/var/run/docker.sock",
+            ),
+            (
+                "authority-invalid",
+                (*authority_path, "control_interface_ref"),
+                "other",
+            ),
+            (
+                "authority-invalid",
+                (*authority_path, "privilege_class"),
+                "unknown",
+            ),
+            ("backend-field", (*authority_path, "engine_api_version"), "1.44"),
+            (
+                "spawn-template-invalid",
+                (*authority_path, "spawn_templates", 0, "image_ref"),
+                "ghcr.io/shuffle/shuffle-worker:latest",
+            ),
+            (
+                "lifecycle-invalid",
+                (*authority_path, "lifecycle_policy", "cleanup"),
+                "true",
+            ),
+            (
+                "backend-field",
+                (*authority_path, "realized_children"),
+                [{"workload_id": "observed-worker"}],
+            ),
+        )
+        for code, path, value in cases:
+            with self.subTest(path=path):
+                candidate = copy.deepcopy(original)
+                parent = candidate
+                for key in path[:-1]:
+                    parent = parent[key]
+                parent[path[-1]] = value
+                errors = _PACK_VALIDATOR.validate_shuffle_orborus_contract(
+                    candidate
+                )
+                self.assertTrue(
+                    any(
+                        error.startswith(f"shuffle-orborus.{code}:")
+                        for error in errors
+                    ),
+                    errors,
+                )
+
     def test_shuffle_contract_omits_backend_launch_controls(self) -> None:
         sdl = _load_sdl()
         for node_id in (
@@ -399,7 +519,15 @@ class TechVaultPackTests(unittest.TestCase):
                 runtime = sdl["nodes"][node_id]["runtime"]
                 self.assertNotIn("environment", runtime)
                 self.assertNotIn("container", runtime)
-                self.assertNotIn("orchestration_authorities", runtime)
+                if node_id == "shuffle-orborus":
+                    (control_interface,) = runtime["local_control_interfaces"]
+                    (authority,) = runtime["orchestration_authorities"]
+                    self.assertNotIn("bind_source", control_interface)
+                    self.assertNotIn("engine_api_version", authority)
+                    self.assertNotIn("realized_children", authority)
+                else:
+                    self.assertNotIn("local_control_interfaces", runtime)
+                    self.assertNotIn("orchestration_authorities", runtime)
 
     def test_all_original_content_obligations_are_accounted_for(self) -> None:
         content = _load_sdl()["content"]
@@ -1739,6 +1867,59 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
         self.assertEqual(
             _PACK_VALIDATOR.validate_realization_method_contract(_load_sdl()), []
         )
+
+    def test_compiler_preserves_orborus_authority_as_portable_desired_state(
+        self,
+    ) -> None:
+        sdl = _load_sdl()
+        model = compile_scenario_runtime_model(
+            parse_sdl_file(_SDL),
+            parameters={name: f"test-{name}" for name in sdl["variables"]},
+        )
+        by_field = {
+            requirement.field_path: requirement
+            for requirement in model.realization_requirements
+        }
+        interface = by_field[
+            "nodes.shuffle-orborus.runtime.local_control_interfaces"
+        ]
+        authority = by_field[
+            "nodes.shuffle-orborus.runtime.orchestration_authorities"
+        ]
+        self.assertEqual(
+            interface.verification_scope,
+            RealizationVerificationScope.CONFIGURATION,
+        )
+        self.assertEqual(
+            authority.verification_scope,
+            RealizationVerificationScope.CONFIGURATION,
+        )
+
+        interface_document = interface.constraint_document.model_dump(mode="json")
+        interface_fields = interface_document["root"]["items"][0]["fields"]
+        self.assertEqual(interface_fields["path"]["value"], "/var/run/docker.sock")
+        self.assertEqual(interface_fields["access"]["value"], "read_write")
+        self.assertEqual(
+            interface_fields["bind_source_present"]["kind"], "delegated"
+        )
+
+        authority_document = authority.constraint_document.model_dump(mode="json")
+        authority_fields = authority_document["root"]["members"][0][
+            "constraint"
+        ]["fields"]
+        self.assertEqual(
+            authority_fields["privilege_class"]["value"],
+            "host_root_equivalent",
+        )
+        self.assertEqual(
+            authority_fields["engine_api_version"]["kind"], "delegated"
+        )
+        template_members = authority_fields["spawn_templates"]["members"]
+        self.assertEqual(
+            {tuple(member["identity"]) for member in template_members},
+            {("shuffle-worker",), ("shuffle-http-1-4-0",)},
+        )
+        self.assertNotIn("realized_children", authority_fields)
 
     def test_compiled_verification_leaves_authoritative_source_open(self) -> None:
         sdl = _load_sdl()

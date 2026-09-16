@@ -889,6 +889,33 @@ nodes:
     os: linux
     services: []
     runtime:
+      local_control_interfaces:
+        - control_interface_id: docker-sock
+          path: /var/run/docker.sock
+          kind: unix_socket
+          access: read_write
+          description: The in-world Docker control endpoint required by Shuffle workflow execution.
+      orchestration_authorities:
+        - orchestration_authority_id: shuffle-orborus
+          control_interface_ref: docker-sock
+          engine: docker
+          name: Shuffle workload orchestrator
+          privilege_class: host_root_equivalent
+          description: Declares the workload authority Orborus requires without selecting how a backend grants it.
+          scope:
+            environment_name: Shuffle
+            description: The TechVault Shuffle workflow environment.
+          spawn_templates:
+            - template_id: shuffle-worker
+              image_ref: ghcr.io/shuffle/shuffle-worker@sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd
+              purpose: workflow execution
+            - template_id: shuffle-http-1-4-0
+              image_ref: frikky/shuffle:http_1.4.0@sha256:0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c
+              purpose: seeded HTTP workflow app execution
+          lifecycle_policy:
+            execution_timeout: '600'
+            cleanup: 'false'
+            description: Shuffle workflow executions have a bounded lifetime and retain failed workloads for scenario-visible diagnosis.
       software_components:
         - component_id: shuffle-orborus
           name: Shuffle Orborus

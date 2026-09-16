@@ -122,6 +122,27 @@ _FORBIDDEN_RUNTIME_FIELDS = {
     "operational_policy": "operational-policy",
     "orchestration_authorities": "orchestration-authority",
 }
+_PORTABLE_RUNTIME_FIELD_EXCEPTIONS = {
+    "shuffle-orborus": frozenset(
+        {"local_control_interfaces", "orchestration_authorities"}
+    ),
+}
+_SHUFFLE_ORBORUS_TEMPLATES = {
+    "shuffle-worker": {
+        "image_ref": (
+            "ghcr.io/shuffle/shuffle-worker@sha256:"
+            "fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd"
+        ),
+        "purpose": "workflow execution",
+    },
+    "shuffle-http-1-4-0": {
+        "image_ref": (
+            "frikky/shuffle:http_1.4.0@sha256:"
+            "0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c"
+        ),
+        "purpose": "seeded HTTP workflow app execution",
+    },
+}
 _FORBIDDEN_SENSOR_FIELDS = {
     "capture_interfaces": "packet-acquisition",
     "capture_mode": "packet-acquisition",
@@ -206,6 +227,10 @@ def _cortex_error(errors: list[str], code: str, detail: str) -> None:
 
 def _wazuh_error(errors: list[str], code: str, detail: str) -> None:
     errors.append(f"wazuh.{code}: {detail}")
+
+
+def _shuffle_orborus_error(errors: list[str], code: str, detail: str) -> None:
+    errors.append(f"shuffle-orborus.{code}: {detail}")
 
 
 def _as_mapping(value: object) -> Mapping[str, Any]:
@@ -1004,6 +1029,104 @@ def _is_installed_service_manager_unit(value: Mapping[str, Any]) -> bool:
     return False
 
 
+def validate_shuffle_orborus_contract(sdl: Mapping[str, Any]) -> list[str]:
+    """Validate Orborus's portable authority without prescribing realization."""
+
+    errors: list[str] = []
+    runtime = _as_mapping(
+        _as_mapping(_as_mapping(sdl.get("nodes")).get("shuffle-orborus")).get(
+            "runtime"
+        )
+    )
+    interfaces = runtime.get("local_control_interfaces")
+    interface_values = interfaces if isinstance(interfaces, list) else []
+    interface = _as_mapping(
+        interface_values[0] if len(interface_values) == 1 else None
+    )
+    if (
+        len(interface_values) != 1
+        or interface.get("control_interface_id") != "docker-sock"
+        or interface.get("path") != "/var/run/docker.sock"
+        or interface.get("kind") != "unix_socket"
+        or interface.get("access") != "read_write"
+    ):
+        _shuffle_orborus_error(
+            errors,
+            "interface-invalid",
+            "/nodes/shuffle-orborus/runtime/local_control_interfaces",
+        )
+    for field in ("bind_source", "bind_source_sensitivity", "protocol"):
+        if field in interface:
+            _shuffle_orborus_error(
+                errors,
+                "backend-field",
+                "/nodes/shuffle-orborus/runtime/"
+                f"local_control_interfaces/0/{field}",
+            )
+
+    authorities = runtime.get("orchestration_authorities")
+    authority_values = authorities if isinstance(authorities, list) else []
+    authority = _as_mapping(
+        authority_values[0] if len(authority_values) == 1 else None
+    )
+    scope = _as_mapping(authority.get("scope"))
+    if (
+        len(authority_values) != 1
+        or authority.get("orchestration_authority_id") != "shuffle-orborus"
+        or authority.get("control_interface_ref") != "docker-sock"
+        or authority.get("engine") != "docker"
+        or authority.get("privilege_class") != "host_root_equivalent"
+        or scope.get("environment_name") != "Shuffle"
+    ):
+        _shuffle_orborus_error(
+            errors,
+            "authority-invalid",
+            "/nodes/shuffle-orborus/runtime/orchestration_authorities",
+        )
+    for field in ("engine_api_version", "realized_children"):
+        if field in authority:
+            _shuffle_orborus_error(
+                errors,
+                "backend-field",
+                "/nodes/shuffle-orborus/runtime/"
+                f"orchestration_authorities/0/{field}",
+            )
+
+    templates = authority.get("spawn_templates")
+    template_values = templates if isinstance(templates, list) else []
+    actual_templates = {
+        template.get("template_id"): {
+            "image_ref": template.get("image_ref"),
+            "purpose": template.get("purpose"),
+        }
+        for value in template_values
+        if (template := _as_mapping(value)).get("template_id")
+    }
+    if (
+        len(template_values) != len(_SHUFFLE_ORBORUS_TEMPLATES)
+        or actual_templates != _SHUFFLE_ORBORUS_TEMPLATES
+    ):
+        _shuffle_orborus_error(
+            errors,
+            "spawn-template-invalid",
+            "/nodes/shuffle-orborus/runtime/orchestration_authorities/0/"
+            "spawn_templates",
+        )
+
+    lifecycle = _as_mapping(authority.get("lifecycle_policy"))
+    if (
+        lifecycle.get("execution_timeout") != "600"
+        or lifecycle.get("cleanup") != "false"
+    ):
+        _shuffle_orborus_error(
+            errors,
+            "lifecycle-invalid",
+            "/nodes/shuffle-orborus/runtime/orchestration_authorities/0/"
+            "lifecycle_policy",
+        )
+    return errors
+
+
 def validate_realization_method_contract(sdl: Mapping[str, Any]) -> list[str]:
     """Reject structurally explicit realization choices from TechVault."""
 
@@ -1034,8 +1157,11 @@ def validate_realization_method_contract(sdl: Mapping[str, Any]) -> list[str]:
                 errors.append(f"realization.node-source: {base}/source")
 
         runtime = _as_mapping(node.get("runtime"))
+        portable_exceptions = _PORTABLE_RUNTIME_FIELD_EXCEPTIONS.get(
+            str(node_id), frozenset()
+        )
         for field, code in _FORBIDDEN_RUNTIME_FIELDS.items():
-            if field in runtime:
+            if field in runtime and field not in portable_exceptions:
                 errors.append(f"realization.{code}: {base}/runtime/{field}")
 
         network = _as_mapping(runtime.get("network"))
@@ -1109,6 +1235,7 @@ def validate() -> list[str]:
         sdl_path = next((root / "sdl").glob("*.sdl.yaml"))
         sdl = yaml.safe_load(sdl_path.read_text(encoding="utf-8"))
         errors.extend(validate_realization_method_contract(sdl))
+        errors.extend(validate_shuffle_orborus_contract(sdl))
         errors.extend(validate_suricata_contract(root, sdl))
         errors.extend(validate_cortex_contract(root, sdl))
         errors.extend(validate_wazuh_agent_contract(sdl))

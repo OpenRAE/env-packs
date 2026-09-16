@@ -26,8 +26,8 @@ User-facing documentation is under [`public/`](public/index.md).
   — application/datastore, trust, secret, readiness, and realization guardrails
   for issue #281.
 - [TechVault Shuffle Orborus offline-runtime preflight](development/techvault-shuffle-orborus-offline-runtime-preflight.md)
-  — portable Orborus content/configuration and APTL realization ownership for
-  issue #285.
+  — portable Orborus control/authority declarations and LilRAE realization
+  ownership for issue #285.
 - [TechVault Orborus self-identity binding preflight](development/techvault-orborus-self-identity-preflight.md)
   — why native holder identities stay outside portable pack content for issue
   #331.
