@@ -1897,9 +1897,55 @@ class TechVaultPackTests(unittest.TestCase):
         for node_name, node in _load_sdl()["nodes"].items():
             with self.subTest(node=node_name):
                 runtime = node.get("runtime", {})
-                self.assertNotIn("network", runtime)
+                self.assertNotIn(
+                    "published_ports",
+                    runtime.get("network", {}),
+                )
                 for listener in runtime.get("service_listeners", []):
                     self.assertNotIn("published_port_refs", listener)
+
+    def test_internal_service_ports_are_not_host_translations(self) -> None:
+        nodes = _load_sdl()["nodes"]
+        expected = {
+            "wazuh-manager": {
+                ("wazuh-api", 55000, "tcp"),
+                ("agent-events", 1514, "tcp"),
+                ("agent-enrollment", 1515, "tcp"),
+                ("syslog", 514, "udp"),
+            },
+            "wazuh-indexer": {("indexer-api", 9200, "tcp")},
+            "wazuh-dashboard": {("dashboard", 5601, "tcp")},
+            "misp": {("https", 443, "tcp")},
+            "thehive": {("thehive-api", 9000, "tcp")},
+            "cortex": {("cortex-api", 9001, "tcp")},
+            "shuffle-frontend": {
+                ("https", 443, "tcp"),
+                ("http", 80, "tcp"),
+            },
+        }
+
+        for node_name, expected_services in expected.items():
+            with self.subTest(node=node_name):
+                self.assertEqual(
+                    {
+                        (service["name"], service["port"], service["protocol"])
+                        for service in nodes[node_name]["services"]
+                    },
+                    expected_services,
+                )
+
+    def test_realization_validator_allows_nonpublication_network_facts(
+        self,
+    ) -> None:
+        candidate = copy.deepcopy(_load_sdl())
+        candidate["nodes"]["kali"]["runtime"]["network"] = {
+            "description": "In-world network fact with no host publication",
+        }
+
+        self.assertEqual(
+            _PACK_VALIDATOR.validate_realization_method_contract(candidate),
+            [],
+        )
 
     def test_cortex_provides_case_driven_offline_enrichment(self) -> None:
         sdl = _load_sdl()
