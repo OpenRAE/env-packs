@@ -55,7 +55,7 @@ class _IntPinAssertions:
 
 
 class PrePushReviewCapTests(_IntPinAssertions, unittest.TestCase):
-    """One Codex cycle and one test-quality cycle before push."""
+    """One Codex cycle before push."""
 
     def setUp(self) -> None:
         self.workflow = _workflow()
@@ -71,17 +71,6 @@ class PrePushReviewCapTests(_IntPinAssertions, unittest.TestCase):
         self.assertIntPin(
             section.get("pre_push_cap"), 1,
             "workflow.codex_review.pre_push_cap must be 1 (#140)",
-        )
-
-    def test_test_quality_review_cap_is_pinned_to_one(self) -> None:
-        section = self.workflow.get("test_quality_review")
-        self.assertIsInstance(
-            section, dict,
-            "workflow.test_quality_review must be declared explicitly (#140)",
-        )
-        self.assertIntPin(
-            section.get("pre_push_cap"), 1,
-            "workflow.test_quality_review.pre_push_cap must be 1 (#140)",
         )
 
 
@@ -122,11 +111,20 @@ class ReviewDispositionTests(_IntPinAssertions, unittest.TestCase):
 
 
 class ReviewConfigPlacementTests(unittest.TestCase):
+    def test_retired_test_quality_review_key_is_absent(self) -> None:
+        workflow = _workflow()
+        self.assertNotIn(
+            "test_quality_review",
+            workflow,
+            "Ground Control retired workflow.test_quality_review; keeping it "
+            "makes .ground-control.yaml invalid",
+        )
+
     def test_review_keys_live_under_workflow(self) -> None:
         # Ground Control reads these from `workflow:`. At the top level they
         # parse fine and are ignored, which is the quiet way this pin dies.
         data = yaml.safe_load(_CONFIG.read_text(encoding="utf-8"))
-        for key in ("codex_review", "test_quality_review", "review_disposition"):
+        for key in ("codex_review", "review_disposition"):
             with self.subTest(key=key):
                 self.assertNotIn(
                     key, data,

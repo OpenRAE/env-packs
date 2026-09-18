@@ -28,7 +28,9 @@ pip install raes-env-packs
   plan it against the [golden-readiness checklist](golden-readiness.md), then
   add common infrastructure from [reusable kits](kits.md). The
   [defensive-tooling composition](defensive-tooling-composition.md) is a
-  verified multi-kit example.
+  verified multi-kit example. To keep one scenario unchanged while varying
+  participant guidance, follow the [two-audience bundle
+  walkthrough](two-audience-bundles.md).
 - **Use an MCP host** — [search, inspect, and author packs](mcp.md) with explicit
   review before preparation and writes.
 - **Consume a pack** — [check a pack](checking.md) you received with
@@ -61,6 +63,7 @@ new-pack-script
 mcp
 kits
 defensive-tooling-composition
+two-audience-bundles
 kit-content-strategy
 pack-issue-skeleton-script
 golden-readiness

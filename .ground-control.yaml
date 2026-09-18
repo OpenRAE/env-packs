@@ -42,14 +42,11 @@ workflow:
   pr_title:
     types: [feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert]
     require_scope: false
-  # One pre-push Codex review cycle and one pre-push test-quality review cycle,
-  # with automatic disposition of the review cap off so reaching a cap always
-  # escalates to a human. These match Ground Control's current defaults; they are
-  # declared explicitly so a future change to those defaults cannot silently alter
-  # this repo's review posture.
+  # One pre-push Codex review cycle, with automatic disposition of the review
+  # cap off so reaching a cap always escalates to a human. This matches Ground
+  # Control's current default; it is declared explicitly so a future change to
+  # that default cannot silently alter this repo's review posture.
   codex_review:
-    pre_push_cap: 1
-  test_quality_review:
     pre_push_cap: 1
   review_disposition:
     enabled: false
