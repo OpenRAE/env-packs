@@ -28,6 +28,7 @@ from kit_author_walkthrough import Result, _run
 _PACK_ID = "two-audience-example"
 _BUNDLES = ("guided", "unguided")
 _SHARED = "_shared/objective.md"
+_OBSERVATIONS = "_shared/observations.md"
 _GUIDED = "guided/participant/hint.md"
 _UNGUIDED = "unguided/participant/briefing.md"
 _GUIDED_FACILITATOR = "guided/operator/facilitator.md"
@@ -98,6 +99,11 @@ def _compatibility() -> dict[str, object]:
                     "description": "Objective shared by both audiences.",
                 },
                 {
+                    "path": f"profiles/{_OBSERVATIONS}",
+                    "export": "public",
+                    "description": "Synthetic observations shared by both audiences.",
+                },
+                {
                     "path": f"profiles/{_GUIDED}",
                     "export": "public",
                     "description": "Guided participant hint.",
@@ -163,6 +169,12 @@ def _compatibility() -> dict[str, object]:
                 "status": "shipped",
             },
             {
+                "asset_id": "shared-observations",
+                "path": f"profiles/{_OBSERVATIONS}",
+                "visibility": "participant",
+                "status": "shipped",
+            },
+            {
                 "asset_id": "guided-hint",
                 "path": f"profiles/{_GUIDED}",
                 "visibility": "participant",
@@ -223,7 +235,7 @@ def _bundles() -> dict[str, object]:
                 "id": "guided",
                 "audience": "participant",
                 "runtime_profiles": [],
-                "shared_includes": [_SHARED],
+                "shared_includes": [_SHARED, _OBSERVATIONS],
                 "participant_entrypoints": [_GUIDED],
                 "operator_entrypoints": [_GUIDED_FACILITATOR],
             },
@@ -231,7 +243,7 @@ def _bundles() -> dict[str, object]:
                 "id": "unguided",
                 "audience": "participant",
                 "runtime_profiles": [],
-                "shared_includes": [_SHARED],
+                "shared_includes": [_SHARED, _OBSERVATIONS],
                 "participant_entrypoints": [_UNGUIDED],
                 "operator_entrypoints": [_UNGUIDED_FACILITATOR],
             },
@@ -347,6 +359,8 @@ class ProfileProjectionTests(unittest.TestCase):
         self.assertEqual(set(views), {"guided", "unguided"})
         self.assertIn("profiles/_shared/objective.md", views["guided"])
         self.assertIn("profiles/_shared/objective.md", views["unguided"])
+        self.assertIn("profiles/_shared/observations.md", views["guided"])
+        self.assertIn("profiles/_shared/observations.md", views["unguided"])
         self.assertNotEqual(views["guided"], views["unguided"])
 
     def test_operator_material_is_not_participant_exposed(self) -> None:
@@ -416,25 +430,41 @@ def _author_profiles(pack: Path) -> None:
         "observations.\n",
     )
     _write(
+        pack / "profiles" / _OBSERVATIONS,
+        "# Shared observations\n\nAll times are UTC in this synthetic example.\n\n"
+        "- 09:38 — The service reports healthy and client requests succeed.\n"
+        "- 09:41 — A deployment changes the readiness-check path.\n"
+        "- 09:42 — Readiness checks begin failing. CPU, memory, and disk remain "
+        "within their earlier ranges.\n"
+        "- 09:43 — Client requests begin returning unavailable responses.\n",
+    )
+    _write(
         pack / "profiles" / _GUIDED,
-        "# Guided hint\n\nStart by comparing the most recent health change with "
-        "the interruption timestamp, then test one alternative explanation.\n",
+        "# Guided hint\n\nOrder the observations by time. Identify what changed "
+        "immediately before readiness failed, then use the stable resource "
+        "measurements to test an alternative explanation.\n",
     )
     _write(
         pack / "profiles" / _UNGUIDED,
-        "# Unguided briefing\n\nInvestigate the interruption using the available "
-        "participant observations. Report a supported conclusion.\n",
+        "# Unguided briefing\n\nUse the shared observations to identify the most "
+        "likely cause of the interruption. Report the evidence that supports "
+        "your conclusion.\n",
     )
     _write(
         pack / "profiles" / _GUIDED_FACILITATOR,
-        "# Guided facilitator notes\n\nKeep the resolution notes on this operator "
-        "surface. Offer the authored hint only after the participant records an "
-        "initial hypothesis.\n",
+        "# Guided facilitator notes\n\n## Expected reasoning\n\nThe readiness-path "
+        "change precedes the failed readiness checks and client errors. Stable "
+        "resource measurements weaken a resource-exhaustion explanation. The "
+        "supported conclusion is a misconfigured readiness check.\n\nOffer the "
+        "authored hint only after the participant records an initial hypothesis.\n",
     )
     _write(
         pack / "profiles" / _UNGUIDED_FACILITATOR,
-        "# Unguided facilitator notes\n\nKeep the resolution notes on this operator "
-        "surface. Do not provide progressive hints during the participant run.\n",
+        "# Unguided facilitator notes\n\n## Expected reasoning\n\nThe readiness-path "
+        "change precedes the failed readiness checks and client errors. Stable "
+        "resource measurements weaken a resource-exhaustion explanation. The "
+        "supported conclusion is a misconfigured readiness check.\n\nDo not "
+        "provide progressive hints during the participant run.\n",
     )
     _write(pack / "profiles" / "validate_profiles.py", _PROFILE_VALIDATOR)
     _write(pack / "profiles" / "tests" / "test_profiles.py", _PROFILE_TEST)
@@ -461,6 +491,14 @@ def _positive_checks(result: Result, pack: Path, original_sdl: bytes, out: Path)
         and f"profiles/{_SHARED}" in guided
         and f"profiles/{_SHARED}" in unguided,
     )
+    observations = (pack / "profiles" / _OBSERVATIONS).read_text(encoding="utf-8")
+    result.check(
+        "both participant views include concrete shared observations",
+        f"profiles/{_OBSERVATIONS}" in guided
+        and f"profiles/{_OBSERVATIONS}" in unguided
+        and "09:41" in observations
+        and "09:43" in observations,
+    )
     result.check(
         "guided and unguided participant content differs",
         guided != unguided
@@ -471,6 +509,15 @@ def _positive_checks(result: Result, pack: Path, original_sdl: bytes, out: Path)
         "facilitator material stays operator-only",
         all("/operator/" not in path for paths in views.values() for path in paths),
     )
+    result.check(
+        "facilitator material contains the restricted resolution",
+        "Expected reasoning"
+        in (pack / "profiles" / _GUIDED_FACILITATOR).read_text(encoding="utf-8")
+        and "misconfigured readiness check"
+        in (pack / "profiles" / _UNGUIDED_FACILITATOR).read_text(
+            encoding="utf-8"
+        ),
+    )
 
     metadata, failures = build_release(str(pack), str(out))
     result.check("boundary-split release builds", not failures, "; ".join(failures))
@@ -480,6 +527,7 @@ def _positive_checks(result: Result, pack: Path, original_sdl: bytes, out: Path)
     result.check(
         "participant release contains only participant bundle material",
         (participant / _SHARED).is_file()
+        and (participant / _OBSERVATIONS).is_file()
         and (participant / _GUIDED).is_file()
         and (participant / _UNGUIDED).is_file()
         and not (participant / _GUIDED_FACILITATOR).exists()

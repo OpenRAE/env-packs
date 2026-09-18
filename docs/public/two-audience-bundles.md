@@ -44,15 +44,17 @@ Two audiences — static content-exposure evidence only
   [PASS] trusted author validation passes
   [PASS] release lint and smoke checks pass
   [PASS] both audience bundles reuse one shared participant objective
+  [PASS] both participant views include concrete shared observations
   [PASS] guided and unguided participant content differs
   [PASS] facilitator material stays operator-only
+  [PASS] facilitator material contains the restricted resolution
   [PASS] boundary-split release builds
   [PASS] participant release contains only participant bundle material
   [PASS] operator release contains both facilitator surfaces
   [PASS] restricted participant content is rejected
   [PASS] malformed bundle selection is rejected
 
-12 passed, 0 failed
+14 passed, 0 failed
 ```
 
 ## Inspect the bundle contract
@@ -69,6 +71,7 @@ bundles:
   runtime_profiles: []
   shared_includes:
   - _shared/objective.md
+  - _shared/observations.md
   participant_entrypoints:
   - guided/participant/hint.md
   operator_entrypoints:
@@ -78,6 +81,7 @@ bundles:
   runtime_profiles: []
   shared_includes:
   - _shared/objective.md
+  - _shared/observations.md
   participant_entrypoints:
   - unguided/participant/briefing.md
   operator_entrypoints:
@@ -123,15 +127,26 @@ PY
 ```text
 guided:
   profiles/_shared/objective.md
+  profiles/_shared/observations.md
   profiles/guided/participant/hint.md
 unguided:
   profiles/_shared/objective.md
+  profiles/_shared/observations.md
   profiles/unguided/participant/briefing.md
 ```
 
-The shared objective has one authored copy. The guided overlay suggests a first
-investigation step. The unguided briefing states the task without that hint.
-Neither exposure set contains an `operator/` path.
+The shared objective and observations each have one authored copy. The
+observation sheet gives both audiences the same short timeline: the service is
+healthy, a deployment changes its readiness-check path, readiness fails while
+resource measurements remain stable, and client errors follow. The guided
+overlay prompts the participant to order those facts and test an alternative
+explanation. The unguided briefing states only the task. Neither exposure set
+contains an `operator/` path.
+
+The facilitator files contain the supported resolution: the readiness-path
+change precedes both the failed readiness checks and client errors, while the
+stable resource measurements weaken a resource-exhaustion explanation. That
+answer is useful for facilitation but absent from both participant exposures.
 
 ## Inspect the release tiers
 
@@ -152,6 +167,7 @@ operator/profiles/guided/operator/facilitator.md
 operator/profiles/unguided/operator/facilitator.md
 participant/README.md
 participant/profiles/_shared/objective.md
+participant/profiles/_shared/observations.md
 participant/profiles/guided/participant/hint.md
 participant/profiles/unguided/participant/briefing.md
 release.yaml
@@ -175,6 +191,25 @@ The executable walkthrough makes two disposable copies of the valid pack:
 
 These checks do not add a bundle schema or a second selector. The pack-local
 validator is a thin adapter over `validate_pack`, `lint_pack`, and `smoke_pack`.
+
+## Adapt the pattern
+
+Use the generated pack as a worked example, not as a new pack type:
+
+1. Keep facts and objectives that every participant may see under
+   `profiles/_shared/`.
+2. Put only audience-specific guidance under each bundle's `participant/`
+   directory.
+3. Put resolutions, answer keys, and facilitation notes under the matching
+   `operator/` directory.
+4. Add one canonical row to `profiles/bundles.yaml`, then mirror only its ids
+   and visibility paths in `pack.yaml` and `pack.compatibility.yaml`.
+5. Run the pack validator and release lint/smoke checks. Inspect the derived
+   audience exposure sets and the boundary-split release tree separately.
+
+If a new audience would require a different SDL, topology, objective, or
+participant behavior, author a different scenario instead of hiding that
+change in a delivery bundle.
 
 ## What you have not done
 

@@ -30,10 +30,10 @@ are a thin presence/index projection. `pack.compatibility.yaml` is the existing
 release/visibility projection. Neither projection becomes a second bundle
 manifest.
 
-The example has one shared participant-safe brief, a guided-only participant
-hint, an unguided participant brief without next-step guidance, and
-facilitator-only material under a bundle's `operator/` root. Participant and
-operator paths must be disjoint in both the profile tree and
+The example has one shared participant-safe objective and observation sheet, a
+guided-only participant hint, an unguided participant brief without next-step
+guidance, and facilitator-only resolution material under each bundle's
+`operator/` root. Participant and operator paths must be disjoint in both the profile tree and
 `artifact_boundaries`. The provenance ledger classifies the new authored roots
 and records them against the existing original-design source; it does not make
 an authenticity, safety-at-runtime, or educational-effectiveness claim.
