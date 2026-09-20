@@ -1,0 +1,83 @@
+name: secrets-store
+version: 1.0.0
+description: Reusable static infrastructure for Secrets store.
+module:
+  id: infrastructure/secrets-store
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - mount_path
+  exports:
+    nodes:
+    - secrets_store
+    content:
+    - seed_inventory
+  description: Composable Secrets store infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: secrets-store
+  mount_path:
+    type: string
+    default: kv
+nodes:
+  secrets_store:
+    type: compute
+    description: '${deployment_profile} profile for ${service_label} (Secrets store). mount_path:
+      ${mount_path}.'
+    source:
+      name: openbao
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - name: api
+      port: 8200
+      protocol: tcp
+      description: OpenBao client API endpoint
+content:
+  seed_inventory:
+    type: dataset
+    target: secrets_store
+    description: Benign secrets store seed inventory for ${mount_path}.
+    items:
+    - name: secret_engine_mount
+      display_name: Secret Engine Mount
+      tags:
+      - infrastructure
+      - seed
+      description: Named secret-engine mount, without stored secret values.
+    - name: access_policy
+      display_name: Access Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Policy-name inventory for intended consumers.
+    - name: auth_method
+      display_name: Auth Method
+      tags:
+      - infrastructure
+      - seed
+      description: Authentication-method identity without bootstrap credentials.
+    - name: audit_profile
+      display_name: Audit Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Audit-device selection inventory without emitted events.
+realization:
+  constraints:
+  - field_pointer: /nodes/secrets_store
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

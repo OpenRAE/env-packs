@@ -1,0 +1,78 @@
+name: firewall-nat
+version: 1.0.0
+description: Reusable static infrastructure for Firewall / NAT.
+module:
+  id: infrastructure/firewall-nat
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - ruleset_name
+  exports:
+    nodes:
+    - firewall
+    content:
+    - seed_inventory
+  description: Composable Firewall / NAT infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: firewall-nat
+  ruleset_name:
+    type: string
+    default: edge-filter
+nodes:
+  firewall:
+    type: compute
+    description: '${deployment_profile} profile for ${service_label} (Firewall / NAT). ruleset_name:
+      ${ruleset_name}.'
+    source:
+      name: nftables
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+content:
+  seed_inventory:
+    type: dataset
+    target: firewall
+    description: Benign firewall / nat seed inventory for ${ruleset_name}.
+    items:
+    - name: filter_chains
+      display_name: Filter Chains
+      tags:
+      - infrastructure
+      - seed
+      description: Named packet-filter chain inventory.
+    - name: allowed_ports
+      display_name: Allowed Ports
+      tags:
+      - infrastructure
+      - seed
+      description: Example TCP policy ports 80 and 443; these are not daemon listeners.
+    - name: nat_policy
+      display_name: Nat Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Named address-translation policy inventory.
+    - name: forwarding_rules
+      display_name: Forwarding Rules
+      tags:
+      - infrastructure
+      - seed
+      description: Named forwarding-rule inventory for a consuming network.
+realization:
+  constraints:
+  - field_pointer: /nodes/firewall
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

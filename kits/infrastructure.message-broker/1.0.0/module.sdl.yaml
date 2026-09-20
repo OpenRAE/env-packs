@@ -1,0 +1,83 @@
+name: message-broker
+version: 1.0.0
+description: Reusable static infrastructure for Message broker.
+module:
+  id: infrastructure/message-broker
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - virtual_host
+  exports:
+    nodes:
+    - broker
+    content:
+    - seed_inventory
+  description: Composable Message broker infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: message-broker
+  virtual_host:
+    type: string
+    default: lab
+nodes:
+  broker:
+    type: compute
+    description: '${deployment_profile} profile for ${service_label} (Message broker). virtual_host:
+      ${virtual_host}.'
+    source:
+      name: rabbitmq
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - name: amqp
+      port: 5672
+      protocol: tcp
+      description: AMQP client endpoint
+content:
+  seed_inventory:
+    type: dataset
+    target: broker
+    description: Benign message broker seed inventory for ${virtual_host}.
+    items:
+    - name: virtual_host
+      display_name: Virtual Host
+      tags:
+      - infrastructure
+      - seed
+      description: Named virtual host for broker isolation.
+    - name: exchange
+      display_name: Exchange
+      tags:
+      - infrastructure
+      - seed
+      description: Declared exchange-name inventory.
+    - name: queue
+      display_name: Queue
+      tags:
+      - infrastructure
+      - seed
+      description: Declared queue-name inventory.
+    - name: binding
+      display_name: Binding
+      tags:
+      - infrastructure
+      - seed
+      description: Named exchange-to-queue binding inventory.
+realization:
+  constraints:
+  - field_pointer: /nodes/broker
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

@@ -1,0 +1,21 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.message-broker
+configuration:
+  virtual_host: lab
+  deployment_profile: standard
+  service_label: message-broker
+declared_objects:
+- id: virtual_host
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: exchange
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: queue
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: binding
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Connect publishers and consumers to the broker at the pack root; provide credentials separately.

@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.certificate-authority
+configuration:
+  authority_name: lab-ca
+  deployment_profile: standard
+  service_label: certificate-authority
+declared_objects:
+- id: trust_anchor
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: provisioner
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: certificate_profile
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: issuance_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Connect consuming services to this authority at the pack root and supply private signing
+  material through the backend.
