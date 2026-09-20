@@ -12,7 +12,7 @@ every checked-in kit release and representative multi-kit composition.
 
 ## What it proves
 
-- A minimal pack can list, search, and inspect the complete initial 38-kit
+- A minimal pack can list, search, and inspect the complete 46-kit
   collection.
 - Preview is side-effect free and exposes ordinary files, topology, assumptions,
   dependencies, and RAES lock changes without parameter values.

@@ -1,0 +1,83 @@
+name: container-orchestration
+version: 1.0.0
+description: Reusable static infrastructure for Container orchestration.
+module:
+  id: infrastructure/container-orchestration
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - cluster_name
+  exports:
+    nodes:
+    - orchestrator
+    content:
+    - seed_inventory
+  description: Composable Container orchestration infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: container-orchestration
+  cluster_name:
+    type: string
+    default: lab-cluster
+nodes:
+  orchestrator:
+    type: compute
+    description: '${deployment_profile} profile for ${service_label} (Container orchestration).
+      cluster_name: ${cluster_name}.'
+    source:
+      name: k3s
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - name: api
+      port: 6443
+      protocol: tcp
+      description: K3s supervisor and Kubernetes API endpoint
+content:
+  seed_inventory:
+    type: dataset
+    target: orchestrator
+    description: Benign container orchestration seed inventory for ${cluster_name}.
+    items:
+    - name: namespace
+      display_name: Namespace
+      tags:
+      - infrastructure
+      - seed
+      description: Named namespace inventory for workloads.
+    - name: workload_template
+      display_name: Workload Template
+      tags:
+      - infrastructure
+      - seed
+      description: Declared workload-template identity.
+    - name: service_account
+      display_name: Service Account
+      tags:
+      - infrastructure
+      - seed
+      description: Service-account name without a token.
+    - name: service_profile
+      display_name: Service Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Named service-exposure intent for workloads.
+realization:
+  constraints:
+  - field_pointer: /nodes/orchestrator
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

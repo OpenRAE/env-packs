@@ -1,0 +1,83 @@
+name: ldap-directory
+version: 1.0.0
+description: Reusable static infrastructure for LDAP directory.
+module:
+  id: infrastructure/ldap-directory
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - directory_suffix
+  exports:
+    nodes:
+    - directory
+    content:
+    - seed_inventory
+  description: Composable LDAP directory infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: ldap-directory
+  directory_suffix:
+    type: string
+    default: dc=example,dc=test
+nodes:
+  directory:
+    type: compute
+    description: '${deployment_profile} profile for ${service_label} (LDAP directory). directory_suffix:
+      ${directory_suffix}.'
+    source:
+      name: openldap
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - name: ldap
+      port: 389
+      protocol: tcp
+      description: LDAP client endpoint
+content:
+  seed_inventory:
+    type: dataset
+    target: directory
+    description: Benign ldap directory seed inventory for ${directory_suffix}.
+    items:
+    - name: base_dn
+      display_name: Base Dn
+      tags:
+      - infrastructure
+      - seed
+      description: Directory suffix and base distinguished-name inventory.
+    - name: organizational_units
+      display_name: Organizational Units
+      tags:
+      - infrastructure
+      - seed
+      description: Named organizational unit inventory.
+    - name: groups
+      display_name: Groups
+      tags:
+      - infrastructure
+      - seed
+      description: Non-secret group-name inventory.
+    - name: entries
+      display_name: Entries
+      tags:
+      - infrastructure
+      - seed
+      description: Benign directory-entry identity inventory.
+realization:
+  constraints:
+  - field_pointer: /nodes/directory
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

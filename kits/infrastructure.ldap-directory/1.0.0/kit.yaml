@@ -1,0 +1,47 @@
+schema_version: environment-pack-kit/v1
+id: infrastructure.ldap-directory
+version: 1.0.0
+title: LDAP directory
+summary: Reusable ldap directory with a declared software source, service or policy surfaces,
+  benign seed inventory, and pack-local integration material.
+concern: identity-domain
+released_at: '2026-09-20T00:00:00Z'
+module:
+  path: module.sdl.yaml
+assets:
+- source: assets/integration.md
+  target: assets/kits/ldap-directory/integration.md
+  visibility: operator
+  artifact_id: integration-material
+- source: assets/seed.yaml
+  target: assets/kits/ldap-directory/seed.yaml
+  visibility: operator
+  artifact_id: seed-profile
+resources:
+  cpu_cores: 2
+  memory_mib: 2048
+  storage_mib: 4096
+  notes: Planning estimates only; realization sizing remains backend-owned.
+prerequisites: []
+limitations:
+- Declares static infrastructure and seeded state only; no launch, readiness, traffic attachment,
+  or runtime evidence is claimed.
+- No Active Directory forest/controller semantics, bind passwords, or LDAPS listener is implied.
+license:
+  expression: MIT
+  redistribution: open
+  attribution: OpenRAE contributors
+tests:
+- path: tests/composition.yaml
+  kind: validate
+- path: tests/composition.yaml
+  kind: parameter-variation
+- path: tests/composition.yaml
+  kind: multi-kit
+component_inventory:
+- scope: unresolved
+  authority: raes-source
+  ref: /nodes/directory/source
+  description: RAES carries the declared openldap source; immutable artifact selection remains
+    unresolved until pack publication.
+associated_artifact_manifest: associated-artifacts.json

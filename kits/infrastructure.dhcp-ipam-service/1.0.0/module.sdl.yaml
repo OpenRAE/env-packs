@@ -1,0 +1,83 @@
+name: dhcp-ipam-service
+version: 1.0.0
+description: Reusable static infrastructure for DHCP / IPAM service.
+module:
+  id: infrastructure/dhcp-ipam-service
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - address_pool
+  exports:
+    nodes:
+    - dhcp
+    content:
+    - seed_inventory
+  description: Composable DHCP / IPAM service infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: dhcp-ipam-service
+  address_pool:
+    type: string
+    default: 10.42.0.0/24
+nodes:
+  dhcp:
+    type: compute
+    description: '${deployment_profile} profile for ${service_label} (DHCP / IPAM service).
+      address_pool: ${address_pool}.'
+    source:
+      name: kea
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - name: dhcp4
+      port: 67
+      protocol: udp
+      description: DHCPv4 server endpoint
+content:
+  seed_inventory:
+    type: dataset
+    target: dhcp
+    description: Benign dhcp / ipam service seed inventory for ${address_pool}.
+    items:
+    - name: subnet
+      display_name: Subnet
+      tags:
+      - infrastructure
+      - seed
+      description: Declared subnet associated with the selected address pool.
+    - name: address_pool
+      display_name: Address Pool
+      tags:
+      - infrastructure
+      - seed
+      description: Address allocation pool inventory for DHCPv4.
+    - name: reservations
+      display_name: Reservations
+      tags:
+      - infrastructure
+      - seed
+      description: Named non-secret reservation inventory.
+    - name: lease_policy
+      display_name: Lease Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Lease duration and allocation-policy inventory.
+realization:
+  constraints:
+  - field_pointer: /nodes/dhcp
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine
