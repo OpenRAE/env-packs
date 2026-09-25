@@ -1,10 +1,10 @@
 name: techvault-participant-study
-title: TechVault
+title: TechVault Participant Study
 version: 0.1.0
 status: built
 description: >-
-  A complete enterprise intrusion scenario spanning a vulnerable customer
-  portal, identity, data services, attacker infrastructure, and a defensive SOC.
+  The TechVault enterprise intrusion environment plus an SDL-authored,
+  Claude Code realized red and blue participant sequence.
 authors:
   - Brad Edwards
 license: MIT

@@ -6,6 +6,14 @@ That project remains only a historical source and possible backend consumer;
 TechVault is a portable scenario pack, and this repository is the editable
 authority for its distributable content.
 
+This study variant began as a byte-preserving copy of the TechVault pack. Its
+intentional semantic additions are the `study-control` entity and controller,
+Claude Code realization metadata for the red and blue agents, four instruction
+content items, four inject/event occurrences, one ordered script and story, one
+logical clock with four exact windows, two mixed-control behavior
+specifications, and four delivery evidence requirements. Existing TechVault
+content artifacts remain byte-identical.
+
 The Suricata local corpus is the byte-identical 16-rule file from that pinned
 migration source. Its configuration preserves the source's variables,
 rule-file selection, outputs, application parsers, and command channel. Packet

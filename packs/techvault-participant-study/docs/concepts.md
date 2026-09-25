@@ -16,6 +16,20 @@ materializations of its exact content requirements, while generated SSH and
 certificate bundles remain backend-produced desired state. Pack metadata and
 validation code do not redefine scenario behavior.
 
+## Participant control and delivery
+
+The study controller addresses separate red and blue Claude Code participants.
+Four content items carry the participant instructions, while
+`participant_inject_deliveries` bind those items to orchestration occurrences.
+Mixed-control transitions make the controller's start and stop directions
+explicit. A logical runtime clock orders the occurrences at ticks 1, 3, 5, and
+7 with event-driven barrier progression.
+
+The realization profile selects provider mechanics without moving instruction
+content into a backend adapter. Observation boundaries limit each participant
+to its addressed instructions. Delivery evidence records the crossing and the
+provider result while leaving observation and compliance as distinct claims.
+
 ## Wazuh endpoint readiness
 
 The six endpoint hosts (webapp, ad, dns, fileshare, victim and workstation),

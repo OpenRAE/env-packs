@@ -1,14 +1,14 @@
 # TechVault participant study
 
-TechVault is the first-party RAES environment pack for the complete enterprise
+TechVault Participant Study is a first-party RAES environment pack for the complete enterprise
 intrusion scenario authored in `sdl/techvault-participant-study.sdl.yaml`. It includes the
 scenario's vulnerable customer portal, enterprise services, attacker host,
 defensive SOC, seeded data, and exact content artifacts. It declares the
 in-world state a conforming realization must provide without selecting how a
 backend constructs or exposes that state.
 
-The pack is named `techvault-participant-study`; backend and deployment product names are not part
-of its identity. A consumer validates the pack and its associated-artifact
+The pack is named `techvault-participant-study`. It derives from TechVault and
+adds a portable participant experiment. A consumer validates the pack and its associated-artifact
 manifest, then resolves each SDL `content.source` by opaque artifact id. No
 consumer is expected to recover content from this repository's checkout paths
 or from the former APTL source tree.
@@ -31,7 +31,7 @@ From the repository root:
 ```sh
 raes-pack-validate --packs-root packs
 raes-pack-release check --packs-root packs
-python -m unittest tests.test_techvault_pack
+python -m unittest tests.test_techvault_study_pack
 ```
 
 The pack-local satisfaction profile in
@@ -126,12 +126,26 @@ mechanism. A realizing backend decides how to satisfy that requirement and must
 report evidence loss rather than silently treating an uncaptured session as
 captured.
 
-## Participant study use
+## Participant study sequence
 
-This pack copies TechVault assets and scenario state with a separate pack and SDL identity.
-The participant uses the installed Claude CLI in their own host account and
-a red MCP grant to reach the Kali tools. Start and stop the lab through the
-normal APTL lab commands with this acquired pack selected. The existing red-team
-session transcript requirement covers commands and responses; the operator
-retains run identity, topology, outcomes, evaluator evidence, and limitations
-with the experiment record. No provider credential is declared by this pack.
+This pack preserves TechVault's environment and adds two Claude Code
+participants, a study controller, and four participant-directed inject
+deliveries. The SDL supplies the exact sequence and instruction text:
+
+1. red start at logical tick 1;
+2. red stop at logical tick 3;
+3. blue start at logical tick 5, after red has been directed to stop; and
+4. blue stop at logical tick 7.
+
+Each delivery binds its inject, event, script, story, exact logical-time window,
+mixed-control transition, observation boundary, and evidence requirement. The
+red and blue participants each retain one provider session across their start
+and stop instructions. Their realization profile is
+`participant-implementation-manifest:claude-code`; the realizing backend maps
+that profile to an installed CLI and the role's admitted tool surface. The pack
+contains no provider credential and no backend command line.
+
+With this acquired pack selected, a normal backend lab start executes the
+authored sequence. Delivery evidence proves dispatch and records the participant
+response. It does not by itself prove that the participant observed or complied
+with an instruction; those remain separate evidence claims.
