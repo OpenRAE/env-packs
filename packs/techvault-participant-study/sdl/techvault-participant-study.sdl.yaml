@@ -1,0 +1,3617 @@
+name: techvault-participant-study
+description: >-
+  Portable TechVault scenario state: systems, identities, content, weaknesses, access, and evidence needs. A consuming backend chooses how to realize that state.
+# Flag values are provided per run by whoever instantiates the scenario; the
+# pack never authors them.
+variables:
+  flag_victim_user:
+    type: string
+    required: true
+    description: User-level flag value placed on victim.
+  flag_victim_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on victim.
+  flag_workstation_user:
+    type: string
+    required: true
+    description: User-level flag value placed on workstation.
+  flag_workstation_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on workstation.
+  flag_webapp_user:
+    type: string
+    required: true
+    description: User-level flag value placed on webapp.
+  flag_webapp_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on webapp.
+  flag_fileshare_user:
+    type: string
+    required: true
+    description: User-level flag value placed on fileshare.
+  flag_fileshare_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on fileshare.
+  flag_ad_user:
+    type: string
+    required: true
+    description: User-level flag value placed on the domain controller.
+  flag_ad_root:
+    type: string
+    required: true
+    description: Root-level flag value placed on the domain controller.
+nodes:
+  security-net:
+    type: switch
+    description: SOC and security tooling network.
+  dmz-net:
+    type: switch
+    description: TechVault DMZ network.
+  internal-net:
+    type: switch
+    description: Internal enterprise target network.
+  redteam-net:
+    type: switch
+    description: Red-team operations network.
+  wazuh-manager:
+    type: compute
+    os: linux
+    services:
+      - {name: wazuh-api, port: 55000, protocol: tcp}
+      - {name: agent-events, port: 1514, protocol: tcp}
+      - {name: agent-enrollment, port: 1515, protocol: tcp}
+      - {name: syslog, port: 514, protocol: udp}
+    runtime:
+      security_monitoring_managers:
+        - security_monitoring_manager_id: wazuh-manager
+          implementation: wazuh
+          manager_kind: siem
+          version: 4.12.0
+          name: TechVault SIEM
+          description: The scenario's SIEM. Agents enroll here, ship events here, and the analysis engine evaluates them against the rule corpora below.
+          listeners:
+            - listener_id: agent-events
+              service: agent-events
+              role: agent_event_ingestion
+              protocol: tcp
+              auth_required: true
+              tls_enabled: false
+            - listener_id: agent-enrollment
+              service: agent-enrollment
+              role: agent_enrollment
+              protocol: tcp
+              auth_required: true
+              tls_enabled: true
+            - listener_id: syslog
+              service: syslog
+              role: syslog_ingestion
+              protocol: udp
+              auth_required: false
+              tls_enabled: false
+            - listener_id: wazuh-api
+              service: wazuh-api
+              role: api
+              protocol: tcp
+              auth_required: true
+              tls_enabled: true
+          components:
+            - component_id: analysisd
+              kind: analysis_engine
+              name: wazuh-analysisd
+              enabled: true
+            - component_id: remoted
+              kind: agent_ingestion
+              name: wazuh-remoted
+              enabled: true
+            - component_id: authd
+              kind: agent_enrollment
+              name: wazuh-authd
+              enabled: true
+            - component_id: apid
+              kind: api
+              name: wazuh-apid
+              enabled: true
+            - component_id: indexer-forwarder
+              kind: indexer_forwarder
+              name: filebeat
+              enabled: true
+          agents:
+            - agent_id: suricata-agent
+              name: techvault-suricata-agent
+              node_ref: suricata
+              status: active
+              description: Ships Suricata EVE events; see that node’s forwarding agent.
+            - agent_id: db-agent
+              name: techvault-db-agent
+              node_ref: db
+              status: active
+              description: Ships PostgreSQL logs; see that node’s forwarding agent.
+            - agent_id: ad-agent
+              name: techvault-ad-agent
+              node_ref: ad
+              status: active
+              description: Ships the domain controller’s Samba logs; see that node’s forwarding agent.
+            - agent_id: webapp-agent
+              name: techvault-webapp-agent
+              node_ref: webapp
+              status: active
+              description: Ships customer portal access logs; see that node’s forwarding agent.
+            - agent_id: dns-agent
+              name: techvault-dns-agent
+              node_ref: dns
+              status: active
+              description: Ships DNS service logs; see that node’s forwarding agent.
+            - agent_id: fileshare-agent
+              name: techvault-fileshare-agent
+              node_ref: fileshare
+              status: active
+              description: Ships file server Samba logs; see that node’s forwarding agent.
+            - agent_id: victim-agent
+              name: techvault-victim-agent
+              node_ref: victim
+              status: active
+              description: Ships victim authentication and system logs; see that node’s forwarding agent.
+            - agent_id: workstation-agent
+              name: techvault-workstation-agent
+              node_ref: workstation
+              status: active
+              description: Ships workstation authentication and system logs.
+          content_sets:
+            - content_id: webapp-rules
+              kind: rule_corpus
+              format: wazuh_rule_xml
+              name: webapp_rules.xml
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/webapp_rules.xml
+              loaded: true
+              description: Web-application attack rules, including the SQL-injection detections the range exercises.
+            - content_id: suricata-rules
+              kind: rule_corpus
+              format: wazuh_rule_xml
+              name: suricata_rules.xml
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/suricata_rules.xml
+              loaded: true
+              description: Rules that fire on Suricata EVE events arriving from the network sensor.
+            - content_id: ad-rules
+              kind: rule_corpus
+              format: wazuh_rule_xml
+              name: ad_rules.xml
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/ad_rules.xml
+              loaded: true
+              description: Active Directory authentication and abuse rules.
+            - content_id: database-rules
+              kind: rule_corpus
+              format: wazuh_rule_xml
+              name: database_rules.xml
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/database_rules.xml
+              loaded: true
+              description: Customer-database access and abuse rules.
+            - content_id: falco-rules
+              kind: rule_corpus
+              format: wazuh_rule_xml
+              name: falco_rules.xml
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/rules/falco_rules.xml
+              loaded: true
+              description: Container runtime rules.
+            - content_id: postgresql-decoders
+              kind: decoder_corpus
+              format: wazuh_decoder_xml
+              name: postgresql_decoders.xml
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/decoders/postgresql_decoders.xml
+              loaded: true
+              description: Decoders that make PostgreSQL log lines parseable by the rules.
+            - content_id: samba-decoders
+              kind: decoder_corpus
+              format: wazuh_decoder_xml
+              name: samba_decoders.xml
+              file_count: 1
+              file_refs:
+                - /var/ossec/etc/decoders/samba_decoders.xml
+              loaded: true
+              description: Decoders for Samba file-share activity.
+          detection_definitions:
+            - definition_id: sqli-special-characters
+              engine: wazuh
+              definition_kind: rule
+              native_id: '302011'
+              content_set_ref: webapp-rules
+              level: 8
+              enabled: true
+              loaded: true
+              name: 'Potential SQL injection: special characters in URL'
+              description: The detection the range's SQL-injection path is expected to trigger. Named here because the scenario depends on it firing, not merely on the corpus being loaded.
+              groups:
+                - webapp
+                - sqli
+                - web_attack
+            - definition_id: sqli-union-select
+              engine: wazuh
+              definition_kind: rule
+              native_id: '302010'
+              content_set_ref: webapp-rules
+              level: 10
+              enabled: true
+              loaded: true
+              name: SQL injection attempt detected in URL
+              groups:
+                - webapp
+                - sqli
+                - web_attack
+  wazuh-indexer:
+    type: compute
+    os: linux
+    services:
+      - {name: indexer-api, port: 9200, protocol: tcp}
+    runtime:
+      datastore_services:
+        - datastore_service_id: wazuh-indexer
+          engine: opensearch
+          data_model: search_index
+          version: 4.12.0
+          description: Alert store for the SIEM. Alert indices are created on first ingest; the templates that shape them exist from boot.
+          partitions:
+            - partition_id: kibana
+              kind: index
+              name: .kibana_1
+              shard_count: 1
+              replica_count: 0
+            - partition_id: security
+              kind: index
+              name: .opendistro_security
+              shard_count: 1
+              replica_count: 0
+            - partition_id: observability
+              kind: index
+              name: .opensearch-observability
+              shard_count: 1
+              replica_count: 0
+            - partition_id: ml-config
+              kind: index
+              name: .plugins-ml-config
+              shard_count: 1
+              replica_count: 0
+          templates:
+            - template_id: wazuh-agent
+              name: wazuh-agent
+            - template_id: wazuh-statistics
+              name: wazuh-statistics
+          mappings:
+            - mapping_id: kibana-objects
+              name: .kibana_1
+              partition_ref: kibana
+              top_level_field_count: 28
+              description: Saved-object mapping for the dashboard tier.
+  wazuh-dashboard:
+    type: compute
+    os: linux
+    services:
+      - {name: dashboard, port: 5601, protocol: tcp}
+    runtime:
+      service_listeners:
+        - service_listener_id: dashboard-listener
+          service: dashboard
+          address: 0.0.0.0
+          port: 5601
+          protocol: tcp
+          scope: wildcard
+          provenance: operator
+      applications:
+        - application_id: wazuh-dashboard
+          service: dashboard
+          protocol: https
+          routes:
+            - route_id: dashboard-root
+              path: /
+              methods: [GET]
+              auth_required: true
+      platform_applications:
+        - platform_application_id: wazuh-dashboard
+          service: dashboard
+          platform_kind: analytics_dashboard
+          product: Wazuh Dashboard
+          capabilities:
+            - capability_id: analytics-presentation
+              kind: analytics_presentation
+          upstream_bindings:
+            - binding_id: wazuh-index-backend
+              role: index_backend
+              target_node_ref: wazuh-indexer
+              target_service_ref: indexer-api
+            - binding_id: wazuh-manager-api
+              role: data_source
+              target_node_ref: wazuh-manager
+              target_service_ref: wazuh-api
+          version: 4.12.0
+  suricata:
+    type: compute
+    os: linux
+    services: []
+    runtime:
+      software_components:
+        - component_id: wazuh-agent
+          name: Wazuh agent
+          component_type: application
+          presence: required
+          version: 4.12.0
+          description: Required endpoint software; acquisition and process realization are delegated.
+      network_sensors:
+        - network_sensor_id: suricata-sensor
+          implementation: suricata
+          sensor_kind: ids
+          monitoring_posture: passive
+          monitored_network_refs:
+            - security-net
+            - dmz-net
+            - internal-net
+            - redteam-net
+          name: TechVault network sensor
+          description: Watches range traffic passively. Its EVE output is what the node's Wazuh agent ships, so this is where network visibility enters the SOC.
+      network_detection_engines:
+        - network_detection_engine_id: suricata-engine
+          implementation: suricata
+          engine_kind: ids
+          sensor_ref: suricata-sensor
+          name: TechVault detection engine
+          description: Evaluates captured traffic against its rule sources and writes EVE events. MISP-derived rules are reloaded here over the command socket.
+          configuration_file_refs:
+            - /etc/suricata/suricata.yaml
+          log_file_refs:
+            - /var/log/suricata/eve.json
+            - /var/log/suricata/fast.log
+          evidence_refs:
+            - /var/log/suricata/eve.json
+          app_layer_protocols:
+            - http
+            - tls
+            - dns
+            - ssh
+            - smb
+            - smtp
+            - ftp
+          rule_sources:
+            - source_id: suricata-builtin
+              kind: built_in
+              format: suricata_rule
+              name: suricata.rules
+              file_refs:
+                - /var/lib/suricata/rules/suricata.rules
+              loaded: true
+              description: Product-provided ruleset selected alongside Suricata 7.0.
+            - source_id: techvault-local
+              kind: local
+              format: suricata_rule
+              name: local.rules
+              rule_count: 16
+              file_refs:
+                - /etc/suricata/rules/local.rules
+              loaded: true
+              description: Scenario-authored rules for TechVault-specific activity.
+            - source_id: misp-iocs
+              kind: ioc
+              format: suricata_rule
+              name: misp/misp-iocs.rules
+              file_refs:
+                - /var/lib/suricata/rules/misp/misp-iocs.rules
+              loaded: true
+              generated_by: nodes.misp-suricata-sync.runtime.forwarding_agents.misp-ioc-to-suricata
+              description: Written by the MISP sync agent, not authored here. This is the threat-intelligence feed becoming live detection content.
+          network_sets:
+            - set_id: home-net
+              kind: home_net
+              name: HOME_NET
+              selector_values:
+                - 172.20.0.0/16
+              network_refs:
+                - security-net
+                - dmz-net
+                - internal-net
+                - redteam-net
+              description: The range itself; everything outside it is EXTERNAL_NET.
+            - set_id: external-net
+              kind: external_net
+              name: EXTERNAL_NET
+              selector_values:
+                - "!172.20.0.0/16"
+              description: Addresses outside the TechVault range.
+            - set_id: dmz-net
+              kind: dmz_net
+              name: DMZ_NET
+              selector_values:
+                - 172.20.1.0/24
+              network_refs:
+                - dmz-net
+            - set_id: internal-net
+              kind: internal_net
+              name: INTERNAL_NET
+              selector_values:
+                - 172.20.2.0/24
+              network_refs:
+                - internal-net
+            - set_id: http-servers
+              kind: service_group
+              name: HTTP_SERVERS
+              selector_values:
+                - 172.20.1.20
+              network_refs:
+                - dmz-net
+          output_streams:
+            - stream_id: eve-json
+              format: eve_json
+              path: /var/log/suricata/eve.json
+              event_types:
+                - alert
+                - http
+                - dns
+                - tls
+                - ssh
+                - flow
+                - stats
+              enabled: true
+              description: The file the node's Wazuh agent tails. This path is the detection-to-SIEM hand-off.
+            - stream_id: fast-log
+              format: fast_log
+              path: /var/log/suricata/fast.log
+              event_types:
+                - alert
+              enabled: true
+              description: Bounded human-readable alert output used with native engine readiness diagnostics.
+          control_channels:
+            - channel_id: command-socket
+              kind: unix_socket
+              path: /var/run/suricata/suricata-command.socket
+              capabilities:
+                - rule_reload
+              auth_required: false
+              description: Where the MISP sync agent drives a reload after writing rules.
+          version: "7.0"
+      forwarding_agents:
+        - forwarding_agent_id: suricata-eve-forwarder
+          implementation: wazuh_agent
+          version: 4.12.0
+          agent_kind: log_forwarder
+          name: techvault-suricata-agent
+          description: Tails Suricata's EVE output and ships it to the Wazuh manager. This is the hand-off that makes network detections visible to the SIEM.
+          sources:
+            - source_id: suricata-eve
+              kind: tailed_path
+              location: /var/log/suricata/eve.json
+              parse_format: eve_json
+          transforms:
+            - transform_id: eve-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: suricata-eve-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: suricata-eve-forwarder-manager
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-events
+              ingestion_port: 1514
+              protocol: tcp
+            - target_id: suricata-agent-enrollment
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-enrollment
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
+  misp:
+    type: compute
+    os: linux
+    services:
+      - {name: https, port: 443, protocol: tcp}
+    runtime:
+      service_listeners:
+        - service_listener_id: misp-https-listener
+          service: https
+          address: 0.0.0.0
+          port: 443
+          protocol: tcp
+          scope: wildcard
+          readiness:
+            probe: misp-authenticated-api-operation
+            criteria: A certificate-verified, authenticated MISP API write and read succeeds through the declared MariaDB and Redis services.
+            evidence_refs: [misp-authenticated-api-readiness]
+            description: Application readiness requires the real authenticated data paths, not only a listener or login page.
+          provenance: operator
+      applications:
+        - application_id: misp-web
+          service: https
+          protocol: https
+          routes:
+            - route_id: misp-root
+              path: /
+              methods: [GET]
+              auth_required: true
+      platform_applications:
+        - platform_application_id: misp-threat-intelligence
+          service: https
+          platform_kind: threat_intel
+          product: MISP
+          capabilities:
+            - capability_id: threat-intelligence-management
+              kind: threat_intelligence_management
+            - capability_id: intelligence-exchange
+              kind: intelligence_exchange
+          upstream_bindings:
+            - binding_id: misp-relational-store
+              role: data_source
+              target_node_ref: misp-db
+              target_service_ref: mysql
+            - binding_id: misp-cache-store
+              role: data_source
+              target_node_ref: misp-redis
+              target_service_ref: redis
+          settings:
+            - setting_id: misp-canonical-url
+              name: Canonical MISP URL
+              value: https://misp.techvault.local
+              provenance: runtime
+              classification: plain
+              description: Participant-visible HTTPS identity reported by MISP; the backend chooses how the selected component realizes it.
+          authorization_ref: misp-api-authorization
+          version: 2.5.44
+      app_authorizations:
+        - app_authorization_id: misp-api-authorization
+          resource_vocabulary: app_resource
+          auth_enabled: true
+          principals:
+            - principal_id: misp-administrator
+              kind: user
+              name: admin@admin.test
+              credential_classification: operator_secret
+              description: Operator-supplied MISP administrator identity; credential bytes are not pack content.
+            - principal_id: misp-suricata-sync-api-key
+              kind: api_key
+              credential_classification: operator_secret
+              description: The sync agent authenticates to MISP with a dedicated API key whose bytes are supplied through the backend's secret boundary.
+          roles:
+            - role_id: misp-administrator-role
+              name: MISP administrator
+            - role_id: misp-sync-reader-role
+              name: MISP synchronization reader
+          permission_grants:
+            - grant_id: misp-administrator-access
+              role_ref: misp-administrator-role
+              resource_kind: app_resource
+              actions: [manage]
+              resource_patterns: ['*']
+              effect: allow
+            - grant_id: misp-sync-read-access
+              role_ref: misp-sync-reader-role
+              resource_kind: app_resource
+              actions: [read]
+              resource_patterns: [attributes/*, events/*]
+              effect: allow
+          role_mappings:
+            - mapping_id: misp-administrator-mapping
+              role_ref: misp-administrator-role
+              users: [misp-administrator]
+            - mapping_id: misp-sync-reader-mapping
+              role_ref: misp-sync-reader-role
+              users: [misp-suricata-sync-api-key]
+  misp-db:
+    type: compute
+    os: linux
+    services:
+      - {name: mysql, port: 3306, protocol: tcp}
+    runtime:
+      service_listeners:
+        - service_listener_id: mysql-listener
+          service: mysql
+          address: 0.0.0.0
+          port: 3306
+          protocol: tcp
+          scope: wildcard
+          provenance: operator
+      database_services:
+        - database_service_id: misp-db
+          service: mysql
+          engine: mariadb
+          protocol: mysql
+          listeners:
+            - {address: 0.0.0.0, port: 3306}
+          databases:
+            - database_id: misp
+              name: misp
+              origin: scenario
+          roles:
+            - role_id: misp-application-role
+              name: misp
+              role_type: application
+              origin: scenario
+              can_login: true
+              description: Application role used by MISP for its declared database.
+          grants:
+            - grantee_role_ref: misp-application-role
+              object_type: database
+              object_ref: misp
+              privileges: [ALL]
+              with_grant_option: false
+              description: MISP owns its application database without grant delegation.
+          version: "10.11"
+  misp-redis:
+    type: compute
+    os: linux
+    services:
+      - {name: redis, port: 6379, protocol: tcp}
+    runtime:
+      service_listeners:
+        - service_listener_id: redis-listener
+          service: redis
+          address: 0.0.0.0
+          port: 6379
+          protocol: tcp
+          scope: wildcard
+          provenance: operator
+      datastore_services:
+        - datastore_service_id: misp-redis
+          service: redis
+          engine: redis
+          data_model: key_value
+          protocol: redis
+          nodes:
+            - node_id: misp-redis-node
+              endpoints:
+                - endpoint_id: redis-client
+                  role: client
+                  protocol: redis
+                  address: misp-redis
+                  port: 6379
+          persistence:
+            persistence_id: misp-cache
+            aof: false
+            eviction: noeviction
+            description: Ephemeral MISP cache with deterministic no-eviction behavior.
+          authorization_ref: misp-redis-authorization
+          version: "7"
+      app_authorizations:
+        - app_authorization_id: misp-redis-authorization
+          resource_vocabulary: redis_acl
+          auth_enabled: true
+          principals:
+            - principal_id: misp-cache-client
+              kind: service_account
+              credential_classification: redacted
+              description: Backend-selected value-free credential used only by MISP for its cache service.
+          roles:
+            - role_id: misp-cache-role
+              name: MISP cache read/write
+          permission_grants:
+            - grant_id: misp-cache-access
+              role_ref: misp-cache-role
+              resource_kind: redis_acl
+              actions: [read, write]
+              resource_patterns: ['*']
+              effect: allow
+          role_mappings:
+            - mapping_id: misp-cache-client-mapping
+              role_ref: misp-cache-role
+              users: [misp-cache-client]
+  misp-suricata-sync:
+    type: compute
+    os: linux
+    services: []
+    runtime:
+      packages:
+        - {manager: apt, name: python3-pip, version: "*"}
+      dependency_manifests:
+        - {ecosystem: pip, path: /app/pyproject.toml, name: aptl-labs}
+      filesystem_inventory:
+        - {path: /opt/techvault/soc-certs/lab-ca.pem, entry_type: file, owner_user: root, owner_group: root, mode: "0644", sensitivity: plain}
+      # The persistent-volume declarations below are the single mount
+      # authority for the generated rules and private command socket.
+      forwarding_agents:
+        - forwarding_agent_id: misp-ioc-to-suricata
+          implementation: misp_suricata_sync
+          agent_kind: content_sync
+          description: Pulls tagged indicators from MISP, renders them into Suricata rules, and drives Suricata's command socket to reload. This is how threat intelligence becomes active network detection content.
+          sources:
+            - source_id: misp-attributes
+              kind: api_pull
+              location: https://misp.techvault.local
+              parse_format: misp_json
+              selector: techvault:enforce
+          transforms:
+            - transform_id: ioc-to-suricata-rules
+              kind: ioc_to_rule
+              sid_namespace: '99000000'
+          settings:
+            - setting_id: misp-api-authentication
+              name: MISP API credential
+              provenance: unknown
+              classification: operator_secret
+              description: Credential posture for the declared misp-suricata-sync-api-key principal; secret bytes are not pack content.
+            - setting_id: misp-tls-verification
+              name: MISP TLS certificate verification
+              value: required
+              provenance: default
+              classification: plain
+            - setting_id: misp-ca-trust-anchor
+              name: MISP trusted CA certificate
+              value: /opt/techvault/soc-certs/lab-ca.pem
+              provenance: unknown
+              classification: plain
+          reload_channels:
+            - reload_channel_id: suricata-command-socket
+              target_ref: nodes.suricata.runtime.network_detection_engines.suricata-engine.control_channels.command-socket
+              kind: unix_socket
+  thehive:
+    type: compute
+    os: linux
+    services:
+      - {name: thehive-api, port: 9000, protocol: tcp}
+    runtime:
+      service_listeners:
+        - service_listener_id: thehive-api-listener
+          service: thehive-api
+          address: 0.0.0.0
+          port: 9000
+          protocol: tcp
+          scope: wildcard
+          provenance: operator
+      applications:
+        - application_id: thehive-web
+          service: thehive-api
+          protocol: http
+          routes:
+            - route_id: thehive-root
+              path: /
+              methods: [GET]
+              auth_required: true
+      platform_applications:
+        - platform_application_id: thehive-case-management
+          service: thehive-api
+          platform_kind: case_management
+          product: TheHive
+          capabilities:
+            - capability_id: case-management
+              kind: case_management
+          upstream_bindings:
+            - binding_id: thehive-cql-backend
+              role: cql_backend
+              target_node_ref: thehive-cassandra
+              target_service_ref: cassandra
+            - binding_id: thehive-index-backend
+              role: index_backend
+              target_node_ref: thehive-es
+              target_service_ref: elasticsearch
+            - binding_id: thehive-cortex-api
+              role: backend_api
+              target_node_ref: cortex
+              target_service_ref: cortex-api
+              description: Least-privilege analyzer execution and result retrieval.
+          connectors:
+            - connector_id: cortex-analyzer-engine
+              kind: analyzer_engine
+              enabled: true
+              credential_classification: redacted
+              description: TheHive uses the declared least-privilege Cortex service account; credential bytes are not pack content.
+          version: "5.4"
+  thehive-cassandra:
+    type: compute
+    os: linux
+    services:
+      - {name: cassandra, port: 9042, protocol: tcp}
+    runtime:
+      datastore_services:
+        - datastore_service_id: thehive-cassandra
+          engine: cassandra
+          data_model: wide_column
+          version: '4.1'
+          description: Primary case store.
+          partitions:
+            - partition_id: thehive
+              kind: keyspace
+              name: thehive
+              replication_strategy: simple_strategy
+              replication_factor: 1
+  thehive-es:
+    type: compute
+    os: linux
+    services:
+      - {name: elasticsearch, port: 9200, protocol: tcp}
+    runtime:
+      datastore_services:
+        - datastore_service_id: thehive-es
+          service: elasticsearch
+          engine: elasticsearch
+          data_model: unknown
+          protocol: http
+          version: 7.17.28
+          description: Search datastore for TheHive and Cortex state.
+  cortex:
+    type: compute
+    os: linux
+    services:
+      - {name: cortex-api, port: 9001, protocol: tcp}
+    runtime:
+      service_listeners:
+        - service_listener_id: cortex-api-listener
+          service: cortex-api
+          address: 0.0.0.0
+          port: 9001
+          protocol: tcp
+          scope: wildcard
+          provenance: operator
+      applications:
+        - application_id: cortex-web
+          service: cortex-api
+          protocol: http
+          routes:
+            - route_id: cortex-root
+              path: /
+              methods: [GET]
+              auth_required: true
+      platform_applications:
+        - platform_application_id: cortex-enrichment
+          service: cortex-api
+          platform_kind: analyzer_engine
+          product: Cortex
+          capabilities:
+            - capability_id: analysis-execution
+              kind: analysis_execution
+              evidence_refs: [cortex-enrichment-readback]
+          content_objects:
+            - content_object_id: techvault-scenario-context
+              kind: analyzer
+              name: TechVaultScenarioContext_1_0
+              attributes:
+                data_types: [ip]
+                execution: offline
+              evidence_refs: [cortex-enrichment-readback]
+          upstream_bindings:
+            - binding_id: cortex-index-backend
+              role: index_backend
+              target_node_ref: thehive-es
+              target_service_ref: elasticsearch
+          authorization_ref: cortex-rbac
+          version: 3.1.8
+      app_authorizations:
+        - app_authorization_id: cortex-rbac
+          auth_enabled: true
+          principals:
+            - principal_id: thehive-cortex-connector
+              kind: service_account
+              credential_classification: redacted
+              backend_roles: [read, analyze]
+              description: Dedicated least-privilege identity used by TheHive.
+          description: Cortex authorization state required by the scenario.
+  shuffle-backend:
+    type: compute
+    os: linux
+    services:
+      - {name: shuffle-api, port: 5001, protocol: tcp}
+    runtime:
+      service_listeners:
+        - service_listener_id: shuffle-api-listener
+          service: shuffle-api
+          address: 0.0.0.0
+          port: 5001
+          protocol: tcp
+          scope: wildcard
+          readiness:
+            probe: shuffle-authenticated-datastore-operation
+            criteria: An authenticated Shuffle API write and read through OpenSearch succeeds.
+            description: Application readiness requires an authenticated operation backed by the declared datastore, not only a listening port.
+          provenance: operator
+      platform_applications:
+        - platform_application_id: shuffle-soar
+          service: shuffle-api
+          product: Shuffle
+          capabilities:
+            - capability_id: workflow-automation
+              kind: workflow_automation
+          upstream_bindings:
+            - binding_id: shuffle-index-backend
+              role: index_backend
+              target_node_ref: shuffle-opensearch
+              target_service_ref: opensearch-rest
+          version: unversioned
+      applications:
+        - application_id: shuffle-api
+          service: shuffle-api
+          protocol: http
+          routes:
+            - route_id: shuffle-api-root
+              path: /api
+              methods: [GET, POST]
+              auth_required: true
+  shuffle-frontend:
+    type: compute
+    os: linux
+    services:
+      - {name: https, port: 443, protocol: tcp}
+      - {name: http, port: 80, protocol: tcp}
+    runtime:
+      service_listeners:
+        - service_listener_id: shuffle-https-listener
+          service: https
+          address: 0.0.0.0
+          port: 443
+          protocol: tcp
+          scope: wildcard
+          provenance: operator
+        - service_listener_id: shuffle-http-listener
+          service: http
+          address: 0.0.0.0
+          port: 80
+          protocol: tcp
+          scope: wildcard
+          provenance: operator
+      applications:
+        - application_id: shuffle-web
+          service: https
+          protocol: https
+          routes:
+            - route_id: shuffle-api-proxy
+              path: /api
+              methods: [GET, POST]
+              auth_required: true
+              upstream_target:
+                target_node_ref: shuffle-backend
+                target_service: shuffle-api
+                scheme: http
+                tls_terminated_here: true
+      software_components:
+        - component_id: shuffle-frontend
+          name: Shuffle frontend
+          version: unversioned
+          component_type: application
+          provenance: self_reported
+          description: The captured upstream release did not expose a semantic product version, so the pack does not infer one.
+  shuffle-orborus:
+    type: compute
+    os: linux
+    services: []
+    runtime:
+      local_control_interfaces:
+        - control_interface_id: docker-sock
+          path: /var/run/docker.sock
+          kind: unix_socket
+          access: read_write
+          description: The in-world Docker control endpoint required by Shuffle workflow execution.
+      orchestration_authorities:
+        - orchestration_authority_id: shuffle-orborus
+          control_interface_ref: docker-sock
+          engine: docker
+          name: Shuffle workload orchestrator
+          privilege_class: host_root_equivalent
+          description: Declares the workload authority Orborus requires without selecting how a backend grants it.
+          scope:
+            environment_name: Shuffle
+            description: The TechVault Shuffle workflow environment.
+          spawn_templates:
+            - template_id: shuffle-worker
+              image_ref: ghcr.io/shuffle/shuffle-worker@sha256:fd0d420a5e0cd41f3979335e51912e8dd423e7ce540d1dfa24efdc98fb6071bd
+              purpose: workflow execution
+            - template_id: shuffle-http-1-4-0
+              image_ref: frikky/shuffle:http_1.4.0@sha256:0f6f6a686205cdb1f589feb39b3ed7fb8ae715406ae4a626b2e7657e2551e00c
+              purpose: seeded HTTP workflow app execution
+          lifecycle_policy:
+            execution_timeout: '600'
+            cleanup: 'false'
+            description: Shuffle workflow executions have a bounded lifetime and retain failed workloads for scenario-visible diagnosis.
+      software_components:
+        - component_id: shuffle-orborus
+          name: Shuffle Orborus
+          version: unversioned
+          component_type: application
+          provenance: self_reported
+          description: Shuffle workflow execution coordinator; the captured upstream release did not expose a semantic product version.
+  shuffle-opensearch:
+    type: compute
+    os: linux
+    services:
+      - {name: opensearch-rest, port: 9200, protocol: tcp}
+      - {name: opensearch-transport, port: 9300, protocol: tcp}
+    runtime:
+      datastore_services:
+        - datastore_service_id: shuffle-opensearch
+          service: opensearch-rest
+          engine: opensearch
+          data_model: search_index
+          protocol: https
+          version: 2.14.0
+          description: Backing store for SOAR workflows, environments, and execution state.
+          nodes:
+            - node_id: shuffle-opensearch-node
+              name: shuffle-opensearch
+              roles: [data, cluster_manager]
+              is_coordinator: true
+              endpoints:
+                - endpoint_id: shuffle-opensearch-client
+                  role: client
+                  protocol: https
+                  address: shuffle-opensearch
+                  port: 9200
+          transport_security:
+            transport_security_id: shuffle-opensearch-tls
+            mode: tls
+            client_verification: false
+            node_verification: false
+            description: The scenario datastore uses TLS on its internal service; the Shuffle client deliberately does not verify that certificate.
+          partitions:
+            - partition_id: workflowqueue
+              kind: index
+              name: workflowqueue-shuffle
+              shard_count: 1
+              replica_count: 1
+            - partition_id: notifications
+              kind: index
+              name: notifications-000001
+              shard_count: 3
+              replica_count: 1
+            - partition_id: platform_health
+              kind: index
+              name: platform_health
+              shard_count: 1
+              replica_count: 1
+            - partition_id: workflowexecution
+              kind: index
+              name: workflowexecution-000001
+              shard_count: 3
+              replica_count: 1
+            - partition_id: environments
+              kind: index
+              name: environments-000001
+              shard_count: 3
+              replica_count: 1
+            - partition_id: workflowapp
+              kind: index
+              name: workflowapp-000001
+              shard_count: 3
+              replica_count: 1
+            - partition_id: users
+              kind: index
+              name: users
+              shard_count: 1
+              replica_count: 1
+            - partition_id: shuffle_logs
+              kind: index
+              name: shuffle_logs-000001
+              shard_count: 3
+              replica_count: 1
+            - partition_id: datastore_ngram
+              kind: index
+              name: datastore_ngram-000001
+              shard_count: 3
+              replica_count: 1
+            - partition_id: openapi3
+              kind: index
+              name: openapi3
+              shard_count: 1
+              replica_count: 1
+          mappings:
+            - mapping_id: users-mapping
+              name: users
+              partition_ref: users
+              top_level_field_count: 30
+              description: SOAR user record mapping.
+  webapp:
+    type: compute
+    os: linux
+    services:
+      - {name: http, port: 8080, protocol: tcp}
+    runtime:
+      software_components:
+        - component_id: wazuh-agent
+          name: Wazuh agent
+          component_type: application
+          presence: required
+          version: 4.12.0
+          description: Required endpoint software; acquisition and process realization are delegated.
+      packages:
+        - {manager: apt, name: python3-flask, version: "*"}
+        - {manager: apt, name: python3-gunicorn, version: "*"}
+        - {manager: apt, name: python3-psycopg2, version: "*"}
+        - {manager: apt, name: python3-jwt, version: "*"}
+        # iptables is present so Wazuh active-response state can be inspected
+        # and cleared inside the scenario when required.
+        - {manager: apt, name: iptables, version: "*"}
+      filesystem_inventory:
+        - {path: /var/log/gunicorn/access.log, entry_type: file}
+        - {path: /app/user.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
+        - {path: /var/log/gunicorn, entry_type: directory}
+      applications:
+        - application_id: techvault-portal
+          service: http
+          protocol: http
+          name: TechVault customer portal
+          framework: flask
+          base_path: /
+          description: The internet-facing business application. Its weaknesses are the scenario content an attacker is meant to find.
+          routes:
+            - route_id: index
+              path: /
+              methods:
+                - GET
+              auth_required: false
+              description: Public landing page.
+            - route_id: login
+              path: /login
+              methods:
+                - GET
+                - POST
+              auth_required: false
+              description: Login form. It accepts intentionally vulnerable SQL input, and its error responses reveal internal detail.
+            - route_id: logout
+              path: /logout
+              methods:
+                - GET
+              auth_required: true
+              description: Ends the session.
+            - route_id: dashboard
+              path: /dashboard
+              methods:
+                - GET
+              auth_required: true
+              description: Authenticated user dashboard.
+            - route_id: admin
+              path: /admin
+              methods:
+                - GET
+              auth_required: true
+              description: Administrative view over stored backup configuration. /admin is reachable by any authenticated user and exposes stored cloud credentials.
+            - route_id: upload
+              path: /upload
+              methods:
+                - GET
+                - POST
+              auth_required: true
+              description: File upload. Uploads are neither type- nor size-checked, and the filename allows traversal.
+            - route_id: api-file
+              path: /api/v1/files/<int:file_id>
+              methods:
+                - GET
+              auth_required: true
+              description: Fetch one file record. /api/v1/files/<id> performs no ownership check.
+            - route_id: api-user
+              path: /api/v1/users/<int:user_id>
+              methods:
+                - GET
+              auth_required: true
+              description: Fetch one user record. /api/v1/users/<id> performs no authorization check and returns an API key.
+            - route_id: api-customers
+              path: /api/v1/customers
+              methods:
+                - GET
+              auth_required: true
+              description: List customers.
+            - route_id: api-token
+              path: /api/v1/token
+              methods:
+                - POST
+              auth_required: false
+              description: Issue a bearer token. Tokens are signed with a guessable secret and never expire. The Flask session key and JWT secret are literals in the application source.
+            - route_id: ping-tool
+              path: /tools/ping
+              methods:
+                - GET
+                - POST
+              auth_required: true
+              description: Network diagnostic helper. The /tools/ping host parameter reaches a shell without sanitization.
+            - route_id: search
+              path: /search
+              methods:
+                - GET
+              auth_required: true
+              description: Search users by name, email, or department. The query parameter is interpolated into SQL and rendered back into the page unescaped.
+            - route_id: comment
+              path: /comment
+              methods:
+                - POST
+              auth_required: true
+              description: Post a comment. Comment bodies are stored and rendered without sanitization.
+            - route_id: debug
+              path: /debug
+              methods:
+                - GET
+              auth_required: false
+              description: Debug information endpoint. /debug is reachable in the running application. The application serves its own .env content.
+            - route_id: robots
+              path: /robots.txt
+              methods:
+                - GET
+              auth_required: false
+              description: Robots file.
+      forwarding_agents:
+        - forwarding_agent_id: webapp-access-forwarder
+          implementation: wazuh_agent
+          version: 4.12.0
+          agent_kind: log_forwarder
+          name: techvault-webapp-agent
+          description: Tails the customer portal access log and ships it to the Wazuh manager.
+          sources:
+            - source_id: gunicorn-access
+              kind: tailed_path
+              location: /var/log/gunicorn/access.log
+              parse_format: syslog
+          transforms:
+            - transform_id: webapp-access-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: webapp-access-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: webapp-access-forwarder-manager
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-events
+              ingestion_port: 1514
+              protocol: tcp
+            - target_id: webapp-agent-enrollment
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-enrollment
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
+  ad:
+    type: compute
+    os: linux
+    services:
+      - {name: ldap, port: 389, protocol: tcp}
+      - {name: kerberos, port: 88, protocol: tcp}
+      - {name: smb, port: 445, protocol: tcp}
+    runtime:
+      software_components:
+        - component_id: wazuh-agent
+          name: Wazuh agent
+          component_type: application
+          presence: required
+          version: 4.12.0
+          description: Required endpoint software; acquisition and process realization are delegated.
+      service_listeners:
+        - service_listener_id: ad-ldap-listener
+          service: ldap
+          address: 0.0.0.0
+          port: 389
+          protocol: tcp
+          scope: wildcard
+          provenance: operator
+        - service_listener_id: ad-kerberos-listener
+          service: kerberos
+          address: 0.0.0.0
+          port: 88
+          protocol: tcp
+          scope: wildcard
+          provenance: operator
+        - service_listener_id: ad-smb-listener
+          service: smb
+          address: 0.0.0.0
+          port: 445
+          protocol: tcp
+          scope: wildcard
+          provenance: operator
+      identity_authorities:
+        - identity_authority_id: techvault-domain
+          kind: domain
+          name: TechVault Active Directory
+          domain_name: techvault.local
+          realm: TECHVAULT.LOCAL
+          base_dn: DC=techvault,DC=local
+          services:
+            - {service_id: techvault-ldap, service: ldap, protocol: ldap, address: ad, port: 389}
+            - {service_id: techvault-kerberos, service: kerberos, protocol: kerberos, address: ad, port: 88}
+            - {service_id: techvault-ad-rpc, service: smb, protocol: ad_ds_rpc, address: ad, port: 445}
+      filesystem_inventory:
+        - {path: /var/log/samba/log.samba, entry_type: file}
+        - {path: /var/log/samba/log.smbd, entry_type: file}
+        - {path: /var/log/samba/log.winbindd, entry_type: file}
+        - {path: /opt/flags/user.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
+      forwarding_agents:
+        - forwarding_agent_id: ad-samba-forwarder
+          implementation: wazuh_agent
+          version: 4.12.0
+          agent_kind: log_forwarder
+          name: techvault-ad-agent
+          description: Tails the domain controller's Samba logs and ships them to the Wazuh manager, so directory and file-service activity reaches the SIEM.
+          sources:
+            - {source_id: samba-log, kind: tailed_path, location: /var/log/samba/log.samba, parse_format: syslog}
+            - {source_id: smbd-log, kind: tailed_path, location: /var/log/samba/log.smbd, parse_format: syslog}
+            - {source_id: winbindd-log, kind: tailed_path, location: /var/log/samba/log.winbindd, parse_format: syslog}
+          transforms:
+            - transform_id: samba-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: ad-samba-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: ad-samba-forwarder-manager
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-events
+              ingestion_port: 1514
+              protocol: tcp
+            - target_id: ad-agent-enrollment
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-enrollment
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
+        - forwarding_agent_id: ad-syslog-forwarder
+          implementation: rsyslog
+          agent_kind: log_forwarder
+          name: rsyslog
+          description: Forwards the domain controller's local syslog to the Wazuh manager's remote syslog listener.
+          sources:
+            - {source_id: local-syslog, kind: other, selector: "*.*", parse_format: syslog}
+          buffer_policy:
+            buffer_policy_id: ad-syslog-forwarder-buffer
+            crypto: none
+          ship_targets:
+            - target_id: ad-syslog-forwarder-manager
+              target_node_ref: wazuh-manager
+              ingestion_port: 514
+              protocol: udp
+  db:
+    type: compute
+    os: linux
+    services:
+      - {name: postgres, port: 5432, protocol: tcp}
+    runtime:
+      filesystem_inventory:
+        - {path: /var/log/postgresql/postgresql-15-main.log, entry_type: file}
+      software_components:
+        - component_id: wazuh-agent
+          name: Wazuh agent
+          component_type: application
+          presence: required
+          version: 4.12.0
+          description: Required endpoint software; acquisition and process realization are delegated.
+      packages:
+        - {manager: apt, name: postgresql, version: "*"}
+      service_manager_units:
+        - {unit_id: postgresql, unit_name: postgresql.service, enabled_state: enabled, active_state: active}
+      database_services:
+        - database_service_id: techvault-db
+          engine: postgresql
+          protocol: postgresql
+          service: postgres
+          description: The customer database. Its tables are what the web application exposes and what the SQL-injection path reaches.
+          listeners:
+            - address: 0.0.0.0
+              port: 5432
+          databases:
+            - database_id: techvault
+              name: techvault
+              origin: scenario
+              schemas:
+                - schema_id: public
+                  name: public
+                  origin: scenario
+                  tables:
+                    - table_id: users
+                      name: users
+                    - table_id: customers
+                      name: customers
+                    - table_id: files
+                      name: files
+                    - table_id: api_keys
+                      name: api_keys
+                    - table_id: audit_log
+                      name: audit_log
+                    - table_id: backup_config
+                      name: backup_config
+                    - table_id: sessions
+                      name: sessions
+                    - table_id: comments
+                      name: comments
+          roles:
+            - role_id: techvault
+              name: techvault
+              role_type: application
+              origin: scenario
+              can_login: true
+              description: Application login the web tier authenticates as.
+      forwarding_agents:
+        - forwarding_agent_id: db-postgres-forwarder
+          implementation: wazuh_agent
+          version: 4.12.0
+          agent_kind: log_forwarder
+          name: techvault-db-agent
+          description: Tails the customer database's PostgreSQL log and ships it to the Wazuh manager, so database activity reaches the SIEM.
+          sources:
+            - source_id: postgres-log
+              kind: tailed_path
+              location: /var/log/postgresql/postgresql-15-main.log
+              parse_format: syslog
+          transforms:
+            - transform_id: postgres-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: db-postgres-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: db-postgres-forwarder-manager
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-events
+              ingestion_port: 1514
+              protocol: tcp
+            - target_id: db-agent-enrollment
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-enrollment
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
+  workstation:
+    type: compute
+    os: linux
+    services:
+      - {name: ssh, port: 22, protocol: tcp}
+    runtime:
+      software_components:
+        - component_id: wazuh-agent
+          name: Wazuh agent
+          component_type: application
+          presence: required
+          version: 4.12.0
+          description: Required endpoint software; acquisition and process realization are delegated.
+      packages:
+        - {manager: dnf, name: openssh-server, version: "*"}
+        # openssh-clients (the `ssh` binary) + postgresql (the `psql` client)
+        # for the compromised-workstation attack paths. dev-user's leaked SSH
+        # key pivots into victim (workstation -> victim lateral movement) and
+        # the leaked .pgpass reaches the DB; neither works without a client.
+        - {manager: dnf, name: openssh-clients, version: "*"}
+        - {manager: dnf, name: postgresql, version: "*"}
+        - {manager: dnf, name: sudo, version: "*"}
+      local_identity:
+        groups:
+          - {name: labadmin}
+          - {name: dev-user}
+        users:
+          - {username: labadmin, primary_group: labadmin, supplemental_groups: [wheel]}
+          # dev-user (michael.thompson): the compromised-workstation persona.
+          # Distinct weak-cred developer account whose home holds the planted
+          # credential loot the red-team exercise mines; separate from the
+          # labadmin admin account. Loot placed via content below.
+          - {username: dev-user, primary_group: dev-user, supplemental_groups: [wheel]}
+      filesystem_inventory:
+        - {path: /var/log/secure, entry_type: file}
+        - {path: /var/log/messages, entry_type: file}
+        - {path: /home/dev-user, entry_type: directory, owner_user: dev-user, owner_group: dev-user, mode: "0755", sensitivity: plain}
+        - {path: /home/dev-user/.bash_history, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0600", sensitivity: secret_fixture}
+        - {path: /home/dev-user/.config/credentials.json, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0600", sensitivity: secret_fixture}
+        - {path: /home/dev-user/.pgpass, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0600", sensitivity: secret_fixture}
+        - {path: /home/dev-user/.ssh, entry_type: directory, owner_user: dev-user, owner_group: dev-user, mode: "0700", sensitivity: operator_secret}
+        - {path: /home/dev-user/.ssh/id_rsa, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0600", sensitivity: operator_secret}
+        - {path: /home/dev-user/projects/techvault-portal/.env, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0600", sensitivity: secret_fixture}
+        - {path: /home/dev-user/user.txt, entry_type: file, owner_user: dev-user, owner_group: dev-user, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
+      service_manager_units:
+        - {unit_id: sshd, unit_name: sshd.service, enabled_state: enabled, active_state: active}
+      forwarding_agents:
+        - forwarding_agent_id: workstation-system-forwarder
+          implementation: wazuh_agent
+          version: 4.12.0
+          agent_kind: log_forwarder
+          name: techvault-workstation-agent
+          description: Ships workstation authentication and system logs as host-correlated endpoint telemetry.
+          sources:
+            - {source_id: workstation-auth-log, kind: tailed_path, location: /var/log/secure, parse_format: syslog}
+            - {source_id: workstation-system-log, kind: tailed_path, location: /var/log/messages, parse_format: syslog}
+          transforms:
+            - {transform_id: workstation-syslog-parse, kind: parse}
+          buffer_policy:
+            buffer_policy_id: workstation-system-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: workstation-system-forwarder-manager
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-events
+              ingestion_port: 1514
+              protocol: tcp
+            - target_id: workstation-agent-enrollment
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-enrollment
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
+  fileshare:
+    type: compute
+    os: linux
+    services:
+      - {name: smb, port: 445, protocol: tcp}
+    runtime:
+      software_components:
+        - component_id: wazuh-agent
+          name: Wazuh agent
+          component_type: application
+          presence: required
+          version: 4.12.0
+          description: Required endpoint software; acquisition and process realization are delegated.
+      packages:
+        # iptables is present so active-response state can be inspected and
+        # cleared inside the scenario when required.
+        - {manager: apt, name: iptables, version: "*"}
+        - {manager: apt, name: samba, version: "*"}
+      filesystem_inventory:
+        - {path: /var/log/samba/log.samba, entry_type: file}
+        - {path: /var/log/samba/log.smbd, entry_type: file}
+        - {path: /srv/shares/shared/user-flag.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
+      service_manager_units:
+        - {unit_id: smbd, unit_name: smbd.service, enabled_state: enabled, active_state: active}
+      file_services:
+        - file_service_id: techvault-fileshare
+          protocol: smb
+          service: smb
+          description: Departmental SMB shares. Guest-readable shares and group-gated ones sit side by side, which is what makes lateral discovery meaningful here.
+          shares:
+            - share_id: public
+              name: Public
+              kind: disk
+              backing_path: /srv/shares/public
+              read_only: false
+              browseable: true
+              guest_ok: true
+            - share_id: engineering
+              name: Engineering
+              kind: disk
+              backing_path: /srv/shares/engineering
+              read_only: false
+              browseable: true
+              guest_ok: false
+              valid_groups:
+                - Engineering
+            - share_id: finance
+              name: Finance
+              kind: disk
+              backing_path: /srv/shares/finance
+              read_only: false
+              browseable: true
+              guest_ok: false
+              valid_groups:
+                - Finance
+            - share_id: hr
+              name: HR
+              kind: disk
+              backing_path: /srv/shares/hr
+              read_only: false
+              browseable: true
+              guest_ok: false
+              valid_groups:
+                - HR
+            - share_id: it-backups
+              name: IT-Backups
+              kind: disk
+              backing_path: /srv/shares/it-backups
+              read_only: false
+              browseable: false
+              guest_ok: false
+              valid_groups:
+                - IT-Admins
+            - share_id: shared
+              name: Shared
+              kind: disk
+              backing_path: /srv/shares/shared
+              read_only: false
+              browseable: true
+              guest_ok: true
+          principals:
+            - principal_id: group-engineering
+              kind: group
+              name: Engineering
+              origin: provisioned
+            - principal_id: group-finance
+              kind: group
+              name: Finance
+              origin: provisioned
+            - principal_id: group-hr
+              kind: group
+              name: HR
+              origin: provisioned
+            - principal_id: group-it-admins
+              kind: group
+              name: IT-Admins
+              origin: provisioned
+      forwarding_agents:
+        - forwarding_agent_id: fileshare-samba-forwarder
+          implementation: wazuh_agent
+          version: 4.12.0
+          agent_kind: log_forwarder
+          name: techvault-fileshare-agent
+          description: Tails the file server Samba logs and ships them to the Wazuh manager.
+          sources:
+            - source_id: fileshare-samba-log
+              kind: tailed_path
+              location: /var/log/samba/log.samba
+              parse_format: syslog
+            - source_id: fileshare-smbd-log
+              kind: tailed_path
+              location: /var/log/samba/log.smbd
+              parse_format: syslog
+          transforms:
+            - transform_id: fileshare-samba-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: fileshare-samba-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: fileshare-samba-forwarder-manager
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-events
+              ingestion_port: 1514
+              protocol: tcp
+            - target_id: fileshare-agent-enrollment
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-enrollment
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
+  dns:
+    type: compute
+    os: linux
+    services:
+      - {name: dns, port: 53, protocol: udp}
+    runtime:
+      software_components:
+        - component_id: wazuh-agent
+          name: Wazuh agent
+          component_type: application
+          presence: required
+          version: 4.12.0
+          description: Required endpoint software; acquisition and process realization are delegated.
+      packages:
+        # iptables is present so active-response state can be inspected and
+        # cleared inside the scenario when required.
+        - {manager: apt, name: iptables, version: "*"}
+        - {manager: apt, name: bind9, version: "*"}
+        - {manager: apt, name: dnsutils, version: "*"}
+      filesystem_inventory:
+        - {path: /var/log/named/query.log, entry_type: file}
+        - {path: /var/log/named/default.log, entry_type: file}
+        - {path: /var/log/named, entry_type: directory, owner_user: bind, owner_group: bind}
+      service_manager_units:
+        - {unit_id: named, unit_name: named.service, enabled_state: enabled, active_state: active}
+      dns_services:
+        - dns_service_id: techvault-dns
+          implementation: bind
+          service: dns
+          description: Authoritative DNS for the range, forward and reverse.
+          roles:
+            - authoritative
+          zones:
+            - zone_id: techvault-local
+              name: techvault.local
+              kind: primary
+              purpose: forward
+              provenance: zone_file
+              description: Forward zone naming the enterprise hosts.
+            - zone_id: reverse-172-20
+              name: 20.172.in-addr.arpa
+              kind: primary
+              purpose: reverse
+              provenance: zone_file
+              description: Reverse zone for the range address space.
+      forwarding_agents:
+        - forwarding_agent_id: dns-query-forwarder
+          implementation: wazuh_agent
+          version: 4.12.0
+          agent_kind: log_forwarder
+          name: techvault-dns-agent
+          description: Tails the DNS query and service logs and ships them to the Wazuh manager.
+          sources:
+            - source_id: dns-query-log
+              kind: tailed_path
+              location: /var/log/named/query.log
+              parse_format: syslog
+            - source_id: dns-default-log
+              kind: tailed_path
+              location: /var/log/named/default.log
+              parse_format: syslog
+          transforms:
+            - transform_id: dns-log-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: dns-query-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: dns-query-forwarder-manager
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-events
+              ingestion_port: 1514
+              protocol: tcp
+            - target_id: dns-agent-enrollment
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-enrollment
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
+  victim:
+    type: compute
+    os: linux
+    services:
+      - {name: ssh, port: 22, protocol: tcp}
+    runtime:
+      software_components:
+        - component_id: wazuh-agent
+          name: Wazuh agent
+          component_type: application
+          presence: required
+          version: 4.12.0
+          description: Required endpoint software; acquisition and process realization are delegated.
+      packages:
+        - {manager: dnf, name: openssh-server, version: "*"}
+        - {manager: dnf, name: sudo, version: "*"}
+        # rsyslog records authentication and system events locally; the typed
+        # Wazuh forwarding agent below performs the SIEM hand-off.
+        - {manager: dnf, name: rsyslog, version: "*"}
+      local_identity:
+        groups:
+          - {name: labadmin}
+        users:
+          - {username: labadmin, primary_group: labadmin, supplemental_groups: [wheel]}
+      filesystem_inventory:
+        - {path: /var/log/secure, entry_type: file}
+        - {path: /var/log/messages, entry_type: file}
+        - {path: /home/labadmin/user.txt, entry_type: file, owner_user: labadmin, owner_group: labadmin, mode: "0644", sensitivity: operator_secret}
+        - {path: /root/root.txt, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: operator_secret}
+      service_manager_units:
+        - {unit_id: sshd, unit_name: sshd.service, enabled_state: enabled, active_state: active}
+        - {unit_id: rsyslog, unit_name: rsyslog.service, enabled_state: enabled, active_state: active}
+      forwarding_agents:
+        - forwarding_agent_id: victim-system-forwarder
+          implementation: wazuh_agent
+          version: 4.12.0
+          agent_kind: log_forwarder
+          name: techvault-victim-agent
+          description: Tails victim authentication and system logs and ships them to the Wazuh manager, including the smoke-test probe.
+          sources:
+            - source_id: victim-auth-log
+              kind: tailed_path
+              location: /var/log/secure
+              parse_format: syslog
+            - source_id: victim-system-log
+              kind: tailed_path
+              location: /var/log/messages
+              parse_format: syslog
+          transforms:
+            - transform_id: victim-syslog-parse
+              kind: parse
+          buffer_policy:
+            buffer_policy_id: victim-system-forwarder-buffer
+            crypto: aes
+          ship_targets:
+            - target_id: victim-system-forwarder-manager
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-events
+              ingestion_port: 1514
+              protocol: tcp
+            - target_id: victim-agent-enrollment
+              target_node_ref: wazuh-manager
+              target_service_ref: agent-enrollment
+              enrollment_port: 1515
+              protocol: tcp
+              enrollment_identity_classification: operator_secret
+  kali:
+    type: compute
+    os: linux
+    services:
+      - {name: ssh, port: 22, protocol: tcp}
+    runtime:
+      packages:
+        - {manager: apt, name: openssh-server, version: "*"}
+        # iputils-ping: reachability checks ICMP-ping every shared-network
+        # host from kali. nmap: an nmap scan plus a failed SSH auth is the
+        # representative event Suricata and Wazuh must correlate.
+        - {manager: apt, name: iputils-ping, version: "*"}
+        - {manager: apt, name: nmap, version: "*"}
+        # python3 backs the Python offensive tooling below (python3-impacket,
+        # sqlmap).
+        - {manager: apt, name: python3, version: "*"}
+        # Offensive toolset. The TechVault attack path uses these
+        # enumeration and exploitation tools, and the web attacks
+        # (SQLi/XSS/cmd-injection) are driven with curl. Kali metapackages
+        # (kali-linux-core / kali-tools-top10, which carry metasploit) live in
+        # the Kali apt repo rather than Debian, so this installs the
+        # Debian-available subset the scenario actually exercises.
+        - {manager: apt, name: curl, version: "*"}
+        - {manager: apt, name: wget, version: "*"}
+        - {manager: apt, name: dnsutils, version: "*"}
+        - {manager: apt, name: netcat-openbsd, version: "*"}
+        - {manager: apt, name: smbclient, version: "*"}
+        - {manager: apt, name: ldap-utils, version: "*"}
+        - {manager: apt, name: sqlmap, version: "*"}
+        - {manager: apt, name: hydra, version: "*"}
+        - {manager: apt, name: python3-impacket, version: "*"}
+      local_identity:
+        groups:
+          - {name: kali}
+        users:
+          - {username: kali, primary_group: kali}
+      service_manager_units:
+        - {unit_id: ssh, unit_name: ssh.service, enabled_state: enabled, active_state: active}
+      software_components:
+        - component_id: nodejs
+          name: Node.js
+          version: "22"
+          component_type: platform
+          provenance: self_reported
+          description: Runtime for the participant’s stdio MCP servers.
+        - component_id: aptl-mcp-common
+          name: aptl-mcp-common
+          version: 0.1.0
+          component_type: library
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/aptl-mcp-common/package-lock.json
+        - component_id: mcp-red
+          name: aptl-kali-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-red/package-lock.json
+          description: Red-team stdio tools available only on the Kali workstation.
+  soc-workstation:
+    type: compute
+    description: Blue-team analyst workstation containing the defensive stdio MCP sources.
+    os: linux
+    services:
+      - name: ssh
+        port: 22
+        protocol: tcp
+    runtime:
+      local_identity:
+        groups:
+          - name: analyst
+        users:
+          - username: analyst
+            primary_group: analyst
+      service_manager_units:
+        - unit_id: ssh
+          unit_name: ssh.service
+          enabled_state: enabled
+          active_state: active
+      software_components:
+        - component_id: nodejs
+          name: Node.js
+          version: "22"
+          component_type: platform
+          provenance: self_reported
+          description: Runtime for the participant’s stdio MCP servers.
+        - component_id: aptl-mcp-common
+          name: aptl-mcp-common
+          version: 0.1.0
+          component_type: library
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/aptl-mcp-common/package-lock.json
+        - component_id: mcp-casemgmt
+          name: aptl-casemgmt-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-casemgmt/package-lock.json
+        - component_id: mcp-indexer
+          name: aptl-indexer-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-indexer/package-lock.json
+        - component_id: mcp-network
+          name: aptl-network-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-network/package-lock.json
+        - component_id: mcp-reverse
+          name: aptl-reverse-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-reverse/package-lock.json
+        - component_id: mcp-soar
+          name: aptl-soar-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-soar/package-lock.json
+        - component_id: mcp-threatintel
+          name: aptl-threatintel-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-threatintel/package-lock.json
+        - component_id: mcp-wazuh
+          name: aptl-wazuh-mcp-server
+          version: 0.1.0
+          component_type: application
+          provenance: dependency_manifest
+          manifest_path: /opt/techvault/mcp/mcp-wazuh/package-lock.json
+realization:
+  default: open
+infrastructure:
+  security-net:
+    properties: {cidr: 172.20.0.0/24, gateway: 172.20.0.1, internal: false}
+  dmz-net:
+    properties: {cidr: 172.20.1.0/24, gateway: 172.20.1.1, internal: true}
+  internal-net:
+    properties: {cidr: 172.20.2.0/24, gateway: 172.20.2.1, internal: true}
+  redteam-net:
+    properties: {cidr: 172.20.4.0/24, gateway: 172.20.4.1, internal: true}
+  wazuh-manager:
+    links: [security-net, dmz-net, internal-net]
+    dependencies: [wazuh-indexer]
+    properties:
+      - {security-net: 172.20.0.10}
+      - {dmz-net: 172.20.1.10}
+      - {internal-net: 172.20.2.30}
+  wazuh-indexer:
+    links: [security-net]
+    properties:
+      - {security-net: 172.20.0.12}
+  wazuh-dashboard:
+    links: [security-net]
+    dependencies: [wazuh-indexer, wazuh-manager]
+  suricata:
+    links: [security-net, dmz-net, internal-net]
+    dependencies: [wazuh-manager]
+  misp:
+    links: [security-net]
+    dependencies: [misp-db, misp-redis]
+  misp-db:
+    links: [security-net]
+  misp-redis:
+    links: [security-net]
+  misp-suricata-sync:
+    links: [security-net]
+    dependencies: [misp, suricata]
+  thehive:
+    links: [security-net]
+    dependencies: [thehive-cassandra, thehive-es, cortex]
+  thehive-cassandra:
+    links: [security-net]
+  thehive-es:
+    links: [security-net]
+  cortex:
+    links: [security-net]
+    dependencies: [thehive-es]
+  shuffle-backend:
+    links: [security-net]
+    dependencies: [shuffle-opensearch]
+  shuffle-frontend:
+    links: [security-net]
+    dependencies: [shuffle-backend]
+  shuffle-orborus:
+    links: [security-net]
+    dependencies: [shuffle-backend]
+  shuffle-opensearch:
+    links: [security-net]
+  # Fixed addressing for the enterprise + attacker set: the DNS zones and the
+  # seeded credentials and loot hardcode these. Without a pinned address the
+  # node is auto-allocated and drifts.
+  webapp:
+    links: [dmz-net, internal-net]
+    dependencies: [db, wazuh-manager]
+    properties:
+      - {dmz-net: 172.20.1.20}
+      - {internal-net: 172.20.2.25}
+  ad:
+    links: [internal-net]
+    dependencies: [wazuh-manager]
+    properties:
+      - {internal-net: 172.20.2.10}
+  db:
+    links: [internal-net]
+    dependencies: [wazuh-manager]
+    properties:
+      - {internal-net: 172.20.2.11}
+  workstation:
+    links: [internal-net]
+    dependencies: [wazuh-manager]
+    properties:
+      - {internal-net: 172.20.2.40}
+  fileshare:
+    links: [internal-net]
+    dependencies: [wazuh-manager]
+    properties:
+      - {internal-net: 172.20.2.12}
+  dns:
+    links: [security-net, dmz-net, internal-net]
+    dependencies: [wazuh-manager]
+    properties:
+      - {security-net: 172.20.0.25}
+      - {dmz-net: 172.20.1.22}
+      - {internal-net: 172.20.2.27}
+  victim:
+    links: [internal-net]
+    dependencies: [wazuh-manager]
+    properties:
+      - {internal-net: 172.20.2.20}
+  kali:
+    links: [redteam-net, dmz-net, internal-net]
+    properties:
+      - {redteam-net: 172.20.4.30}
+      - {dmz-net: 172.20.1.30}
+      - {internal-net: 172.20.2.35}
+  soc-workstation:
+    links:
+      - security-net
+    properties:
+      - security-net: 172.20.0.40
+# Stateful Wazuh prerequisites are authored RAES resources. The deployment
+# backend materializes and verifies these before either consumer starts.
+generated_artifacts:
+  wazuh-indexer-certs:
+    generator: certificate_bundle
+    lifecycle: reuse_valid
+    provenance: techvault:wazuh-indexer-certificate-profile/v1
+    outputs:
+      - {name: root-ca, path: root-ca.pem, sensitivity: public}
+      - {name: indexer-key, path: wazuh.indexer-key.pem, sensitivity: secret}
+      - {name: indexer-cert, path: wazuh.indexer.pem, sensitivity: public}
+    consumers:
+      - node: wazuh-indexer
+        mount_destination: /usr/share/wazuh-indexer/certs
+        access_mode: read_only
+        selected_outputs: [root-ca, indexer-key, indexer-cert]
+  wazuh-manager-certs:
+    generator: certificate_bundle
+    lifecycle: reuse_valid
+    provenance: techvault:wazuh-manager-certificate-profile/v1
+    outputs:
+      - {name: manager-root-ca, path: root-ca-manager.pem, sensitivity: public}
+      - {name: manager-key, path: wazuh.manager-key.pem, sensitivity: secret}
+      - {name: manager-cert, path: wazuh.manager.pem, sensitivity: public}
+    consumers:
+      - node: wazuh-manager
+        mount_destination: /etc/ssl/wazuh
+        access_mode: read_only
+        selected_outputs: [manager-root-ca, manager-key, manager-cert]
+  wazuh-dashboard-certs:
+    generator: certificate_bundle
+    lifecycle: reuse_valid
+    provenance: techvault:wazuh-dashboard-certificate-profile/v1
+    outputs:
+      - {name: root-ca, path: root-ca.pem, sensitivity: public}
+      - {name: dashboard-key, path: wazuh.dashboard-key.pem, sensitivity: secret}
+      - {name: dashboard-cert, path: wazuh.dashboard.pem, sensitivity: public}
+    consumers:
+      - node: wazuh-dashboard
+        mount_destination: /usr/share/wazuh-dashboard/certs
+        access_mode: read_only
+        selected_outputs: [root-ca, dashboard-key, dashboard-cert]
+  wazuh-manager-config:
+    generator: rendered_config
+    lifecycle: regenerate_on_change
+    provenance: techvault:wazuh-manager-config-profile/v1
+    outputs:
+      - {name: manager-config, path: wazuh_manager.conf, sensitivity: secret}
+    consumers:
+      - node: wazuh-manager
+        mount_destination: /wazuh-config-mount/etc/ossec.conf
+        access_mode: read_only
+        selected_outputs: [manager-config]
+    ordering_dependencies: [generated_artifacts.wazuh-manager-certs]
+  # Backend-produced access material. The operator private key remains inside
+  # the producer. Each node receives only the output subset needed for its
+  # declared SSH path; no private key is copied into this pack.
+  techvault-ssh-keys:
+    generator: ssh_key_bundle
+    lifecycle: regenerate_on_change
+    provenance: techvault:ssh-access-profile/v1
+    outputs:
+      - name: operator-private-key
+        path: operator/control-plane-key
+        sensitivity: secret
+        disposition: producer_private
+      - name: workstation-dev-private-key
+        path: dev-user/.ssh/id_rsa
+        sensitivity: secret
+      - name: workstation-dev-public-key
+        path: dev-user/.ssh/id_rsa.pub
+        sensitivity: public
+      - name: workstation-pivot-private-key
+        path: labadmin/.ssh/id_ed25519
+        sensitivity: secret
+      - name: target-authorized-keys
+        path: labadmin/.ssh/authorized_keys
+        sensitivity: restricted
+      - name: kali-authorized-keys
+        path: kali/.ssh/authorized_keys
+        sensitivity: restricted
+      - name: kali-pivot-private-key
+        path: kali/.ssh/kali_pivot_key
+        sensitivity: secret
+    consumers:
+      - node: workstation
+        mount_destination: /home
+        access_mode: read_only
+        selected_outputs:
+          - workstation-dev-private-key
+          - workstation-dev-public-key
+          - workstation-pivot-private-key
+          - target-authorized-keys
+      - node: victim
+        mount_destination: /home
+        access_mode: read_only
+        selected_outputs: [target-authorized-keys]
+      - node: kali
+        mount_destination: /home
+        access_mode: read_only
+        selected_outputs: [kali-authorized-keys, kali-pivot-private-key]
+  # The SOC trust chain is separate from Wazuh's certificate bundles. Its CA
+  # private key is producer-private, while each service selects only the public
+  # CA and its own leaf/keystore material.
+  techvault-soc-certificates:
+    generator: certificate_bundle
+    lifecycle: reuse_valid
+    provenance: techvault:soc-certificate-profile/v1
+    outputs:
+      - name: ca-private-key
+        path: lab-ca.key
+        sensitivity: secret
+        disposition: producer_private
+      - name: ca-certificate
+        path: lab-ca.pem
+        sensitivity: public
+      - name: misp-certificate
+        path: misp/server.pem
+        sensitivity: public
+      - name: misp-private-key
+        path: misp/server.key
+        sensitivity: secret
+      - name: thehive-keystore
+        path: thehive/keystore.p12
+        sensitivity: restricted
+      - name: thehive-keystore-password
+        path: thehive/keystore.p12.password
+        sensitivity: secret
+      - name: shuffle-certificate
+        path: shuffle-frontend/server.pem
+        sensitivity: public
+      - name: shuffle-private-key
+        path: shuffle-frontend/server.key
+        sensitivity: secret
+    consumers:
+      - node: misp
+        mount_destination: /opt/techvault/soc-certs
+        access_mode: read_only
+        selected_outputs: [ca-certificate, misp-certificate, misp-private-key]
+      - node: misp-suricata-sync
+        mount_destination: /opt/techvault/soc-certs
+        access_mode: read_only
+        selected_outputs: [ca-certificate]
+      - node: thehive
+        mount_destination: /opt/techvault/soc-certs
+        access_mode: read_only
+        selected_outputs: [ca-certificate, thehive-keystore, thehive-keystore-password]
+      - node: cortex
+        mount_destination: /opt/techvault/soc-certs
+        access_mode: read_only
+        selected_outputs: [ca-certificate]
+      - node: shuffle-frontend
+        mount_destination: /opt/techvault/soc-certs
+        access_mode: read_only
+        selected_outputs: [ca-certificate, shuffle-certificate, shuffle-private-key]
+persistent_volumes:
+  wazuh-agent-webapp-state:
+    lifecycle: retain
+    access_mode: read_write_once
+    # Retains webapp's enrollment identity across restart and recreation.
+    consumers:
+      - {node: webapp, mount_destination: /var/ossec/etc, access_mode: read_write}
+  wazuh-agent-ad-state:
+    lifecycle: retain
+    access_mode: read_write_once
+    # Retains ad's enrollment identity across restart and recreation.
+    consumers:
+      - {node: ad, mount_destination: /var/ossec/etc, access_mode: read_write}
+  wazuh-agent-dns-state:
+    lifecycle: retain
+    access_mode: read_write_once
+    # Retains dns's enrollment identity across restart and recreation.
+    consumers:
+      - {node: dns, mount_destination: /var/ossec/etc, access_mode: read_write}
+  wazuh-agent-fileshare-state:
+    lifecycle: retain
+    access_mode: read_write_once
+    # Retains fileshare's enrollment identity across restart and recreation.
+    consumers:
+      - {node: fileshare, mount_destination: /var/ossec/etc, access_mode: read_write}
+  wazuh-agent-victim-state:
+    lifecycle: retain
+    access_mode: read_write_once
+    # Retains victim's enrollment identity across restart and recreation.
+    consumers:
+      - {node: victim, mount_destination: /var/ossec/etc, access_mode: read_write}
+  wazuh-agent-workstation-state:
+    lifecycle: retain
+    access_mode: read_write_once
+    # Retains workstation's enrollment identity across restart and recreation.
+    consumers:
+      - {node: workstation, mount_destination: /var/ossec/etc, access_mode: read_write}
+  wazuh-agent-db-state:
+    lifecycle: retain
+    access_mode: read_write_once
+    # Retains db's enrollment identity across restart and recreation.
+    consumers:
+      - {node: db, mount_destination: /var/ossec/etc, access_mode: read_write}
+  wazuh-agent-suricata-state:
+    lifecycle: retain
+    access_mode: read_write_once
+    # Retains suricata's enrollment identity across restart and recreation.
+    consumers:
+      - {node: suricata, mount_destination: /var/ossec/etc, access_mode: read_write}
+  wazuh-indexer-data:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - node: wazuh-indexer
+        mount_destination: /var/lib/wazuh-indexer
+        access_mode: read_write
+    ordering_dependencies: [generated_artifacts.wazuh-indexer-certs]
+  wazuh-manager-etc:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - node: wazuh-manager
+        mount_destination: /var/ossec/etc
+        access_mode: read_write
+    ordering_dependencies: [generated_artifacts.wazuh-manager-config]
+  wazuh-manager-logs:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - node: wazuh-manager
+        mount_destination: /var/ossec/logs
+        access_mode: read_write
+    ordering_dependencies: [persistent_volumes.wazuh-manager-etc]
+  ad_data:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: ad, mount_destination: /var/lib/samba, access_mode: read_write}
+  ad_logs:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: ad, mount_destination: /var/log/samba, access_mode: read_write}
+  cortex_data:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: cortex, mount_destination: /opt/cortex/jobs, access_mode: read_write}
+  misp_config:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: misp, mount_destination: /var/www/MISP/app/Config, access_mode: read_write}
+  misp_data:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: misp, mount_destination: /var/www/MISP/app/files, access_mode: read_write}
+  misp_db_data:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: misp-db, mount_destination: /var/lib/mysql, access_mode: read_write}
+  shuffle_data:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: shuffle-backend, mount_destination: /shuffle-database, access_mode: read_write}
+  shuffle_opensearch_data:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: shuffle-opensearch, mount_destination: /usr/share/opensearch/data, access_mode: read_write}
+  suricata_command_socket:
+    lifecycle: ephemeral
+    access_mode: read_write_many
+    consumers:
+      - {node: suricata, mount_destination: /var/run/suricata, access_mode: read_write}
+      - {node: misp-suricata-sync, mount_destination: /var/run/suricata, access_mode: read_write}
+  suricata_misp_rules:
+    lifecycle: ephemeral
+    access_mode: read_write_many
+    consumers:
+      - {node: suricata, mount_destination: /var/lib/suricata/rules/misp, access_mode: read_only}
+      - {node: misp-suricata-sync, mount_destination: /var/lib/suricata/rules/misp, access_mode: read_write}
+  thehive_cassandra_data:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: thehive-cassandra, mount_destination: /var/lib/cassandra, access_mode: read_write}
+  thehive_data:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: thehive, mount_destination: /opt/thp/thehive/data, access_mode: read_write}
+  thehive_es_data:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: thehive-es, mount_destination: /usr/share/elasticsearch/data, access_mode: read_write}
+  thehive_index:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: thehive, mount_destination: /opt/thp/thehive/index, access_mode: read_write}
+  wazuh-dashboard-config:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: wazuh-dashboard, mount_destination: /usr/share/wazuh-dashboard/data/wazuh/config, access_mode: read_write}
+  wazuh-dashboard-custom:
+    lifecycle: retain
+    access_mode: read_write_once
+    consumers:
+      - {node: wazuh-dashboard, mount_destination: /usr/share/wazuh-dashboard/plugins/wazuh/public/assets/custom, access_mode: read_write}
+content:
+  wazuh-indexer-opensearch-config:
+    type: file
+    target: wazuh-indexer
+    path: /usr/share/wazuh-indexer/opensearch.yml
+    text: |
+      network.host: "0.0.0.0"
+      node.name: "wazuh.indexer"
+      path.data: /var/lib/wazuh-indexer
+      path.logs: /var/log/wazuh-indexer
+      discovery.type: single-node
+      http.port: 9200-9299
+      transport.tcp.port: 9300-9399
+      compatibility.override_main_response_version: true
+      plugins.security.ssl.http.pemcert_filepath: /usr/share/wazuh-indexer/certs/wazuh.indexer.pem
+      plugins.security.ssl.http.pemkey_filepath: /usr/share/wazuh-indexer/certs/wazuh.indexer-key.pem
+      plugins.security.ssl.http.pemtrustedcas_filepath: /usr/share/wazuh-indexer/certs/root-ca.pem
+      plugins.security.ssl.transport.pemcert_filepath: /usr/share/wazuh-indexer/certs/wazuh.indexer.pem
+      plugins.security.ssl.transport.pemkey_filepath: /usr/share/wazuh-indexer/certs/wazuh.indexer-key.pem
+      plugins.security.ssl.transport.pemtrustedcas_filepath: /usr/share/wazuh-indexer/certs/root-ca.pem
+      plugins.security.ssl.http.enabled: true
+      plugins.security.ssl.transport.enforce_hostname_verification: false
+      plugins.security.ssl.transport.resolve_hostname: false
+      plugins.security.authcz.admin_dn:
+      - "CN=admin,OU=Wazuh,O=Wazuh,L=California,C=US"
+      plugins.security.check_snapshot_restore_write_privileges: true
+      plugins.security.enable_snapshot_restore_privilege: true
+      plugins.security.nodes_dn:
+      - "CN=wazuh.indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
+      plugins.security.restapi.roles_enabled:
+      - "all_access"
+      - "security_rest_api_access"
+      plugins.security.system_indices.enabled: true
+      plugins.security.system_indices.indices: [".opendistro-alerting-config", ".opendistro-alerting-alert*", ".opendistro-anomaly-results*", ".opendistro-anomaly-detector*", ".opendistro-anomaly-checkpoints", ".opendistro-anomaly-detection-state", ".opendistro-reports-*", ".opendistro-notifications-*", ".opendistro-notebooks", ".opensearch-observability", ".opendistro-asynchronous-search-response*", ".replication-metadata-store"]
+      plugins.security.allow_default_init_securityindex: true
+      cluster.routing.allocation.disk.threshold_enabled: false
+  wazuh-indexer-internal-users:
+    # The indexer initializes its security index from this file on first boot
+    # (opensearch.yml sets allow_default_init_securityindex: true). The admin
+    # bcrypt hash below is for the password the backend hydrates into
+    # INDEXER_PASSWORD; without this file the indexer falls back to its bundled
+    # demo users and rejects the operator credentials, so the authenticated
+    # readiness gate and every SIEM consumer (manager filebeat, dashboard)
+    # fail auth.
+    type: file
+    target: wazuh-indexer
+    path: /usr/share/wazuh-indexer/opensearch-security/internal_users.yml
+    text: |
+      ---
+      _meta:
+        type: "internalusers"
+        config_version: 2
+      admin:
+        hash: "$2y$12$K/SpwjtB.wOHJ/Nc6GVRDuc1h0rM1DfvziFRNPtk27P.c4yDr9njO"
+        reserved: true
+        backend_roles:
+        - "admin"
+        description: "Demo admin user"
+      kibanaserver:
+        hash: "$2a$12$4AcgAt3xwOWadA5s5blL6ev39OXDNhmOesEoo33eZtrq2N0YrU3H."
+        reserved: true
+        description: "Demo kibanaserver user"
+      kibanaro:
+        hash: "$2a$12$JJSXNfTowz7Uu5ttXfeYpeYE0arACvcwlPBStB1F.MI7f0U9Z4DGC"
+        reserved: false
+        backend_roles:
+        - "kibanauser"
+        - "readall"
+        description: "Demo kibanaro user"
+      logstash:
+        hash: "$2a$12$u1ShR4l4uBS3Uv59Pa2y5.1uQuZBrZtmNfqB3iM/.jL0XoV9sghS2"
+        reserved: false
+        backend_roles:
+        - "logstash"
+        description: "Demo logstash user"
+      readall:
+        hash: "$2a$12$ae4ycwzwvLtZxwZ82RmiEunBbIPiAmGZduBAjKN0TXdwQFtCwARz2"
+        reserved: false
+        backend_roles:
+        - "readall"
+        description: "Demo readall user"
+      snapshotrestore:
+        hash: "$2y$12$DpwmetHKwgYnorbgdvORCenv4NAK8cPUg8AI6pxLCuWf/ALc0.v7W"
+        reserved: false
+        backend_roles:
+        - "snapshotrestore"
+        description: "Demo snapshotrestore user"
+  wazuh-dashboard-opensearch-config:
+    type: file
+    target: wazuh-dashboard
+    path: /usr/share/wazuh-dashboard/config/opensearch_dashboards.yml
+    text: |
+      server.host: 0.0.0.0
+      server.port: 5601
+      opensearch.hosts: https://wazuh-indexer:9200
+      opensearch.ssl.verificationMode: certificate
+      opensearch.requestHeadersWhitelist: ["securitytenant","Authorization"]
+      opensearch_security.multitenancy.enabled: false
+      opensearch_security.readonly_mode.roles: ["kibana_read_only"]
+      server.ssl.enabled: true
+      server.ssl.key: "/usr/share/wazuh-dashboard/certs/wazuh.dashboard-key.pem"
+      server.ssl.certificate: "/usr/share/wazuh-dashboard/certs/wazuh.dashboard.pem"
+      opensearch.ssl.certificateAuthorities: ["/usr/share/wazuh-dashboard/certs/root-ca.pem"]
+      uiSettings.overrides.defaultRoute: /app/wz-home
+  wazuh-dashboard-app-config:
+    type: file
+    target: wazuh-dashboard
+    path: /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+    text: |
+      hosts:
+        - default:
+            url: "https://wazuh-manager"
+            port: 55000
+            username: wazuh-wui
+            password: "WazuhPass123!"
+            run_as: false
+  webapp-rules:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/rules/webapp_rules.xml
+    source:
+      name: techvault-wazuh-webapp-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-webapp-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-webapp-rules
+          version: 0.1.0
+          digest: sha256:67db59b11e89ee2fca6515ce6ae2c433793a12aea5510355af0858e66cc2a844
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: &wazuh-content-copy
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-rules:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/rules/suricata_rules.xml
+    source:
+      name: techvault-wazuh-suricata-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-suricata-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-suricata-rules
+          version: 0.1.0
+          digest: sha256:b1fdf64371c5ea24f8e1ce47ea2d0aba185f2f6697702c4bb092c2f3d696547c
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  ad-rules:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/rules/ad_rules.xml
+    source:
+      name: techvault-wazuh-ad-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-ad-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-ad-rules
+          version: 0.1.0
+          digest: sha256:8fdb8953d8e774c928adc6cef1a2eb06ef219b6feedc519092c0f1ca33cdc10b
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  database-rules:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/rules/database_rules.xml
+    source:
+      name: techvault-wazuh-database-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-database-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-database-rules
+          version: 0.1.0
+          digest: sha256:3799f8319eaf0da79c2c2a6e9468750122e6afcc715ee8095870ce750e366e15
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  falco-rules:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/rules/falco_rules.xml
+    source:
+      name: techvault-wazuh-falco-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-falco-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-falco-rules
+          version: 0.1.0
+          digest: sha256:b5bfba268ac98b2046322c5b363d628083bf4f935aa56daa2f6264fbf93ffeb4
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  postgresql-decoders:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/decoders/postgresql_decoders.xml
+    source:
+      name: techvault-wazuh-postgresql-decoders
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-postgresql-decoders-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-postgresql-decoders
+          version: 0.1.0
+          digest: sha256:dd72b3d2a2912a0fca61b2d3c69e08deafce6821b357106ad90023965de1757a
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  samba-decoders:
+    type: file
+    target: wazuh-manager
+    path: /var/ossec/etc/decoders/samba_decoders.xml
+    source:
+      name: techvault-wazuh-samba-decoders
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-samba-decoders-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-samba-decoders
+          version: 0.1.0
+          digest: sha256:acf2c9fd0d6f0816c7791544c2a580ad0124039105f37c4fffc494ae04f7ffe7
+          media_type: application/xml
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  wazuh-integrations:
+    type: directory
+    target: wazuh-manager
+    destination: /var/ossec/integrations
+    source:
+      name: techvault-wazuh-integrations
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-wazuh-integrations-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-wazuh-integrations
+          version: 0.1.0
+          digest: sha256:7c6afe833433bd6674b390cf09d23808bd7b0427927bcb533b067d674d08e417
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism: *wazuh-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-config:
+    type: file
+    target: suricata
+    path: /etc/suricata/suricata.yaml
+    source:
+      name: techvault-suricata-config
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-config-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-config
+          version: 0.1.0
+          digest: sha256:d1bf43326da10781b8b20c10c78ad2bbbc25a64c50019fd7933a56bb52b42471
+          media_type: application/yaml
+        permitted_routes:
+          - mechanism: &suricata-content-copy
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-local-rules:
+    type: file
+    target: suricata
+    path: /etc/suricata/rules/local.rules
+    source:
+      name: techvault-suricata-local-rules
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-local-rules-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-local-rules
+          version: 0.1.0
+          digest: sha256:c453a657ff6aba3bc756432c2300bffb6602532f6099236ddfbd17d091d2add4
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-ioc-rules-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-iocs.rules
+    source:
+      name: techvault-suricata-misp-ioc-rules-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-ioc-rules-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-ioc-rules-seed
+          version: 0.1.0
+          digest: sha256:462aecd67796a9ff9acd80e2bb2e9e597f05bfb05892c0766110bca933a30ede
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-md5-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-md5.list
+    source:
+      name: techvault-suricata-misp-md5-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-md5-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-md5-seed
+          version: 0.1.0
+          digest: sha256:66be1ef4237386fd2e34a978fc245bb2030641fd76409062d72919954830f376
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-sha1-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-sha1.list
+    source:
+      name: techvault-suricata-misp-sha1-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-sha1-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-sha1-seed
+          version: 0.1.0
+          digest: sha256:d91e7c095d162c8efb5ff55389043cf429809899df45f32f931f5d2eae381f0c
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  suricata-misp-sha256-seed:
+    type: file
+    target: suricata
+    path: /var/lib/suricata/rules/misp/misp-sha256.list
+    source:
+      name: techvault-suricata-misp-sha256-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-suricata-misp-sha256-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-suricata-misp-sha256-seed
+          version: 0.1.0
+          digest: sha256:b059ca012bd1345811fb9aae5e7a758498b33063887b092956bd083e41fa85dd
+          media_type: text/plain
+        permitted_routes:
+          - mechanism: *suricata-content-copy
+            acquisition: copy
+            timing: pack-ingestion
+  cortex-app-config:
+    type: file
+    target: cortex
+    path: /etc/cortex/application.conf
+    text: |
+      # Elasticsearch backend (thehive-es on the security network). Cortex
+      # 3.1.8 expects search.uri; HTTP-only on the scenario security network.
+      search {
+        index = "cortex"
+        uri = "http://thehive-es:9200"
+      }
+      auth.provider = ["local", "key"]
+      job.directory = "/opt/cortex/jobs"
+      job.runners = ["process"]
+      analyzer.urls = ["/opt/techvault/cortex-analyzers"]
+  cortex-analyzer-definition:
+    type: file
+    target: cortex
+    path: /opt/techvault/cortex-analyzers/TechVaultScenarioContext/analyzer.json
+    source:
+      name: techvault-cortex-analyzer-definition
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-cortex-analyzer-definition-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-cortex-analyzer-definition
+          version: 0.1.0
+          digest: sha256:9c8bfce7a9b41ed10f549e1d841879ec350a3ea1b4b03b6658313255ef435970
+          media_type: application/json
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  cortex-analyzer-executable:
+    type: file
+    target: cortex
+    path: /opt/techvault/cortex-analyzers/TechVaultScenarioContext/techvault_scenario_context.py
+    source:
+      name: techvault-cortex-analyzer-executable
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-cortex-analyzer-executable-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-cortex-analyzer-executable
+          version: 0.1.0
+          digest: sha256:ce6962465bc7bdd6394b4df3785685a8cf32f22689671dfda644540ffc51f152
+          media_type: text/x-python
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  misp-suricata-sync-pyproject:
+    type: file
+    target: misp-suricata-sync
+    path: /app/pyproject.toml
+    source:
+      name: techvault-misp-sync-pyproject
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-misp-sync-pyproject-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-misp-sync-pyproject
+          version: 0.1.0
+          digest: sha256:0e7214cdacc8f396e91360782c9aaf6d8c6523d2fb944cfcd3763c4ac996450f
+          media_type: text/x-toml
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  misp-suricata-sync-readme:
+    type: file
+    target: misp-suricata-sync
+    path: /app/README.md
+    source:
+      name: techvault-misp-sync-readme
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-misp-sync-readme-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-misp-sync-readme
+          version: 0.1.0
+          digest: sha256:07c3dee4987c47e57bc8f0333073abdc07b832a7e82136c3123577531978231b
+          media_type: text/markdown
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  misp-suricata-sync-hatch-build:
+    type: file
+    target: misp-suricata-sync
+    path: /app/hatch_build.py
+    source:
+      name: techvault-misp-sync-hatch-build
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-misp-sync-hatch-build-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-misp-sync-hatch-build
+          version: 0.1.0
+          digest: sha256:975022d60fe6f5187b169d3e20932fd6c242dc1658f59232627eab7e75bf713c
+          media_type: text/x-python
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  misp-suricata-sync-src:
+    type: directory
+    target: misp-suricata-sync
+    destination: /app/src
+    source:
+      name: techvault-misp-sync-src
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-misp-sync-src-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-misp-sync-src
+          version: 0.1.0
+          digest: sha256:c872e56e963934883190f7fed307116504c39d6771a528852a8b4e27682e8b91
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  webapp-app-code:
+    type: directory
+    target: webapp
+    destination: /app
+    source:
+      name: techvault-webapp-app
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-webapp-app-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-webapp-app
+          version: 0.1.0
+          digest: sha256:521886364d4cb8bf4f6b3be05bf5598cba182b27a7ee4715ae0dc518134f4101
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  dns-named-conf:
+    type: file
+    target: dns
+    path: /etc/bind/named.conf
+    source:
+      name: techvault-dns-named-conf
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-dns-named-conf-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-dns-named-conf
+          version: 0.1.0
+          digest: sha256:3df85c5e388295b0e321598c9932a78bfb18e47315263c6990e9e36cb1b62ee7
+          media_type: text/plain
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  dns-zone-fwd:
+    type: file
+    target: dns
+    path: /etc/bind/zones/techvault.local.zone
+    source:
+      name: techvault-dns-forward-zone
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-dns-forward-zone-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-dns-forward-zone
+          version: 0.1.0
+          digest: sha256:d12de977f09275e342454a58ca004f7909ff808c29143b4c6d4ecb14db611a82
+          media_type: text/plain
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  dns-zone-rev:
+    type: file
+    target: dns
+    path: /etc/bind/zones/172.20.rev
+    source:
+      name: techvault-dns-reverse-zone
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-dns-reverse-zone-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-dns-reverse-zone
+          version: 0.1.0
+          digest: sha256:ceb577f74bf3841ee10dae1a35e07afb921f9136bd4f9dbbd60d4afd1a4f0a02
+          media_type: text/plain
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  fileshare-smb-conf:
+    type: file
+    target: fileshare
+    path: /etc/samba/smb.conf
+    source:
+      name: techvault-fileshare-smb-conf
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-fileshare-smb-conf-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-fileshare-smb-conf
+          version: 0.1.0
+          digest: sha256:847edd4733cb764eba178c933831bf1af2359cd9042674994f70b91491a289e0
+          media_type: text/plain
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  # Full TechVault file-share loot tree. smb.conf advertises
+  # Public/Engineering/Finance/HR/IT-Backups/Shared; the red-team exercise
+  # mines the planted creds (engineering/deployments/deploy.sh), PII
+  # (hr/employees/directory.csv), wifi passwords (shared/wifi-passwords.txt),
+  # and a leaked deploy key in the IT-Backups share. The exact pack artifact
+  # carries the fixture rather than relying on a checkout path.
+  fileshare-shares:
+    type: directory
+    target: fileshare
+    destination: /srv/shares
+    source:
+      name: techvault-fileshare-shares
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-fileshare-shares-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-fileshare-shares
+          version: 0.1.0
+          digest: sha256:342bc178915bd1fc8d84d2a57511175ad386eec08ac2830b9757c8dc2847e726
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  # Workstation dev-user loot home. Planted
+  # credential artifacts (.bash_history, .pgpass, .config/credentials.json,
+  # projects/techvault-portal/{.env,deploy.sh}, Documents/onboarding-notes.txt,
+  # .ssh keypair) the attack path harvests off the compromised workstation.
+  workstation-dev-user-home:
+    type: directory
+    target: workstation
+    destination: /home/dev-user
+    source:
+      name: techvault-workstation-dev-user-home
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-workstation-dev-user-home-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-workstation-dev-user-home
+          version: 0.1.0
+          digest: sha256:a1a4f93fe5783a0ed1caf7c7bb78c1fae1506d4ab5eef34464f43b4e4884b4b7
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  # dev-user's leaked SSH private key is the real workstation -> victim
+  # lateral-movement pivot: the workstation pivot keypair from the
+  # `techvault-ssh-keys` generated artifact, whose public half victim already
+  # authorizes (victim-authorized-keys below). Placing its private half here as
+  # dev-user's ~/.ssh/id_rsa makes `ssh -i ~/.ssh/id_rsa labadmin@victim` from
+  # the compromised workstation work. The private key is generated per standup,
+  # so no id_rsa or PEM secret ships in the pack.
+  db-init-schema:
+    type: file
+    target: db
+    path: /opt/db-init/01-schema.sql
+    source:
+      name: techvault-db-init-schema
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-db-init-schema-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-db-init-schema
+          version: 0.1.0
+          digest: sha256:7a1748928d6222db2e3877ec8f6599ec7e1aec8c2956d2842b8e49e146c52981
+          media_type: application/sql
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  db-init-seed:
+    type: file
+    target: db
+    path: /opt/db-init/02-seed-data.sql
+    source:
+      name: techvault-db-init-seed
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-db-init-seed-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-db-init-seed
+          version: 0.1.0
+          digest: sha256:c98ab23427180f604ca9ccec5a00b426dc8d883a4102bbba24e76d5cda0f03dc
+          media_type: application/sql
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  # victim and workstation authorize both the operator control-plane key and
+  # the kali pivot key (target_authorized_keys is the two combined, generated
+  # at lab standup). kali itself is authorized with only the control-plane key,
+  # and separately receives the pivot key's *private* half to SSH out into
+  # these targets.
+  #
+  # victim additionally trusts the workstation pivot key below (Prime
+  # scenario lateral movement, workstation -> victim), so it gets its own
+  # combined file instead of sharing target_authorized_keys with workstation.
+  # ---------------------------------------------------------------------------
+  # Flag files receive per-run values from the instantiating backend.
+  victim-user-flag:
+    type: file
+    target: victim
+    path: /home/labadmin/user.txt
+    text: "${flag_victim_user}"
+    sensitive: true
+  victim-root-flag:
+    type: file
+    target: victim
+    path: /root/root.txt
+    text: "${flag_victim_root}"
+    sensitive: true
+  workstation-user-flag:
+    type: file
+    target: workstation
+    path: /home/dev-user/user.txt
+    text: "${flag_workstation_user}"
+    sensitive: true
+  workstation-root-flag:
+    type: file
+    target: workstation
+    path: /root/root.txt
+    text: "${flag_workstation_root}"
+    sensitive: true
+  webapp-user-flag:
+    type: file
+    target: webapp
+    path: /app/user.txt
+    text: "${flag_webapp_user}"
+    sensitive: true
+  webapp-root-flag:
+    type: file
+    target: webapp
+    path: /root/root.txt
+    text: "${flag_webapp_root}"
+    sensitive: true
+  fileshare-user-flag:
+    type: file
+    target: fileshare
+    path: /srv/shares/shared/user-flag.txt
+    text: "${flag_fileshare_user}"
+    sensitive: true
+  fileshare-root-flag:
+    type: file
+    target: fileshare
+    path: /root/root.txt
+    text: "${flag_fileshare_root}"
+    sensitive: true
+  ad-user-flag:
+    type: file
+    target: ad
+    path: /opt/flags/user.txt
+    text: "${flag_ad_user}"
+    sensitive: true
+  ad-root-flag:
+    type: file
+    target: ad
+    path: /root/root.txt
+    text: "${flag_ad_root}"
+    sensitive: true
+  mcp-red-sources:
+    type: directory
+    target: kali
+    destination: /opt/techvault/mcp
+    source:
+      name: techvault-red-mcp-sources
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-red-mcp-sources-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-red-mcp-sources
+          version: 0.1.0
+          digest: sha256:3536a2fd58eab9a2bfdc0ad90be4fdfd45bba9db1ef4acb5a54ff76126e7788e
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+  mcp-blue-sources:
+    type: directory
+    target: soc-workstation
+    destination: /opt/techvault/mcp
+    source:
+      name: techvault-blue-mcp-sources
+      version: 0.1.0
+      artifact_requirement:
+        requirement_id: techvault-blue-mcp-sources-requirement
+        explicitness: exact
+        exact_artifact:
+          artifact_id: techvault-blue-mcp-sources
+          version: 0.1.0
+          digest: sha256:74e850e04e5e428cc0bb4cd5e4a6480373cd1e9a2a686fb40a0e560cd941f111
+          media_type: application/x-tar
+        permitted_routes:
+          - mechanism:
+              mechanism: exact-artifact
+              profile: raes-env-pack-exact-copy
+              version: "1"
+              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
+            acquisition: copy
+            timing: pack-ingestion
+propositions:
+  misp-authenticated-api-ready:
+    description: MISP serves its canonical HTTPS identity and completes an authenticated API write and read through the declared MariaDB and Redis services.
+    subjects:
+      - nodes.misp.runtime.platform_applications.misp-threat-intelligence
+      - nodes.misp-db.runtime.database_services.misp-db
+      - nodes.misp-redis.runtime.datastore_services.misp-redis
+    basis: observed_state
+    quantifier: all
+    predicate:
+      kind: boolean
+      property: misp-authenticated-api-ready
+      semantic_ref: urn:techvault:observable:misp-authenticated-api-ready
+      expected: true
+    evidence_requirements: [misp-authenticated-api-readiness]
+  wazuh-agents-ready:
+    description: Each monitored host has one active, uniquely enrolled Wazuh identity and readable host-correlated telemetry, including after restart or recreation.
+    subjects: [nodes.webapp, nodes.ad, nodes.dns, nodes.fileshare, nodes.victim, nodes.workstation, nodes.db, nodes.suricata]
+    basis: observed_state
+    quantifier: all
+    predicate:
+      kind: boolean
+      property: wazuh-agent-ready
+      semantic_ref: urn:techvault:observable:wazuh-agent-ready
+      expected: true
+    evidence_requirements: [wazuh-agent-readiness]
+  cortex-enrichment-ready:
+    description: The exact TechVault analyzer executes offline and TheHive reports its authenticated Cortex connector ready.
+    subjects: [cortex, thehive]
+    basis: observed_state
+    predicate:
+      kind: boolean
+      property: cortex-enrichment-ready
+      semantic_ref: urn:raes:observable:cortex-enrichment-ready
+      expected: true
+    evidence_requirements: [cortex-enrichment-readback]
+  suricata-local-rules-ready:
+    description: The exact TechVault local corpus passes native configuration validation and all 16 declared SIDs are loaded.
+    subjects: [nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local]
+    basis: observed_state
+    predicate:
+      kind: boolean
+      property: network-detection-rule-source-ready
+      semantic_ref: urn:raes:observable:network-detection-rule-source-ready
+      expected: true
+    evidence_requirements: [suricata-local-rule-readiness]
+  suricata-login-sqli-detected:
+    description: A participant-equivalent SQL-injection request to the declared login route produces local SID 1000010 and Wazuh web-attack alert 303020.
+    subjects: [nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local]
+    basis: observed_state
+    predicate:
+      kind: boolean
+      property: network-detection-alert-sid-1000010-observed
+      semantic_ref: urn:raes:observable:network-detection-alert-observed
+      expected: true
+    evidence_requirements: [suricata-login-sqli-alert]
+assertions:
+  misp-authenticated-api-ready:
+    proposition: misp-authenticated-api-ready
+    role: postcondition
+  wazuh-agents-ready:
+    proposition: wazuh-agents-ready
+    role: precondition
+  cortex-enrichment-ready:
+    proposition: cortex-enrichment-ready
+    role: postcondition
+  suricata-local-rules-ready:
+    proposition: suricata-local-rules-ready
+    role: postcondition
+  suricata-login-sqli-detected:
+    proposition: suricata-login-sqli-detected
+    role: postcondition
+observation_boundaries:
+  participant-cortex-enrichment-view:
+    projection_basis: ordinary operator access through TheHive and Cortex APIs
+    observable_refs: [nodes.cortex, nodes.thehive]
+    redaction_policy: preserve analyzer identity and bounded result status while removing credentials
+    latency_profile: available after Cortex reaches its declared ready state
+evidence_requirements:
+  misp-authenticated-api-readiness:
+    description: Records bounded authenticated MISP, MariaDB, Redis, and TLS readiness results without configuration bodies or credential material.
+    source_refs:
+      - nodes.misp.runtime.platform_applications.misp-threat-intelligence
+      - nodes.misp-db.runtime.database_services.misp-db
+      - nodes.misp-redis.runtime.datastore_services.misp-redis
+    scope_refs: [nodes.misp, nodes.misp-db, nodes.misp-redis]
+    scope: >-
+      On a clean realization, record the canonical MISP URL and certificate
+      verification result, an authenticated API write/read result, the declared
+      database identity and application-role access result, and authenticated
+      Redis access with the declared cache policy. Missing, anonymous,
+      substituted, stale, or contradictory state fails readiness. Report only
+      bounded statuses, stable identities, and correlation ids; omit backend
+      choices, credential values, and configuration bodies.
+    boundary_kind: system_under_test
+    channel: api_response
+    media_types: [application/json]
+    artifact_role: service_materialization_readback
+    sensitivity: plain
+    redaction: redact_secrets
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+  wazuh-agent-readiness:
+    description: Per-host enrollment and telemetry readiness without enrollment credentials or raw log content.
+    source_refs:
+      - nodes.wazuh-manager.runtime.security_monitoring_managers.wazuh-manager
+      - nodes.webapp.runtime.forwarding_agents.webapp-access-forwarder
+      - nodes.ad.runtime.forwarding_agents.ad-samba-forwarder
+      - nodes.dns.runtime.forwarding_agents.dns-query-forwarder
+      - nodes.fileshare.runtime.forwarding_agents.fileshare-samba-forwarder
+      - nodes.victim.runtime.forwarding_agents.victim-system-forwarder
+      - nodes.workstation.runtime.forwarding_agents.workstation-system-forwarder
+      - nodes.db.runtime.forwarding_agents.db-postgres-forwarder
+      - nodes.suricata.runtime.forwarding_agents.suricata-eve-forwarder
+    scope_refs: [nodes.webapp, nodes.ad, nodes.dns, nodes.fileshare, nodes.victim, nodes.workstation, nodes.db, nodes.suricata, nodes.wazuh-manager]
+    scope: >-
+      For each subject, correlate the declared forwarding agent with exactly one
+      active manager member by its stable enrollment name and node reference.
+      Missing, duplicate, stale or disconnected required identities fail readiness.
+      Confirm readable declared log sources and fresh telemetry attributed to that
+      identity before and after restart or recreation, preserving compatible
+      enrollment. PostgreSQL and Suricata retain their own source ownership;
+      Suricata EVE, generic syslog and manager health do not prove another host's
+      endpoint-agent readiness. Report bounded identity/status/correlation results
+      and loss; omit enrollment keys, credentials and raw event bodies.
+    boundary_kind: system_under_test
+    channel: file_artifact
+    media_types: [application/json]
+    artifact_role: service_materialization_readback
+    sensitivity: plain
+    redaction: redact_secrets
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+  cortex-enrichment-readback:
+    description: Records the exact enabled analyzer identity, a successful bounded report for the scenario attacker IP, and TheHive's Cortex connector status without credentials or full report bodies.
+    source_refs:
+      - nodes.cortex.runtime.platform_applications.cortex-enrichment
+      - nodes.thehive.runtime.platform_applications.thehive-case-management
+    scope_refs: [nodes.cortex, nodes.thehive]
+    scope: Exact analyzer inventory, successful TechVaultScenarioContext_1_0 execution for 172.20.1.30, and TheHive Cortex connector status OK.
+    boundary_ref: participant-cortex-enrichment-view
+    boundary_kind: system_under_test
+    channel: api_response
+    artifact_role: service_materialization_readback
+    media_types: [application/json]
+    sensitivity: plain
+    redaction: redact_secrets
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+  suricata-local-rule-readiness:
+    description: Records admitted content identities, configuration success, selected files, and the loaded 16-SID local corpus without recording rule bodies or host paths.
+    source_refs:
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.suricata-builtin
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local
+    scope_refs:
+      - nodes.suricata
+      - content.suricata-config
+      - content.suricata-local-rules
+    scope: Exact content identities and realized-byte digests, Suricata configuration result, selected source paths, and active local SIDs and count.
+    boundary_kind: system_under_test
+    channel: log
+    artifact_role: network_detection_rule_readiness
+    media_types: [text/plain]
+    sensitivity: plain
+    redaction: redact_sensitive
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+  suricata-login-sqli-alert:
+    description: Captures the exact EVE alert for local SID 1000010 and its Wazuh 303020 correlation after a participant-equivalent login SQL-injection request.
+    source_refs:
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.output_streams.eve-json
+      - nodes.wazuh-manager.runtime.security_monitoring_managers.wazuh-manager.content_sets.suricata-rules
+    scope_refs:
+      - nodes.webapp.runtime.applications.techvault-portal
+      - nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local
+    scope: A fresh Kali-to-webapp POST /login containing UNION SELECT must yield Suricata signature_id 1000010 and Wazuh rule id 303020; unrelated alerts and aggregate counts do not satisfy this requirement.
+    trigger_ref: nodes.webapp.runtime.applications.techvault-portal
+    boundary_kind: participant_equivalent
+    channel: log
+    artifact_role: network_detection_alert
+    media_types: [application/x-ndjson]
+    sensitivity: plain
+    redaction: redact_sensitive
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+  redteam-session-transcript:
+    description: >-
+      Records the red team's interactive command-line activity, the commands issued and the responses returned, so research can reconstruct what the red team actually did.
+    source_class: apparatus
+    scope_refs:
+      - nodes.kali
+    scope: >-
+      Every interactive shell session on the red-team workstation, with the commands issued and the responses returned, attributable to a session and ordered in time.
+    window: the full run, from range readiness through teardown
+    channel: participant_output
+    artifact_role: participant_session_transcript
+    media_types: [text/plain]
+    sensitivity: plain
+    redaction: redact_secrets
+    integrity: chain_of_custody
+    retention: run_lifetime
+    loss_disclosure: required
+# Realizable accounts: the deployment backend ensures these groups, users,
+# memberships, and non-secret attributes on the resolved `ad` node and verifies
+# them by read-after-write. Declares identity only (no password material); the
+# concrete credential is generated inside the target provider and never crosses
+# the SDL or run evidence. Accounts the AD provisioner also creates are
+# reconciled rather than re-created, so the provisioner-owned weak passwords
+# (the intentional attack surface) are preserved. This is a representative
+# subset of the full weak/Kerberoastable/over-privileged roster.
+identity_domains:
+  techvault:
+    profile: active_directory
+    dns_name: techvault.local
+    netbios_name: TECHVAULT
+    authority_account_ref: ad-emily-chen
+relationships:
+  misp-uses-database:
+    type: connects_to
+    source: nodes.misp.runtime.applications.misp-web
+    target: nodes.misp-db.runtime.database_services.misp-db
+    database_access:
+      role_ref: misp-application-role
+      auth_method: password
+      description: MISP authenticates as the declared application role; the open backend selects and applies the credential bytes consistently.
+  thehive-uses-cortex-enrichment:
+    type: connects_to
+    source: thehive
+    target: cortex
+    service_integration:
+      consumer_ref: thehive-case-management
+      engine_ref: cortex-enrichment
+      integration_kind: enrichment
+      auth_principal_ref: thehive-cortex-connector
+      enabled: true
+      direction: outbound
+      description: TheHive submits observables to Cortex using its dedicated read/analyze service account.
+  ad-controls-techvault-domain:
+    type: domain_controller_for
+    source: ad
+    target: techvault
+    domain_controller: {}
+entities:
+  red-team:
+    name: Red Team
+    role: red
+    description: The attacking participant operating from Kali.
+  blue-team:
+    name: Blue Team
+    role: blue
+    description: Defensive participant operating from the SOC workstation.
+agents:
+  red-team-operator:
+    entity: red-team
+    description: Red-team participant working from the Kali host.
+    interactive_access:
+      kali-ssh:
+        target_ref: kali
+        channel: ssh
+  blue-team-operator:
+    entity: blue-team
+    description: Blue-team participant using the defensive stdio MCP tools from the SOC workstation.
+    interactive_access:
+      soc-workstation-ssh:
+        target_ref: soc-workstation
+        channel: ssh
+accounts:
+  ad-administrator:
+    username: Administrator
+    node: ad
+    groups: ["Domain Admins"]
+    password_strength: weak
+    description: Built-in domain administrator.
+    domain_ref: techvault
+  ad-sarah-mitchell:
+    username: sarah.mitchell
+    node: ad
+    groups: [Executives]
+    password_strength: strong
+    description: CEO.
+    mail: sarah.mitchell@techvault.local
+    domain_ref: techvault
+  ad-james-rodriguez:
+    username: james.rodriguez
+    node: ad
+    groups: [Executives, IT-Admins]
+    password_strength: strong
+    description: CTO.
+    mail: james.rodriguez@techvault.local
+    domain_ref: techvault
+  ad-lisa-chang:
+    username: lisa.chang
+    node: ad
+    groups: [Executives, Sales]
+    password_strength: medium
+    description: VP of Sales.
+    mail: lisa.chang@techvault.local
+    domain_ref: techvault
+  ad-emily-chen:
+    username: emily.chen
+    node: ad
+    groups: [Engineering, IT-Admins, "Domain Admins"]
+    password_strength: medium
+    description: DevOps Lead, over-privileged with Domain Admin.
+    mail: emily.chen@techvault.local
+    domain_ref: techvault
+  ad-michael-thompson:
+    username: michael.thompson
+    node: ad
+    groups: [Engineering]
+    password_strength: weak
+    description: Senior Developer with a seasonal password.
+    mail: michael.thompson@techvault.local
+    domain_ref: techvault
+  ad-david-kim:
+    username: david.kim
+    node: ad
+    groups: [Engineering, IT-Admins]
+    password_strength: strong
+    description: Security Engineer.
+    mail: david.kim@techvault.local
+    domain_ref: techvault
+  ad-jessica-williams:
+    username: jessica.williams
+    node: ad
+    groups: [Sales, VPN-Users]
+    password_strength: weak
+    description: Customer Success Manager.
+    mail: jessica.williams@techvault.local
+    domain_ref: techvault
+  ad-robert-martinez:
+    username: robert.martinez
+    node: ad
+    groups: [Sales]
+    password_strength: medium
+    description: Marketing Manager.
+    mail: robert.martinez@techvault.local
+    domain_ref: techvault
+  ad-svc-sql:
+    username: svc-sql
+    node: ad
+    password_strength: weak
+    description: SQL Server service account, Kerberoastable.
+    spn: MSSQLSvc/db.techvault.local:1433
+    domain_ref: techvault
+  ad-svc-web:
+    username: svc-web
+    node: ad
+    password_strength: weak
+    description: Web application service account, Kerberoastable.
+    spn: HTTP/webapp.techvault.local
+    domain_ref: techvault
+  ad-svc-backup:
+    username: svc-backup
+    node: ad
+    groups: ["Domain Admins"]
+    password_strength: medium
+    description: Backup service account, over-privileged with Domain Admin.
+    domain_ref: techvault
+  ad-contractor-temp:
+    username: contractor.temp
+    node: ad
+    groups: [VPN-Users, Remote-Desktop, Engineering]
+    password_strength: weak
+    description: Abandoned external contractor account with a default password.
+    domain_ref: techvault
+  ad-former-employee:
+    username: former.employee
+    node: ad
+    password_strength: weak
+    description: Former employee account that should have been removed; still enabled.
+    disabled: false
+    domain_ref: techvault
