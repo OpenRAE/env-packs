@@ -1,0 +1,1085 @@
+{
+  "schema_version": "external-concept-bindings/v1",
+  "binding_set_id": "techvault-weakness-classifications",
+  "binding_set_version": "1.0.0",
+  "bindings": {
+    "webapp-cmdi-ping": {
+      "binding_id": "webapp-cmdi-ping",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.ping-tool",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-78"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "Command injection in the ping tool: The /tools/ping host parameter reaches a shell without sanitization.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-cmdi-ping"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-cmdi-ping"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/10/vulnerability_refs/0"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-debug-endpoint": {
+      "binding_id": "webapp-debug-endpoint",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.debug",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-489"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "Debug endpoint exposed: /debug is reachable in the running application.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-debug-endpoint"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-debug-endpoint"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/13/vulnerability_refs/0"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-env-disclosure": {
+      "binding_id": "webapp-env-disclosure",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.debug",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-538"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "Environment file disclosure: The application serves its own .env content.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-env-disclosure"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-env-disclosure"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/13/vulnerability_refs/1"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-hardcoded-secrets": {
+      "binding_id": "webapp-hardcoded-secrets",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.api-token",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-798"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "Hardcoded application secrets: The Flask session key and JWT secret are literals in the application source.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-hardcoded-secrets"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-hardcoded-secrets"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/9/vulnerability_refs/1"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-idor-files": {
+      "binding_id": "webapp-idor-files",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.api-file",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-639"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "IDOR on the file API: /api/v1/files/<id> performs no ownership check.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-idor-files"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-idor-files"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/6/vulnerability_refs/0"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-idor-users": {
+      "binding_id": "webapp-idor-users",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.api-user",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-639"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "IDOR on the user API: /api/v1/users/<id> performs no authorization check and returns an API key.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-idor-users"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-idor-users"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/7/vulnerability_refs/0"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-missing-authz-admin": {
+      "binding_id": "webapp-missing-authz-admin",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.admin",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-862"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "Missing role check on the admin page: /admin is reachable by any authenticated user and exposes stored cloud credentials.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-missing-authz-admin"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-missing-authz-admin"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/4/vulnerability_refs/0"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-sqli-login": {
+      "binding_id": "webapp-sqli-login",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.login",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-89"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "SQL injection in login: Login form accepts intentionally vulnerable SQL input.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-sqli-login"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-sqli-login"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/1/vulnerability_refs/0"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-sqli-search": {
+      "binding_id": "webapp-sqli-search",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.search",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-89"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "SQL injection in search: The /search query parameter is interpolated into SQL. This is the path the range's detection chain exercises.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-sqli-search"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-sqli-search"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/11/vulnerability_refs/0"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-unrestricted-upload": {
+      "binding_id": "webapp-unrestricted-upload",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.upload",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-434"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "Unrestricted file upload: Uploads are neither type- nor size-checked, and the filename allows traversal.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-unrestricted-upload"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-unrestricted-upload"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/5/vulnerability_refs/0"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-verbose-errors": {
+      "binding_id": "webapp-verbose-errors",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.login",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-209"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "Verbose error disclosure: Error responses reveal internal detail.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-verbose-errors"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-verbose-errors"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/1/vulnerability_refs/1"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-weak-jwt": {
+      "binding_id": "webapp-weak-jwt",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.api-token",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-330"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "Weak JWT secret with no expiry: Tokens are signed with a guessable secret and never expire.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-weak-jwt"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-weak-jwt"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/9/vulnerability_refs/0"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-xss-reflected": {
+      "binding_id": "webapp-xss-reflected",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.search",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-79"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "Reflected XSS in search results: The search query is rendered back into the page unescaped.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-xss-reflected"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-xss-reflected"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/11/vulnerability_refs/1"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    },
+    "webapp-xss-stored": {
+      "binding_id": "webapp-xss-stored",
+      "subject": {
+        "subject_kind": "runtime-application-route",
+        "owning_contract_id": "sdl-authoring-input-v1",
+        "lifecycle_phase": "normalized-authoring",
+        "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.comment",
+        "artifact_digest": "sha256:631d3ca119b18647d2f32a7fbe229c9bad5a224f51ffc1c61831741f1d9d9b74"
+      },
+      "scheme": {
+        "scheme_id": "mitre-cwe",
+        "authority": "MITRE Common Weakness Enumeration",
+        "revision": "4.20",
+        "source_locator": "https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip",
+        "source_digest": "sha256:3976f599e5e5200219a3108bb896d06e2a88fbb293369e1883cb423a5e9d7d50",
+        "concept_id": "CWE-79"
+      },
+      "assertion": {
+        "relationship_kind": "instance-of",
+        "motivation": "Stored XSS in comments: Comment bodies are stored and rendered without sanitization.",
+        "motivation_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-xss-stored"
+          }
+        ],
+        "semantic_effect": "annotates",
+        "semantic_effect_basis_refs": [
+          {
+            "ref_kind": "profile",
+            "ref_id": "external-concept-bindings/v1"
+          }
+        ]
+      },
+      "perspective": {
+        "asserting_party_kind": "author",
+        "asserting_party_ref": "authors.techvault",
+        "perspective": "scenario-author-weakness-classification",
+        "authority_basis_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/vulnerabilities/webapp-xss-stored"
+          }
+        ]
+      },
+      "provenance": {
+        "asserted_at": "2026-09-13T00:00:00Z",
+        "source_refs": [
+          {
+            "ref_kind": "authoring-input",
+            "ref_id": "packs/techvault/sdl/techvault.sdl.yaml",
+            "ref_version": "80119d67a76aef6342f21ef425b14bf9af1de5a6",
+            "ref_digest": "sha256:a46216e47291f810bb709b2469eaaf83ff87b09cef6d0dfd6e70f1dbd4c48e8e",
+            "ref_path": "/nodes/webapp/runtime/applications/0/routes/12/vulnerability_refs/0"
+          }
+        ]
+      },
+      "confidence": {
+        "posture": "high",
+        "basis": "The scenario author declared this weakness on this route as intentional scenario content."
+      },
+      "approximation": {
+        "posture": "exact"
+      },
+      "limitations": [
+        "The classification annotates the route; it neither grants a capability nor proves the weakness is realized."
+      ],
+      "review": {
+        "status": "unreviewed"
+      }
+    }
+  }
+}

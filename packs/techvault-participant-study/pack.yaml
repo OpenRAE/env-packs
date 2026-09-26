@@ -1,0 +1,18 @@
+name: techvault-participant-study
+title: TechVault Participant Study
+version: 0.1.0
+status: built
+description: >-
+  The TechVault enterprise intrusion environment plus an SDL-authored,
+  Claude Code realized red and blue participant sequence.
+authors:
+  - Brad Edwards
+license: MIT
+requirement: "OpenRAE/env-packs#234"
+contents:
+  flag_layer: false
+  reference_triangle: false
+  profile_bundles: true
+compatibility_manifest: pack.compatibility.yaml
+provenance_ledger: docs/provenance-ledger.yaml
+associated_artifact_manifest: associated-artifacts.json
