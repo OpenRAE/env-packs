@@ -320,9 +320,9 @@ cryptography==50.0.1 \
     #   aces-sdl
     #   asyncssh
     #   pyjwt
-cyclonedx-bom==7.3.0 \
-    --hash=sha256:73d7d76b3a28ebadc50eabf424cbcf128785a74b8a59ce7893da2e29cfaab585 \
-    --hash=sha256:d54080d65731980945de38e52009a5e5711f4a3c31377a3d13af96eaca5fcf3d
+cyclonedx-bom==7.4.0 \
+    --hash=sha256:425862a74a6660cfa867fd4bc3dff34ca1cec49549594e4a9096663135426cfe \
+    --hash=sha256:75756389cef95b9bb1d9c8d0c5b884719c2bfeb595109e2ed5321598a141bf4a
     # via -r requirements/recovery-v2.0.2.in
 cyclonedx-python-lib[validation]==11.11.0 \
     --hash=sha256:3049fc83e06a059b5c5907a527625a8ed5073caab10607ed4c9e5503b590fd44 \
