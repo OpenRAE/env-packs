@@ -6,16 +6,19 @@ import os
 import tempfile
 import unittest
 
+import yaml
+
 from raes_env_packs import distribution as dist
 from raes_env_packs import release
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_HERE)
 _TECHVAULT = os.path.join(_REPO, "packs", "techvault")
+with open(os.path.join(_TECHVAULT, "pack.yaml"), encoding="utf-8") as _pack_metadata:
+    _PACK_VERSION = yaml.safe_load(_pack_metadata)["version"]
 
 
 def _read_set_digest(evidence_dir: str) -> str:
-    import yaml
     with open(os.path.join(evidence_dir, "release.yaml"), encoding="utf-8") as fh:
         profile = yaml.safe_load(fh)
     return profile["release"]["source_set"]["set_digest"]
@@ -30,7 +33,7 @@ def setUpModule() -> None:
     _STATE["out"] = tempfile.TemporaryDirectory()
     _meta, failures = release.build_release(_TECHVAULT, _STATE["out"].name, publish=True)
     assert not failures, failures
-    _STATE["evidence"] = os.path.join(_STATE["out"].name, "techvault-0.1.0")
+    _STATE["evidence"] = os.path.join(_STATE["out"].name, f"techvault-{_PACK_VERSION}")
 
 
 def tearDownModule() -> None:
@@ -59,7 +62,7 @@ class ReadOnlyPlanTests(_Fixture):
         self.assertIn("lock_digest", plan.resolved)
 
     def test_publish_plan_classifies_signing_and_registry_effects(self) -> None:
-        selector = dist.Selector(repository="ghcr.io/openrae/env-packs/techvault", reference="0.1.0")
+        selector = dist.Selector(repository="ghcr.io/openrae/env-packs/techvault", reference=_PACK_VERSION)
         plan = dist.plan_publish(self.evidence, selector=selector)
         kinds = {effect.kind for effect in plan.effects}
         self.assertIn(dist.EFFECT_SIGNING, kinds)
@@ -228,7 +231,7 @@ class CliTests(_Fixture):
     def test_publish_cli_shows_the_plan(self) -> None:
         code, text, _ = self._run(
             ["publish", "--release", self.evidence,
-             "--repository", "ghcr.io/openrae/env-packs/techvault", "--reference", "0.1.0"])
+             "--repository", "ghcr.io/openrae/env-packs/techvault", "--reference", _PACK_VERSION])
         self.assertEqual(code, dist.EXIT_OK)
         self.assertIn("signing", text)
 

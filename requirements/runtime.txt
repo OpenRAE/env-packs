@@ -646,9 +646,9 @@ pyyaml==6.0.3 \
     #   raes-env-packs (pyproject.toml)
     #   raes
     #   uvicorn
-raes==5.0.0 \
-    --hash=sha256:4baa4f7addb1c6ed624ee6eeed961e41937a10512dccad86f8345f94d2389840 \
-    --hash=sha256:6e36a11dcc05ba1dc4024b8ce927ddb68721b3658730517c9211fd7d7e88489f
+raes==6.0.1 \
+    --hash=sha256:3e97f42d42564acc1740757157ffd35a8c6373487845e987a314da54388a06c0 \
+    --hash=sha256:8ab156fb1b9c1f0b467c08d98c0695403224ad3c6f2b7835e30b570f8741e67f
     # via raes-env-packs (pyproject.toml)
 referencing==0.37.0 \
     --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231 \

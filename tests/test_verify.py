@@ -8,11 +8,15 @@ import os
 import tempfile
 import unittest
 
+import yaml
+
 from raes_env_packs import release, verify
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_HERE)
 _TECHVAULT = os.path.join(_REPO, "packs", "techvault")
+with open(os.path.join(_TECHVAULT, "pack.yaml"), encoding="utf-8") as _pack_metadata:
+    _PACK_VERSION = yaml.safe_load(_pack_metadata)["version"]
 
 
 _STATE: dict = {}
@@ -24,7 +28,7 @@ def setUpModule() -> None:
     _STATE["out"] = tempfile.TemporaryDirectory()
     metadata, failures = release.build_release(_TECHVAULT, _STATE["out"].name, publish=True)
     assert not failures, failures
-    _STATE["release_dir"] = os.path.join(_STATE["out"].name, "techvault-0.1.0")
+    _STATE["release_dir"] = os.path.join(_STATE["out"].name, f"techvault-{_PACK_VERSION}")
     _STATE["evidence"] = verify.load_release_evidence(_STATE["release_dir"])
 
 
@@ -107,7 +111,7 @@ class TamperTests(_PublishedFixture):
         with tempfile.TemporaryDirectory() as out:
             release.build_release(_TECHVAULT, out)  # publish=False
             profile, sbom_doc, prov_doc = verify.load_release_evidence(
-                os.path.join(out, "techvault-0.1.0"))
+                os.path.join(out, f"techvault-{_PACK_VERSION}"))
             result = verify.verify_pack_release(
                 _TECHVAULT, release_profile=profile,
                 sbom_document=sbom_doc, provenance_document=prov_doc)
