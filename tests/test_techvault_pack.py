@@ -50,6 +50,7 @@ from tools import build_techvault_mcp_artifacts as mcp_builder
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _PACK = _ROOT / "packs" / "techvault"
+_PACK_VERSION = yaml.safe_load((_PACK / "pack.yaml").read_text(encoding="utf-8"))["version"]
 _SDL = _PACK / "sdl" / "techvault.sdl.yaml"
 _BINDINGS = _PACK / "sdl" / "techvault.bindings.json"
 _SCHEMES = _PACK / "sdl" / "techvault.schemes.json"
@@ -2147,7 +2148,7 @@ class TechVaultPackTests(unittest.TestCase):
                 self.assertEqual(requirement["explicitness"], "exact")
                 exact = requirement["exact_artifact"]
                 self.assertEqual(exact["artifact_id"], artifact_id)
-                self.assertEqual(exact["version"], "0.1.0")
+                self.assertEqual(exact["version"], _PACK_VERSION)
 
                 route = requirement["permitted_routes"]
                 self.assertEqual(len(route), 1)
@@ -2899,7 +2900,7 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
         for agent_id, (entity_id, target) in expected.items():
             with self.subTest(agent=agent_id):
                 agent = scenario.agents[agent_id]
-                self.assertEqual(agent.entity, entity_id)
+                self.assertEqual(agent.affiliations, [entity_id])
                 self.assertEqual(
                     {(item.target_ref, item.channel.value) for item in agent.interactive_access.values()},
                     {(target, "ssh")},
@@ -3321,7 +3322,7 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
         scenario = parse_sdl_file(_SDL)
         self.assertEqual(scenario.entities["red-team"].role.value, "red")
         operator = scenario.agents["red-team-operator"]
-        self.assertEqual(operator.entity, "red-team")
+        self.assertEqual(operator.affiliations, ["red-team"])
         self.assertEqual(
             {
                 (access.target_ref, access.channel.value)

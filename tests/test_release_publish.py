@@ -15,6 +15,8 @@ from raes_env_packs import sbom as sbom_module
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_HERE)
 _TECHVAULT = os.path.join(_REPO, "packs", "techvault")
+with open(os.path.join(_TECHVAULT, "pack.yaml"), encoding="utf-8") as _pack_metadata:
+    _PACK_VERSION = yaml.safe_load(_pack_metadata)["version"]
 
 
 class LocalProjectionTests(unittest.TestCase):
@@ -25,8 +27,8 @@ class LocalProjectionTests(unittest.TestCase):
             self.assertEqual(metadata["schema_version"], "environment-pack-publication/v2")
             self.assertNotIn("evidence", metadata)
             self.assertFalse(
-                os.path.exists(os.path.join(out, "techvault-0.1.0",
-                                            "techvault-0.1.0.cdx.json"))
+                os.path.exists(os.path.join(out, f"techvault-{_PACK_VERSION}",
+                                            f"techvault-{_PACK_VERSION}.cdx.json"))
             )
 
 
@@ -36,7 +38,7 @@ class PublishedReleaseTests(unittest.TestCase):
         cls._out = tempfile.TemporaryDirectory()
         cls.metadata, cls.failures = release.build_release(
             _TECHVAULT, cls._out.name, publish=True)
-        cls.release_root = os.path.join(cls._out.name, "techvault-0.1.0")
+        cls.release_root = os.path.join(cls._out.name, f"techvault-{_PACK_VERSION}")
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -51,13 +53,13 @@ class PublishedReleaseTests(unittest.TestCase):
         self.assertEqual(evidence["builder"]["id"], release._builder_id())
 
     def test_evidence_files_are_written_beside_the_views(self) -> None:
-        for name in ("techvault-0.1.0.cdx.json", "techvault-0.1.0.provenance.json",
+        for name in (f"techvault-{_PACK_VERSION}.cdx.json", f"techvault-{_PACK_VERSION}.provenance.json",
                      "release.yaml"):
             self.assertTrue(os.path.isfile(os.path.join(self.release_root, name)), name)
 
     def test_written_sbom_digest_matches_the_evidence_reference(self) -> None:
         import hashlib
-        with open(os.path.join(self.release_root, "techvault-0.1.0.cdx.json"), "rb") as fh:
+        with open(os.path.join(self.release_root, f"techvault-{_PACK_VERSION}.cdx.json"), "rb") as fh:
             raw = fh.read()
         self.assertEqual(
             "sha256:" + hashlib.sha256(raw).hexdigest(),
@@ -65,7 +67,7 @@ class PublishedReleaseTests(unittest.TestCase):
         )
 
     def test_sbom_covers_portable_content_without_backend_images(self) -> None:
-        with open(os.path.join(self.release_root, "techvault-0.1.0.cdx.json")) as fh:
+        with open(os.path.join(self.release_root, f"techvault-{_PACK_VERSION}.cdx.json")) as fh:
             doc = json.load(fh)
         self.assertEqual(doc["bomFormat"], "CycloneDX")
         self.assertGreaterEqual(len(doc["components"]), 30)
@@ -79,21 +81,21 @@ class PublishedReleaseTests(unittest.TestCase):
         self.assertIn("raes:associated-artifact-set-digest", props)
 
     def test_written_evidence_passes_its_own_consumer_gate(self) -> None:
-        with open(os.path.join(self.release_root, "techvault-0.1.0.cdx.json")) as fh:
+        with open(os.path.join(self.release_root, f"techvault-{_PACK_VERSION}.cdx.json")) as fh:
             sbom_doc = json.load(fh)
-        with open(os.path.join(self.release_root, "techvault-0.1.0.provenance.json")) as fh:
+        with open(os.path.join(self.release_root, f"techvault-{_PACK_VERSION}.provenance.json")) as fh:
             prov_doc = json.load(fh)
         set_digest = self.metadata["release"]["source_set"]["set_digest"]
         refs = frozenset(c["bom-ref"] for c in sbom_doc["components"])
         self.assertEqual(
             sbom_module.validate_sbom_document(
-                sbom_doc, expected_name="techvault", expected_version="0.1.0",
+                sbom_doc, expected_name="techvault", expected_version=_PACK_VERSION,
                 expected_set_digest=set_digest, expected_component_refs=refs),
             [],
         )
         self.assertEqual(
             release_provenance.validate_release_provenance(
-                prov_doc, expected_name="techvault", expected_version="0.1.0",
+                prov_doc, expected_name="techvault", expected_version=_PACK_VERSION,
                 expected_set_digest=set_digest,
                 expected_sbom_digest=self.metadata["evidence"]["sbom"]["digest"]),
             [],

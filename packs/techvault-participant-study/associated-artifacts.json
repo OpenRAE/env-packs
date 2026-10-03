@@ -1,7 +1,7 @@
 {
   "schema_version": "associated-artifact-manifest/v1",
   "manifest_id": "techvault-participant-study-associated-artifacts",
-  "manifest_version": "0.1.0",
+  "manifest_version": "0.1.1",
   "canonicalization_profile": "associated-artifact-set/v1",
   "scope": "scenario",
   "parent_ref": {
@@ -547,7 +547,7 @@
       "uri": "raes-environment-pack:/pack.compatibility.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "11592e4c23fe22092c9c7aeb06c18c0d4bf27992c8ac8cf868a5a23f52156735"
+        "value": "079837132da23c786ecfa8991a810e50dc3c7d79fbe0b89b22f7aec2fc5c1f87"
       },
       "size_bytes": 1607,
       "created_at": "2026-08-02T00:00:00Z",
@@ -563,7 +563,7 @@
       "uri": "raes-environment-pack:/pack.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "ad659b564b3bfc38206a61f94d8b2422a941666740529939ba63ec24da671171"
+        "value": "e2f0a8063d8770e37a68f98bb139f5aa3ae1729f35d0b20319508672559467cc"
       },
       "size_bytes": 552,
       "created_at": "2026-08-02T00:00:00Z",
@@ -595,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault-participant-study.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "08d6197a94bceb75325d63bb5e469c188534a93cc99a1f14d967964af4b1ab06"
+        "value": "7c4c678ebe41cedfb06d9cf879bc8db7886229a54e8f699f0310045b2bddd854"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -627,9 +627,9 @@
       "uri": "raes-environment-pack:/sdl/techvault-participant-study.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "1fec5130185eadea28157af10fb76c3394ad21c349d2849628d0f4e5c3fc1e24"
+        "value": "bacbfb918bff2fab5bc730bce2ac1668fbc409e007dd84f17d47496d23cb73e0"
       },
-      "size_bytes": 167003,
+      "size_bytes": 166927,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -733,5 +733,5 @@
       "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:94dc0236f3e2d4c62db782040acd73b1739ba0bf12adec580289a916fbfcce5a"
+  "set_digest": "sha256:fdde7b1a8b9377f7ddd473417de1f3fd3e24549e4560d8d6392f1727b3af5357"
 }
