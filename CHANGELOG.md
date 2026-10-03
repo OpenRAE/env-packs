@@ -11,6 +11,28 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.2.0](https://github.com/OpenRAE/env-packs/compare/v6.1.0...v6.2.0) (2026-10-03)
+
+
+### Features
+
+* add missing infrastructure kits ([#383](https://github.com/OpenRAE/env-packs/issues/383)) ([fc07c71](https://github.com/OpenRAE/env-packs/commit/fc07c71a0ac8c94b45611a9d54da34067536b9cf))
+* add TechVault participant study pack ([#394](https://github.com/OpenRAE/env-packs/issues/394)) ([acf2d47](https://github.com/OpenRAE/env-packs/commit/acf2d47ff3d60a26d7f5dd934c5afeb068a2d1ac))
+
+
+### Bug Fixes
+
+* **deps:** bump coverage from 7.16.0 to 7.16.1 ([#385](https://github.com/OpenRAE/env-packs/issues/385)) ([5a1a50c](https://github.com/OpenRAE/env-packs/commit/5a1a50c310e4f042864bf1bf713a0d849112d50a))
+* **deps:** bump uvicorn from 0.52.4 to 0.53.0 ([#387](https://github.com/OpenRAE/env-packs/issues/387)) ([0198fca](https://github.com/OpenRAE/env-packs/commit/0198fca735917f35fa7485062ad8aab81d58c9e5))
+* update TechVault study for RAES 6.0.1 ([#402](https://github.com/OpenRAE/env-packs/issues/402)) ([e047447](https://github.com/OpenRAE/env-packs/commit/e0474479d4885f75c50a70d444afa1c123446d93))
+
+
+### Documentation
+
+* demonstrate two-audience delivery bundles ([#382](https://github.com/OpenRAE/env-packs/issues/382)) ([443248d](https://github.com/OpenRAE/env-packs/commit/443248d9e236c6b10cc62b01a4f8a87d663ff9eb))
+* evaluate advanced reusable kit families ([#380](https://github.com/OpenRAE/env-packs/issues/380)) ([7fde5a5](https://github.com/OpenRAE/env-packs/commit/7fde5a5769ff63d5fa6b3220e29bfe9a38405b26))
+* **kits:** demonstrate defensive-tooling composition ([#381](https://github.com/OpenRAE/env-packs/issues/381)) ([abfd531](https://github.com/OpenRAE/env-packs/commit/abfd531bb620906a0880f863ebe04c324ced9c55))
+
 ## [6.1.0](https://github.com/OpenRAE/env-packs/compare/v6.0.1...v6.1.0) (2026-09-16)
 
 
