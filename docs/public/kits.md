@@ -93,6 +93,12 @@ application, data, and observability services. Namespace, export, version,
 dependency, path, visibility, parameter, source, and author-modification
 conflicts are blocking diagnostics.
 
+For a complete security-operations example, follow the verified
+[defensive-tooling composition](defensive-tooling-composition.md) walkthrough.
+It composes the published Wazuh, Suricata, and TheHive releases, declares one
+supported relationship at the pack root, and keeps static environment state
+separate from runtime telemetry and backend realization.
+
 ## Update, replace, and remove
 
 The materialization id is the namespace selected during add. Update keeps the

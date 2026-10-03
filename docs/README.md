@@ -19,6 +19,17 @@ User-facing documentation is under [`public/`](public/index.md).
 - [Pack-aware MCP authoring preflight](development/pack-authoring-mcp-preflight.md)
   — shared contracts, proposal approval, static safety, and RAES delegation
   guardrails for issue #192.
+- [Advanced kit evaluation preflight](development/advanced-kit-evaluation-preflight.md)
+  — evidence requirements, carrier boundaries, and existing validation/security
+  guardrails for issue #224.
+- [Advanced reusable-content evaluation](development/advanced-kit-evaluation.md)
+  — candidate ranking, source evidence, carrier decisions and admission lessons.
+- [Defensive-tooling composition preflight](development/defensive-tooling-composition-preflight.md)
+  — pack-root relationship, lifecycle ordering, and static-evidence guardrails
+  for issue #378.
+- [Two-audience delivery-bundle preflight](development/two-audience-bundles-preflight.md)
+  — bundle/release view separation, exposure checks, and existing-contract
+  guardrails for issue #379.
 - [TechVault Kali capture and shell-access preflight](development/techvault-kali-capture-shell-preflight.md)
   — SDL authoring, runtime realization, evidence, and capability-handling
   guardrails for issue #282.

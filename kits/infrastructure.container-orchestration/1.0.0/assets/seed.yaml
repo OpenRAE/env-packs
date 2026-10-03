@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.container-orchestration
+configuration:
+  cluster_name: lab-cluster
+  deployment_profile: standard
+  service_label: container-orchestration
+declared_objects:
+- id: namespace
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: workload_template
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: service_account
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: service_profile
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Connect workloads and network services at the pack root; deliver join material outside this
+  kit.

@@ -14,10 +14,82 @@ from raes_env_packs.kits import KitSource, build_kit_catalog, load_kit_release
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_KIT_COUNT = 38
+EXPECTED_KIT_COUNT = 46
+
+ISSUE_225_KITS = {
+    "certificate-authority": (
+        "ca", "step-ca", "authority_name", ("https", 9000, "tcp"), "provisioner"
+    ),
+    "dhcp-ipam-service": (
+        "dhcp", "kea", "address_pool", ("dhcp4", 67, "udp"), "address_pool"
+    ),
+    "secrets-store": (
+        "secrets_store", "openbao", "mount_path", ("api", 8200, "tcp"),
+        "secret_engine_mount",
+    ),
+    "message-broker": (
+        "broker", "rabbitmq", "virtual_host", ("amqp", 5672, "tcp"), "exchange"
+    ),
+    "cache-key-value-store": (
+        "cache", "valkey", "key_prefix", ("resp", 6379, "tcp"),
+        "eviction_policy",
+    ),
+    "firewall-nat": ("firewall", "nftables", "ruleset_name", None, "allowed_ports"),
+    "ldap-directory": (
+        "directory", "openldap", "directory_suffix", ("ldap", 389, "tcp"),
+        "organizational_units",
+    ),
+    "container-orchestration": (
+        "orchestrator", "k3s", "cluster_name", ("api", 6443, "tcp"),
+        "namespace",
+    ),
+}
 
 
 class PublishedKitTests(unittest.TestCase):
+    def test_issue_225_kits_have_accurate_static_surfaces(self) -> None:
+        for slug, facts in ISSUE_225_KITS.items():
+            node_id, source, parameter, listener, seed_item = facts
+            kit_id = f"infrastructure.{slug}"
+            with self.subTest(kit=kit_id):
+                root = ROOT / "kits" / kit_id / "1.0.0"
+                release = load_kit_release(root)
+                module = yaml.safe_load(
+                    (root / "module.sdl.yaml").read_text(encoding="utf-8")
+                )
+                self.assertEqual(release.id, kit_id)
+                self.assertEqual(module["nodes"][node_id]["source"]["name"], source)
+                self.assertIn(parameter, module["module"]["parameters"])
+                self.assertEqual(module["content"]["seed_inventory"]["target"], node_id)
+                self.assertIn(
+                    seed_item,
+                    {item["name"] for item in module["content"]["seed_inventory"]["items"]},
+                )
+                services = module["nodes"][node_id].get("services", [])
+                actual = {(item["name"], item["port"], item["protocol"]) for item in services}
+                if listener is None:
+                    self.assertFalse(actual, "nftables policy ports are not daemon listeners")
+                    seed = yaml.safe_load(
+                        (root / "assets/seed.yaml").read_text(encoding="utf-8")
+                    )
+                    self.assertEqual(seed["configuration"]["policy_ports"], [80, 443])
+                else:
+                    self.assertIn(listener, actual)
+
+        proxy = yaml.safe_load(
+            (ROOT / "kits/infrastructure.reverse-proxy-api-gateway/1.0.0/module.sdl.yaml")
+            .read_text(encoding="utf-8")
+        )
+        self.assertEqual(proxy["nodes"]["gateway"]["source"]["name"], "traefik")
+        self.assertEqual(
+            {item["port"] for item in proxy["nodes"]["gateway"]["services"]},
+            {80, 443},
+        )
+        self.assertIn(
+            "upstream_bindings",
+            {item["name"] for item in proxy["content"]["seed_inventory"]["items"]},
+        )
+
     def test_all_releases_are_discoverable_and_deterministic(self) -> None:
         source = KitSource(
             id="openrae-env-packs",
@@ -106,6 +178,7 @@ class PublishedKitTests(unittest.TestCase):
             "infrastructure.postgresql-database",
             "infrastructure.wazuh-security-monitoring-stack",
             "infrastructure.telemetry-collector",
+            *(f"infrastructure.{slug}" for slug in ISSUE_225_KITS),
         ]
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -135,7 +208,7 @@ class PublishedKitTests(unittest.TestCase):
             scenario = parse_sdl_file(
                 root / "scenario.sdl.yaml", migration_policy="accept"
             )
-            self.assertGreaterEqual(len(scenario.nodes), 9)
+            self.assertGreaterEqual(len(scenario.nodes), 17)
 
 
 if __name__ == "__main__":

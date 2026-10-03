@@ -130,7 +130,7 @@ def _walk(result: Result, catalog: Path, revision: str, workspace: Path) -> None
     listed = _kit(["list", *_source(catalog, revision), "--json"])
     result.command("catalog listed", listed)
     entries = _json(listed)
-    result.check("all initial releases are discoverable", isinstance(entries, list) and len(entries) == 38)
+    result.check("all releases are discoverable", isinstance(entries, list) and len(entries) == 46)
     searched = _kit(["search", *_source(catalog, revision), "domain controller", "--json"])
     result.command("catalog searched", searched)
     result.check("search returns identity infrastructure", bool(_json(searched)))

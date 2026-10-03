@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.ldap-directory-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "ldap-directory",
+    "ref_version": null,
+    "ref_digest": "sha256:5f90a8d299b5c03676d824651e63cd47e3f1622cd98c9ec5d1510580857b962e",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "03b1ec6e2b9f02f696c687ce0b770c54f053346a3ec5340c16589f2df8129be7"
+      },
+      "size_bytes": 712,
+      "created_at": "2026-09-20T00:00:00Z",
+      "source": "infrastructure.ldap-directory@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "492dc39c7b9ed97ee3626d982677e229c75afa9279c859d5e9084dbe2eb836de"
+      },
+      "size_bytes": 488,
+      "created_at": "2026-09-20T00:00:00Z",
+      "source": "infrastructure.ldap-directory@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "11e87ca53d3021bf332b0ec3a2ad00febcbc1c3fa916a46795fe6630fb0163a4"
+      },
+      "size_bytes": 615,
+      "created_at": "2026-09-20T00:00:00Z",
+      "source": "infrastructure.ldap-directory@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "b47782ee500a6d642617b4e5c72f58286c396e874275889e882053880f0768fa"
+      },
+      "size_bytes": 1573,
+      "created_at": "2026-09-20T00:00:00Z",
+      "source": "infrastructure.ldap-directory@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "542f1de6d32bf41f493f9648aebab286700a8ca40d33bb46e77024c320cc1b8c"
+      },
+      "size_bytes": 1986,
+      "created_at": "2026-09-20T00:00:00Z",
+      "source": "infrastructure.ldap-directory@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "27d25bdb17be9f68dd40645e2d20fc54df25220db8de2a92d0922c34528955a5"
+      },
+      "size_bytes": 267,
+      "created_at": "2026-09-20T00:00:00Z",
+      "source": "infrastructure.ldap-directory@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:60da28a7817996fce02b45a31678a9d30bdcdcd427c866d54a2314ed60df02d8"
+}

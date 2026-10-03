@@ -1,0 +1,83 @@
+name: certificate-authority
+version: 1.0.0
+description: Reusable static infrastructure for Certificate authority.
+module:
+  id: infrastructure/certificate-authority
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - authority_name
+  exports:
+    nodes:
+    - ca
+    content:
+    - seed_inventory
+  description: Composable Certificate authority infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: certificate-authority
+  authority_name:
+    type: string
+    default: lab-ca
+nodes:
+  ca:
+    type: compute
+    description: '${deployment_profile} profile for ${service_label} (Certificate authority).
+      authority_name: ${authority_name}.'
+    source:
+      name: step-ca
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - name: https
+      port: 9000
+      protocol: tcp
+      description: Certificate authority API
+content:
+  seed_inventory:
+    type: dataset
+    target: ca
+    description: Benign certificate authority seed inventory for ${authority_name}.
+    items:
+    - name: trust_anchor
+      display_name: Trust Anchor
+      tags:
+      - infrastructure
+      - seed
+      description: Public trust-anchor identity; no signing key is included.
+    - name: provisioner
+      display_name: Provisioner
+      tags:
+      - infrastructure
+      - seed
+      description: Named issuance provisioner without a credential or token.
+    - name: certificate_profile
+      display_name: Certificate Profile
+      tags:
+      - infrastructure
+      - seed
+      description: Certificate lifetime and subject-profile inventory.
+    - name: issuance_policy
+      display_name: Issuance Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Named issuance policy for consuming services.
+realization:
+  constraints:
+  - field_pointer: /nodes/ca
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

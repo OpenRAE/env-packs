@@ -1,0 +1,14 @@
+{
+  "acquisition": "copy",
+  "archive_semantics": "extract-members-at-declared-directory-destination",
+  "mechanism": "exact-artifact",
+  "profile": "raes-env-pack-exact-copy",
+  "resolver": "raes_env_packs.resolve_pack_artifact",
+  "substitution": "forbidden",
+  "timing": "pack-ingestion",
+  "validation": [
+    "raes_env_packs.validate_pack",
+    "raes_env_packs.validate_pack_content_manifest"
+  ],
+  "version": "1"
+}

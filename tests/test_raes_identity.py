@@ -39,9 +39,11 @@ _HISTORICAL_ALLOWLIST = {
     "requirements/recovery-v2.0.2.in",
     "requirements/recovery-v2.0.2.txt",
     # Immutable upstream byte carrier: its internal project metadata records
-    # the historical dependency name. The artifact digest is pack-bound and
-    # rewriting it would corrupt the source payload.
+    # the historical dependency name. The study pack is an exact TechVault
+    # copy with its own pack identity, so it retains the same pack-bound bytes.
+    # Rewriting either artifact would corrupt the source payload.
     "packs/techvault/assets/content/misp-sync-src.tar",
+    "packs/techvault-participant-study/assets/content/misp-sync-src.tar",
 }
 _IMMUTABLE_ADR_ALLOWLIST = {
     f"docs/decisions/adrs/{name}"

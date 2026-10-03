@@ -1,0 +1,83 @@
+name: cache-key-value-store
+version: 1.0.0
+description: Reusable static infrastructure for Cache / key-value store.
+module:
+  id: infrastructure/cache-key-value-store
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - key_prefix
+  exports:
+    nodes:
+    - cache
+    content:
+    - seed_inventory
+  description: Composable Cache / key-value store infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: cache-key-value-store
+  key_prefix:
+    type: string
+    default: 'lab:'
+nodes:
+  cache:
+    type: compute
+    description: '${deployment_profile} profile for ${service_label} (Cache / key-value store).
+      key_prefix: ${key_prefix}.'
+    source:
+      name: valkey
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - name: resp
+      port: 6379
+      protocol: tcp
+      description: RESP client endpoint
+content:
+  seed_inventory:
+    type: dataset
+    target: cache
+    description: Benign cache / key-value store seed inventory for ${key_prefix}.
+    items:
+    - name: keyspace
+      display_name: Keyspace
+      tags:
+      - infrastructure
+      - seed
+      description: Named keyspace convention for consuming applications.
+    - name: seed_keys
+      display_name: Seed Keys
+      tags:
+      - infrastructure
+      - seed
+      description: Benign key-name inventory without private values.
+    - name: eviction_policy
+      display_name: Eviction Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Named cache eviction posture.
+    - name: persistence_policy
+      display_name: Persistence Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Named persistence posture for seeded state.
+realization:
+  constraints:
+  - field_pointer: /nodes/cache
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine

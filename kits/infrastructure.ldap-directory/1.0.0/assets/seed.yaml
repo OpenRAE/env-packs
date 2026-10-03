@@ -1,0 +1,21 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.ldap-directory
+configuration:
+  directory_suffix: dc=example,dc=test
+  deployment_profile: standard
+  service_label: ldap-directory
+declared_objects:
+- id: base_dn
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: organizational_units
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: groups
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: entries
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Connect non-AD directory consumers at the pack root and provide bind credentials separately.
