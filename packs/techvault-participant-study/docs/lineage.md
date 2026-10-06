@@ -22,6 +22,15 @@ zero-indicator MISP rule file and three hash-list sidecars are also copied from
 the pinned source, then become mutable runtime state under the declared sync
 agent.
 
+The Wazuh Suricata correlation rules carry the rule-chain repair from APTL
+commit `ba418763a87eb250f7631de09afdc5f708cdf451`. The migrated file declared a
+rival `decoded_as` JSON parent, `303000`, that never won against the Wazuh
+built-in parent, so web-attack rule `303020` never fired. Each custom rule now
+chains off the built-in rule for its event type: `86601` for alerts, `86603`
+for DNS, and `86600` for flow. Unlike that commit, the pack removes `303000`
+and chains DNS off `86603`, so that no level-0 rule hides an alert or shadows
+the DNS refinement.
+
 Directory-valued sources were captured as deterministic uncompressed tar
 artifacts. Generated SSH keys and SOC certificates were deliberately not copied
 from runtime state: RAES generated-artifact declarations retain that lifecycle

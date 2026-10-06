@@ -52,6 +52,28 @@ The Wazuh `suricata_rules.xml` content is a different layer: it interprets EVE
 events after Suricata produces them. It is not a Suricata sensor rule source and
 must not be counted, placed, or validated as one.
 
+That Wazuh layer extends the Wazuh 4.12 built-in Suricata chain; it must not
+compete with it for JSON decoding. Built-in rule `86600` is the event base and
+built-in rule `86601` is the Suricata-alert parent. Alert refinements
+`303001`-`303060`, including web-attack rule `303020`, inherit from `86601`.
+The DNS refinement `303110` inherits from built-in DNS rule `86603`. Wazuh
+4.12 has no built-in flow rule, so the flow refinement `303100` inherits from
+`86600`. Both keep their `event_type` predicates. A refinement parented by
+`86600` for an event type that also has a built-in child loses to that
+sibling and never fires. The pack must not define rule `303000` or any
+other custom `<decoded_as>json</decoded_as>` parent. Leaving an unused rival
+decoder in the file is not acceptable: decoder selection happens before the
+custom children can repair the chain.
+
+Static author validation should enforce that bounded parent/absence contract
+on the already resolved artifact, while Wazuh remains the authority for XML
+rule syntax and evaluation. A representative Suricata EVE alert must also be
+evaluated by the Wazuh 4.12 native rule-test/runtime path and select `303020` at
+level 10; XML well-formedness, substring presence, rule loading, or a resulting
+generic `86601` alert is not behavioral proof. Preserve the custom rule ids,
+levels, predicates, descriptions, and groups unless a separately reviewed
+content change requires otherwise.
+
 The runtime join is one chain, not independent declarations:
 
 `associated artifact -> RAES content source -> content placement -> engine
@@ -67,7 +89,7 @@ allowed to mask missing or changed pack inputs.
 
 ## Canonical contracts to reuse
 
-Pinned `raes==3.3.0` already owns the portable semantic surfaces:
+Pinned `raes==6.0.1` already owns the portable semantic surfaces:
 
 - `RuntimeNetworkDetectionEngine` and its rule sources, network sets, output
   streams, file references, evidence references, and control channels are the
@@ -105,6 +127,15 @@ and blank lines from at least one active local rule, but it must not claim to
 parse Suricata syntax; exact validity, variable resolution, selected files, and
 effective loaded-rule counts require the native engine check.
 
+The same boundary applies to the Wazuh XML: strengthen the existing TechVault
+artifact check rather than adding a Wazuh schema, validator family, exception
+hierarchy, or a second artifact reader. The check must be structural enough to
+reject rule `303000`, every custom `decoded_as` declaration, and a refinement
+not parented by the built-in rule for its event type.
+Malformed XML produces one stable, bounded pack-contract diagnostic without
+including XML bodies or raw parser exceptions. Native Wazuh testing owns rule
+evaluation and catches semantics that the static parent check cannot prove.
+
 Static inspection cannot prove that the selected engine accepts and loads the
 configuration. Runtime verification must additionally use Suricata's native
 configuration test, start from a clean admitted pack with no old volumes or
@@ -121,6 +152,7 @@ Any intended design crosses all of these layers:
 | RAES shape and semantic validation | Parse through pinned RAES and preserve closed shapes, unique ids, absolute file-reference rules, service/source references, and explicit content classifications. RAES currently does not prove every content-placement-to-engine-path or forwarding-to-control-channel join; add narrow TechVault contract assertions without creating a parallel production schema. |
 | Pack validation and author CI | Reuse the static validator, anti-extension boundary, participant-facing content leak scan, and deterministic bounded diagnostics. Unexpected defects still raise; invalid authored input remains a `ValidationResult` diagnostic. |
 | Artifact identity and filesystem policy | Put static configuration and local rules in associated artifacts and resolve them only through the canonical manifest/resolver path and exact-copy profile. Preserve size budgets and no-follow, containment, canonical-name, file-type, and digest checks. Evidence identifies artifact, pack-set, and realized-byte digests without including file bodies or host paths. |
+| Wazuh rule admission | Resolve the exact XML through `resolve_pack_artifact()`, enforce only the bounded built-in-parent topology in the existing TechVault validator, and use Wazuh 4.12 itself for syntax/evaluation. The rule file is static read-only content; it introduces no auth surface, environment binding, secret, process argument, network listener, or writable state. |
 | Secret handling | Rule/config assets contain no credentials. `MISP_API_KEY` remains a value-less `operator_secret`, resolved at the runtime secret boundary; it must not enter pack bytes, argv, logs, engine diagnostics, or evidence. Do not dump the complete environment to prove the sync agent ran. |
 | Control-channel authorization | `auth_required: false` is acceptable only for the private Unix socket shared narrowly by the Suricata process and its declared sync agent. Both ends, the path, capability, ownership, permissions, and mount must agree. Never publish the socket to a participant or host-facing interface. |
 | OS/container exposure | Keep the fixed configuration path in the existing process invocation and keep rule/config bodies out of argv and shell interpolation. Static content is read-only; only the generated MISP directory, command socket, and logs receive narrowly scoped writes. Account for UID/GID, modes, mount collisions, traversal, `/proc`, and symlink substitution. Do not expand the existing network capabilities to repair content placement. |
@@ -137,6 +169,16 @@ topology, historical authored rule, EVE forwarding path, and Wazuh rule corpus.
 If the sensor cannot observe that declared path, the result is evidence for the
 #284 packet-processing gap; it is not permission to copy rules after startup or
 weaken the expected detection.
+
+The base and participant-study packs are separate publishable identities but
+intentionally carry byte-identical content assets. Change both XML copies
+together and preserve the existing cross-pack identity test. Because the XML is
+an exact associated artifact referenced from SDL, its new digest must flow into
+each SDL `exact_artifact`, each external-concept binding must be retargeted by
+the existing SDL-binding refresh tool, and each complete manifest must then be
+derived from the final tree. Do not hand-patch the payload checksum, size, SDL
+checksum, binding digest, or set digest. The existing pack-local validator is
+also duplicated by pack convention and must retain identical rule-chain logic.
 
 ## Extensibility boundary
 
@@ -156,6 +198,14 @@ copy hook. Packet-acquisition/interface selection remains an independently
 variable seam owned by #284 and must not be baked into the recovered content
 contract.
 
+For Wazuh correlation, the extension seam is the small data set of custom rule
+families and their built-in parent (`86601` for alerts, `86603` for DNS, and
+`86600` for flow), coupled explicitly to the declared Wazuh 4.12 contract. A new
+custom alert should extend that mapping and its malformed-variant coverage, not
+introduce another decoder parent. A future Wazuh-version change must revalidate
+the built-in ids with the native engine before changing the mapping; the ids are
+not a reason to add runtime templating or a new portable parameter.
+
 ## Non-goals and rejected shortcuts
 
 - Do not preserve, rename, or tolerate LilRAE's checkout-local copy as a
@@ -169,6 +219,10 @@ contract.
 - Do not count Wazuh correlation XML as Suricata rules, or treat EVE file
   existence, Wazuh ingestion, or an unrelated alert as proof of the intended
   sensor detection.
+- Do not retain `303000`, add any custom JSON decoder parent, chain alert rules
+  directly to `86600`, or accept generic `86601` as proof that `303020` fired.
+- Do not reproduce Wazuh's grammar or matching engine in Python. A static
+  parent-topology check is a regression guard, not a Wazuh evaluator.
 - Do not add pack-local RAES semantics, a duplicate Suricata grammar/parser,
   another content identity, reload, observation, error, or provenance model, or
   downstream catalog/deployment vocabulary.
