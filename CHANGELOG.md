@@ -11,6 +11,13 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.2.1](https://github.com/OpenRAE/env-packs/compare/v6.2.0...v6.2.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* chain TechVault Suricata Wazuh rules off built-in parents ([#418](https://github.com/OpenRAE/env-packs/issues/418)) ([e40555d](https://github.com/OpenRAE/env-packs/commit/e40555d805908d93423bd9d02b4eb3e02a971ae8))
+
 ## [6.2.0](https://github.com/OpenRAE/env-packs/compare/v6.1.0...v6.2.0) (2026-10-03)
 
 
