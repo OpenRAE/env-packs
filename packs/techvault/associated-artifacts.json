@@ -323,11 +323,11 @@
       "uri": "raes-environment-pack:/assets/content/suricata_rules.xml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "b1fdf64371c5ea24f8e1ce47ea2d0aba185f2f6697702c4bb092c2f3d696547c"
+        "value": "438bc86177deb65e8c32be2572e99d03ad46a6e1a36cd634371a9103bb656e49"
       },
-      "size_bytes": 3442,
-      "created_at": "2026-08-04T00:00:00Z",
-      "source": "aptl@9320c7af3d03debdd3d1b558af466f8d7262884c",
+      "size_bytes": 3711,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author adapted from aptl@ba418763a87eb250f7631de09afdc5f708cdf451",
       "satisfies_refs": [],
       "sensitivity": "internal",
       "description": null
@@ -515,9 +515,9 @@
       "uri": "raes-environment-pack:/docs/lineage.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "0571973983982a7f97a7c1acbafda23833139d3d24d18a8c5691b8dd53ac64d1"
+        "value": "6fa6c0b34c17ca0ee1f97ffce08acbfb359e8d699dba61c6230044c1c956be75"
       },
-      "size_bytes": 2348,
+      "size_bytes": 2910,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -595,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "007b85f63ec0b1e2904942fcbc2bb0f94648f68e7e460561ac047ccbec95eda4"
+        "value": "5a2993423c919ce80e975eb0b30f73fe8dda5ba84929d2905201dbe632e3884f"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -627,7 +627,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "e9ba7711835219a46a1886fe7b52f56a32e80b9b0a255401f218d1732dd9ef5f"
+        "value": "5fdf94d823e221e932ffd2fdf03353c8586941b108cb098d8dbfc17d60030813"
       },
       "size_bytes": 141602,
       "created_at": "2026-08-02T00:00:00Z",
@@ -659,9 +659,9 @@
       "uri": "raes-environment-pack:/validation/validate_techvault.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "8bf93d838fe0714ad195f638075ba9c291cd6ef1f64ca72ada0b3d1e72e7e96c"
+        "value": "26d40ec4bab6b574c371fd32c8763bcd1c3100761c73b5ac559780426cf07fbf"
       },
-      "size_bytes": 65339,
+      "size_bytes": 67181,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -733,5 +733,5 @@
       "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:df00ea2a2672864ad8c711a3eab3a8a7bffff4db058b4a9acde032a61b2a1504"
+  "set_digest": "sha256:1229f94f31bd35d3997d47ef8316ffebb3d2d2919c995838e458420b70456fcf"
 }

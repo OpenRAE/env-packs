@@ -1129,6 +1129,9 @@ class TechVaultPackTests(unittest.TestCase):
         def replace_local(before: bytes, after: bytes):
             return replace_artifact(local_artifact, before, after)
 
+        def replace_wazuh(before: bytes, after: bytes):
+            return replace_artifact(wazuh_artifact, before, after)
+
         def null_rule_files(sdl, assets):
             config = yaml.safe_load(assets[config_artifact].decode("utf-8"))
             config["rule-files"] = None
@@ -1499,6 +1502,71 @@ class TechVaultPackTests(unittest.TestCase):
             "Wazuh detection rule mismatch": (
                 lambda sdl, assets: assets.update({wazuh_artifact: b"<group/>"}),
                 "suricata.detection-path-mismatch: Wazuh rule 303020",
+            ),
+            "Wazuh web-attack category mismatch": (
+                replace_wazuh(
+                    b"Web Application Attack|web-application-attack",
+                    b"Web Application Attack",
+                ),
+                "suricata.detection-path-mismatch: Wazuh rule 303020",
+            ),
+            "Wazuh rival decoded_as parent": (
+                replace_wazuh(
+                    b'<rule id="303020" level="10">\n    <if_sid>86601</if_sid>',
+                    b'<rule id="303000" level="0">\n'
+                    b"    <decoded_as>json</decoded_as>\n"
+                    b'    <field name="event_type">alert</field>\n'
+                    b"    <description>Suricata IDS alert</description>\n"
+                    b"  </rule>\n"
+                    b'  <rule id="303020" level="10">\n    <if_sid>303000</if_sid>',
+                ),
+                "suricata.detection-path-mismatch: Wazuh rule chain",
+            ),
+            "Wazuh custom decoded_as declaration": (
+                replace_wazuh(
+                    b'<rule id="303020" level="10">\n    <if_sid>86601</if_sid>',
+                    b'<rule id="303020" level="10">\n    <if_sid>86601</if_sid>\n'
+                    b"    <decoded_as>json</decoded_as>",
+                ),
+                "suricata.detection-path-mismatch: Wazuh rule chain",
+            ),
+            "Wazuh alert refinement off the base rule": (
+                replace_wazuh(
+                    b'<rule id="303020" level="10">\n    <if_sid>86601</if_sid>',
+                    b'<rule id="303020" level="10">\n    <if_sid>86600</if_sid>',
+                ),
+                "suricata.detection-path-mismatch: Wazuh rule chain",
+            ),
+            "Wazuh DNS refinement off the base rule": (
+                replace_wazuh(
+                    b'<rule id="303110" level="0">\n    <if_sid>86603</if_sid>',
+                    b'<rule id="303110" level="0">\n    <if_sid>86600</if_sid>',
+                ),
+                "suricata.detection-path-mismatch: Wazuh rule chain",
+            ),
+            "Wazuh flow refinement off the alert rule": (
+                replace_wazuh(
+                    b'<rule id="303100" level="0">\n    <if_sid>86600</if_sid>',
+                    b'<rule id="303100" level="0">\n    <if_sid>86601</if_sid>',
+                ),
+                "suricata.detection-path-mismatch: Wazuh rule chain",
+            ),
+            "Wazuh duplicate rule id": (
+                replace_wazuh(b'<rule id="303001"', b'<rule id="303020"'),
+                "suricata.detection-path-mismatch: Wazuh rule chain",
+            ),
+            "Wazuh malformed rule XML": (
+                lambda sdl, assets: assets.update({wazuh_artifact: b"<group><rule"}),
+                "suricata.detection-path-mismatch: Wazuh rule XML",
+            ),
+            "Wazuh rule XML with a document type": (
+                lambda sdl, assets: assets.update(
+                    {
+                        wazuh_artifact: b'<!DOCTYPE group [<!ENTITY e "x">]>\n'
+                        + assets[wazuh_artifact]
+                    }
+                ),
+                "suricata.detection-path-mismatch: Wazuh rule XML",
             ),
         }
 

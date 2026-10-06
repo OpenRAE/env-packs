@@ -2505,7 +2505,7 @@ content:
         exact_artifact:
           artifact_id: techvault-wazuh-suricata-rules
           version: 0.1.1
-          digest: sha256:b1fdf64371c5ea24f8e1ce47ea2d0aba185f2f6697702c4bb092c2f3d696547c
+          digest: sha256:438bc86177deb65e8c32be2572e99d03ad46a6e1a36cd634371a9103bb656e49
           media_type: application/xml
         permitted_routes:
           - mechanism: *wazuh-content-copy

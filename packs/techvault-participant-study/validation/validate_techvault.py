@@ -10,6 +10,7 @@ import re
 import sys
 from collections.abc import Mapping
 from typing import Any
+from xml.etree import ElementTree
 
 import yaml
 
@@ -92,6 +93,16 @@ _WAZUH_RULES_REF = (
     "nodes.wazuh-manager.runtime.security_monitoring_managers.wazuh-manager."
     "content_sets.suricata-rules"
 )
+# Each custom Wazuh Suricata refinement and the Wazuh 4.12 built-in rule it
+# chains off: 86601 (alert), 86603 (DNS), or 86600 (base, no built-in flow rule).
+_WAZUH_SURICATA_RULE_PARENTS = {
+    **dict.fromkeys(
+        ("303001", "303002", "303003", "303010", "303020", "303030", "303040", "303050", "303060"),
+        ("86601",),
+    ),
+    "303100": ("86600",),
+    "303110": ("86603",),
+}
 _VARIABLE_REF = re.compile(r"\$([A-Z][A-Z0-9_]*)")
 _SID = re.compile(r"(?:^|;)\s*sid\s*:\s*(\d+)\s*;")
 _BUILD_MECHANISM = "materialization-specification"
@@ -590,7 +601,47 @@ def _validate_evidence_contract(
     except (PackDigestError, OSError, ValueError):
         wazuh_rules = b""
     wazuh_rules = overrides.get("techvault-wazuh-suricata-rules", wazuh_rules)
-    if b'<rule id="303020"' not in wazuh_rules or b"web-application-attack" not in wazuh_rules:
+    _validate_wazuh_suricata_rules(wazuh_rules, errors)
+
+
+def _validate_wazuh_suricata_rules(data: bytes, errors: list[str]) -> None:
+    """Check the custom rule parents, not Wazuh rule evaluation.
+
+    A custom ``decoded_as`` parent competes with the built-in Suricata parent
+    and never wins, so its children never fire.
+    """
+
+    if b"<!DOCTYPE" in data or b"<!ENTITY" in data:
+        _error(errors, "detection-path-mismatch", "Wazuh rule XML")
+        return
+    try:
+        # Wazuh rule files may hold several top-level groups.
+        root = ElementTree.fromstring(b"<rules>" + data + b"</rules>")
+    except ElementTree.ParseError:
+        _error(errors, "detection-path-mismatch", "Wazuh rule XML")
+        return
+    rules = list(root.iter("rule"))
+    parents = {
+        rule.get("id"): tuple(
+            sid.strip()
+            for if_sid in rule.findall("if_sid")
+            for sid in (if_sid.text or "").split(",")
+        )
+        for rule in rules
+    }
+    if (
+        len(parents) != len(rules)
+        or parents != _WAZUH_SURICATA_RULE_PARENTS
+        or any(rule.find("decoded_as") is not None for rule in rules)
+    ):
+        _error(errors, "detection-path-mismatch", "Wazuh rule chain")
+    web_attack = next((rule for rule in rules if rule.get("id") == "303020"), None)
+    categories = (
+        ""
+        if web_attack is None
+        else str(web_attack.findtext("field[@name='alert.category']", ""))
+    )
+    if "web-application-attack" not in categories.split("|"):
         _error(errors, "detection-path-mismatch", "Wazuh rule 303020")
 
 
