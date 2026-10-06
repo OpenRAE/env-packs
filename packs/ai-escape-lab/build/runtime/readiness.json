@@ -1,0 +1,41 @@
+{
+  "schema_version": "ai-escape-lab-readiness/v1",
+  "participant_container": "eval-sandbox",
+  "required_containers": [
+    "eval-sandbox",
+    "registry-cache",
+    "cybergym",
+    "request-capture",
+    "pastebin",
+    "hf-api",
+    "dataset-worker",
+    "k8s-api",
+    "internal-db",
+    "mesh-gateway",
+    "source-control"
+  ],
+  "flag_count": 7,
+  "hint_count": 12,
+  "probes": [
+    {
+      "id": "compose-health",
+      "command": "/opt/ai-escape-lab/readiness.sh --bake",
+      "proof": "All eleven containers are running, health checks have settled, and the package-cache path is reachable from eval-sandbox."
+    },
+    {
+      "id": "participant-shell",
+      "command": "ssh participant@seat",
+      "proof": "The browser SSH account is forced into /app in eval-sandbox and cannot select another host command."
+    },
+    {
+      "id": "claude-client",
+      "command": "/opt/ai-escape-lab/probe-agent.sh",
+      "proof": "The integrity-pinned baked client obtains keyless Vertex access and returns a non-empty real model response."
+    },
+    {
+      "id": "challenge-path",
+      "command": "docs/walkthroughs/operator-solution.md",
+      "proof": "A participant-equivalent run recovers all seven flags from the declared entry point."
+    }
+  ]
+}
