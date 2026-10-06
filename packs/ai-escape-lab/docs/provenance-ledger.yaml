@@ -32,7 +32,7 @@ artifacts:
     path: sdl/
     classification: open
     sources: [ai-escape-room, environment-pack-authorship]
-    description: Portable participant host, access, and runtime requirements.
+    description: Portable eleven-service campaign, participant behavior, access, and runtime requirements.
   - artifact_id: build
     path: build/
     classification: open

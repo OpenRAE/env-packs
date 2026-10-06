@@ -167,9 +167,10 @@ services:
     expose: ["27017"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: mongo-static-pwd-3f7a2b9c1d4e5f6a8b0c2d4e6f
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo-password
     volumes:
       - /opt/ai-escape-lab/source/hf-internal/mongo-init.js:/docker-entrypoint-initdb.d/init.js:ro
+      - /opt/ai-escape-lab/source/hf/worker/secrets/mongo-password:/run/secrets/mongo-password:ro
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s
@@ -182,8 +183,6 @@ services:
     container_name: mesh-gateway
     networks: [hf-cluster-net, corp-net]
     expose: ["8080"]
-    environment:
-      MESH_AUTH_KEY: tskey-auth-k8sa7b3c9d2e1f4a6b8c0d3e5f7a9b1c4d
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
       interval: 5s

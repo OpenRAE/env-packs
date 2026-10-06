@@ -227,9 +227,9 @@
       "uri": "raes-environment-pack:/build/runtime/docker-compose.yml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "fd9c8d9028f6d9ca2f42a7e96181a0cbfb66ddbf0c3cb051d44caa79f11e11c6"
+        "value": "3cec18610c00610ae1a1c4e785d69d659149fb6bf60ce272a2b9ca7b00744d1a"
       },
-      "size_bytes": 6454,
+      "size_bytes": 6457,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -531,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "7fe3f6c63c8bca22f260229816ced19b1ddf10617938accd64d720d33f578cd1"
+        "value": "6ba38c526b47508bf06c42bcc0fa2e03cf589ed70d585fc57dbf1d5bbe5d73cb"
       },
-      "size_bytes": 2790,
+      "size_bytes": 2819,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -653,5 +653,5 @@
       "description": "Pinned Claude Code standalone Linux package identity and integrity."
     }
   },
-  "set_digest": "sha256:817e474770669d113935be96e88affb91e07622db7cfb6933d4b2221679ceeb2"
+  "set_digest": "sha256:75b817b7ec8c368b306af3c5e1c209ab60ece939a10f48cc79a5e1e7d20fc8f7"
 }

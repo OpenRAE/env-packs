@@ -117,6 +117,14 @@ class AiEscapeLabPackTests(unittest.TestCase):
         self.assertIn("ALL", sandbox["cap_drop"])
         self.assertIn("no-new-privileges:true", sandbox["security_opt"])
 
+        database = compose["services"]["internal-db"]
+        self.assertNotIn("MONGO_INITDB_ROOT_PASSWORD", database["environment"])
+        self.assertEqual(
+            database["environment"]["MONGO_INITDB_ROOT_PASSWORD_FILE"],
+            "/run/secrets/mongo-password",
+        )
+        self.assertNotIn("environment", compose["services"]["mesh-gateway"])
+
         start = (_PACK / "build" / "runtime" / "start-lab.sh").read_text(encoding="utf-8")
         self.assertIn("--pull never", start)
         self.assertIn("--no-build", start)
