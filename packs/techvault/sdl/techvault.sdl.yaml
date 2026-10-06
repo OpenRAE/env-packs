@@ -767,7 +767,7 @@ nodes:
       applications:
         - application_id: thehive-web
           service: thehive-api
-          protocol: http
+          protocol: https
           routes:
             - route_id: thehive-root
               path: /
