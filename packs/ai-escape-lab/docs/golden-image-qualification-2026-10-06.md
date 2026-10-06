@@ -21,10 +21,11 @@ CTFd challenges, or launch a range through Shifter.
 The image was built from the vendored upstream revision
 `fcb25ec9874b0676706b9aca650f22efc90f711e`. The environment-pack checkout was
 based on `56da2a3083950674a0d6bcda6ead6cc585de6b5a`; the issue 426 changes were
-uncommitted when the image was baked. There is therefore no commit that names
-the exact bake-time source state. The complete functional input hashes below
-bind that state, and the delivery PR commits matching bytes. The missing
-bake-time commit identity is an accepted provenance gap for this event build.
+uncommitted when the image was baked. Delivery commit
+`420dea5058dc03571a8020ce1a3f8903ee3bd20b` contains matching functional input
+bytes. The complete hashes below bind those bytes to the accepted image. The
+absence of a contemporaneous bake-time commit is an accepted provenance gap for
+this event build.
 
 | Functional input | SHA-256 |
 | --- | --- |

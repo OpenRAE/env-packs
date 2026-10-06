@@ -515,9 +515,9 @@
       "uri": "raes-environment-pack:/docs/golden-image-qualification-2026-10-06.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "b62416b4250e20a481dc73cf519ac03f89bb17d7af2d19a9f6ced721b714f0ea"
+        "value": "67b1c9105bd0761a58e27436b2013ec415d0292755706f5e3cedadc58ece038b"
       },
-      "size_bytes": 6614,
+      "size_bytes": 6615,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -685,5 +685,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:855f21dcb622be784d41c123550625d2b94e6d78bf70fe12e58e65951363c196"
+  "set_digest": "sha256:8ce57707a4090d7496e5c30883baee473d7db14a498d0d1aeb5e80d881da2582"
 }
