@@ -37,6 +37,10 @@ artifact delivery or custom Shifter adapter is required.
 Do not map an image family into Shifter. Record the exact custom-image reference
 returned by Packer.
 
+The image accepted by the isolated 2026-10-06 qualification is recorded in
+[`golden-image-qualification-2026-10-06.md`](golden-image-qualification-2026-10-06.md).
+Use that exact reference for the deployment canary.
+
 ## 2. Register the Shifter image mapping
 
 Create one GCE RAES image mapping with these values:

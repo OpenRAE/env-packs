@@ -15,10 +15,10 @@ rule() {
 }
 
 for _ in {1..30}; do
-  iptables --check DOCKER-USER -j RETURN >/dev/null 2>&1 && break
+  iptables --table filter --list DOCKER-USER >/dev/null 2>&1 && break
   sleep 1
 done
-iptables --check DOCKER-USER -j RETURN >/dev/null 2>&1
+iptables --table filter --list DOCKER-USER >/dev/null 2>&1
 
 if ! iptables --check DOCKER-USER -s "$MODEL_SUBNET" -j DROP 2>/dev/null; then
   iptables --insert DOCKER-USER 1 -s "$MODEL_SUBNET" -j DROP

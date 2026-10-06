@@ -14,8 +14,11 @@ boundary, CTFd reveals one challenge at a time, and twelve optional hints keep
 the agent-human pair moving. A participant can leave after any flag; a full run
 may take the whole session.
 
-This release is `draft` until a real GCP image, one-seat walkthrough, twelve-seat
-rehearsal, reset timing, and agent call have been proven using the checklist in
+The exact GCP image in the
+[`2026-10-06 qualification record`](docs/golden-image-qualification-2026-10-06.md)
+passed an isolated one-seat participant walkthrough, live Sonnet 4.6 call, and
+all seven challenges. The pack remains `draft` until that image and the CTFd
+content pass their Shifter deployment checks using
 [`docs/golden-readiness-checklist.md`](docs/golden-readiness-checklist.md).
 
 The challenge implementation is pinned to

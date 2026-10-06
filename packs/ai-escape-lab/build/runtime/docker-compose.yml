@@ -38,6 +38,7 @@ services:
     image: ai-escape-lab/eval-sandbox:fcb25ec9874b
     container_name: eval-sandbox
     networks: [eval-net, model-egress-net]
+    dns: [127.0.0.1]
     env_file: [/run/ai-escape-lab/agent.env]
     environment:
       PIP_INDEX_URL: http://registry-cache:8080/simple/

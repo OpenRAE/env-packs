@@ -179,6 +179,17 @@ class AiEscapeLabPackTests(unittest.TestCase):
             probes,
         )
 
+    def test_qualified_image_record_is_in_the_operator_release(self) -> None:
+        compatibility = _yaml("pack.compatibility.yaml")
+        operator_paths = {
+            row["path"] for row in compatibility["artifact_boundaries"]["operator_only"]
+        }
+        record = "docs/golden-image-qualification-2026-10-06.md"
+        self.assertIn(record, operator_paths)
+        self.assertTrue((_PACK / record).is_file())
+        runbook = (_PACK / "docs/operator-runbook.md").read_text(encoding="utf-8")
+        self.assertIn("golden-image-qualification-2026-10-06.md", runbook)
+
 
 if __name__ == "__main__":
     unittest.main()

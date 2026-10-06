@@ -29,7 +29,7 @@ variable "source_image" {
   description = "Exact Ubuntu 24.04 GCE source-image self link; image families are not accepted."
   validation {
     condition     = can(regex("^projects/[^/]+/global/images/[^/]+$", var.source_image))
-    error_message = "source_image must be an exact projects/.../global/images/... reference"
+    error_message = "Source image must be an exact projects/.../global/images/... reference."
   }
 }
 
@@ -43,7 +43,7 @@ variable "image_version" {
   description = "Immutable build version such as 20261006-1."
   validation {
     condition     = can(regex("^[0-9]{8}-[1-9][0-9]*$", var.image_version))
-    error_message = "image_version must match YYYYMMDD-N"
+    error_message = "Image version must match YYYYMMDD-N."
   }
 }
 
@@ -52,10 +52,17 @@ variable "machine_type" {
   default = "e2-standard-8"
 }
 
+locals {
+  source_image_parts   = split("/", var.source_image)
+  source_image_project = local.source_image_parts[1]
+  source_image_name    = local.source_image_parts[4]
+}
+
 source "googlecompute" "ai_escape_lab" {
   project_id              = var.project_id
   zone                    = var.zone
-  source_image            = var.source_image
+  source_image            = local.source_image_name
+  source_image_project_id = [local.source_image_project]
   network                 = var.network
   subnetwork              = var.subnetwork
   use_internal_ip         = true

@@ -7,7 +7,7 @@ pack:
   provenance_ledger: docs/provenance-ledger.yaml
   source:
     requirement: null
-    issues: [422]
+    issues: [422, 426]
     upstream_references:
       - https://github.com/an4kronism/ai-escape-room/commit/fcb25ec9874b0676706b9aca650f22efc90f711e
 artifact_boundaries:
@@ -28,6 +28,9 @@ artifact_boundaries:
     - path: docs/golden-readiness-checklist.md
       export: operator
       description: Uncompleted live qualification checklist.
+    - path: docs/golden-image-qualification-2026-10-06.md
+      export: operator
+      description: Accepted image identity and sanitized isolated QA evidence.
   oracle_only:
     - path: challenges/challenges.yaml
       export: oracle
