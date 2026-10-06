@@ -14,6 +14,9 @@ User-facing documentation is under [`public/`](public/index.md).
 
 ## Repository mechanics
 
+- [AI Escape Lab preflight](development/ai-escape-lab-preflight.md) — portable
+  campaign, GCP reference deployment, seat containment, model access, and proof
+  guardrails for issue #422.
 - [Continuous integration](development/ci.md) — the PR check surface, the
   `verify` merge gate, and how to reproduce each check locally.
 - [Pack-aware MCP authoring preflight](development/pack-authoring-mcp-preflight.md)

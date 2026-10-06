@@ -1,0 +1,134 @@
+schema_version: "environment-pack-compatibility/v2"
+pack:
+  name: ai-escape-lab
+  title: AI Escape Lab
+  version: 0.1.0
+  status: draft
+  provenance_ledger: docs/provenance-ledger.yaml
+  source:
+    requirement: null
+    issues: [422]
+    upstream_references:
+      - https://github.com/an4kronism/ai-escape-room/commit/fcb25ec9874b0676706b9aca650f22efc90f711e
+artifact_boundaries:
+  participant_visible:
+    - path: README.md
+      export: public
+      description: Participant-safe purpose and entry instructions.
+    - path: docs/concepts.md
+      export: public
+      description: Concepts exercised by the lab.
+  operator_only:
+    - path: build/
+      export: operator
+      description: GCP image build, offline runtime, and readiness assets.
+    - path: docs/operator-runbook.md
+      export: operator
+      description: Image, Shifter, CTFd, reset, and rehearsal procedure.
+    - path: docs/golden-readiness-checklist.md
+      export: operator
+      description: Uncompleted live qualification checklist.
+  oracle_only:
+    - path: challenges/challenges.yaml
+      export: oracle
+      description: Seven static lab flags and their CTFd challenge definitions.
+    - path: docs/walkthroughs/operator-solution.md
+      export: oracle
+      description: Operator-only end-to-end proof procedure.
+  commercial: []
+runtime_profiles:
+  - profile_id: shifter-gcp-gce
+    status: planned
+    provider: gcp
+    description: One prebuilt disposable GCE VM per participant seat.
+    build:
+      - path: build/gcp/ai-escape-lab.pkr.hcl
+      - path: build/gcp/scripts/install.sh
+    tests:
+      - path: validation/tests/test_pack.py
+      - path: build/tests/test_build.py
+    walkthroughs:
+      - path: docs/walkthroughs/operator-solution.md
+delivery_bundles: []
+platform_features:
+  - feature_id: browser-ssh
+    status: required
+    description: Shifter browser SSH access to the declared participant account.
+    runtime_profiles: [shifter-gcp-gce]
+  - feature_id: baked-claude-code
+    status: required
+    description: Version- and integrity-pinned Claude Code binary baked into the participant container image.
+    runtime_profiles: [shifter-gcp-gce]
+  - feature_id: keyless-vertex
+    status: required
+    description: >-
+      Shifter keyless-direct GCP identity restricted to Vertex prediction; the
+      operator must bound and accept its short-lived bearer-token replay window
+      or qualify Shifter's optional model gateway.
+    runtime_profiles: [shifter-gcp-gce]
+  - feature_id: ctfd-import
+    status: required
+    description: Shifter CTFd challenge-pack import for flags and hints.
+    runtime_profiles: [shifter-gcp-gce]
+assets:
+  - asset_id: upstream-source
+    path: assets/upstream-ai-escape-room-fcb25ec9874b.tar.gz
+    visibility: operator
+    status: shipped
+    description: Immutable upstream source archive used only while baking the image.
+  - asset_id: upstream-license
+    path: assets/upstream-LICENSE
+    visibility: public
+    status: shipped
+    description: Upstream MIT license notice.
+  - asset_id: ctfd-exporter
+    path: ctfd/export_shifter_challenge_pack.py
+    visibility: operator
+    status: shipped
+    description: Deterministic Shifter CTFd JSON exporter.
+  - asset_id: shifter-pack-exporter
+    path: build/shifter/export-pack.py
+    visibility: operator
+    status: shipped
+    description: Deterministic RAES 3.5 upload-pack exporter for the current Shifter contract.
+operator_surfaces:
+  - surface_id: gcp-image-build
+    path: build/gcp/ai-escape-lab.pkr.hcl
+    role: image-builder
+    visibility: operator
+    status: shipped
+    description: IAP-only GCE custom-image build.
+  - surface_id: runtime-readiness
+    path: build/runtime/readiness.json
+    role: range-operator
+    visibility: operator
+    status: shipped
+    description: Bounded stack and participant readiness contract.
+validation:
+  commands:
+    - id: pack-contract
+      command: raes-pack-validate --packs-root packs
+      validates: [manifest, pack-layout, leak-scan, sdl, associated-artifacts]
+    - id: pack-release
+      command: raes-pack-release check --packs-root packs
+      validates: [release]
+    - id: ai-escape-contract
+      command: python -m unittest tests.test_ai_escape_lab_pack
+      validates: [topology, offline-runtime, flags, hints, readiness, provenance]
+  gates:
+    - id: static-validation
+      kind: schema
+      paths:
+        - path: sdl/ai-escape-lab.sdl.yaml
+    - id: pack-tests
+      kind: unit-test
+      paths:
+        - path: validation/tests/test_pack.py
+    - id: live-rehearsal
+      kind: rehearsal
+      paths:
+        - path: docs/golden-readiness-checklist.md
+    - id: participant-walkthrough
+      kind: manual-walkthrough
+      paths:
+        - path: docs/walkthroughs/operator-solution.md

@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Verify, safely extract, and pin the vendored upstream build tree."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import os
+import shutil
+import tarfile
+import tempfile
+from pathlib import Path, PurePosixPath
+
+
+PYTHON_IMAGE = "python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534"
+DEBIAN_IMAGE = "debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251"
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _safe_members(archive: tarfile.TarFile) -> list[tarfile.TarInfo]:
+    members = archive.getmembers()
+    for member in members:
+        path = PurePosixPath(member.name)
+        if (
+            path.is_absolute()
+            or ".." in path.parts
+            or not path.parts
+            or path.parts[0] != "ai-escape-room"
+            or member.issym()
+            or member.islnk()
+            or not (member.isfile() or member.isdir())
+        ):
+            raise ValueError("upstream archive has an unsafe member")
+    return members
+
+
+def _replace_from(path: Path, source: str, pinned: str) -> None:
+    text = path.read_text(encoding="utf-8")
+    needle = f"FROM {source}\n"
+    if text.count(needle) != 1:
+        raise ValueError(f"unexpected base image declaration in {path}")
+    path.write_text(text.replace(needle, f"FROM {pinned}\n"), encoding="utf-8")
+
+
+def prepare(archive_path: Path, destination: Path, expected_sha256: str) -> None:
+    if _sha256(archive_path) != expected_sha256:
+        raise ValueError("upstream archive checksum mismatch")
+    if destination.exists():
+        shutil.rmtree(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=".ai-escape-room-", dir=destination.parent))
+    try:
+        with tarfile.open(archive_path, "r:gz") as archive:
+            archive.extractall(staging, members=_safe_members(archive), filter="data")
+        extracted = staging / "ai-escape-room"
+        if not (extracted / "docker-compose.yml").is_file():
+            raise ValueError("upstream archive root is missing")
+        os.replace(extracted, destination)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+    for dockerfile in destination.rglob("Dockerfile"):
+        first = dockerfile.read_text(encoding="utf-8").splitlines()[0]
+        if first == "FROM python:3.11-slim":
+            _replace_from(dockerfile, "python:3.11-slim", PYTHON_IMAGE)
+        elif first == "FROM debian:bookworm-slim":
+            _replace_from(dockerfile, "debian:bookworm-slim", DEBIAN_IMAGE)
+        else:
+            raise ValueError(f"unrecognized upstream base image in {dockerfile}")
+
+    helper = destination / "eval-sandbox" / "hint"
+    helper.write_text(
+        "#!/bin/sh\nset -eu\n"
+        "if [ $# -eq 0 ]; then cat /opt/lab/hints.txt; exit 0; fi\n"
+        "case \"${1:-}\" in 1|2|3|4|5|6|7|8|9|10|11|12) ;; "
+        "*) echo 'usage: hint [NUMBER (1-12)]' >&2; exit 2 ;; esac\n"
+        "sed -n \"${1}p\" /opt/lab/hints.txt\n",
+        encoding="utf-8",
+    )
+    os.chmod(helper, 0o755)
+    sandbox = destination / "eval-sandbox" / "Dockerfile"
+    sandbox_text = sandbox.read_text(encoding="utf-8")
+    alias = "alias hint=\"cat /opt/lab/hints.txt\""
+    if sandbox_text.count(alias) != 1:
+        raise ValueError("unexpected upstream hint alias")
+    sandbox.write_text(sandbox_text.replace(alias, "alias hints=\"cat /opt/lab/hints.txt\""), encoding="utf-8")
+    with sandbox.open("a", encoding="utf-8") as handle:
+        handle.write(
+            "\nCOPY hint /opt/lab/hint\n"
+            "RUN chmod 0755 /opt/lab/hint \\\n"
+            "    && ln -s /opt/lab/hint /usr/local/bin/hint\n"
+            "COPY claude /usr/local/bin/claude\n"
+            "ENV CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_AUTOUPDATER=1\n"
+            "RUN chmod 0755 /usr/local/bin/claude \\\n"
+            "    && /usr/local/bin/claude --version\n"
+        )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--archive", required=True, type=Path)
+    parser.add_argument("--destination", required=True, type=Path)
+    parser.add_argument("--sha256", required=True)
+    args = parser.parse_args()
+    prepare(args.archive, args.destination, args.sha256)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

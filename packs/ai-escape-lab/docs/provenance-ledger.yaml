@@ -1,0 +1,74 @@
+schema_version: "environment-pack-provenance/v3"
+pack:
+  name: ai-escape-lab
+sources:
+  - source_id: ai-escape-room
+    name: AI Escape Room
+    url: https://github.com/an4kronism/ai-escape-room
+    ref: fcb25ec9874b0676706b9aca650f22efc90f711e
+    license: MIT
+    usage: adapted
+    attribution_required: true
+    attribution: Copyright (c) 2025 Samuel (an4kronism)
+    used: >-
+      The eleven-service challenge implementation, five challenge networks,
+      seven-flag path, briefing, and twelve hints.
+    captured: "2026-10-06"
+  - source_id: environment-pack-authorship
+    name: AI Escape Lab environment-pack adaptation
+    license: MIT
+    usage: generated-from
+    attribution_required: false
+    used: >-
+      RAES SDL, GCP image build, offline runtime adaptation, Shifter entry
+      contract, CTFd exporter, readiness checks, and operator documentation.
+artifacts:
+  - artifact_id: upstream-source
+    path: assets/upstream-ai-escape-room-fcb25ec9874b.tar.gz
+    classification: open
+    sources: [ai-escape-room]
+    description: Deterministic archive of the pinned upstream revision.
+  - artifact_id: scenario
+    path: sdl/
+    classification: open
+    sources: [ai-escape-room, environment-pack-authorship]
+    description: Portable eleven-service campaign, participant behavior, access, and runtime requirements.
+  - artifact_id: build
+    path: build/
+    classification: open
+    sources: [ai-escape-room, environment-pack-authorship]
+    description: GCP image build and offline runtime adaptation.
+  - artifact_id: challenges
+    path: challenges/
+    classification: internal-only
+    sources: [ai-escape-room, environment-pack-authorship]
+    description: CTF flags, challenge prompts, and hint allocation.
+  - artifact_id: documentation
+    path: docs/
+    classification: open
+    sources: [ai-escape-room, environment-pack-authorship]
+    description: Participant concepts, attack path, operations, and readiness.
+content_safety:
+  no_real_malware: true
+  no_real_third_party_targets: true
+  no_real_credentials: true
+  no_sensitive_data: true
+  offensive_tooling_boundary: true
+  notes: >-
+    All services, identities, tokens, keys, flags, and data are synthetic and
+    isolated to the disposable lab. The scenario contains deliberate vulnerable
+    code and fictional credentials required by its attack path.
+review:
+  status: approved
+  gates:
+    - gate_id: licensing
+      status: approved
+      notes: Upstream MIT notice is retained with the source archive.
+    - gate_id: attribution
+      status: approved
+    - gate_id: sensitive-data
+      status: approved
+      notes: Secret-shaped values are intentional synthetic challenge fixtures.
+    - gate_id: offensive-tooling
+      status: approved
+      notes: Exploitation is bounded to range-local containers and synthetic data.

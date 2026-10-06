@@ -1,0 +1,11 @@
+services:
+  eval-sandbox: {image: ai-escape-lab/eval-sandbox:fcb25ec9874b}
+  registry-cache: {image: ai-escape-lab/registry-cache:fcb25ec9874b}
+  cybergym: {image: ai-escape-lab/cybergym:fcb25ec9874b}
+  request-capture: {image: ai-escape-lab/request-capture:fcb25ec9874b}
+  pastebin: {image: ai-escape-lab/pastebin:fcb25ec9874b}
+  hf-api: {image: ai-escape-lab/hf-api:fcb25ec9874b}
+  dataset-worker: {image: ai-escape-lab/dataset-worker:fcb25ec9874b}
+  k8s-api: {image: ai-escape-lab/k8s-api:fcb25ec9874b}
+  mesh-gateway: {image: ai-escape-lab/mesh-gateway:fcb25ec9874b}
+  source-control: {image: ai-escape-lab/source-control:fcb25ec9874b}

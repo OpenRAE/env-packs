@@ -53,12 +53,14 @@ packages = ["src/raes_env_packs"]
 [tool.hatch.build.targets.wheel.force-include]
 "packs/techvault" = "raes_env_packs/resources/packs/techvault"
 "packs/techvault-participant-study" = "raes_env_packs/resources/packs/techvault-participant-study"
+"packs/ai-escape-lab" = "raes_env_packs/resources/packs/ai-escape-lab"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "/src/raes_env_packs",
     "/packs/techvault",
     "/packs/techvault-participant-study",
+    "/packs/ai-escape-lab",
     "/docs",
     "/tests",
     "/README.md",

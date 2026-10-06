@@ -1,0 +1,8 @@
+{
+  "schema_version": "ai-escape-lab-claude-code-lock/v1",
+  "package": "@anthropic-ai/claude-code-linux-x64",
+  "version": "2.1.289",
+  "url": "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-x64/-/claude-code-linux-x64-2.1.289.tgz",
+  "integrity_sha512_base64": "I23SaSYE8vSwFbJ+Tc0mRlzvJmRQNaiyBUXK/K5R6BVr2lOoCdMI2SJR4N6xiVYy6yyIt39JNiyvPHoiOymyyw==",
+  "architecture": "linux/amd64"
+}

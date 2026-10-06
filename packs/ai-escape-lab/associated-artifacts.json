@@ -1,0 +1,657 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "ai-escape-lab-associated-artifacts",
+  "manifest_version": "0.1.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario",
+    "ref_id": "ai-escape-lab",
+    "ref_version": null,
+    "ref_digest": null,
+    "ref_path": null
+  },
+  "artifacts": {
+    "ai-escape-lab-000-readme-md": {
+      "artifact_id": "ai-escape-lab-000-readme-md",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "143b1a8969b7582282317a6ff123ca04176b6bbda5c308943f958caba443fa7b"
+      },
+      "size_bytes": 2072,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-001-assets-upstream-license": {
+      "artifact_id": "ai-escape-lab-001-assets-upstream-license",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/assets/upstream-LICENSE",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "24bfdded4a1cfd78a00b72313bdfe6837952c7e95035e3c3cb5e50ff0175789d"
+      },
+      "size_bytes": 1076,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-002-assets-upstream-ai-escape-room-fcb25ec9874b-tar-gz": {
+      "artifact_id": "ai-escape-lab-002-assets-upstream-ai-escape-room-fcb25ec9874b-tar-gz",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/assets/upstream-ai-escape-room-fcb25ec9874b.tar.gz",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "138c611ec9520d99723389133e4e989ef5b2c536cae0ccb41f8f0e422c4a16a2"
+      },
+      "size_bytes": 17684,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-003-assets-upstream-source-lock-yaml": {
+      "artifact_id": "ai-escape-lab-003-assets-upstream-source-lock-yaml",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/assets/upstream-source.lock.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "908e1f2f2ddc2c3b348c10dccdb933c9ed2a0d16baedbf376c0af2db640d13de"
+      },
+      "size_bytes": 323,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-004-build-gcp-ai-escape-lab-pkr-hcl": {
+      "artifact_id": "ai-escape-lab-004-build-gcp-ai-escape-lab-pkr-hcl",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/gcp/ai-escape-lab.pkr.hcl",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "bbc37fa9638dd8c083aca7471cfc08f681adc7c6f94b73d646e6060c33b1fbc1"
+      },
+      "size_bytes": 3027,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-005-build-gcp-base-images-lock-yaml": {
+      "artifact_id": "ai-escape-lab-005-build-gcp-base-images-lock-yaml",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/gcp/base-images.lock.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "42a020728913186552b480a1c7f5a6293ab3e3c7f82bde5b2faf07f9129c4dc5"
+      },
+      "size_bytes": 488,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-006-build-gcp-build-image-sh": {
+      "artifact_id": "ai-escape-lab-006-build-gcp-build-image-sh",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/gcp/build-image.sh",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "2d93e1bd08d2fce18748c3d29a5dfa39ba3456f029b34d7c977f095ec456223e"
+      },
+      "size_bytes": 1132,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-007-build-gcp-build-images-override-yml": {
+      "artifact_id": "ai-escape-lab-007-build-gcp-build-images-override-yml",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/gcp/build-images.override.yml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "130fac49a29ffa575fcf9f6559e6abb396ed6a45114f5599754b93ca2cda0af0"
+      },
+      "size_bytes": 640,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-008-build-gcp-scripts-firewall-sh": {
+      "artifact_id": "ai-escape-lab-008-build-gcp-scripts-firewall-sh",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/gcp/scripts/firewall.sh",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "ee08d84b24a6c245dd0f5afe210880e34d46f53658e082e34fe4ab5fb5bb04eb"
+      },
+      "size_bytes": 1089,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-009-build-gcp-scripts-install-sh": {
+      "artifact_id": "ai-escape-lab-009-build-gcp-scripts-install-sh",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/gcp/scripts/install.sh",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "fe6afacacb51ed4059fe233b3100bc9e52d95e87fa3c45979a10d025cc957cab"
+      },
+      "size_bytes": 5941,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-010-build-gcp-scripts-metadata-token-responder-py": {
+      "artifact_id": "ai-escape-lab-010-build-gcp-scripts-metadata-token-responder-py",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/gcp/scripts/metadata-token-responder.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "46ecf43509afd31b0fa6e5e8bd7b3f0c39ae5312e08eb880b63ae27159188546"
+      },
+      "size_bytes": 2406,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-011-build-gcp-scripts-prepare-source-py": {
+      "artifact_id": "ai-escape-lab-011-build-gcp-scripts-prepare-source-py",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/gcp/scripts/prepare-source.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "1dd0ebd18e756c2a5b538c8d3871f79a400ed74e3c800ab0451453c4f2c942f8"
+      },
+      "size_bytes": 4550,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-012-build-runtime-ai-escape-enter": {
+      "artifact_id": "ai-escape-lab-012-build-runtime-ai-escape-enter",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/runtime/ai-escape-enter",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "3c9bdd650b185d4f871c8f0abd7729f31f9f12b1ebb5e881548a9702625b3ae1"
+      },
+      "size_bytes": 612,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-013-build-runtime-docker-compose-yml": {
+      "artifact_id": "ai-escape-lab-013-build-runtime-docker-compose-yml",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/runtime/docker-compose.yml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "3cec18610c00610ae1a1c4e785d69d659149fb6bf60ce272a2b9ca7b00744d1a"
+      },
+      "size_bytes": 6457,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-014-build-runtime-participant-shell-sh": {
+      "artifact_id": "ai-escape-lab-014-build-runtime-participant-shell-sh",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/runtime/participant-shell.sh",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "f8c0fb010a873c7e1709a58c1cab9b58a72674a4d8153f34b230847dbc23e97d"
+      },
+      "size_bytes": 358,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-015-build-runtime-probe-agent-sh": {
+      "artifact_id": "ai-escape-lab-015-build-runtime-probe-agent-sh",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/runtime/probe-agent.sh",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "398fe66c68f8175f4bed973b9335c12eb4a9bff5cdf9459020d228cf449803da"
+      },
+      "size_bytes": 515,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-016-build-runtime-readiness-json": {
+      "artifact_id": "ai-escape-lab-016-build-runtime-readiness-json",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/runtime/readiness.json",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "f2307b60a0ef4d8d7e5caccc5fbacb722ef0b612edec937c975eb3d96d411167"
+      },
+      "size_bytes": 1264,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-017-build-runtime-readiness-sh": {
+      "artifact_id": "ai-escape-lab-017-build-runtime-readiness-sh",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/runtime/readiness.sh",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "9e572c4c395806dc9076236f86dee96f9394f5aec968c8c51a03395e65cc88aa"
+      },
+      "size_bytes": 1647,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-018-build-runtime-start-lab-sh": {
+      "artifact_id": "ai-escape-lab-018-build-runtime-start-lab-sh",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/runtime/start-lab.sh",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "cd830d39201ed6f008f657d4b32f5b3395b911039b426e2e230db8162d73f154"
+      },
+      "size_bytes": 1409,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-019-build-runtime-stop-lab-sh": {
+      "artifact_id": "ai-escape-lab-019-build-runtime-stop-lab-sh",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/runtime/stop-lab.sh",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "1821e7b8edb7fddea938b9b69c877d8b0d19b1689c1cad4d80c1ea6e66f9ee4b"
+      },
+      "size_bytes": 201,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-037-build-shifter-readme-md": {
+      "artifact_id": "ai-escape-lab-037-build-shifter-readme-md",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/shifter/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "da88b234a8ba44b6f9f0c9d1db5e1c175f82ff7840133442b5155399a46df68c"
+      },
+      "size_bytes": 1373,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-038-build-shifter-export-pack-py": {
+      "artifact_id": "ai-escape-lab-038-build-shifter-export-pack-py",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/shifter/export-pack.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "e1608f9a637d5046c9faa1a762b091afd1e794157ef0a9df2a7724130b64f83d"
+      },
+      "size_bytes": 6170,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-020-build-tests-test-build-py": {
+      "artifact_id": "ai-escape-lab-020-build-tests-test-build-py",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/build/tests/test_build.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "bf6667cb6d43c2183aba52ff63aa9f835ef7e75f4efad9fd685e20df37771005"
+      },
+      "size_bytes": 7353,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-021-challenges-challenges-yaml": {
+      "artifact_id": "ai-escape-lab-021-challenges-challenges-yaml",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/challenges/challenges.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "6d04a7404dcff45f17054d8ab08a7030ad3f7b95a7124ba8e3eb66a01f14746d"
+      },
+      "size_bytes": 2833,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-022-ctfd-readme-md": {
+      "artifact_id": "ai-escape-lab-022-ctfd-readme-md",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/ctfd/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "4833c62cb718d849f423e5c2ff36a0f0a951580e1cb05153b8aec64750e67310"
+      },
+      "size_bytes": 454,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-023-ctfd-export-shifter-challenge-pack-py": {
+      "artifact_id": "ai-escape-lab-023-ctfd-export-shifter-challenge-pack-py",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/ctfd/export_shifter_challenge_pack.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "2e0d6ed71f25bf58d99de1daff23222ea518cb4f4021d445069e9ad44ad566d2"
+      },
+      "size_bytes": 4451,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-024-ctfd-tests-test-export-py": {
+      "artifact_id": "ai-escape-lab-024-ctfd-tests-test-export-py",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/ctfd/tests/test_export.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "c867eb0f3ba972f28d4b22ec72bcdee0bc3e35d0ba31de84f38534ca122ce1f9"
+      },
+      "size_bytes": 835,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-025-docs-attack-path-md": {
+      "artifact_id": "ai-escape-lab-025-docs-attack-path-md",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/docs/attack-path.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7919eb36efffcf8646661efcbf676c06c0dbc08d7764552631f5e8ed67a208b2"
+      },
+      "size_bytes": 929,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-026-docs-concepts-md": {
+      "artifact_id": "ai-escape-lab-026-docs-concepts-md",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/docs/concepts.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "860d165be84957f5643635bbe28d05e97ddbd8bf6fc3c202c835409abe103a81"
+      },
+      "size_bytes": 1126,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-027-docs-golden-readiness-checklist-md": {
+      "artifact_id": "ai-escape-lab-027-docs-golden-readiness-checklist-md",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/docs/golden-readiness-checklist.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "eccf6bd2c7602d1ffee48c552f0e474b99e8136264bc268a1f868175c7e2ffa6"
+      },
+      "size_bytes": 3115,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-028-docs-lineage-md": {
+      "artifact_id": "ai-escape-lab-028-docs-lineage-md",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/docs/lineage.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "72983235321805759dc59a611868457988c2568533ecff8e3b5b618a0ce8b8aa"
+      },
+      "size_bytes": 492,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-029-docs-operator-runbook-md": {
+      "artifact_id": "ai-escape-lab-029-docs-operator-runbook-md",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/docs/operator-runbook.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "e0d2ae8057ffcab071b31faa1d1fc45fff239f495e6b3cd3937dbbfaafef2d3c"
+      },
+      "size_bytes": 6726,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-030-docs-provenance-ledger-yaml": {
+      "artifact_id": "ai-escape-lab-030-docs-provenance-ledger-yaml",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "6ba38c526b47508bf06c42bcc0fa2e03cf589ed70d585fc57dbf1d5bbe5d73cb"
+      },
+      "size_bytes": 2819,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-031-docs-walkthroughs-operator-solution-md": {
+      "artifact_id": "ai-escape-lab-031-docs-walkthroughs-operator-solution-md",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/docs/walkthroughs/operator-solution.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "a202a04a0012851c309c23238ab544ab2822cbedbf64f3135b175fa82f657ab2"
+      },
+      "size_bytes": 1815,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-032-flags-placement-yaml": {
+      "artifact_id": "ai-escape-lab-032-flags-placement-yaml",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/flags/placement.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "dabeecea82c451a9581a4435166715eea45371691efe252b5cf1dfab87104eda"
+      },
+      "size_bytes": 1609,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-033-pack-compatibility-yaml": {
+      "artifact_id": "ai-escape-lab-033-pack-compatibility-yaml",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/pack.compatibility.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "ff12c5dbed23c96664372c65970d240a3ec678db1ffa583710b2e04e20f68eb8"
+      },
+      "size_bytes": 4763,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-034-pack-yaml": {
+      "artifact_id": "ai-escape-lab-034-pack-yaml",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/pack.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7e266febfbf4a0be388658682d39128ee27df5b8f068d5440387943fc2a26c06"
+      },
+      "size_bytes": 566,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-035-sdl-ai-escape-lab-sdl-yaml": {
+      "artifact_id": "ai-escape-lab-035-sdl-ai-escape-lab-sdl-yaml",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/sdl/ai-escape-lab.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "5a6ded4dc482ed4d247280daeb5fefda76f838c94ecff7fb0d062dc1dd455b70"
+      },
+      "size_bytes": 18690,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-036-validation-tests-test-pack-py": {
+      "artifact_id": "ai-escape-lab-036-validation-tests-test-pack-py",
+      "role": "other",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/validation/tests/test_pack.py",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "be22b46d90f03cd5dd248f4392221dcb3a0b5267c4c4ee8b208f58de1c560b3e"
+      },
+      "size_bytes": 1012,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "ai-escape-lab-039-build-gcp-claude-code-lock-json": {
+      "artifact_id": "ai-escape-lab-039-build-gcp-claude-code-lock-json",
+      "role": "other",
+      "media_type": "application/json",
+      "uri": "raes-environment-pack:/build/gcp/claude-code.lock.json",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "2be64f5f6b3faac4c707d03324beb36d4107e30d7c3391fcd2571cc518c4a16a"
+      },
+      "size_bytes": 401,
+      "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": "Pinned Claude Code standalone Linux package identity and integrity."
+    }
+  },
+  "set_digest": "sha256:75b817b7ec8c368b306af3c5e1c209ab60ece939a10f48cc79a5e1e7d20fc8f7"
+}

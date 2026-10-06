@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+
+expected=(exec --interactive --user root --workdir /app)
+if [[ "${1:-}" == "exec" && "${2:-}" == "--interactive" && "${3:-}" == "--user" \
+   && "${4:-}" == "root" && "${5:-}" == "--workdir" && "${6:-}" == "/app" ]]; then
+  shift 6
+else
+  echo "AI Escape Lab: invalid entry request" >&2
+  exit 2
+fi
+if [[ "${1:-}" == "--tty" ]]; then
+  expected+=(--tty)
+  shift
+fi
+if [[ "$#" -ne 3 || "$1" != "eval-sandbox" || "$2" != "bash" || "$3" != "--login" ]]; then
+  echo "AI Escape Lab: invalid entry target" >&2
+  exit 2
+fi
+exec /usr/bin/docker "${expected[@]}" eval-sandbox bash --login
