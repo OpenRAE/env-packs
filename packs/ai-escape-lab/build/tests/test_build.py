@@ -21,6 +21,8 @@ class BuildContractTests(unittest.TestCase):
         self.assertEqual(lock["architecture"], "linux/amd64")
         for image in lock["images"].values():
             self.assertRegex(image["pinned"], r"@sha256:[0-9a-f]{64}$")
+        install = (_BUILD / "gcp/scripts/install.sh").read_text()
+        self.assertIn(f'MONGO_IMAGE={lock["images"]["mongo"]["pinned"]}', install)
 
     def test_claude_code_binary_is_version_and_integrity_pinned(self) -> None:
         lock = json.loads((_BUILD / "gcp/claude-code.lock.json").read_text())
@@ -35,6 +37,29 @@ class BuildContractTests(unittest.TestCase):
         self.assertIn("omit_external_ip        = true", packer)
         self.assertIn("use_internal_ip         = true", packer)
         self.assertIn("use_iap                 = true", packer)
+
+    def test_packer_validation_messages_are_valid_sentences(self) -> None:
+        packer = (_BUILD / "gcp/ai-escape-lab.pkr.hcl").read_text()
+        self.assertIn(
+            'error_message = "Source image must be an exact projects/.../global/images/... reference."',
+            packer,
+        )
+        self.assertIn('error_message = "Image version must match YYYYMMDD-N."', packer)
+
+    def test_packer_splits_the_exact_source_reference_for_the_gce_builder(self) -> None:
+        packer = (_BUILD / "gcp/ai-escape-lab.pkr.hcl").read_text()
+        self.assertIn('source_image_parts   = split("/", var.source_image)', packer)
+        self.assertIn("source_image            = local.source_image_name", packer)
+        self.assertIn("source_image_project_id = [local.source_image_project]", packer)
+
+    def test_firewall_waits_for_the_docker_user_chain_not_a_sentinel_rule(self) -> None:
+        firewall = (_BUILD / "gcp/scripts/firewall.sh").read_text()
+        self.assertIn("iptables --table filter --list DOCKER-USER", firewall)
+        self.assertNotIn("iptables --check DOCKER-USER -j RETURN", firewall)
+
+    def test_participant_dns_cannot_forward_arbitrary_public_queries(self) -> None:
+        compose = (_BUILD / "runtime/docker-compose.yml").read_text(encoding="utf-8")
+        self.assertIn("    dns: [127.0.0.1]\n", compose)
 
     def test_source_preparation_accepts_the_installed_destination(self) -> None:
         script = _BUILD / "gcp/scripts/prepare-source.py"
@@ -56,15 +81,53 @@ class BuildContractTests(unittest.TestCase):
             self.assertIn("COPY claude /usr/local/bin/claude", dockerfile)
             self.assertNotIn("/opt/shifter/bin", dockerfile)
 
-    def test_metadata_responder_rejects_recursive_query_expansion(self) -> None:
+    def test_participant_briefing_identifies_the_authorized_local_range(self) -> None:
+        briefing = (_BUILD / "runtime/participant-briefing.md").read_text(encoding="utf-8")
+        install = (_BUILD / "gcp/scripts/install.sh").read_text(encoding="utf-8")
+        self.assertIn("authorized,\ndisposable range", briefing)
+        self.assertIn("fictional local container", briefing)
+        self.assertIn("Use Claude Code as a co-hacker", briefing)
+        self.assertNotIn("You are an autonomous AI agent", briefing)
+        self.assertIn('install -m 0644 /tmp/ai-escape-runtime/participant-briefing.md', install)
+        self.assertLess(
+            install.index('install -m 0644 /tmp/ai-escape-runtime/participant-briefing.md'),
+            install.index('docker compose --file "$ROOT/source/docker-compose.yml"'),
+        )
+
+    def test_metadata_responder_allows_only_the_model_clients_fixed_scope_query(self) -> None:
         script = _BUILD / "gcp/scripts/metadata-token-responder.py"
         spec = importlib.util.spec_from_file_location("ai_escape_metadata_responder", script)
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         self.assertTrue(module.allowed_path("/computeMetadata/v1/instance/service-accounts/default/token"))
+        self.assertTrue(
+            module.allowed_path(
+                "/computeMetadata/v1/instance/service-accounts/default/token"
+                "?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform"
+            )
+        )
         self.assertFalse(module.allowed_path("/computeMetadata/v1/?recursive=true"))
         self.assertFalse(module.allowed_path("/computeMetadata/v1/instance/attributes/ssh-keys"))
+        self.assertFalse(
+            module.allowed_path(
+                "/computeMetadata/v1/instance/service-accounts/default/token"
+                "?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdevstorage.read_only"
+            )
+        )
+        self.assertFalse(
+            module.allowed_path(
+                "/computeMetadata/v1/instance/service-accounts/default/token"
+                "?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform&recursive=true"
+            )
+        )
+        self.assertFalse(
+            module.allowed_path(
+                "/computeMetadata/v1/instance/service-accounts/default/token"
+                "?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform"
+                "&scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform"
+            )
+        )
 
     def test_runtime_start_requires_live_model_readiness_before_ready_marker(self) -> None:
         start = (_BUILD / "runtime/start-lab.sh").read_text(encoding="utf-8")

@@ -6,14 +6,17 @@ from __future__ import annotations
 import sys
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qsl, urlsplit
 
 
 _METADATA = "http://169.254.169.254"
+_TOKEN_PATH = "/computeMetadata/v1/instance/service-accounts/default/token"
+_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
 _ALLOWED = frozenset(
     {
         "/computeMetadata/v1/",
         "/computeMetadata/v1/instance/service-accounts/default/",
-        "/computeMetadata/v1/instance/service-accounts/default/token",
+        _TOKEN_PATH,
         "/computeMetadata/v1/instance/service-accounts/default/email",
         "/computeMetadata/v1/instance/service-accounts/default/scopes",
         "/computeMetadata/v1/project/project-id",
@@ -23,9 +26,18 @@ _ALLOWED = frozenset(
 
 
 def allowed_path(path: str) -> bool:
-    """Accept only exact metadata resources; query expansion is not permitted."""
+    """Accept exact metadata resources and Claude's fixed token-scope request."""
 
-    return "?" not in path and path in _ALLOWED
+    target = urlsplit(path)
+    if target.scheme or target.netloc or target.fragment:
+        return False
+    if not target.query:
+        return target.path in _ALLOWED
+    try:
+        query = parse_qsl(target.query, keep_blank_values=True, strict_parsing=True)
+    except ValueError:
+        return False
+    return target.path == _TOKEN_PATH and query == [("scopes", _CLOUD_PLATFORM_SCOPE)]
 
 
 class Handler(BaseHTTPRequestHandler):

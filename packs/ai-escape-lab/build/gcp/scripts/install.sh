@@ -4,7 +4,7 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 ROOT=/opt/ai-escape-lab
 SOURCE_SHA256=138c611ec9520d99723389133e4e989ef5b2c536cae0ccb41f8f0e422c4a16a2
-MONGO_IMAGE=mongo:7@sha256:92867f3a1852f7421f4dce4039b449dcf4106c71c19ae1ed13dbc8d41427cd61
+MONGO_IMAGE=mongo@sha256:494b956596706b19ba44908cb9d03648b585214600987b86cd2a34249358e572
 LOCAL_MONGO=ai-escape-lab/internal-db:fcb25ec9874b
 
 apt-get update
@@ -17,6 +17,8 @@ python3 /tmp/ai-escape-scripts/prepare-source.py \
   --archive /tmp/upstream-ai-escape-room.tar.gz \
   --destination "$ROOT/source" \
   --sha256 "$SOURCE_SHA256"
+install -m 0644 /tmp/ai-escape-runtime/participant-briefing.md \
+  "$ROOT/source/eval-sandbox/briefing.md"
 
 python3 - <<'PY'
 import base64
