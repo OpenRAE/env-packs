@@ -2300,6 +2300,54 @@ class TechVaultPackTests(unittest.TestCase):
             self.assertNotIn("ca-private-key", consumer["selected_outputs"])
 
 
+class TechVaultIntegrationEndpointTests(unittest.TestCase):
+    """TLS is an authored outcome, independent of backend host transport."""
+
+    def test_thehive_https_outcome_survives_compilation_and_rejects_downgrade(self) -> None:
+        sdl = _load_sdl()
+        (application,) = sdl["nodes"]["thehive"]["runtime"]["applications"]
+        self.assertEqual(application["protocol"], "https")
+        self.assertEqual(application["service"], "thehive-api")
+        model = compile_scenario_runtime_model(
+            parse_sdl_file(_SDL),
+            parameters={name: f"test-{name}" for name in sdl["variables"]},
+        )
+        requirement = next(
+            item for item in model.realization_requirements
+            if item.field_path == "nodes.thehive.runtime.applications"
+        )
+        observed = copy.deepcopy(sdl["nodes"]["thehive"]["runtime"]["applications"])
+        self.assertTrue(
+            evaluate_realization_constraint(
+                requirement.constraint_document, observed
+            ).conformant
+        )
+        observed[0]["protocol"] = "http"
+        self.assertFalse(
+            evaluate_realization_constraint(
+                requirement.constraint_document, observed
+            ).conformant
+        )
+
+    def test_integration_services_receive_only_their_own_tls_material(self) -> None:
+        soc = _load_sdl()["generated_artifacts"]["techvault-soc-certificates"]
+        consumers = {item["node"]: item for item in soc["consumers"]}
+        expected = {
+            "misp": {"ca-certificate", "misp-certificate", "misp-private-key"},
+            "thehive": {
+                "ca-certificate", "thehive-keystore", "thehive-keystore-password"
+            },
+            "shuffle-frontend": {
+                "ca-certificate", "shuffle-certificate", "shuffle-private-key"
+            },
+        }
+        for node, selected in expected.items():
+            with self.subTest(node=node):
+                self.assertEqual(set(consumers[node]["selected_outputs"]), selected)
+                self.assertEqual(consumers[node]["access_mode"], "read_only")
+        self.assertNotIn("aptl-mcp-endpoints", consumers)
+
+
 # The TechVault domain's in-world roster: username -> (groups, password
 # strength, SPN). Only the SPN each account is Kerberoastable through is listed.
 _AD_ACCOUNT_ROSTER = {
