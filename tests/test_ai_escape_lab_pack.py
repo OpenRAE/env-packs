@@ -174,7 +174,10 @@ class AiEscapeLabPackTests(unittest.TestCase):
         self.assertEqual(readiness["flag_count"], 7)
         self.assertEqual(readiness["hint_count"], 12)
         probes = {probe["id"] for probe in readiness["probes"]}
-        self.assertTrue({"compose-health", "participant-shell", "claude-client", "challenge-path"} <= probes)
+        self.assertLessEqual(
+            {"compose-health", "participant-shell", "claude-client", "challenge-path"},
+            probes,
+        )
 
 
 if __name__ == "__main__":
