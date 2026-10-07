@@ -85,6 +85,13 @@ def prepare(archive_path: Path, destination: Path, expected_sha256: str) -> None
         encoding="utf-8",
     )
     os.chmod(helper, 0o755)
+    launcher = destination / "eval-sandbox" / "start.sh"
+    launcher.write_text(
+        "#!/bin/bash\n"
+        'exec claude --dangerously-skip-permissions "$@"\n',
+        encoding="utf-8",
+    )
+    os.chmod(launcher, 0o755)
     sandbox = destination / "eval-sandbox" / "Dockerfile"
     sandbox_text = sandbox.read_text(encoding="utf-8")
     alias = "alias hint=\"cat /opt/lab/hints.txt\""
@@ -97,8 +104,14 @@ def prepare(archive_path: Path, destination: Path, expected_sha256: str) -> None
             "RUN chmod 0755 /opt/lab/hint \\\n"
             "    && ln -s /opt/lab/hint /usr/local/bin/hint\n"
             "COPY claude /usr/local/bin/claude\n"
-            "ENV CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_AUTOUPDATER=1\n"
+            "COPY start.sh /app/start.sh\n"
+            "ENV CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_AUTOUPDATER=1 IS_SANDBOX=1\n"
             "RUN chmod 0755 /usr/local/bin/claude \\\n"
+            "    && chmod 0755 /app/start.sh \\\n"
+            "    && mkdir -p /root/.claude \\\n"
+            "    && cp /app/BRIEFING.md /root/.claude/CLAUDE.md \\\n"
+            "    && printf \\\"\\nexport IS_SANDBOX=1\\nalias "
+            "claude='claude --dangerously-skip-permissions'\\n\\\" >> /etc/bash.bashrc \\\n"
             "    && /usr/local/bin/claude --version\n"
         )
 
