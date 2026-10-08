@@ -1,7 +1,7 @@
 {
   "schema_version": "associated-artifact-manifest/v1",
   "manifest_id": "techvault-associated-artifacts",
-  "manifest_version": "0.1.1",
+  "manifest_version": "0.1.2",
   "canonicalization_profile": "associated-artifact-set/v1",
   "scope": "scenario",
   "parent_ref": {
@@ -707,11 +707,11 @@
       "uri": "raes-environment-pack:/assets/content/mcp-red-sources.tar",
       "checksum": {
         "algorithm": "sha256",
-        "value": "3536a2fd58eab9a2bfdc0ad90be4fdfd45bba9db1ef4acb5a54ff76126e7788e"
+        "value": "ec849aba9d33c5079e5db5f960fa9e827f71f90c6794d22d9c36388800c1f529"
       },
-      "size_bytes": 593920,
-      "created_at": "2026-09-14T00:00:00Z",
-      "source": "aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc",
+      "size_bytes": 604160,
+      "created_at": "2026-10-08T00:00:00Z",
+      "source": "environment-pack-author adapted from aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc and aptl@1838b7fd",
       "satisfies_refs": [],
       "sensitivity": "internal",
       "description": "Exact red-team stdio MCP source packages for the Kali workstation."
@@ -723,11 +723,11 @@
       "uri": "raes-environment-pack:/assets/content/mcp-blue-sources.tar",
       "checksum": {
         "algorithm": "sha256",
-        "value": "74e850e04e5e428cc0bb4cd5e4a6480373cd1e9a2a686fb40a0e560cd941f111"
+        "value": "27e3359b731e9b04ba3c8c0d0870c9d4d8660276972f0cefa61620628025a5ac"
       },
-      "size_bytes": 1116160,
-      "created_at": "2026-09-14T00:00:00Z",
-      "source": "aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc",
+      "size_bytes": 1126400,
+      "created_at": "2026-10-08T00:00:00Z",
+      "source": "environment-pack-author adapted from aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc and aptl@1838b7fd",
       "satisfies_refs": [],
       "sensitivity": "internal",
       "description": "Exact defensive stdio MCP source packages for the SOC workstation."
