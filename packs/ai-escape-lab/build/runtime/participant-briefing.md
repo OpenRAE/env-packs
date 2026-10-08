@@ -26,11 +26,6 @@ evidence, propose a next step, and run or revise commands with you. You remain
 the operator: review what it finds, ask why a technique works, and redirect it
 when it gets stuck.
 
-## Hints
-
-Run `hint` to list all hints, or `/opt/lab/hint N` for one numbered hint. You
-may stop after any flag or continue through the full seven-stage campaign.
-
 ---
 
 ℹ️  Tip: Once you are inside Claude, you can ask it to show these instructions

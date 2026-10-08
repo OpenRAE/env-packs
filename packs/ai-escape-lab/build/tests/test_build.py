@@ -77,7 +77,8 @@ class BuildContractTests(unittest.TestCase):
             )
             dockerfile = (destination / "eval-sandbox/Dockerfile").read_text()
             self.assertIn("@sha256:", dockerfile.splitlines()[0])
-            self.assertTrue((destination / "eval-sandbox/hint").is_file())
+            self.assertFalse((destination / "eval-sandbox/hint").exists())
+            self.assertFalse((destination / "eval-sandbox/hints").exists())
             launcher = destination / "eval-sandbox/start.sh"
             self.assertTrue(launcher.is_file())
             self.assertEqual(
@@ -86,6 +87,8 @@ class BuildContractTests(unittest.TestCase):
             )
             self.assertEqual(launcher.stat().st_mode & 0o777, 0o755)
             self.assertIn("COPY claude /usr/local/bin/claude", dockerfile)
+            self.assertNotIn("/opt/lab/hint", dockerfile)
+            self.assertNotIn("Type hint", dockerfile)
             self.assertIn("COPY start.sh /app/start.sh", dockerfile)
             self.assertIn("IS_SANDBOX=1", dockerfile)
             self.assertIn("alias claude='claude --dangerously-skip-permissions'", dockerfile)
@@ -100,6 +103,9 @@ class BuildContractTests(unittest.TestCase):
         self.assertIn("Use Claude Code as a co-hacker", briefing)
         self.assertIn('"show me the lab briefing."', briefing)
         self.assertIn("Agent directive", briefing)
+        self.assertNotIn("## Hints", briefing)
+        self.assertNotIn("/opt/lab/hint", briefing)
+        self.assertNotIn("Run `hint`", briefing)
         self.assertTrue(
             briefing.endswith(
                 "Type `claude --dangerously-skip-permissions` or `./start.sh` to begin.\n"

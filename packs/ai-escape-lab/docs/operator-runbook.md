@@ -100,7 +100,7 @@ python3 ctfd/export_shifter_challenge_pack.py \
 ```
 
 Import that JSON through Shifter's CTFd challenge-pack control. It contains all
-seven static flags and twelve free hints. Keep the generated file out of source
+seven static flags and twenty-three progressive portal hints. Keep the generated file out of source
 control and delete the operator copy after the import is verified.
 
 ## 4. One-seat canary
@@ -113,9 +113,9 @@ sudo /opt/ai-escape-lab/readiness.sh --runtime
 sudo /opt/ai-escape-lab/probe-agent.sh
 ```
 
-Open the participant browser terminal. It must display the upstream briefing
-from `/app`, `hint 1` must return one line, `claude` must start, and the
-participant must have no host shell or Docker socket. Complete the operator
+Open the participant browser terminal. It must display the participant briefing from `/app`, `claude` must start,
+and the participant must have no host shell, Docker socket, or local shell-hint
+command or file. Complete the operator
 walkthrough from that terminal and submit every flag to CTFd.
 
 Before accepting the image, also prove:

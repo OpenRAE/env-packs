@@ -24,8 +24,6 @@ while (( SECONDS < deadline )); do
 done
 (( SECONDS < deadline )) || { echo "AI Escape Lab: container readiness timed out" >&2; exit 1; }
 
-docker exec eval-sandbox test -x /opt/lab/hint
-docker exec eval-sandbox /opt/lab/hint 1 >/dev/null
 docker exec eval-sandbox python3 -c "import urllib.request; urllib.request.urlopen('http://registry-cache:8080/healthz')"
 docker exec eval-sandbox test -x /usr/local/bin/claude
 docker exec eval-sandbox claude --version >/dev/null
