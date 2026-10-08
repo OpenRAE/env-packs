@@ -9,7 +9,7 @@ Keep the source copy unchecked.
 - [ ] The image manifest records all eleven local container image IDs, upstream revision `fcb25ec9874b0676706b9aca650f22efc90f711e`, and the pinned Claude Code package identity.
 - [ ] A Shifter mapping resolves `ai-escape-lab/gce` to the exact custom-image reference.
 - [ ] `eval-sandbox` contains the baked Claude Code 2.1.289 binary and `claude --version` succeeds without a runtime download.
-- [ ] CTFd imports seven challenges, seven distinct flags, and twelve hints.
+- [ ] CTFd imports seven challenges, seven distinct flags, and twenty-three progressive portal hints.
 - [ ] One-seat canary passes `/opt/ai-escape-lab/readiness.sh --runtime`.
 - [ ] Browser SSH lands the participant in `/app` inside `eval-sandbox`.
 - [ ] The participant has no host shell, Docker socket, privileged container, host namespace, or direct metadata route.
@@ -27,7 +27,7 @@ Keep the source copy unchecked.
 
 - [ ] Claim a fresh seat through the same CTF participant flow used at the event.
 - [ ] Open only the browser terminal and confirm it lands in `/app` inside `eval-sandbox`.
-- [ ] Run `hint 1`, start `claude`, and verify the agent returns a real model response.
+- [ ] Start `claude` and verify the agent returns a real model response.
 - [ ] Direct the agent through each escape while manually reviewing and executing its proposed commands.
 - [ ] Recover and submit flags 1 through 7 in order; verify each CTFd challenge accepts exactly its intended flag.
 - [ ] Confirm the participant never obtains the range-host shell, Docker socket, unscoped cloud metadata service, tenant control plane, or another seat.

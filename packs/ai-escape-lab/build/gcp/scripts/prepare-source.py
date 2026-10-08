@@ -75,30 +75,44 @@ def prepare(archive_path: Path, destination: Path, expected_sha256: str) -> None
         else:
             raise ValueError(f"unrecognized upstream base image in {dockerfile}")
 
-    helper = destination / "eval-sandbox" / "hint"
-    helper.write_text(
-        "#!/bin/sh\nset -eu\n"
-        "if [ $# -eq 0 ]; then cat /opt/lab/hints.txt; exit 0; fi\n"
-        "case \"${1:-}\" in 1|2|3|4|5|6|7|8|9|10|11|12) ;; "
-        "*) echo 'usage: hint [NUMBER (1-12)]' >&2; exit 2 ;; esac\n"
-        "sed -n \"${1}p\" /opt/lab/hints.txt\n",
+    hints = destination / "eval-sandbox" / "hints"
+    if hints.exists():
+        shutil.rmtree(hints)
+
+    launcher = destination / "eval-sandbox" / "start.sh"
+    launcher.write_text(
+        "#!/bin/bash\n"
+        'exec claude --dangerously-skip-permissions "$@"\n',
         encoding="utf-8",
     )
-    os.chmod(helper, 0o755)
+    os.chmod(launcher, 0o755)
     sandbox = destination / "eval-sandbox" / "Dockerfile"
     sandbox_text = sandbox.read_text(encoding="utf-8")
-    alias = "alias hint=\"cat /opt/lab/hints.txt\""
-    if sandbox_text.count(alias) != 1:
-        raise ValueError("unexpected upstream hint alias")
-    sandbox.write_text(sandbox_text.replace(alias, "alias hints=\"cat /opt/lab/hints.txt\""), encoding="utf-8")
+    hint_copy = "COPY hints/hints.txt /opt/lab/hints.txt\n"
+    hint_alias = (
+        "RUN echo 'cat /app/BRIEFING.md' >> /etc/bash.bashrc \\\n"
+        "    && echo 'alias hint=\"cat /opt/lab/hints.txt\"' >> /etc/bash.bashrc\n"
+    )
+    briefing_only = "RUN echo 'cat /app/BRIEFING.md' >> /etc/bash.bashrc\n"
+    welcome_hint = "    Type hint to see hints"
+    for fragment in (hint_copy, hint_alias, welcome_hint):
+        if sandbox_text.count(fragment) != 1:
+            raise ValueError(f"unexpected upstream shell-hint fragment: {fragment!r}")
+    sandbox_text = sandbox_text.replace(hint_copy, "")
+    sandbox_text = sandbox_text.replace(hint_alias, briefing_only)
+    sandbox_text = sandbox_text.replace(welcome_hint, "")
+    sandbox.write_text(sandbox_text, encoding="utf-8")
     with sandbox.open("a", encoding="utf-8") as handle:
         handle.write(
-            "\nCOPY hint /opt/lab/hint\n"
-            "RUN chmod 0755 /opt/lab/hint \\\n"
-            "    && ln -s /opt/lab/hint /usr/local/bin/hint\n"
-            "COPY claude /usr/local/bin/claude\n"
-            "ENV CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_AUTOUPDATER=1\n"
+            "\nCOPY claude /usr/local/bin/claude\n"
+            "COPY start.sh /app/start.sh\n"
+            "ENV CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_AUTOUPDATER=1 IS_SANDBOX=1\n"
             "RUN chmod 0755 /usr/local/bin/claude \\\n"
+            "    && chmod 0755 /app/start.sh \\\n"
+            "    && mkdir -p /root/.claude \\\n"
+            "    && cp /app/BRIEFING.md /root/.claude/CLAUDE.md \\\n"
+            "    && printf \\\"\\nexport IS_SANDBOX=1\\nalias "
+            "claude='claude --dangerously-skip-permissions'\\n\\\" >> /etc/bash.bashrc \\\n"
             "    && /usr/local/bin/claude --version\n"
         )
 
