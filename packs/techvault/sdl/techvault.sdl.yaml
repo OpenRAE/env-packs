@@ -3197,14 +3197,14 @@ content:
     destination: /opt/techvault/mcp
     source:
       name: techvault-red-mcp-sources
-      version: 0.1.1
+      version: 0.1.2
       artifact_requirement:
         requirement_id: techvault-red-mcp-sources-requirement
         explicitness: exact
         exact_artifact:
           artifact_id: techvault-red-mcp-sources
-          version: 0.1.1
-          digest: sha256:3536a2fd58eab9a2bfdc0ad90be4fdfd45bba9db1ef4acb5a54ff76126e7788e
+          version: 0.1.2
+          digest: sha256:ec849aba9d33c5079e5db5f960fa9e827f71f90c6794d22d9c36388800c1f529
           media_type: application/x-tar
         permitted_routes:
           - mechanism:
@@ -3220,14 +3220,14 @@ content:
     destination: /opt/techvault/mcp
     source:
       name: techvault-blue-mcp-sources
-      version: 0.1.1
+      version: 0.1.2
       artifact_requirement:
         requirement_id: techvault-blue-mcp-sources-requirement
         explicitness: exact
         exact_artifact:
           artifact_id: techvault-blue-mcp-sources
-          version: 0.1.1
-          digest: sha256:74e850e04e5e428cc0bb4cd5e4a6480373cd1e9a2a686fb40a0e560cd941f111
+          version: 0.1.2
+          digest: sha256:27e3359b731e9b04ba3c8c0d0870c9d4d8660276972f0cefa61620628025a5ac
           media_type: application/x-tar
         permitted_routes:
           - mechanism:

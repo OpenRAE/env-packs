@@ -32,6 +32,17 @@ sources:
       or error content.
     url: https://github.com/Brad-Edwards/aptl
     ref: 7c673a19f9fb6a3eb1d17305104196b600bd59cc
+  - source_id: aptl-techvault-mcp-rule-fix
+    name: TechVault MCP rule-authoring correction
+    license: MIT
+    usage: adapted
+    attribution_required: true
+    attribution: Copyright (c) 2025 APTL Contributors
+    used: >-
+      Raw-payload MCP request schema and the authenticated Wazuh rules-file
+      endpoint configuration.
+    url: https://github.com/Brad-Edwards/aptl
+    ref: 1838b7fd
 artifacts:
   - artifact_id: scenario
     path: sdl/
@@ -51,13 +62,13 @@ artifacts:
   - artifact_id: red-team-mcp-sources
     path: assets/content/mcp-red-sources.tar
     classification: open
-    sources: [aptl-techvault-mcps, environment-pack-authorship]
+    sources: [aptl-techvault-mcps, aptl-techvault-mcp-rule-fix, environment-pack-authorship]
     description: >-
       Red-team stdio MCP source and shared library, available only on Kali.
   - artifact_id: blue-team-mcp-sources
     path: assets/content/mcp-blue-sources.tar
     classification: open
-    sources: [aptl-techvault-mcps, environment-pack-authorship]
+    sources: [aptl-techvault-mcps, aptl-techvault-mcp-rule-fix, environment-pack-authorship]
     description: >-
       Defensive stdio MCP source and shared library, available only on the SOC
       workstation.
