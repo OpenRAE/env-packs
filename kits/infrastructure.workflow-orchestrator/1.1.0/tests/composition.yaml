@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: workflow-orchestrator
+  workflow_name: daily_ingest
+variation:
+  deployment_profile: compact
+  service_label: workflow-orchestrator-alternate
+  workflow_name: evaluation
+multi_kit_group: data-workflow

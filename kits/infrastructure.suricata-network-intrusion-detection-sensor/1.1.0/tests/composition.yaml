@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: suricata-network-intrusion-detection-sensor
+  ruleset_name: default
+variation:
+  deployment_profile: compact
+  service_label: suricata-network-intrusion-detection-sensor-alternate
+  ruleset_name: strict
+multi_kit_group: security-operations

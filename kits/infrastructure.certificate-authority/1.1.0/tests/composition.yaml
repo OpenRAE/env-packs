@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: certificate-authority
+  authority_name: lab-ca
+variation:
+  deployment_profile: compact
+  service_label: certificate-authority-alternate
+  authority_name: training-ca
+multi_kit_group: identity-domain

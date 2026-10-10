@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: static-web-service
+  site_name: reference
+variation:
+  deployment_profile: compact
+  service_label: static-web-service-alternate
+  site_name: alternate
+multi_kit_group: network-shared

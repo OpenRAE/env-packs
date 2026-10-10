@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.image-inference-service
+configuration:
+  model_name: local-image
+  deployment_profile: standard
+  service_label: image-inference-service
+declared_objects:
+- id: model_artifact
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: input_schema
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: output_schema
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: inference_route
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

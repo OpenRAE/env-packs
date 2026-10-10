@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.secrets-store
+configuration:
+  mount_path: kv
+  deployment_profile: standard
+  service_label: secrets-store
+declared_objects:
+- id: secret_engine_mount
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: access_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: auth_method
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: audit_profile
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Bind applications and identities at the pack root; provide unseal material and credentials
+  outside this kit.

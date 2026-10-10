@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.python-evaluation-worker
+configuration:
+  queue_name: evaluation
+  deployment_profile: standard
+  service_label: python-evaluation-worker
+declared_objects:
+- id: work_queue
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: input_contract
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: result_contract
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: resource_limits
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

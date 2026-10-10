@@ -1,0 +1,25 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.firewall-nat
+configuration:
+  ruleset_name: edge-filter
+  deployment_profile: standard
+  service_label: firewall-nat
+  policy_ports:
+  - 80
+  - 443
+declared_objects:
+- id: filter_chains
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: allowed_ports
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: nat_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: forwarding_rules
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Attach the firewall node to protected networks and specify policy relationships at the pack
+  root.

@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: isolated-python-analysis-sandbox
+  workspace_name: inspection
+variation:
+  deployment_profile: compact
+  service_label: isolated-python-analysis-sandbox-alternate
+  workspace_name: analysis
+multi_kit_group: ai-model

@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.workflow-orchestrator
+configuration:
+  workflow_name: daily_ingest
+  deployment_profile: standard
+  service_label: workflow-orchestrator
+declared_objects:
+- id: workflow
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: jobs
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: schedule
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: artifact_bindings
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

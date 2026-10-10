@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.browser-workstation-associated-artifacts",
+  "manifest_version": "1.1.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "browser-workstation",
+    "ref_version": null,
+    "ref_digest": "sha256:4a7c81ae03e2d16c212a514c4ce57bcabdf72d2bfaa074296477a5edf015d3d7",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "e6d827b536764502a629ff3b45b7f55e8670e975040ac1f0507fa13eaf7499a9"
+      },
+      "size_bytes": 471,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.browser-workstation@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7d7c7e0971baa01b89011c367b7029986be862ad9482a816ce4b89dd2df85103"
+      },
+      "size_bytes": 517,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.browser-workstation@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "2c919141b7d1d4dc21674ee0835bcae5b49b403c62e179ce7b920e91ad5b443e"
+      },
+      "size_bytes": 648,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.browser-workstation@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "1286d450a386403fe3bf878dcccc917d9add5568d528a269349ff33053cae5ba"
+      },
+      "size_bytes": 1671,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.browser-workstation@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "a28437cba4cfaf8d2ae23817a37868f314ab489418a7a44ac80f58063ee2b7de"
+      },
+      "size_bytes": 2320,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.browser-workstation@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "8b720781c4758a0e162b4faac4622249535d761c70147b90824d7afdda02e4f3"
+      },
+      "size_bytes": 253,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.browser-workstation@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:e86b2d3891d61d07cd44267f4b4e7435db186f8132e79395131b849a301b6bcf"
+}

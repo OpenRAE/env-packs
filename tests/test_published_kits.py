@@ -14,7 +14,7 @@ from raes_env_packs.kits import KitSource, build_kit_catalog, load_kit_release
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_RELEASE_COUNT = 50
+EXPECTED_RELEASE_COUNT = 89
 
 ISSUE_225_KITS = {
     "certificate-authority": (

@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.dhcp-ipam-service
+configuration:
+  address_pool: 10.42.0.0/24
+  deployment_profile: standard
+  service_label: dhcp-ipam-service
+declared_objects:
+- id: subnet
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: address_pool
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: reservations
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: lease_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Attach this DHCP service to a suitable pack network and connect clients at the pack composition
+  root.

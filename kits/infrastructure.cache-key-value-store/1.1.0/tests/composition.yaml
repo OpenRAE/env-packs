@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: cache-key-value-store
+  key_prefix: 'lab:'
+variation:
+  deployment_profile: compact
+  service_label: cache-key-value-store-alternate
+  key_prefix: 'exercise:'
+multi_kit_group: data-workflow

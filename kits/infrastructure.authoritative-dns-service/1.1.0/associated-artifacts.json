@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.authoritative-dns-service-associated-artifacts",
+  "manifest_version": "1.1.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "authoritative-dns-service",
+    "ref_version": null,
+    "ref_digest": "sha256:20e8ea4ddc1a9ec76d49fa754d2ef0d67a7e58fb2b8b44eda510d6d82d1115f1",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "341434640dfb0eb5fe8a051e17f7f233169e41ea2bd7d443355e81ba183b060f"
+      },
+      "size_bytes": 483,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.authoritative-dns-service@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "67b40207b2e227c0a6495af9100eb272c87dc4c530f4ed6a6d77dcf53322a332"
+      },
+      "size_bytes": 488,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.authoritative-dns-service@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "2b7e6c329d2ebb09cf874796209ca5305620ee8895dbfbce736a5d44887d7761"
+      },
+      "size_bytes": 647,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.authoritative-dns-service@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "1e8c3b6d568683f8af4ceda84a3f9cf661f4eec7cbd310d2dc97c6a1d4bea17e"
+      },
+      "size_bytes": 1681,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.authoritative-dns-service@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7c30c15da5489e8409fc8636306eb727ec9634d4b1a8d31ece76d922af590930"
+      },
+      "size_bytes": 2008,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.authoritative-dns-service@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "0e8e5870849b5cf23c7588f069fce45ee339594fd645a82437235e2a468192a9"
+      },
+      "size_bytes": 267,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.authoritative-dns-service@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:8de5c4ec2597b2efef8abaf3d65348dc530da465f22cf4cfc92f97f78e45ae57"
+}

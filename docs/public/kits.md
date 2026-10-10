@@ -37,6 +37,53 @@ use `build_kit_catalog`, `search_catalog`, `inspect_kit`, `propose_add`,
 `apply_proposal`; they do not shell out or implement a second composer. Proposal
 and discovery functions print and log nothing.
 
+## When a kit requires a virtual machine
+
+A kit lets the backend choose the compute substrate unless the kit can't work
+without a particular one. Each node states this in the kit's `module.sdl.yaml`
+as a RAES compute-substrate constraint. A Linux kit leaves the choice open:
+
+```yaml
+realization:
+  constraints:
+  - field_pointer: /nodes/endpoint
+    concern: compute-substrate
+    posture: open
+```
+
+The backend then realizes the node as a container, a virtual machine, or any
+other substrate it supports. A kit that needs a virtual machine names it
+exactly:
+
+```yaml
+realization:
+  constraints:
+  - field_pointer: /nodes/domain_member
+    concern: compute-substrate
+    posture: exact
+    domain:
+      kind: exact
+      value: virtual-machine
+```
+
+Only the three Windows kits require a virtual machine, because their nodes run
+a `windows-server` source: `infrastructure.rdp-accessible-windows-host`,
+`infrastructure.windows-active-directory-domain-controller`, and
+`infrastructure.windows-domain-member`. RAES planning rejects them when the
+backend offers no virtual machine.
+
+Every Linux kit leaves the substrate open from release 1.1.0. The 1.0.0
+releases still require a virtual machine. Releases are immutable, so 1.0.0
+stays published. Select the newer release to leave the choice to the backend.
+
+Five open kits run software that needs more access to the host than many
+containers get: `infrastructure.container-orchestration` (k3s),
+`infrastructure.firewall-nat` (nftables),
+`infrastructure.suricata-network-intrusion-detection-sensor` (packet capture),
+`infrastructure.samba-active-directory-domain-controller` (Samba domain
+services), and `infrastructure.linux-domain-member` (domain join). They stay
+open, so the backend decides whether it can realize them.
+
 ## Discover and inspect
 
 Use an `env-packs` checkout and identify the exact revision you admitted. The
