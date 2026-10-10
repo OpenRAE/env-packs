@@ -1,12 +1,12 @@
-"""Four runtime-collection kits leave the compute substrate open (#413).
+"""Kits require a virtual-machine substrate only where they need one (#413).
 
-The newest release of each kit in ``RUNTIME_COLLECTION_KITS`` declares an open
-compute-substrate constraint on every compute node, so the backend chooses the
-substrate. Planning it against a manifest whose realization envelope offers
-in-process emulation, not a virtual machine, therefore reports no
-``realization.compute-substrate-*`` diagnostic. The 1.0.0 releases declare an
-exact virtual-machine substrate and fail there with
-``realization.compute-substrate-not-admitted``.
+The newest release of every Linux kit declares an open compute-substrate
+constraint on each compute node, so the backend chooses the substrate. Planning
+it against a manifest whose realization envelope offers in-process emulation,
+not a virtual machine, therefore reports no ``realization.compute-substrate-*``
+diagnostic; an exact virtual-machine constraint fails there with
+``realization.compute-substrate-not-admitted``. The Windows kits keep an exact
+virtual-machine substrate on each node, as the kit documentation states.
 
 The manifest is the RAES stub manifest with its in-process realization
 envelope, plus exact and constrained support, with an observation capability,
@@ -15,12 +15,12 @@ same way (``_fixture`` in ``test_issue_1200_mixed_runtime_constraints.py``). The
 manifest judges what the kit demands, not what a particular backend supports,
 and claims no backend behavior.
 
-Each of these kits puts a ``${parameter}`` inside a node runtime collection.
-RAES 6.0.1 cannot retain typed authority for a configurable string parameter
-there (OpenRAE/rae#1481), so planning still reports
-``realization.authority-bound-unavailable`` and the plan is not valid (#414).
-The planning test asserts that the plan is not valid and that this is the only
-diagnostic left.
+Every Linux kit plans valid there except the four in
+``RUNTIME_COLLECTION_KITS``, which put a ``${parameter}`` inside a node runtime
+collection. RAES 6.0.1 cannot retain typed authority for a configurable string
+parameter there (OpenRAE/rae#1481), so planning them still reports
+``realization.authority-bound-unavailable`` (#414). The planning test asserts
+that their plans are not valid and that this is their only diagnostic.
 """
 
 from __future__ import annotations
@@ -44,6 +44,13 @@ from raes_processor.semantics.realization_concerns import realization_concern_de
 
 
 ROOT = Path(__file__).resolve().parents[1]
+VIRTUAL_MACHINE_KITS = frozenset(
+    {
+        "infrastructure.rdp-accessible-windows-host",
+        "infrastructure.windows-active-directory-domain-controller",
+        "infrastructure.windows-domain-member",
+    }
+)
 RUNTIME_COLLECTION_KITS = frozenset(
     {
         "infrastructure.application-api-service",
@@ -53,6 +60,12 @@ RUNTIME_COLLECTION_KITS = frozenset(
     }
 )
 OPEN = {"concern": "compute-substrate", "posture": "open"}
+EXACT_VIRTUAL_MACHINE = {
+    "concern": "compute-substrate",
+    "posture": "exact",
+    "domain": {"kind": "exact", "value": "virtual-machine"},
+}
+COMPUTE_SUBSTRATE_CODE_PREFIX = "realization.compute-substrate-"
 AUTHORITY_BOUND_UNAVAILABLE = "realization.authority-bound-unavailable"
 
 
@@ -101,11 +114,11 @@ def _newest_releases() -> list[Path]:
     return [newest[kit] for kit in sorted(newest)]
 
 
-def _runtime_collection_releases() -> list[Path]:
+def _releases(*, windows: bool) -> list[Path]:
     return [
         release
         for release in _newest_releases()
-        if release.parent.name in RUNTIME_COLLECTION_KITS
+        if (release.parent.name in VIRTUAL_MACHINE_KITS) is windows
     ]
 
 
@@ -160,21 +173,23 @@ def _plan_release(release: Path, version: str, parameters: dict) -> tuple[bool, 
     return execution.is_valid, codes
 
 
+def _compute_substrate_codes(codes: set[str]) -> set[str]:
+    return {code for code in codes if code.startswith(COMPUTE_SUBSTRATE_CODE_PREFIX)}
+
+
 class KitComputeSubstrateTests(unittest.TestCase):
-    def test_runtime_collection_kits_leave_the_compute_substrate_open(self) -> None:
-        releases = _runtime_collection_releases()
-        self.assertEqual(
-            {release.parent.name for release in releases}, RUNTIME_COLLECTION_KITS
+    def test_linux_kits_leave_the_compute_substrate_open(self) -> None:
+        releases = _releases(windows=False)
+        self.assertLessEqual(
+            RUNTIME_COLLECTION_KITS, {release.parent.name for release in releases}
         )
         for release in releases:
             module = _module(release)
             with self.subTest(kit=release.parent.name, version=release.name):
                 self.assertEqual(_substrates(module), _on_every_compute_node(module, OPEN))
 
-    def test_runtime_collection_kits_plan_without_a_compute_substrate_diagnostic(
-        self,
-    ) -> None:
-        for release in _runtime_collection_releases():
+    def test_linux_kits_plan_where_no_virtual_machine_is_offered(self) -> None:
+        for release in _releases(windows=False):
             module = _module(release)
             cases = yaml.safe_load(
                 (release / "tests/composition.yaml").read_text(encoding="utf-8")
@@ -184,10 +199,25 @@ class KitComputeSubstrateTests(unittest.TestCase):
                     is_valid, codes = _plan_release(
                         release, module["module"]["version"], cases[case]
                     )
-                    self.assertFalse(is_valid)
-                    # OpenRAE/rae#1481: the runtime-collection parameter has no
-                    # authority bound under RAES 6.0.1.
-                    self.assertEqual(codes, {AUTHORITY_BOUND_UNAVAILABLE})
+                    self.assertFalse(_compute_substrate_codes(codes))
+                    if release.parent.name in RUNTIME_COLLECTION_KITS:
+                        # OpenRAE/rae#1481: the runtime-collection parameter has
+                        # no authority bound under RAES 6.0.1.
+                        self.assertFalse(is_valid)
+                        self.assertEqual(codes, {AUTHORITY_BOUND_UNAVAILABLE})
+                    else:
+                        self.assertTrue(is_valid, sorted(codes))
+
+    def test_windows_kits_keep_an_exact_virtual_machine_substrate(self) -> None:
+        releases = _releases(windows=True)
+        self.assertEqual({release.parent.name for release in releases}, VIRTUAL_MACHINE_KITS)
+        for release in releases:
+            module = _module(release)
+            with self.subTest(kit=release.parent.name, version=release.name):
+                self.assertEqual(
+                    _substrates(module),
+                    _on_every_compute_node(module, EXACT_VIRTUAL_MACHINE),
+                )
 
 
 if __name__ == "__main__":
