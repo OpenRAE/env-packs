@@ -1,0 +1,18 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.lab-portal
+configuration:
+  portal_title: Environment Portal
+  deployment_profile: standard
+  service_label: lab-portal
+declared_objects:
+- id: service_index
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: identity_binding
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: navigation_groups
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Select the imported services that appear in the portal index.

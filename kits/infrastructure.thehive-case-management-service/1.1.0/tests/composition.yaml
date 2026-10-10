@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: thehive-case-management-service
+  organization_name: operations
+variation:
+  deployment_profile: compact
+  service_label: thehive-case-management-service-alternate
+  organization_name: research
+multi_kit_group: security-operations

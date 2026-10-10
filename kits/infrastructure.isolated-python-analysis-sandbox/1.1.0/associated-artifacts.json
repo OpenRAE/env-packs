@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.isolated-python-analysis-sandbox-associated-artifacts",
+  "manifest_version": "1.1.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "isolated-python-analysis-sandbox",
+    "ref_version": null,
+    "ref_digest": "sha256:aeb843dbe78d967408b52cdc0bd93a32cf00bea9bc339d92829a12ce4a413d1d",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d3d9cfcc687058fb83f60e826c68ea9692beb45109cfc070e4a77af86baf7874"
+      },
+      "size_bytes": 497,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "a7757e2d8ee6af0fcf7de52111d8fe0789c2a47aa3811dfb56d3c126c394d3b9"
+      },
+      "size_bytes": 524,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "5d4573b1c50d1c37f1fc9d7801bb1bb6698c4ecb4463f8499313fdebbc792f18"
+      },
+      "size_bytes": 668,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "1c5ef9f6784970f4b88ad493dc06885eb3d24943d4f44e14ae11bc2c9d2a1f3d"
+      },
+      "size_bytes": 1718,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "9edd9834392fe7dc683e135b9ee0655f88ac6f9a5c9bed1fe27a4cf1bf9f12c0"
+      },
+      "size_bytes": 2342,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7529010a00b60cf4c5fa10b6ab0727c7f8ce1ecf20f4ee716fcdc835b8eccbda"
+      },
+      "size_bytes": 273,
+      "created_at": "2026-10-09T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.1.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:bf49aae59d929a768367d1e854e0d37904e6740c5b21213b3af88c95e2c4a047"
+}

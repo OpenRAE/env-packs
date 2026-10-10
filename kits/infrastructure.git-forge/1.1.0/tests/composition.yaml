@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: git-forge
+  organization_name: engineering
+variation:
+  deployment_profile: compact
+  service_label: git-forge-alternate
+  organization_name: research
+multi_kit_group: collaboration-developer
