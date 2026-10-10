@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: python-package-resolver
+  index_name: packages
+variation:
+  deployment_profile: compact
+  service_label: python-package-resolver-alternate
+  index_name: approved
+multi_kit_group: ai-model

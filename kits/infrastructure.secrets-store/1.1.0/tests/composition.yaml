@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: secrets-store
+  mount_path: kv
+variation:
+  deployment_profile: compact
+  service_label: secrets-store-alternate
+  mount_path: applications
+multi_kit_group: policy-operations

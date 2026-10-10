@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: shuffle-automation-service
+  tenant_name: operations
+variation:
+  deployment_profile: compact
+  service_label: shuffle-automation-service-alternate
+  tenant_name: research
+multi_kit_group: security-operations

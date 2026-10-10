@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.model-registry
+configuration:
+  registry_namespace: baseline
+  deployment_profile: standard
+  service_label: model-registry
+declared_objects:
+- id: namespace
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: models
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: versions
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: artifact_metadata
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

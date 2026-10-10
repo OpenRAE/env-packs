@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: webmail-service
+  site_name: mail
+variation:
+  deployment_profile: compact
+  service_label: webmail-service-alternate
+  site_name: inbox
+multi_kit_group: network-shared

@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: notebook-environment
+  workspace_name: analysis
+variation:
+  deployment_profile: compact
+  service_label: notebook-environment-alternate
+  workspace_name: research
+multi_kit_group: data-workflow

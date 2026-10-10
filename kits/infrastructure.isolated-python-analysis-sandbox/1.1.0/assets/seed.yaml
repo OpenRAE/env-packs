@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.isolated-python-analysis-sandbox
+configuration:
+  workspace_name: inspection
+  deployment_profile: standard
+  service_label: isolated-python-analysis-sandbox
+declared_objects:
+- id: workspace
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: runtime_limits
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: input_mount
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: result_mount
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

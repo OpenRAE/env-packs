@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: load-rehearsal-runner
+  workload_profile: smoke
+variation:
+  deployment_profile: compact
+  service_label: load-rehearsal-runner-alternate
+  workload_profile: capacity
+multi_kit_group: policy-operations

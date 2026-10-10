@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: wazuh-security-monitoring-stack
+  enrollment_group: lab
+variation:
+  deployment_profile: compact
+  service_label: wazuh-security-monitoring-stack-alternate
+  enrollment_group: endpoints
+multi_kit_group: security-operations

@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: telemetry-collector
+  pipeline_name: default
+variation:
+  deployment_profile: compact
+  service_label: telemetry-collector-alternate
+  pipeline_name: research
+multi_kit_group: policy-operations
