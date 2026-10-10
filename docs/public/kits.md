@@ -66,8 +66,8 @@ realization:
       value: virtual-machine
 ```
 
-Only the three Windows kits require a virtual machine, because their nodes run
-a `windows-server` source: `infrastructure.rdp-accessible-windows-host`,
+Only the three Windows kits need a virtual machine, because their nodes run a
+`windows-server` source: `infrastructure.rdp-accessible-windows-host`,
 `infrastructure.windows-active-directory-domain-controller`, and
 `infrastructure.windows-domain-member`. RAES planning rejects them when the
 backend offers no virtual machine.
@@ -75,6 +75,7 @@ backend offers no virtual machine.
 Every Linux kit leaves the substrate open from release 1.1.0. The 1.0.0
 releases still require a virtual machine. Releases are immutable, so 1.0.0
 stays published. Select the newer release to leave the choice to the backend.
+The examples on this page pin 1.0.0 releases.
 
 Five open kits run software that needs more access to the host than many
 containers get: `infrastructure.container-orchestration` (k3s),
