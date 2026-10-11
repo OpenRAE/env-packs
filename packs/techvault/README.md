@@ -84,8 +84,13 @@ commit `7c673a19f9fb6a3eb1d17305104196b600bd59cc`. The Kali workstation receives
 common package plus the seven defensive MCP packages. Each host declares a
 Node.js 22 runtime. The archives contain only source, package/build manifests,
 the upstream MIT license, and source metadata—no dependencies, generated build
-output, tests, backend configuration, or launch wrapper. The shared telemetry
-wrapper is adapted to emit only tool identity and status metadata; it never
+output, tests, backend configuration, or launch wrapper.
+
+Runtime Wazuh MCP configuration must send custom-rule writes to
+`PUT /rules/files/{filename}` with Wazuh JWT authentication and
+`overwrite=true`. Runtime configuration supplies service URLs and credentials.
+
+The shared telemetry wrapper is adapted to emit only tool identity and status metadata; it never
 exports request, response, or error content. The SDL selects no installation or
 process-management method.
 

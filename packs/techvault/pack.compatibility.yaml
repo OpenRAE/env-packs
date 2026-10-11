@@ -2,7 +2,7 @@ schema_version: "environment-pack-compatibility/v2"
 pack:
   name: techvault
   title: TechVault
-  version: 0.1.1
+  version: 0.1.2
   status: built
   provenance_ledger: docs/provenance-ledger.yaml
   source:

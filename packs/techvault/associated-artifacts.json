@@ -1,7 +1,7 @@
 {
   "schema_version": "associated-artifact-manifest/v1",
   "manifest_id": "techvault-associated-artifacts",
-  "manifest_version": "0.1.1",
+  "manifest_version": "0.1.2",
   "canonicalization_profile": "associated-artifact-set/v1",
   "scope": "scenario",
   "parent_ref": {
@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "b1c308d14133f652e2238dac83547f59f1945720ea75a4f244e2905d8f9f65d9"
+        "value": "06d5c010e2bbc73c6c7a4585f2032a11f133a1c4d284c96a97dca7fc77c2d59e"
       },
-      "size_bytes": 6710,
+      "size_bytes": 6919,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -531,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "13245ec8a162782b8f1b2bd6e9efc4cae47f8844e6580bfe905ca6ab1dc960bc"
+        "value": "38cbe50ef08f5e5972c388215e494c2932f9e6f4498f73221cf6383bd82f2e3d"
       },
-      "size_bytes": 3321,
+      "size_bytes": 3828,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -547,7 +547,7 @@
       "uri": "raes-environment-pack:/pack.compatibility.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "f5ba62b49f72ccaade1560f8e70a78053d5fbd4dd507f8e3f2e425b78b044967"
+        "value": "6bf55af6383926f05e32dd321b6fed2af3b8367f886021cf3bb6aa8da4f69cde"
       },
       "size_bytes": 1571,
       "created_at": "2026-08-02T00:00:00Z",
@@ -563,7 +563,7 @@
       "uri": "raes-environment-pack:/pack.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "c3fa3e8ce917ae78c606d25a1ffe7bc4d06f5f65403735412bbb6c79c3e0c9b4"
+        "value": "9564215a3143365cfcd7f7e411f06477b54d886329ee3a53353e17d120573e8d"
       },
       "size_bytes": 542,
       "created_at": "2026-08-02T00:00:00Z",
@@ -595,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "01b5ac3e4bd5f4e24bec6ef4fbe29f079e8924f829ff729be25e1a8e0fcd0b58"
+        "value": "3bf10fd67f4f7a5f1fc394a28df8de2aa9c48c773830f701d59f4d4334e05f45"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -627,7 +627,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "cf1de4bd1377f1f11f325d9d4d9bc7549c385f1b847554e25788fdeb3143299d"
+        "value": "3f4edf2cc76dbd368b73347c44b2795e6ae93321c818b2f879228a681cb8094c"
       },
       "size_bytes": 141603,
       "created_at": "2026-08-02T00:00:00Z",
@@ -707,11 +707,11 @@
       "uri": "raes-environment-pack:/assets/content/mcp-red-sources.tar",
       "checksum": {
         "algorithm": "sha256",
-        "value": "3536a2fd58eab9a2bfdc0ad90be4fdfd45bba9db1ef4acb5a54ff76126e7788e"
+        "value": "ec849aba9d33c5079e5db5f960fa9e827f71f90c6794d22d9c36388800c1f529"
       },
-      "size_bytes": 593920,
-      "created_at": "2026-09-14T00:00:00Z",
-      "source": "aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc",
+      "size_bytes": 604160,
+      "created_at": "2026-10-08T00:00:00Z",
+      "source": "environment-pack-author adapted from aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc and aptl@1838b7fd",
       "satisfies_refs": [],
       "sensitivity": "internal",
       "description": "Exact red-team stdio MCP source packages for the Kali workstation."
@@ -723,15 +723,15 @@
       "uri": "raes-environment-pack:/assets/content/mcp-blue-sources.tar",
       "checksum": {
         "algorithm": "sha256",
-        "value": "74e850e04e5e428cc0bb4cd5e4a6480373cd1e9a2a686fb40a0e560cd941f111"
+        "value": "19bbf9548af0e91f60e1dea2fd1d13626403ec6098b89e45365db09ae5a86bd7"
       },
       "size_bytes": 1116160,
-      "created_at": "2026-09-14T00:00:00Z",
-      "source": "aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc",
+      "created_at": "2026-10-08T00:00:00Z",
+      "source": "environment-pack-author adapted from aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc and aptl@1838b7fd",
       "satisfies_refs": [],
       "sensitivity": "internal",
       "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:cb583f0267aec79bf96ea9289061ce539efcf61556d9a9f6193238b13a5b0cce"
+  "set_digest": "sha256:96565272a28708f72620c39d2b5c475681b07202a2c0e58ddaee57c0f844ebc0"
 }
