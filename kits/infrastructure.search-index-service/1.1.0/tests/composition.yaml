@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: search-index-service
+  index_name: documents
+variation:
+  deployment_profile: compact
+  service_label: search-index-service-alternate
+  index_name: records
+multi_kit_group: data-workflow

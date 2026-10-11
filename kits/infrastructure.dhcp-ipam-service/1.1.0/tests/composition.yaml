@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: dhcp-ipam-service
+  address_pool: 10.42.0.0/24
+variation:
+  deployment_profile: compact
+  service_label: dhcp-ipam-service-alternate
+  address_pool: 10.43.0.0/24
+multi_kit_group: network-shared

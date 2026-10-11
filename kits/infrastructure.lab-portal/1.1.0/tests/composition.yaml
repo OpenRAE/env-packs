@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: lab-portal
+  portal_title: Environment Portal
+variation:
+  deployment_profile: compact
+  service_label: lab-portal-alternate
+  portal_title: Research Portal
+multi_kit_group: collaboration-developer

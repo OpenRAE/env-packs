@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.git-forge
+configuration:
+  organization_name: engineering
+  deployment_profile: standard
+  service_label: git-forge
+declared_objects:
+- id: organization
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: repositories
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: teams
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: seed_commits
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

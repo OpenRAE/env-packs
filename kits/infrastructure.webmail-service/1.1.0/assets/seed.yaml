@@ -1,0 +1,18 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.webmail-service
+configuration:
+  site_name: mail
+  deployment_profile: standard
+  service_label: webmail-service
+declared_objects:
+- id: mail_service_binding
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: oidc_binding
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: browser_client_profile
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Bind the browser client to an imported SMTP/IMAP service.

@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.text-model-serving
+configuration:
+  model_name: local-text
+  deployment_profile: standard
+  service_label: text-model-serving
+declared_objects:
+- id: model_artifact
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: tokenizer
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: generation_profile
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: inference_route
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.
