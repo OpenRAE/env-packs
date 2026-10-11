@@ -27,7 +27,7 @@ class StudyPackTests(unittest.TestCase):
         for pack in (_BASE, _STUDY):
             with self.subTest(pack=pack.name):
                 metadata = yaml.safe_load((pack / "pack.yaml").read_text())
-                self.assertEqual(metadata["version"], "0.1.1")
+                self.assertEqual(metadata["version"], "0.1.2")
 
     def test_study_preserves_techvault_and_adds_participant_sequence(self) -> None:
         base = yaml.safe_load((_BASE / "sdl/techvault.sdl.yaml").read_text())

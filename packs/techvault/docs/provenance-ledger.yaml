@@ -39,8 +39,8 @@ sources:
     attribution_required: true
     attribution: Copyright (c) 2025 APTL Contributors
     used: >-
-      Raw-payload MCP request schema and the authenticated Wazuh rules-file
-      endpoint configuration.
+      Raw-payload MCP request schema and operator guidance for the authenticated
+      Wazuh rules-file endpoint. Backend-specific configuration is excluded.
     url: https://github.com/Brad-Edwards/aptl
     ref: 1838b7fd
 artifacts:
