@@ -12,7 +12,7 @@ sources:
     attribution: Copyright (c) 2025 Samuel (an4kronism)
     used: >-
       The eleven-service challenge implementation, five challenge networks,
-      seven-flag path, briefing, and twelve hints.
+      seven-flag path, original briefing, and twelve original hint lines.
     captured: "2026-10-06"
   - source_id: environment-pack-authorship
     name: AI Escape Lab environment-pack adaptation
@@ -21,7 +21,8 @@ sources:
     attribution_required: false
     used: >-
       RAES SDL, GCP image build, offline runtime adaptation, Shifter entry
-      contract, CTFd exporter, readiness checks, and operator documentation.
+      contract, participant briefing, progressive portal hints, CTFd exporter,
+      readiness checks, and operator documentation.
 artifacts:
   - artifact_id: upstream-source
     path: assets/upstream-ai-escape-room-fcb25ec9874b.tar.gz
