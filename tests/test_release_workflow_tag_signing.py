@@ -27,7 +27,7 @@ _ATTEST_ACTION = "actions/attest-build-provenance@"
 _PYPI_ACTION = "pypa/gh-action-pypi-publish@"
 _CHECKOUT_ACTION = "actions/checkout@"
 _UPLOAD_ARTIFACT_ACTION = (
-    "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+    "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
 )
 
 # Must track the repository's CURRENT path. The OIDC workflow ref is issued for
