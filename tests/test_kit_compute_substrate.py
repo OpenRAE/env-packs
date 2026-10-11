@@ -19,8 +19,9 @@ Each of these kits puts a ``${parameter}`` inside a node runtime collection.
 RAES 6.0.1 cannot retain typed authority for a configurable string parameter
 there (OpenRAE/rae#1481), so planning still reports
 ``realization.authority-bound-unavailable`` and the plan is not valid (#414).
-The planning test asserts that the plan is not valid and that this is the only
-diagnostic left.
+The planning test permits this known diagnostic. It rejects all other
+diagnostics and does not require the upstream failure to persist. Each kit is
+also composed with a custom value outside its default and variation values.
 """
 
 from __future__ import annotations
@@ -54,6 +55,12 @@ RUNTIME_COLLECTION_KITS = frozenset(
 )
 OPEN = {"concern": "compute-substrate", "posture": "open"}
 AUTHORITY_BOUND_UNAVAILABLE = "realization.authority-bound-unavailable"
+CUSTOM_PARAMETERS = {
+    "infrastructure.application-api-service": {"api_base_path": "/custom/v3"},
+    "infrastructure.postgresql-database": {"database_name": "customer_data"},
+    "infrastructure.reverse-proxy-api-gateway": {"route_prefix": "/team/api"},
+    "infrastructure.smtp-imap-mail-service": {"mail_domain": "example.test"},
+}
 
 
 def _declaring_manifest() -> BackendManifest:
@@ -133,8 +140,8 @@ def _on_every_compute_node(module: dict, constraint: dict) -> dict[str, dict]:
     }
 
 
-def _plan_release(release: Path, version: str, parameters: dict) -> tuple[bool, set[str]]:
-    """Compose one release with ``parameters``, plan it, and return the result."""
+def _plan_release(release: Path, version: str, parameters: dict) -> set[str]:
+    """Compose one release with ``parameters`` and return planning diagnostics."""
 
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -157,7 +164,7 @@ def _plan_release(release: Path, version: str, parameters: dict) -> tuple[bool, 
         model = compile_scenario_runtime_model(scenario, parameters={})
         execution = plan(model, MANIFEST)
     codes = {diagnostic.code for diagnostic in (*model.diagnostics, *execution.diagnostics)}
-    return execution.is_valid, codes
+    return codes
 
 
 class KitComputeSubstrateTests(unittest.TestCase):
@@ -179,15 +186,19 @@ class KitComputeSubstrateTests(unittest.TestCase):
             cases = yaml.safe_load(
                 (release / "tests/composition.yaml").read_text(encoding="utf-8")
             )
-            for case in ("default", "variation"):
+            cases["custom"] = {
+                **cases["default"],
+                **CUSTOM_PARAMETERS[release.parent.name],
+            }
+            for case in ("default", "variation", "custom"):
                 with self.subTest(kit=release.parent.name, version=release.name, case=case):
-                    is_valid, codes = _plan_release(
+                    codes = _plan_release(
                         release, module["module"]["version"], cases[case]
                     )
-                    self.assertFalse(is_valid)
                     # OpenRAE/rae#1481: the runtime-collection parameter has no
-                    # authority bound under RAES 6.0.1.
-                    self.assertEqual(codes, {AUTHORITY_BOUND_UNAVAILABLE})
+                    # authority bound under RAES 6.0.1. Permit that diagnostic
+                    # without requiring the upstream failure to persist.
+                    self.assertFalse(codes - {AUTHORITY_BOUND_UNAVAILABLE}, codes)
 
 
 if __name__ == "__main__":
