@@ -136,7 +136,7 @@ class AiEscapeLabPackTests(unittest.TestCase):
         self.assertIn('DOCKER-USER 1 -s "$MODEL_SUBNET" -j DROP', firewall)
         self.assertIn('INPUT -s "$subnet" -j REJECT', firewall)
 
-    def test_challenges_cover_seven_flags_and_twelve_hints(self) -> None:
+    def test_challenges_cover_seven_flags_and_twenty_three_hints(self) -> None:
         source = _yaml("challenges/challenges.yaml")
         challenges = source["challenges"]
         placements = _yaml("flags/placement.yaml")["flags"]
@@ -144,7 +144,8 @@ class AiEscapeLabPackTests(unittest.TestCase):
         self.assertEqual([item["flag_id"] for item in challenges], [f"flag-{number}" for number in range(1, 8)])
         self.assertEqual([item["flag_id"] for item in placements], [f"flag-{number}" for number in range(1, 8)])
         self.assertEqual(len({item["value"] for item in placements}), 7)
-        self.assertEqual(sum(len(item["hints"]) for item in challenges), 12)
+        self.assertEqual([len(item["hints"]) for item in challenges], [4, 2, 4, 3, 3, 3, 4])
+        self.assertEqual(sum(len(item["hints"]) for item in challenges), 23)
 
         with tempfile.TemporaryDirectory() as directory:
             output = pathlib.Path(directory) / "ctfd.json"
@@ -164,7 +165,8 @@ class AiEscapeLabPackTests(unittest.TestCase):
             self.assertEqual(exported["format"], "ctfd")
             self.assertEqual(len(exported["challenges"]), 7)
             self.assertEqual([len(item["flags"]) for item in exported["challenges"]], [1] * 7)
-            self.assertEqual(sum(len(item["hints"]) for item in exported["challenges"]), 12)
+            self.assertEqual([len(item["hints"]) for item in exported["challenges"]], [4, 2, 4, 3, 3, 3, 4])
+            self.assertEqual(sum(len(item["hints"]) for item in exported["challenges"]), 23)
             self.assertEqual(os.stat(output).st_mode & 0o777, 0o600)
 
     def test_readiness_proves_the_participant_surface_and_full_chain(self) -> None:
@@ -172,7 +174,11 @@ class AiEscapeLabPackTests(unittest.TestCase):
         self.assertEqual(set(readiness["required_containers"]), _SERVICES)
         self.assertEqual(readiness["participant_container"], "eval-sandbox")
         self.assertEqual(readiness["flag_count"], 7)
-        self.assertEqual(readiness["hint_count"], 12)
+        self.assertEqual(readiness["hint_count"], 23)
+        self.assertEqual(
+            readiness["hint_count"],
+            sum(len(item["hints"]) for item in _yaml("challenges/challenges.yaml")["challenges"]),
+        )
         probes = {probe["id"] for probe in readiness["probes"]}
         self.assertLessEqual(
             {"compose-health", "participant-shell", "claude-client", "challenge-path"},

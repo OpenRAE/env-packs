@@ -19,7 +19,8 @@ class ChallengeExportTests(unittest.TestCase):
         payload = _MODULE.build_import_pack()
         self.assertEqual(payload["format"], "ctfd")
         self.assertEqual(len(payload["challenges"]), 7)
-        self.assertEqual(sum(len(row["hints"]) for row in payload["challenges"]), 12)
+        self.assertEqual([len(row["hints"]) for row in payload["challenges"]], [4, 2, 4, 3, 3, 3, 4])
+        self.assertEqual(sum(len(row["hints"]) for row in payload["challenges"]), 23)
 
 
 if __name__ == "__main__":

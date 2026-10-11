@@ -10,7 +10,7 @@ MongoDB, a mesh gateway, and internal source control.
 
 The experience is designed for mixed security audiences. Participants do not
 need to know container internals in advance: the briefing establishes the
-boundary, CTFd reveals one challenge at a time, and twelve optional hints keep
+boundary, CTFd reveals one challenge at a time, and twenty-three optional hints keep
 the agent-human pair moving. A participant can leave after any flag; a full run
 may take the whole session.
 
