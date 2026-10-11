@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.application-api-service
+configuration:
+  api_base_path: /api
+  deployment_profile: standard
+  service_label: application-api-service
+declared_objects:
+- id: api_routes
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: health_route
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: seed_records
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: service_account
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.
