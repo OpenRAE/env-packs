@@ -8,7 +8,7 @@
 The ACES ecosystem needs one canonical, shared home for the scenario-pack
 **definition** (what a pack is, its layout, its schemas) and the
 **authoring/validation tooling** that enforces it. Historically this material
-lived inside a content repository (`penumbra-scenarios`) alongside the actual
+lived inside a content repository alongside the actual
 packs, so every consumer that wanted the contract or the tools had to vendor or
 copy them, and the definition drifted per catalog.
 
