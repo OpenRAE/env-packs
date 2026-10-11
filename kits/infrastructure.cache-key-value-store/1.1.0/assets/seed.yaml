@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.cache-key-value-store
+configuration:
+  key_prefix: 'lab:'
+  deployment_profile: standard
+  service_label: cache-key-value-store
+declared_objects:
+- id: keyspace
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: seed_keys
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: eviction_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: persistence_policy
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- Connect clients at the pack root and choose persistence and access controls in the consuming
+  environment.
