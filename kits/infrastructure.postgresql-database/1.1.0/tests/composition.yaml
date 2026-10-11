@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: postgresql-database
+  database_name: environment
+variation:
+  deployment_profile: compact
+  service_label: postgresql-database-alternate
+  database_name: analytics
+multi_kit_group: data-workflow
