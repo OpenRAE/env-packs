@@ -885,15 +885,16 @@ def main(argv: list[str] | None = None, *, stdout: TextIO | None = None, stderr:
     except DistributionError as exc:
         print(f"raes-pack-dist: {exc}", file=err)
         return EXIT_BLOCKING
-    # The host cannot commit the atomic move, so this is a tool failure (exit 3),
-    # but the constant message names the missing platform capability.
-    except _transactions.UnsupportedPlatformError as exc:
-        print(f"raes-pack-dist: {exc}", file=err)
-        return EXIT_TOOL_FAILURE
     # A broad catch is deliberate here: an unexpected defect is a tool failure
-    # (exit 3), never a signal that the pack is untrusted.
+    # (exit 3), never a signal that the pack is untrusted. A host that cannot
+    # commit the atomic move is a tool failure too; its constant message names
+    # the missing platform capability.
     except Exception as exc:
-        print(f"raes-pack-dist: internal error ({type(exc).__name__})", file=err)
+        if isinstance(exc, _transactions.UnsupportedPlatformError):
+            reason = str(exc)
+        else:
+            reason = f"internal error ({type(exc).__name__})"
+        print(f"raes-pack-dist: {reason}", file=err)
         return EXIT_TOOL_FAILURE
 
 
