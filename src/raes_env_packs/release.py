@@ -286,7 +286,7 @@ def _yaml_kind(value: object) -> str:
     return "scalar"
 
 
-def _pack_yaml_mapping(pc: PackContracts, key: str) -> tuple[dict, list[str]]:
+def _pack_yaml_mapping(pc: PackContracts, key: str) -> tuple[dict[str, object], list[str]]:
     """Read a ``pack.yaml`` key that the contract defines as a mapping.
 
     Absent or null reads as an empty mapping (no failure); any other
