@@ -619,6 +619,11 @@ def _source_result(
     result, snapshot = validation._validate_pack_snapshot(source.root, limits=limits)
     if not result.ok:
         name = snapshot.manifest.get("name") if isinstance(snapshot.manifest, dict) else None
+        if not isinstance(name, str):
+            # An invalid pack's name can be any YAML value (``2024``, ``yes``, a
+            # list); only a string is a label, so anything else renders as
+            # ``(unknown)`` instead of reaching ``_terminal_safe``.
+            name = None
         return None, [
             CatalogDiagnostic(
                 f"catalog.pack.invalid:{diagnostic.code}",
@@ -874,7 +879,12 @@ def _read_sources_manifest(path: str) -> list[Source]:
     if not os.path.isfile(resolved):
         raise ValueError("sources manifest is not a readable file")
     with open(resolved, "r", encoding="utf-8") as handle:
-        raw = yaml.safe_load(handle)
+        try:
+            raw = yaml.safe_load(handle)
+        except (yaml.YAMLError, RecursionError) as exc:
+            # Neither is a ValueError: a syntax or constructor error, or nesting
+            # deep enough to exhaust the parser, is still a malformed manifest.
+            raise ValueError("sources manifest is not valid YAML") from exc
     if not isinstance(raw, list):
         raise ValueError("sources manifest must be a list of {id, revision, root}")
     sources: list[Source] = []
