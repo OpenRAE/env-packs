@@ -105,7 +105,7 @@ full picture.
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -e .
+pip install -e ".[test]"
 python -m unittest discover -s tests
 ```
 
