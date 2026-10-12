@@ -27,8 +27,8 @@ _TECHVAULT_README = _ROOT / "packs" / "techvault" / "README.md"
 
 # The LilRAE project's APTL-era record this guidance agrees with. Both halves
 # are load-bearing: the issue is the decision, the note is its durable statement.
-_LILRAE_ISSUE = "https://github.com/Brad-Edwards/aptl/issues/589"
-_LILRAE_NOTE = "issue-589-environment-pack-capture-ownership-preflight.md"
+_LILRAE_ISSUE = "https://github.com/OpenRAE/lilrae/issues/589"
+_LILRAE_NOTE = "issue-589-scenario-pack-capture-ownership-preflight.md"
 
 # One responsibility phrase per owner. Each must survive independently; losing
 # one is how a four-way boundary quietly becomes a three-way one.

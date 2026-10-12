@@ -787,7 +787,8 @@ def _publish(staged: Path, target: Path, pack_id: str) -> None:
         raise WizardError(
             f"target already exists: environments/{pack_id}") from exc
     except _transactions.TransactionError as exc:
-        raise WizardError("could not publish pack") from exc
+        raise WizardError(
+            _transactions.failure_message("could not publish pack", exc)) from exc
 
 
 # --------------------------------------------------------------------------- #

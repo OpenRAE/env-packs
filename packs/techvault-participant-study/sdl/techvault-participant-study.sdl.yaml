@@ -66,6 +66,15 @@ nodes:
       - {name: agent-enrollment, port: 1515, protocol: tcp}
       - {name: syslog, port: 514, protocol: udp}
     runtime:
+      filesystem_inventory:
+        - {path: /etc/filebeat/filebeat.yml, entry_type: file, owner_user: root, owner_group: root, mode: "0600", sensitivity: secret_fixture}
+        - {path: /var/ossec/etc/rules/webapp_rules.xml, entry_type: file}
+        - {path: /var/ossec/etc/rules/suricata_rules.xml, entry_type: file}
+        - {path: /var/ossec/etc/rules/ad_rules.xml, entry_type: file}
+        - {path: /var/ossec/etc/rules/database_rules.xml, entry_type: file}
+        - {path: /var/ossec/etc/rules/falco_rules.xml, entry_type: file}
+        - {path: /var/ossec/etc/decoders/postgresql_decoders.xml, entry_type: file}
+        - {path: /var/ossec/etc/decoders/samba_decoders.xml, entry_type: file}
       security_monitoring_managers:
         - security_monitoring_manager_id: wazuh-manager
           implementation: wazuh
@@ -302,6 +311,9 @@ nodes:
     services:
       - {name: dashboard, port: 5601, protocol: tcp}
     runtime:
+      filesystem_inventory:
+        - {path: /usr/share/wazuh-dashboard/config/opensearch_dashboards.yml, entry_type: file, owner_user: wazuh-dashboard, owner_group: wazuh-dashboard, mode: "0600", sensitivity: secret_fixture}
+        - {path: /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml, entry_type: file, owner_user: wazuh-dashboard, owner_group: wazuh-dashboard, mode: "0600", sensitivity: secret_fixture}
       service_listeners:
         - service_listener_id: dashboard-listener
           service: dashboard
@@ -573,12 +585,12 @@ nodes:
             - principal_id: misp-administrator
               kind: user
               name: admin@admin.test
-              credential_classification: operator_secret
-              description: Operator-supplied MISP administrator identity; credential bytes are not pack content.
+              credential_classification: redacted
+              description: In-world MISP administrator; secret_fixture material is declared by accounts.misp-administrator.
             - principal_id: misp-suricata-sync-api-key
               kind: api_key
-              credential_classification: operator_secret
-              description: The sync agent authenticates to MISP with a dedicated API key whose bytes are supplied through the backend's secret boundary.
+              credential_classification: redacted
+              description: In-world sync API identity; secret_fixture material is declared by accounts.misp-suricata-sync-api-key.
           roles:
             - role_id: misp-administrator-role
               name: MISP administrator
@@ -734,8 +746,8 @@ nodes:
             - setting_id: misp-api-authentication
               name: MISP API credential
               provenance: unknown
-              classification: operator_secret
-              description: Credential posture for the declared misp-suricata-sync-api-key principal; secret bytes are not pack content.
+              classification: redacted
+              description: Uses the secret_fixture key at accounts.misp-suricata-sync-api-key.credential_bindings; this setting records value-free posture.
             - setting_id: misp-tls-verification
               name: MISP TLS certificate verification
               value: required
@@ -2389,14 +2401,44 @@ content:
       plugins.security.system_indices.indices: [".opendistro-alerting-config", ".opendistro-alerting-alert*", ".opendistro-anomaly-results*", ".opendistro-anomaly-detector*", ".opendistro-anomaly-checkpoints", ".opendistro-anomaly-detection-state", ".opendistro-reports-*", ".opendistro-notifications-*", ".opendistro-notebooks", ".opensearch-observability", ".opendistro-asynchronous-search-response*", ".replication-metadata-store"]
       plugins.security.allow_default_init_securityindex: true
       cluster.routing.allocation.disk.threshold_enabled: false
+  wazuh-manager-filebeat-config:
+    type: file
+    sensitive: true
+    target: wazuh-manager
+    path: /etc/filebeat/filebeat.yml
+    text: |
+      # Authored fixture: accounts.wazuh-indexer-admin.
+      filebeat.modules:
+        - module: wazuh
+          alerts:
+            enabled: true
+          archives:
+            enabled: false
+      setup.template.json.enabled: true
+      setup.template.json.path: /etc/filebeat/wazuh-template.json
+      setup.template.json.name: wazuh
+      setup.template.overwrite: true
+      setup.ilm.enabled: false
+      output.elasticsearch:
+        hosts: ["https://wazuh-indexer:9200"]
+        username: admin
+        password: "TechVault-Indexer-Admin-2026!"
+        ssl.verification_mode: full
+        ssl.certificate_authorities: ["/etc/ssl/wazuh/root-ca-manager.pem"]
+        ssl.certificate: /etc/ssl/wazuh/wazuh.manager.pem
+        ssl.key: /etc/ssl/wazuh/wazuh.manager-key.pem
+      logging.metrics.enabled: false
+      seccomp:
+        default_action: allow
+        syscalls:
+          - action: allow
+            names: [rseq]
   wazuh-indexer-internal-users:
-    # The indexer initializes its security index from this file on first boot
-    # (opensearch.yml sets allow_default_init_securityindex: true). The admin
-    # bcrypt hash below is for the password the backend hydrates into
-    # INDEXER_PASSWORD; without this file the indexer falls back to its bundled
-    # demo users and rejects the operator credentials, so the authenticated
-    # readiness gate and every SIEM consumer (manager filebeat, dashboard)
-    # fail auth.
+    # Authored in-world accounts, initialized from this file on first boot.
+    # The admin and kibanaserver hashes match the secret_fixture material in
+    # accounts.wazuh-indexer-admin and accounts.wazuh-indexer-kibanaserver.
+    # Filebeat uses admin; the dashboard service uses kibanaserver.
+    # Retained security-index state is distinct from this initialization file.
     type: file
     target: wazuh-indexer
     path: /usr/share/wazuh-indexer/opensearch-security/internal_users.yml
@@ -2406,15 +2448,15 @@ content:
         type: "internalusers"
         config_version: 2
       admin:
-        hash: "$2y$12$K/SpwjtB.wOHJ/Nc6GVRDuc1h0rM1DfvziFRNPtk27P.c4yDr9njO"
+        hash: "$2b$12$hkXU/VXjsV7E8CT71zapPOO/Ql.on.4blMKCwrFli1h5wFrwXBgzG"
         reserved: true
         backend_roles:
         - "admin"
-        description: "Demo admin user"
+        description: "TechVault indexer administrator fixture"
       kibanaserver:
-        hash: "$2a$12$4AcgAt3xwOWadA5s5blL6ev39OXDNhmOesEoo33eZtrq2N0YrU3H."
+        hash: "$2b$12$GgJzQuq7PVqbCQsG3uUDE.T3vbS6GucMfjnV9f0z9cKbggg9fQKWm"
         reserved: true
-        description: "Demo kibanaserver user"
+        description: "TechVault dashboard service fixture"
       kibanaro:
         hash: "$2a$12$JJSXNfTowz7Uu5ttXfeYpeYE0arACvcwlPBStB1F.MI7f0U9Z4DGC"
         reserved: false
@@ -2441,6 +2483,7 @@ content:
         - "snapshotrestore"
         description: "Demo snapshotrestore user"
   wazuh-dashboard-opensearch-config:
+    sensitive: true
     type: file
     target: wazuh-dashboard
     path: /usr/share/wazuh-dashboard/config/opensearch_dashboards.yml
@@ -2448,6 +2491,8 @@ content:
       server.host: 0.0.0.0
       server.port: 5601
       opensearch.hosts: https://wazuh-indexer:9200
+      opensearch.username: kibanaserver
+      opensearch.password: "TechVault-Dashboard-Service-2026!"
       opensearch.ssl.verificationMode: certificate
       opensearch.requestHeadersWhitelist: ["securitytenant","Authorization"]
       opensearch_security.multitenancy.enabled: false
@@ -2458,6 +2503,7 @@ content:
       opensearch.ssl.certificateAuthorities: ["/usr/share/wazuh-dashboard/certs/root-ca.pem"]
       uiSettings.overrides.defaultRoute: /app/wz-home
   wazuh-dashboard-app-config:
+    sensitive: true
     type: file
     target: wazuh-dashboard
     path: /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
@@ -2840,7 +2886,7 @@ content:
         exact_artifact:
           artifact_id: techvault-misp-sync-readme
           version: 0.1.2
-          digest: sha256:07c3dee4987c47e57bc8f0333073abdc07b832a7e82136c3123577531978231b
+          digest: sha256:78ef34e2794422e35fb42e48c85506240f337705133e584bdadfa02a87417723
           media_type: text/markdown
         permitted_routes:
           - mechanism:
@@ -3568,7 +3614,7 @@ evidence_requirements:
     integrity: chain_of_custody
     retention: run_lifetime
     loss_disclosure: required
-# Realizable accounts: the deployment backend ensures these groups, users,
+# AD roster: the deployment backend ensures these groups, users,
 # memberships, and non-secret attributes on the resolved `ad` node and verifies
 # them by read-after-write. Declares identity only (no password material); the
 # concrete credential is generated inside the target provider and never crosses
@@ -4108,6 +4154,110 @@ behavior_specifications:
         control_evidence_refs: [entities.study-control]
     extension_policy: closed
 accounts:
+  wazuh-indexer-admin:
+    username: admin
+    node: wazuh-indexer
+    auth_method: password
+    password_strength: weak
+    description: Wazuh indexer administrator and dashboard interactive login; Filebeat uses this account.
+    credential_bindings:
+      - credential_id: wazuh-indexer-admin-primary
+        purpose: primary_authentication
+        auth_method: password
+        material:
+          classification: secret_fixture
+          value: "TechVault-Indexer-Admin-2026!"
+  wazuh-indexer-kibanaserver:
+    username: kibanaserver
+    node: wazuh-indexer
+    auth_method: password
+    password_strength: weak
+    description: Wazuh dashboard service login to the indexer; separate from the interactive admin login.
+    credential_bindings:
+      - credential_id: wazuh-indexer-kibanaserver-primary
+        purpose: primary_authentication
+        auth_method: password
+        material:
+          classification: secret_fixture
+          value: "TechVault-Dashboard-Service-2026!"
+  wazuh-manager-api:
+    username: wazuh-wui
+    node: wazuh-manager
+    auth_method: password
+    password_strength: weak
+    description: Wazuh manager API login used by the dashboard.
+    credential_bindings:
+      - credential_id: wazuh-manager-api-primary
+        purpose: primary_authentication
+        auth_method: password
+        material:
+          classification: secret_fixture
+          value: "WazuhPass123!"
+  thehive-administrator:
+    username: admin@techvault.local
+    node: thehive
+    auth_method: password
+    password_strength: weak
+    description: TheHive console administrator login.
+    credential_bindings:
+      - credential_id: thehive-administrator-primary
+        purpose: primary_authentication
+        auth_method: password
+        material:
+          classification: secret_fixture
+          value: "TechVault-TheHive-Admin-2026!"
+  cortex-administrator:
+    username: admin@techvault.local
+    node: cortex
+    auth_method: password
+    password_strength: weak
+    description: Cortex console administrator login; separate from the TheHive connector identity.
+    credential_bindings:
+      - credential_id: cortex-administrator-primary
+        purpose: primary_authentication
+        auth_method: password
+        material:
+          classification: secret_fixture
+          value: "TechVault-Cortex-Admin-2026!"
+  shuffle-administrator:
+    username: admin@techvault.local
+    node: shuffle-backend
+    auth_method: password
+    password_strength: weak
+    description: Shuffle console administrator login.
+    credential_bindings:
+      - credential_id: shuffle-administrator-primary
+        purpose: primary_authentication
+        auth_method: password
+        material:
+          classification: secret_fixture
+          value: "TechVault-Shuffle-Admin-2026!"
+  misp-administrator:
+    username: admin@admin.test
+    node: misp
+    auth_method: password
+    password_strength: weak
+    description: MISP console administrator login.
+    credential_bindings:
+      - credential_id: misp-administrator-primary
+        purpose: primary_authentication
+        auth_method: password
+        material:
+          classification: secret_fixture
+          value: "TechVault-MISP-Admin-2026!"
+  misp-suricata-sync-api-key:
+    username: techvault-suricata-sync
+    node: misp
+    auth_method: key
+    password_strength: weak
+    description: MISP synchronization API identity used by the declared Suricata forwarding agent.
+    credential_bindings:
+      - credential_id: misp-suricata-sync-api-key-primary
+        purpose: primary_authentication
+        auth_method: key
+        material:
+          classification: secret_fixture
+          value: "7ea54cbe19564f9893940770bbc659f890726557b0e56111437febd117014dace"
   ad-administrator:
     username: Administrator
     node: ad

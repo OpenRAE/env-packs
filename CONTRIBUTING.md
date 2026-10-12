@@ -11,7 +11,7 @@ behavior, open an issue first so the design can be agreed before you build it.
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -e .
+pip install -e ".[test]"
 ```
 
 ## Run the checks

@@ -1022,8 +1022,8 @@ def validate_misp_contract(sdl: Mapping[str, Any]) -> list[str]:
         if isinstance(item, Mapping)
     }
     expected_principals = {
-        "misp-administrator": ("user", "admin@admin.test", "operator_secret"),
-        "misp-suricata-sync-api-key": ("api_key", "", "operator_secret"),
+        "misp-administrator": ("user", "admin@admin.test", "redacted"),
+        "misp-suricata-sync-api-key": ("api_key", "", "redacted"),
     }
     authorization_shape = {
         "roles": {

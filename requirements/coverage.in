@@ -1,1 +1,3 @@
 coverage==7.16.2
+# Synthetic Wazuh fixture password/hash agreement in the pack contract tests.
+bcrypt==5.0.0

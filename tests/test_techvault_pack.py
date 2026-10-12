@@ -265,11 +265,11 @@ def _assert_misp_runtime_contract(test: unittest.TestCase, sdl: dict) -> None:
     test.assertEqual(principals["misp-administrator"]["kind"], "user")
     test.assertEqual(
         principals["misp-administrator"]["credential_classification"],
-        "operator_secret",
+        "redacted",
     )
     test.assertEqual(
         principals["misp-suricata-sync-api-key"]["credential_classification"],
-        "operator_secret",
+        "redacted",
     )
 
     (database,) = nodes["misp-db"]["runtime"]["database_services"]
@@ -468,7 +468,7 @@ class TechVaultPackTests(unittest.TestCase):
             "evidence_requirements": 6,
             "identity_domains": 1,
             "relationships": 3,
-            "accounts": 14,
+            "accounts": 22,
             "variables": 10,
             "entities": 2,
             "agents": 2,
@@ -700,10 +700,10 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline & materialized, set())
         self.assertEqual(sourced & materialized, set())
         self.assertEqual(inline | sourced | materialized, set(content))
-        self.assertEqual(len(inline), 15)
+        self.assertEqual(len(inline), 16)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
         self.assertEqual(materialized, set())
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 53)
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 54)
 
     def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
         sdl = _load_sdl()
@@ -1862,7 +1862,7 @@ class TechVaultPackTests(unittest.TestCase):
                 lambda candidate: candidate["nodes"]["misp"]["runtime"][
                     "app_authorizations"
                 ][0]["principals"][0].__setitem__(
-                    "credential_classification", "redacted"
+                    "credential_classification", "operator_secret"
                 ),
                 "misp.principal-invalid",
             ),
@@ -2371,6 +2371,105 @@ _AD_ACCOUNT_ROSTER = {
 class TechVaultInWorldDeclarationTests(unittest.TestCase):
     """The pack states what exists in the scenario, never how it is built."""
 
+    def test_soc_logins_resolve_classified_fixture_material(self) -> None:
+        expected = {
+            "wazuh-indexer-admin": ("wazuh-indexer", "admin"),
+            "wazuh-indexer-kibanaserver": ("wazuh-indexer", "kibanaserver"),
+            "wazuh-manager-api": ("wazuh-manager", "wazuh-wui"),
+            "thehive-administrator": ("thehive", "admin@techvault.local"),
+            "cortex-administrator": ("cortex", "admin@techvault.local"),
+            "shuffle-administrator": ("shuffle-backend", "admin@techvault.local"),
+            "misp-administrator": ("misp", "admin@admin.test"),
+            "misp-suricata-sync-api-key": ("misp", "techvault-suricata-sync"),
+        }
+        scenario = parse_sdl_file(_SDL)
+        model = compile_scenario_runtime_model(
+            scenario, parameters={name: f"test-{name}" for name in _load_sdl()["variables"]},
+        )
+        for account_id, (node, username) in expected.items():
+            with self.subTest(account=account_id):
+                self.assertIn(account_id, scenario.accounts.keys())
+                account = scenario.accounts[account_id]
+                self.assertEqual((account.node, account.username), (node, username))
+                (binding,) = account.credential_bindings
+                self.assertEqual(binding.credential_id, f"{account_id}-primary")
+                self.assertEqual(binding.purpose.value, "primary_authentication")
+                self.assertEqual(binding.material.classification, "secret_fixture")
+                self.assertTrue(binding.material.value)
+                (placement,) = [item for item in model.account_placements.values() if item.account_name == account_id]
+                self.assertEqual(placement.spec["credential_bindings"][0]["material"], {
+                    "classification": "secret_fixture", "value": binding.material.value,
+                })
+
+    def test_indexer_fixture_credentials_match_native_consumers(self) -> None:
+        import bcrypt
+
+        for pack_name in ("techvault", "techvault-participant-study"):
+            with self.subTest(pack=pack_name):
+                path = _ROOT / "packs" / pack_name / "sdl" / f"{pack_name}.sdl.yaml"
+                scenario = parse_sdl_file(path)
+                content = scenario.content
+                users = yaml.safe_load(content["wazuh-indexer-internal-users"].text)
+                filebeat = yaml.safe_load(content["wazuh-manager-filebeat-config"].text)
+                dashboard = yaml.safe_load(content["wazuh-dashboard-opensearch-config"].text)
+                output = filebeat["output.elasticsearch"]
+                consumers = (
+                    (output["username"], output["password"], "admin"),
+                    (dashboard["opensearch.username"], dashboard["opensearch.password"], "kibanaserver"),
+                )
+                for username, password, expected in consumers:
+                    self.assertEqual(username, expected)
+                    self.assertTrue(users[username]["reserved"])
+                    hashed = users[username]["hash"].encode()
+                    self.assertTrue(bcrypt.checkpw(password.encode(), hashed), username)
+                    self.assertFalse(bcrypt.checkpw(b"incorrect-fixture-password", hashed))
+                    account = scenario.accounts[f"wazuh-indexer-{username}"]
+                    self.assertEqual(password, account.credential_bindings[0].material.value)
+                self.assertEqual(users["admin"]["backend_roles"], ["admin"])
+                self.assertNotEqual(consumers[0][1], consumers[1][1])
+                manager_api = yaml.safe_load(content["wazuh-dashboard-app-config"].text)
+                self.assertEqual(manager_api["hosts"][0]["default"]["username"], "wazuh-wui")
+                self.assertEqual(
+                    manager_api["hosts"][0]["default"]["password"],
+                    scenario.accounts["wazuh-manager-api"].credential_bindings[0].material.value,
+                )
+
+    def test_filebeat_fixture_preserves_wazuh_ingestion_and_tls(self) -> None:
+        sdl = _load_sdl()
+        filebeat = yaml.safe_load(sdl["content"]["wazuh-manager-filebeat-config"]["text"])
+        self.assertEqual(filebeat["filebeat.modules"], [
+            {"module": "wazuh", "alerts": {"enabled": True}, "archives": {"enabled": False}},
+        ])
+        self.assertTrue(filebeat["setup.template.json.enabled"])
+        self.assertEqual(filebeat["setup.template.json.path"], "/etc/filebeat/wazuh-template.json")
+        self.assertEqual(filebeat["setup.template.json.name"], "wazuh")
+        self.assertTrue(filebeat["setup.template.overwrite"])
+        self.assertFalse(filebeat["setup.ilm.enabled"])
+        output = filebeat["output.elasticsearch"]
+        self.assertEqual(output["hosts"], ["https://wazuh-indexer:9200"])
+        self.assertEqual(output["ssl.verification_mode"], "full")
+        self.assertEqual(output["ssl.certificate_authorities"], ["/etc/ssl/wazuh/root-ca-manager.pem"])
+        self.assertEqual(output["ssl.certificate"], "/etc/ssl/wazuh/wazuh.manager.pem")
+        self.assertEqual(output["ssl.key"], "/etc/ssl/wazuh/wazuh.manager-key.pem")
+        dashboard = yaml.safe_load(sdl["content"]["wazuh-dashboard-opensearch-config"]["text"])
+        self.assertEqual(dashboard["opensearch.ssl.verificationMode"], "certificate")
+
+    def test_indexer_credential_files_have_restricted_fixture_posture(self) -> None:
+        scenario = parse_sdl_file(_SDL)
+        expected = {
+            "wazuh-manager": ("wazuh-manager-filebeat-config", "/etc/filebeat/filebeat.yml", "root", "root"),
+            "wazuh-dashboard": ("wazuh-dashboard-opensearch-config", "/usr/share/wazuh-dashboard/config/opensearch_dashboards.yml", "wazuh-dashboard", "wazuh-dashboard"),
+        }
+        for node, (content_id, path, user, group) in expected.items():
+            with self.subTest(node=node):
+                self.assertTrue(scenario.content[content_id].sensitive)
+                self.assertEqual(scenario.content[content_id].target, node)
+                self.assertEqual(scenario.content[content_id].path, path)
+                entries = {entry.path: entry for entry in scenario.nodes[node].runtime.filesystem_inventory}
+                entry = entries[path]
+                self.assertEqual((entry.owner_user, entry.owner_group, entry.mode), (user, group, "0600"))
+                self.assertEqual(entry.sensitivity.value, "secret_fixture")
+
     def test_checked_in_sdl_contains_no_realization_method(self) -> None:
         self.assertEqual(
             _PACK_VALIDATOR.validate_realization_method_contract(_load_sdl()), []
@@ -2526,14 +2625,14 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
         }["misp-suricata-sync-api-key"]
         self.assertEqual(principal["principal_id"], "misp-suricata-sync-api-key")
         self.assertEqual(principal["kind"], "api_key")
-        self.assertEqual(principal["credential_classification"], "operator_secret")
+        self.assertEqual(principal["credential_classification"], "redacted")
 
         sync_runtime = sdl["nodes"]["misp-suricata-sync"]["runtime"]
         (sync_agent,) = sync_runtime["forwarding_agents"]
         settings = {item["setting_id"]: item for item in sync_agent["settings"]}
         self.assertEqual(
             settings["misp-api-authentication"]["classification"],
-            "operator_secret",
+            "redacted",
         )
         self.assertEqual(
             settings["misp-tls-verification"]["value"], "required"
