@@ -164,8 +164,16 @@ class PackContracts(object):
         """Initialize the instance."""
         self.pack_root = os.path.abspath(pack_root)
         self._root_real = os.path.realpath(self.pack_root)
-        self.pack_yaml = self._read("pack.yaml") or {}
+        manifest = self._read("pack.yaml")
+        # A pack.yaml that parses to a list or a scalar is reported as a failure
+        # for this pack instead of crashing every caller on ``.get``.
+        self.pack_yaml = manifest if isinstance(manifest, dict) else {}
         self.name = self.pack_yaml.get("name") or os.path.basename(self.pack_root)
+        self.manifest_failures: list[str] = []
+        if manifest is not None and not isinstance(manifest, dict):
+            kind = "list" if isinstance(manifest, list) else "scalar"
+            self.manifest_failures.append(
+                f"{self.name}: pack.yaml is a YAML {kind}, not a mapping")
         self.compatibility = self._read_pointer(self.pack_yaml.get("compatibility_manifest"))
         self.provenance = self._read_pointer(self.pack_yaml.get("provenance_ledger"))
         self.publication = self._read_pointer(self.pack_yaml.get("publication_supply"))
@@ -280,6 +288,8 @@ def _lint_bundle(pc: "PackContracts", pack_root: str, bundle: dict[str, object],
 def lint_pack(pack_root: str) -> list[str]:
     """Verify a pack ships every delivery bundle it advertises as supported."""
     pc = PackContracts(pack_root)
+    if pc.manifest_failures:
+        return list(pc.manifest_failures)
     supported = pc.supported_bundles
     if not supported:
         # nothing claimed supported -> nothing to ship
@@ -308,9 +318,9 @@ def lint_pack(pack_root: str) -> list[str]:
 _SAFE_SLUG_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
-def _is_safe_slug(value: str) -> bool:
-    """Is safe slug."""
-    return bool(value) and value not in (".", "..") and \
+def _is_safe_slug(value: object) -> bool:
+    """Is safe slug (a non-string pack name, such as ``name: 2024``, is not)."""
+    return isinstance(value, str) and value not in (".", "..") and \
         _SAFE_SLUG_RE.fullmatch(value) is not None
 
 
@@ -549,6 +559,8 @@ def build_release(pack_root: str, out_dir: str, *,
     behind.
     """
     pc = PackContracts(pack_root)
+    if pc.manifest_failures:
+        return {}, list(pc.manifest_failures)
     version = str(pc.pack_yaml.get("version") or "0.0.0")
     tier_stats: dict[str, dict[str, object]] = {
         tier: {"file_count": 0, "exports": {}} for tier in sorted(set(BOUNDARY_TIERS.values()))
@@ -1228,6 +1240,8 @@ def _smoke_view_leaks(pc: "PackContracts", pack_root: str,
 def smoke_pack(pack_root: str) -> list[str]:
     """Smoke-test that profile selection changes participant exposure correctly."""
     pc = PackContracts(pack_root)
+    if pc.manifest_failures:
+        return list(pc.manifest_failures)
     supported = pc.supported_bundles
     if not supported:
         return []
@@ -1272,22 +1286,28 @@ def check(
     checked = 0
     for pack_root in pack_roots:
         name = os.path.basename(pack_root)
-        if not is_releasable(pack_root):
+        # A malformed pack.yaml fails this pack; the remaining packs still run.
+        malformed = PackContracts(pack_root).manifest_failures
+        if not malformed and not is_releasable(pack_root):
             print(f"  [skip] {name}: not releasable "
                   "(no compatibility manifest with artifact_boundaries)")
             continue
         checked += 1
-        before = len(failures)
-        failures += lint_pack(pack_root)
-        failures += smoke_pack(pack_root)
-        with tempfile.TemporaryDirectory() as out:
-            _meta, build_failures = build_release(pack_root, out)
-            failures += build_failures
-        status = "ok" if len(failures) == before else "fail"
+        pack_failures = malformed or _release_checks(pack_root)
+        failures += pack_failures
+        status = "fail" if pack_failures else "ok"
         print(f"  [{status}] {name} release checks")
     if checked == 0:
         print("  [warn] no releasable packs found")
     return failures
+
+
+def _release_checks(pack_root: str) -> list[str]:
+    """Lint, smoke and build one releasable pack into a scratch directory."""
+    failures = lint_pack(pack_root) + smoke_pack(pack_root)
+    with tempfile.TemporaryDirectory() as out:
+        _meta, build_failures = build_release(pack_root, out)
+    return failures + build_failures
 
 
 # --------------------------------------------------------------------------
@@ -1316,7 +1336,11 @@ def _report(label: str, failures: list[str]) -> int:
 
 def _cmd_metadata(args: argparse.Namespace) -> int:
     """Cmd metadata."""
-    print(yaml.safe_dump(release_metadata(_resolve_pack(args.pack)), sort_keys=False))
+    pack_root = _resolve_pack(args.pack)
+    malformed = PackContracts(pack_root).manifest_failures
+    if malformed:
+        return _report("PACK METADATA", malformed)
+    print(yaml.safe_dump(release_metadata(pack_root), sort_keys=False))
     return 0
 
 
