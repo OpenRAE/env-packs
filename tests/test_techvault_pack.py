@@ -2388,7 +2388,7 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
         )
         for account_id, (node, username) in expected.items():
             with self.subTest(account=account_id):
-                self.assertTrue(account_id in scenario.accounts, account_id)
+                self.assertIn(account_id, scenario.accounts.keys())
                 account = scenario.accounts[account_id]
                 self.assertEqual((account.node, account.username), (node, username))
                 (binding,) = account.credential_bindings
