@@ -651,7 +651,8 @@ class SourcesManifestTests(CatalogFixture):
     def test_unparseable_sources_manifest_is_usage_error(self) -> None:
         # Issue #446: yaml.safe_load raises YAMLError subclasses, RecursionError
         # for deep nesting, and KeyError, IndexError or AttributeError for core
-        # tags it cannot construct. None of them is a ValueError.
+        # tags it cannot construct, including OverflowError for a long
+        # sexagesimal float. None of them is a ValueError.
         self._chdir_tmp()
         cases = {
             "syntax": "[a, b\n",
@@ -661,6 +662,7 @@ class SourcesManifestTests(CatalogFixture):
             "bad-bool": "- !!bool foo\n",
             "empty-int": '- !!int ""\n',
             "bad-timestamp": "- !!timestamp foo\n",
+            "overflow-float": '- !!float "' + ":".join(["1"] * 180) + '"\n',
         }
         for label, text in cases.items():
             with self.subTest(label):
@@ -669,6 +671,7 @@ class SourcesManifestTests(CatalogFixture):
                 self.assertEqual(code, catalog.EXIT_USAGE)
                 self.assertEqual(out, "")
                 self.assertIn("could not read sources: ValueError", err)
+                self.assertNotIn("Traceback", err)
                 self.assertNotIn(str(self.tmp), err)
 
     def test_sources_manifest_reports_a_non_string_pack_name_as_unknown(self) -> None:

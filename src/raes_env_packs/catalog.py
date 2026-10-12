@@ -881,11 +881,14 @@ def _read_sources_manifest(path: str) -> list[Source]:
     with open(resolved, "r", encoding="utf-8") as handle:
         try:
             raw = yaml.safe_load(handle)
-        except (yaml.YAMLError, RecursionError, LookupError, AttributeError) as exc:
+        except (
+            yaml.YAMLError, RecursionError, LookupError, AttributeError, OverflowError
+        ) as exc:
             # None is a ValueError: a syntax or constructor error, nesting deep
             # enough to exhaust the parser, or a core tag PyYAML cannot construct
             # (KeyError for !!bool, IndexError for an empty !!int or !!float,
-            # AttributeError for !!timestamp) is still a malformed manifest.
+            # AttributeError for !!timestamp, OverflowError for a long
+            # sexagesimal !!float) is still a malformed manifest.
             raise ValueError("sources manifest is not valid YAML") from exc
     if not isinstance(raw, list):
         raise ValueError("sources manifest must be a list of {id, revision, root}")
