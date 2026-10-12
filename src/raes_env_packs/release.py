@@ -277,6 +277,42 @@ def _lint_bundle(pc: "PackContracts", pack_root: str, bundle: dict[str, object],
     return failures
 
 
+def _yaml_kind(value: object) -> str:
+    """Name the YAML node kind of a parsed value, never the value itself."""
+    if isinstance(value, list):
+        return "list"
+    if isinstance(value, dict):
+        return "mapping"
+    return "scalar"
+
+
+def _pack_yaml_mapping(pc: PackContracts, key: str) -> tuple[dict, list[str]]:
+    """Read a ``pack.yaml`` key that the contract defines as a mapping.
+
+    Absent or null reads as an empty mapping (no failure); any other
+    non-mapping value reads as empty and is reported, so lint never raises.
+    """
+    value = pc.pack_yaml.get(key)
+    if value is None:
+        return {}, []
+    if isinstance(value, dict):
+        return value, []
+    return {}, [f"{pc.name}: pack.yaml {key} is a YAML {_yaml_kind(value)}, not a mapping"]
+
+
+def _index_ids(pc: PackContracts) -> tuple[set[object], list[str]]:
+    """Bundle ids listed in the ``pack.yaml`` ``profile_bundles`` index."""
+    index, failures = _pack_yaml_mapping(pc, "profile_bundles")
+    rows = index.get("bundles")
+    if rows is None:
+        return set(), failures
+    if not isinstance(rows, list):
+        return set(), failures + [
+            f"{pc.name}: pack.yaml profile_bundles.bundles is a YAML "
+            f"{_yaml_kind(rows)}, not a list"]
+    return {x.get("id") for x in rows if isinstance(x, dict)}, failures
+
+
 def lint_pack(pack_root: str) -> list[str]:
     """Verify a pack ships every delivery bundle it advertises as supported."""
     pc = PackContracts(pack_root)
@@ -285,15 +321,14 @@ def lint_pack(pack_root: str) -> list[str]:
         # nothing claimed supported -> nothing to ship
         return []
 
-    failures: list[str] = []
-    contents = pc.pack_yaml.get("contents") or {}
+    contents, failures = _pack_yaml_mapping(pc, "contents")
     if contents.get("profile_bundles") is not True:
         failures += [
             f"{pc.name}: delivery bundle {b.get('bundle_id')} is status=supported "
             "but pack.yaml contents.profile_bundles is not true" for b in supported]
 
-    index = pc.pack_yaml.get("profile_bundles") or {}
-    index_ids = {x.get("id") for x in (index.get("bundles") or []) if isinstance(x, dict)}
+    index_ids, index_failures = _index_ids(pc)
+    failures += index_failures
     for bundle in supported:
         failures += _lint_bundle(pc, pack_root, bundle, pc.manifest_bundle_rows, index_ids)
     return failures
