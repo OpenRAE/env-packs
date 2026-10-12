@@ -417,8 +417,11 @@ def _stage_tree(root_fd: int, pack_root: str, rel: str, dst: str,
 def _resolve_release_paths(pc: "PackContracts", out_dir: str,
                            version: str) -> tuple[str | None, str | None, list[str]]:
     """Validate pack-controlled name/version and resolve the staging + release
-    roots, both contained under the resolved ``out_dir`` (Sonar S8707)."""
-    failures = [
+    roots, both contained under the resolved ``out_dir`` (Sonar S8707).
+
+    A pack.yaml that is not a mapping fails first: the name and version would
+    only be fallbacks, so nothing is resolved for it."""
+    failures = list(pc.manifest_failures) or [
         f"{pc.name}: pack {label} {value!r} is not a path-safe slug"
         for label, value in (("name", pc.name), ("version", version))
         if not _is_safe_slug(value)]
@@ -559,13 +562,14 @@ def build_release(pack_root: str, out_dir: str, *,
     behind.
     """
     pc = PackContracts(pack_root)
-    if pc.manifest_failures:
-        return {}, list(pc.manifest_failures)
     version = str(pc.pack_yaml.get("version") or "0.0.0")
     tier_stats: dict[str, dict[str, object]] = {
         tier: {"file_count": 0, "exports": {}} for tier in sorted(set(BOUNDARY_TIERS.values()))
     }
-    metadata = release_metadata(pack_root, include_build_provenance=include_build_provenance)
+    # No profile is derived from a pack.yaml that is not a mapping;
+    # _resolve_release_paths reports it before anything is staged.
+    metadata = {} if pc.manifest_failures else release_metadata(
+        pack_root, include_build_provenance=include_build_provenance)
     staged_by_view: dict[str, list[str]] = {}
     release_root, staging, failures = _resolve_release_paths(pc, out_dir, version)
     if failures:
