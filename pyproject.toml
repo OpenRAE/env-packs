@@ -30,6 +30,9 @@ classifiers = [
 # validated against.
 dependencies = ["PyYAML>=6", "raes==6.0.1", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
 
+[project.optional-dependencies]
+test = ["bcrypt==5.0.0"]
+
 [project.urls]
 Homepage = "https://github.com/OpenRAE/env-packs"
 Repository = "https://github.com/OpenRAE/env-packs"
