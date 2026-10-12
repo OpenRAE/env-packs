@@ -649,14 +649,18 @@ class SourcesManifestTests(CatalogFixture):
         self.assertEqual(code, catalog.EXIT_USAGE)
 
     def test_unparseable_sources_manifest_is_usage_error(self) -> None:
-        # Issue #446: yaml.safe_load raises YAMLError subclasses, or
-        # RecursionError for deep nesting, and neither is a ValueError.
+        # Issue #446: yaml.safe_load raises YAMLError subclasses, RecursionError
+        # for deep nesting, and KeyError, IndexError or AttributeError for core
+        # tags it cannot construct. None of them is a ValueError.
         self._chdir_tmp()
         cases = {
             "syntax": "[a, b\n",
             "unhashable-key": "? [a]\n: 1\n",
             "unknown-tag": "- !!python/object:os.system {}\n",
             "too-deep": "[" * 3000 + "]" * 3000 + "\n",
+            "bad-bool": "- !!bool foo\n",
+            "empty-int": '- !!int ""\n',
+            "bad-timestamp": "- !!timestamp foo\n",
         }
         for label, text in cases.items():
             with self.subTest(label):
