@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from typing import NamedTuple
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_HERE)
@@ -42,28 +43,55 @@ def _log(message: str) -> None:
     print(f"[rehearsal] {message}", flush=True)
 
 
-def _publish(workdir: str) -> tuple[str, str]:
-    """Publish TechVault and return (evidence_dir, archive_path)."""
+class _Published(NamedTuple):
+    """Where one publish wrote its release, named from the build's own metadata."""
+
+    name: str
+    version: str
+    evidence_dir: str
+    archive: str
+    evidence_files: tuple[tuple[str, str], ...]
+
+
+def _publish(workdir: str) -> _Published:
+    """Publish TechVault, export its archive, and say where both were written.
+
+    The release directory, archive, and evidence names follow the pack name and
+    version that ``build_release`` recorded in the release metadata, so the
+    rehearsal tracks every ``pack.yaml`` version bump instead of a literal.
+    """
 
     release_out = os.path.join(workdir, "release")
     metadata, failures = release.build_release(_TECHVAULT, release_out, publish=True)
     if failures:
         raise SystemExit(f"publish failed: {failures}")
-    evidence_dir = os.path.join(release_out, "techvault-0.1.0")
-    archive = os.path.join(workdir, "techvault-0.1.0.tar.gz")
+    pack = metadata["release"]["pack"]
+    stem = f"{pack['name']}-{pack['version']}"
+    evidence_dir = os.path.join(release_out, stem)
+    if not os.path.isfile(os.path.join(evidence_dir, "release.yaml")):
+        raise SystemExit(f"publish wrote no release.yaml under {evidence_dir}")
+    archive = os.path.join(workdir, f"{stem}.tar.gz")
     first = dist.export_pack_archive(_TECHVAULT, archive)
     # Clean reproduction: the same source exports byte-identical bytes.
-    again = os.path.join(workdir, "techvault-0.1.0-again.tar.gz")
+    again = os.path.join(workdir, f"{stem}-again.tar.gz")
     if dist.export_pack_archive(_TECHVAULT, again) != first:
         raise SystemExit("archive export is not reproducible")
-    _log(f"published + exported archive {first}")
-    return evidence_dir, archive
+    _log(f"published {stem} + exported archive {first}")
+    evidence = metadata["evidence"]
+    return _Published(
+        name=pack["name"], version=pack["version"], evidence_dir=evidence_dir,
+        archive=archive, evidence_files=(
+            ("release.yaml", "application/yaml"),
+            (evidence["sbom"]["path"], "application/vnd.cyclonedx+json"),
+            (evidence["provenance"]["path"], "application/vnd.in-toto+json"),
+        ))
 
 
 def offline_rehearsal(workdir: str) -> None:
     """Publish -> export -> install -> verify -> update -> rollback, no network."""
 
-    evidence_dir, archive = _publish(workdir)
+    published = _publish(workdir)
+    evidence_dir, archive = published.evidence_dir, published.archive
     selector = dist.Selector(
         repository="local", reference=archive, digest_domain=dist.DIGEST_DOMAIN_ARCHIVE)
     transport = dist.ArchiveTransport()
@@ -111,22 +139,18 @@ def _run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
 def registry_rehearsal(registry: str, workdir: str) -> None:
     """Push -> keyless-sign -> pull -> verify-signature -> install, over a registry."""
 
-    evidence_dir, archive = _publish(workdir)
-    repo = f"{registry}/techvault"
-    tag = "0.1.0"
-    ref = f"{repo}:{tag}"
+    published = _publish(workdir)
+    archive = published.archive
+    repo = f"{registry}/{published.name}"
+    ref = f"{repo}:{published.version}"
 
     # Stage the archive and its evidence together so oras pushes one artifact.
     push_dir = os.path.join(workdir, "push")
     os.makedirs(push_dir, exist_ok=True)
     shutil.copy(archive, push_dir)
-    evidence_files = [
-        ("release.yaml", "application/yaml"),
-        ("techvault-0.1.0.cdx.json", "application/vnd.cyclonedx+json"),
-        ("techvault-0.1.0.provenance.json", "application/vnd.in-toto+json"),
-    ]
+    evidence_files = published.evidence_files
     for name, _media in evidence_files:
-        shutil.copy(os.path.join(evidence_dir, name), push_dir)
+        shutil.copy(os.path.join(published.evidence_dir, name), push_dir)
     _run(
         ["oras", "push", "--plain-http", ref,
          f"{os.path.basename(archive)}:application/gzip",
