@@ -73,6 +73,8 @@ Pack targets must be direct children of that directory.
    The server applies the stored bytes through the existing guarded writer.
 
 `pack_apply` is available only with the launch flag `--allow-writes`.
+It needs Linux: it writes through the same `renameat2` transactions as
+`raes-pack-new` and the kit commands, and macOS does not provide that call.
 A request-side approval flag cannot grant permission. A handle is **not proof
 of human approval**: your host must require confirmation before invoking the
 effectful tool. Handles belong to one server session and disappear when it

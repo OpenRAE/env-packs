@@ -5,6 +5,8 @@ two minutes and creates nothing outside a directory you choose.
 
 ## Before you start
 
+- Linux. The wizard publishes the pack with the Linux `renameat2` system call,
+  which macOS does not provide.
 - Python 3.11 or newer.
 - A catalog repository: a Git repository with an `environments/` directory,
   where your packs live. The wizard writes into it.

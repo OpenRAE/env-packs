@@ -89,6 +89,10 @@ raes-pack-dist install --pack ./techvault --release ./dist/techvault-0.1.0 \
 raes-pack-dist install ... --target ./environments/techvault --apply
 ```
 
+An `install` or `update` with `--apply` needs Linux: it promotes the staged pack
+with the Linux `renameat2` system call, which macOS does not provide. A plan
+without `--apply` writes nothing, so it does not use `renameat2`.
+
 Apply is bound to the exact plan it was authorized for — the same operation, the
 same target, the same resolved subject — and **fails closed on authenticity**: a
 published release must verify its signature before promotion. A caller with no

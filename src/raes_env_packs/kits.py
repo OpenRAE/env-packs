@@ -2680,7 +2680,11 @@ def apply_proposal(proposal: KitProposal) -> str:
             except (OSError, _transactions.TransactionError) as rollback_exc:
                 cleanup_staging = False
                 raise KitRecoveryError(staged) from rollback_exc
-        raise KitError("kit proposal could not be committed atomically") from exc
+        raise KitError(
+            _transactions.failure_message(
+                "kit proposal could not be committed atomically", exc
+            )
+        ) from exc
     finally:
         if cleanup_staging:
             shutil.rmtree(staging_parent, ignore_errors=True)
