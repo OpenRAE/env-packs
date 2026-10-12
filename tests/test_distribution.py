@@ -5,11 +5,14 @@ from __future__ import annotations
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import yaml
 
+from raes_env_packs import _transactions
 from raes_env_packs import distribution as dist
 from raes_env_packs import release
+from tests.test_transactions import without_renameat2
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_HERE)
@@ -227,6 +230,30 @@ class CliTests(_Fixture):
                  "--target", target, "--apply", "--allow-unsigned", "--json"])
             self.assertEqual(code, dist.EXIT_OK)
             self.assertTrue(os.path.isfile(os.path.join(target, "pack.yaml")))
+
+    def test_install_apply_tool_failure_names_only_a_missing_platform_capability(
+        self,
+    ) -> None:
+        # Issue #443: a missing renameat2 reported only "internal error
+        # (TransactionError)". Other defects must still hide their prose.
+        cases = (
+            ("no renameat2", without_renameat2(),
+             _transactions.UNSUPPORTED_PLATFORM_MESSAGE),
+            ("unexpected defect",
+             mock.patch.object(dist._transactions, "publish_noreplace",
+                               side_effect=RuntimeError("private detail")),
+             "internal error (RuntimeError)"),
+        )
+        for name, failure, reason in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as root:
+                target = os.path.join(root, "techvault")
+                with failure:
+                    code, _text, error = self._run(
+                        ["install", "--pack", _TECHVAULT, "--release", self.evidence,
+                         "--target", target, "--apply", "--allow-unsigned"])
+                self.assertEqual(code, dist.EXIT_TOOL_FAILURE)
+                self.assertEqual(error, f"raes-pack-dist: {reason}\n")
+                self.assertEqual(os.listdir(root), [])
 
     def test_publish_cli_shows_the_plan(self) -> None:
         code, text, _ = self._run(

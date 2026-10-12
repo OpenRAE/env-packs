@@ -8,9 +8,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from raes_env_packs import kit_cli, kits
+from raes_env_packs import _transactions, kit_cli, kits
 from tests.test_kit_materialization import _write_content_identified_pack
 from tests.test_kits import KIT_ID, KIT_VERSION, _write_synthetic_kit
+from tests.test_transactions import without_renameat2
 
 
 class KitCliTests(unittest.TestCase):
@@ -87,6 +88,25 @@ class KitCliTests(unittest.TestCase):
             ["remove", str(self.pack), "web", "--json"]
         )
         self.assertEqual(result, kit_cli.EXIT_OK)
+
+    def test_platform_without_renameat2_names_the_missing_capability(self) -> None:
+        sdl = self.pack / "sdl/example-pack.sdl.yaml"
+        before = sdl.read_bytes()
+        arguments = ["add", str(self.pack), *self.source_args, KIT_ID, KIT_VERSION,
+                     "--namespace", "web", "--target-sdl", "sdl/example-pack.sdl.yaml",
+                     "--parameters", "-"]
+        with without_renameat2():
+            result, _output, error = self._main(
+                arguments, json.dumps({"hostname": "web.example.test"})
+            )
+        self.assertEqual(result, kit_cli.EXIT_BLOCKING)
+        self.assertEqual(
+            error,
+            "error: kit proposal could not be committed atomically: "
+            f"{_transactions.UNSUPPORTED_PLATFORM_MESSAGE}\n",
+        )
+        self.assertEqual(sdl.read_bytes(), before)
+        self.assertFalse((self.pack / kits.KIT_MATERIALIZATIONS_PATH).exists())
 
     def test_update_and_replace_cli_wiring_mutates_the_exact_materialization(self) -> None:
         add_arguments = [

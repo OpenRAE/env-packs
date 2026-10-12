@@ -70,6 +70,10 @@ python -c "from raes_env_packs import validate_pack; print(validate_pack('enviro
 True
 ```
 
+Creating a pack needs Linux: the wizard publishes it with the Linux `renameat2`
+system call, which macOS does not provide. Kit changes and
+`raes-pack-dist install --apply` need Linux for the same reason.
+
 `validate_pack` is the check a consumer runs before trusting a pack: it reads the
 staged files, returns a result, prints nothing, and never runs the pack's code.
 The [quickstart](https://env-packs.readthedocs.io/en/latest/quickstart.html) walks

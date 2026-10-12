@@ -60,6 +60,10 @@ scope derived from the released content and the pinned RAES library.
 
 ## Follow the authoring tutorial
 
+Run the tutorial on Linux. `raes-pack-new` and the kit add and update commands
+commit each change with the Linux `renameat2` system call, which macOS does not
+provide.
+
 This tutorial creates a disposable catalog repository so you can run the full
 workflow without modifying the `env-packs` checkout. When you are ready to use
 the composition in a real pack, run the same kit commands against that pack's

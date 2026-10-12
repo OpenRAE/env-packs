@@ -22,8 +22,10 @@ from pathlib import Path
 
 import yaml
 
+from raes_env_packs import _transactions
 from raes_env_packs import validate_pack
 from raes_env_packs import wizard
+from tests.test_transactions import without_renameat2
 
 
 REQUIRED_MINIMAL = (
@@ -394,6 +396,21 @@ class CliTests(unittest.TestCase):
             ["example-pack", "--repo", str(self.tmp), "--yes"],
             stdout=io.StringIO(), stderr=io.StringIO())
         self.assertNotEqual(rc, 0)
+
+    def test_platform_without_renameat2_names_the_missing_capability(self) -> None:
+        # Issue #443: on macOS this printed only "could not publish pack".
+        err = io.StringIO()
+        with without_renameat2():
+            rc = wizard.main(
+                ["example-pack", "--repo", str(self.tmp), "--route", "minimal",
+                 "--yes"],
+                stdout=io.StringIO(), stderr=err)
+        self.assertEqual(rc, wizard.EXIT_BLOCKING)
+        self.assertEqual(
+            err.getvalue(),
+            "error: could not publish pack: "
+            f"{_transactions.UNSUPPORTED_PLATFORM_MESSAGE}\n")
+        self.assertEqual(list((self.tmp / "environments").iterdir()), [])
 
 
 class _Tty(io.StringIO):
