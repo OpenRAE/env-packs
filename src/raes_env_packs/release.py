@@ -278,16 +278,14 @@ def _lint_bundle(pc: "PackContracts", pack_root: str, bundle: dict[str, object],
     return failures
 
 
+# yaml.safe_load builds a ``!!set``-tagged mapping node as a Python set.
+_YAML_KINDS: tuple[tuple[type[object], str], ...] = (
+    (list, "list"), (dict, "mapping"), (set, "set"))
+
+
 def _yaml_kind(value: object) -> str:
     """Name the YAML node kind of a parsed value, never the value itself."""
-    if isinstance(value, list):
-        return "list"
-    if isinstance(value, dict):
-        return "mapping"
-    if isinstance(value, set):
-        # yaml.safe_load builds a ``!!set``-tagged mapping node as a Python set
-        return "set"
-    return "scalar"
+    return next((kind for typ, kind in _YAML_KINDS if isinstance(value, typ)), "scalar")
 
 
 def _pack_yaml_mapping(pc: PackContracts, key: str) -> tuple[dict[str, object], list[str]]:
