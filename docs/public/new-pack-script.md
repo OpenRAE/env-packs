@@ -17,6 +17,17 @@ created environments/example-pack
 validated with the static pack check (minimal route)
 ```
 
+`raes-pack-new` needs Linux. It publishes the pack in one atomic step with the
+Linux `renameat2` system call, so the C library must provide that call: glibc
+does, and musl does from release 1.2.6. On a platform without it, such as
+macOS, the wizard leaves `environments/` unchanged and stops with:
+
+```
+error: could not publish pack: atomic directory transactions are unsupported on this platform: they need the Linux renameat2 system call
+```
+
+A `--preview` run writes nothing, so it does not use `renameat2`.
+
 ## Starter routes
 
 Each route is a preset over pack-file selection — not a scenario type. Defaults

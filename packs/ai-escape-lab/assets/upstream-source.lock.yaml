@@ -1,0 +1,6 @@
+schema_version: ai-escape-lab-upstream-lock/v1
+repository: https://github.com/an4kronism/ai-escape-room
+revision: fcb25ec9874b0676706b9aca650f22efc90f711e
+path: assets/upstream-ai-escape-room-fcb25ec9874b.tar.gz
+sha256: 138c611ec9520d99723389133e4e989ef5b2c536cae0ccb41f8f0e422c4a16a2
+license_path: assets/upstream-LICENSE

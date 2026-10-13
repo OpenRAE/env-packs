@@ -14,6 +14,11 @@ _build/
 # not a build artifact, so keep it tracked despite the build/ rule above.
 !/src/raes_env_packs/resources/template/build/
 !/src/raes_env_packs/resources/template/build/**
+# AI Escape Lab ships its golden-image and runtime recipes as pack content.
+!/packs/ai-escape-lab/build/
+!/packs/ai-escape-lab/build/**
+/packs/ai-escape-lab/build/**/__pycache__/
+/packs/ai-escape-lab/build/**/*.py[cod]
 
 # Ground Control operational artifacts (not workflow state)
 .gc/sonar/

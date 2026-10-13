@@ -14,6 +14,9 @@ User-facing documentation is under [`public/`](public/index.md).
 
 ## Repository mechanics
 
+- [AI Escape Lab preflight](development/ai-escape-lab-preflight.md) — portable
+  campaign, GCP reference deployment, seat containment, model access, and proof
+  guardrails for issue #422.
 - [Continuous integration](development/ci.md) — the PR check surface, the
   `verify` merge gate, and how to reproduce each check locally.
 - [Pack-aware MCP authoring preflight](development/pack-authoring-mcp-preflight.md)
@@ -36,6 +39,9 @@ User-facing documentation is under [`public/`](public/index.md).
 - [TechVault MISP runtime-contract preflight](development/techvault-misp-runtime-contract-preflight.md)
   — MISP, MariaDB, Redis, trust, readiness, and backend-realization ownership
   for issue #280.
+- [TechVault integration endpoint reconciliation](development/techvault-integration-endpoint-preflight.md)
+  — retired proxy classification, HTTPS outcomes, and remaining live evidence
+  for issue #294.
 - [TechVault Shuffle runtime-contract preflight](development/techvault-shuffle-runtime-contract-preflight.md)
   — application/datastore, trust, secret, readiness, and realization guardrails
   for issue #281.

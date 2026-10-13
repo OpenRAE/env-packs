@@ -67,7 +67,7 @@ Once it's up:
 
 | Surface | URL / command |
 |---|---|
-| Wazuh Dashboard | <https://localhost:443> (`admin` / your `INDEXER_PASSWORD` from `.env`) |
+| Wazuh Dashboard | <https://localhost:443> (`admin` / the `secret_fixture` value in `accounts.wazuh-indexer-admin.credential_bindings`) |
 | Victim shell | `aptl container shell aptl-victim` |
 | Kali shell | `aptl container shell aptl-kali` |
 

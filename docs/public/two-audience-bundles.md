@@ -11,6 +11,10 @@ authors with that language.
 
 ## Before you start
 
+Run the walkthrough on Linux. It creates the pack with `raes-pack-new`, which
+publishes it with the Linux `renameat2` system call; macOS does not provide that
+call.
+
 Use an `env-packs` checkout with the package installed in its virtual
 environment:
 

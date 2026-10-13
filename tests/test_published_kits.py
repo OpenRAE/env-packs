@@ -14,7 +14,7 @@ from raes_env_packs.kits import KitSource, build_kit_catalog, load_kit_release
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_KIT_COUNT = 46
+EXPECTED_RELEASE_COUNT = 89
 
 ISSUE_225_KITS = {
     "certificate-authority": (
@@ -99,7 +99,7 @@ class PublishedKitTests(unittest.TestCase):
         first = build_kit_catalog((source,))
         second = build_kit_catalog((source,))
         self.assertEqual(first, second)
-        self.assertEqual(len(first["entries"]), EXPECTED_KIT_COUNT)
+        self.assertEqual(len(first["entries"]), EXPECTED_RELEASE_COUNT)
 
     def test_every_release_composes_with_two_parameter_sets(self) -> None:
         for manifest in sorted(ROOT.glob("kits/*/*/kit.yaml")):
@@ -141,7 +141,7 @@ class PublishedKitTests(unittest.TestCase):
                             {
                                 "source": "local:module.sdl.yaml",
                                 "namespace": "subject",
-                                "version": "1.0.0",
+                                "version": module["module"]["version"],
                                 "parameters": cases[name],
                             }
                         ],

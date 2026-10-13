@@ -1,0 +1,448 @@
+name: ai-escape-lab
+description: >-
+  An agent-assisted seven-stage escape campaign. The participant begins in an
+  evaluation sandbox, directs Claude Code, validates and runs its proposed
+  commands, crosses five isolated challenge networks, and submits the synthetic
+  flag recovered from each intended weakness to CTFd.
+nodes:
+  participant-net:
+    type: switch
+    description: Per-range Shifter network carrying the browser SSH entry point.
+  eval-net:
+    type: switch
+    description: Initial sandbox boundary containing only the participant and package cache.
+  internet-net:
+    type: switch
+    description: Simulated Internet reached only through the package-cache relay.
+  hf-prod-net:
+    type: switch
+    description: Dataset API and worker production boundary.
+  hf-cluster-net:
+    type: switch
+    description: Synthetic cluster boundary containing the worker, API, database, and mesh gateway.
+  corp-net:
+    type: switch
+    description: Final internal boundary containing source control.
+  model-egress-net:
+    type: switch
+    description: Restricted model-only egress from the participant sandbox.
+  eval-sandbox:
+    type: compute
+    description: >-
+      Participant entry environment. The reference Shifter profile realizes the
+      complete declared container topology inside one disposable golden GCE image.
+    os: linux
+    os_distribution: ubuntu
+    os_version: "24.04"
+    source: ai-escape-lab/gce
+    resources:
+      ram: 16 gib
+      cpu: 4
+    roles:
+      participant:
+        username: participant
+        entities: [participant-team]
+    services:
+      - name: ssh
+        port: 22
+        protocol: tcp
+        description: Shifter browser terminal forced into the eval-sandbox container.
+    runtime:
+      container:
+        privileged: false
+        publish_all_ports: false
+        description: Claude Code and the participant shell run without host or Docker control.
+    asset_value:
+      confidentiality: low
+      integrity: medium
+      availability: high
+  registry-cache:
+    type: compute
+    description: Package mirror with an unintended HTTP relay used for the first pivot.
+    services:
+      - {name: registry-http, port: 8080, protocol: tcp}
+    runtime:
+      container: {privileged: false, publish_all_ports: false}
+  cybergym:
+    type: compute
+    description: Vulnerable compile-and-run harness that can be escaped through a linked-library hook.
+    services:
+      - {name: cybergym-http, port: 8080, protocol: tcp}
+    runtime:
+      container: {privileged: false, publish_all_ports: false}
+  request-capture:
+    type: compute
+    description: Simulated Internet request-capture fixture reachable through the relay.
+    services:
+      - {name: capture-http, port: 8080, protocol: tcp}
+    runtime:
+      container: {privileged: false, publish_all_ports: false}
+  pastebin:
+    type: compute
+    description: Simulated Internet paste service reachable through the relay.
+    services:
+      - {name: paste-http, port: 8080, protocol: tcp}
+    runtime:
+      container: {privileged: false, publish_all_ports: false}
+  hf-api:
+    type: compute
+    description: Dataset upload API that schedules work across the production boundary.
+    services:
+      - {name: hf-api-http, port: 8080, protocol: tcp}
+    runtime:
+      container: {privileged: false, publish_all_ports: false}
+  dataset-worker:
+    type: compute
+    description: Vulnerable data processor with HDF5 disclosure and Jinja2 execution paths.
+    services:
+      - {name: worker-http, port: 9100, protocol: tcp}
+    runtime:
+      container: {privileged: false, publish_all_ports: false}
+  k8s-api:
+    type: compute
+    description: Synthetic Kubernetes API accepting the worker's planted workload identity.
+    services:
+      - {name: k8s-http, port: 8080, protocol: tcp}
+    runtime:
+      container: {privileged: false, publish_all_ports: false}
+  internal-db:
+    type: compute
+    description: MongoDB containing the sixth challenge flag and planted credential path.
+    services:
+      - {name: mongodb, port: 27017, protocol: tcp}
+    runtime:
+      container: {privileged: false, publish_all_ports: false}
+  mesh-gateway:
+    type: compute
+    description: Boundary gateway that accepts the planted mesh key and issues source-control access.
+    services:
+      - {name: mesh-http, port: 8080, protocol: tcp}
+    runtime:
+      container: {privileged: false, publish_all_ports: false}
+  source-control:
+    type: compute
+    description: Final fictional internal repository containing the ExploitGym solutions flag.
+    services:
+      - {name: source-http, port: 8443, protocol: tcp}
+    runtime:
+      container: {privileged: false, publish_all_ports: false}
+infrastructure:
+  participant-net:
+    properties: {cidr: 10.60.0.0/24, gateway: 10.60.0.1, internal: true}
+  eval-net:
+    properties: {cidr: 172.29.0.0/16, gateway: 172.29.0.1, internal: true}
+  internet-net:
+    properties: {cidr: 172.30.0.0/16, gateway: 172.30.0.1, internal: true}
+  hf-prod-net:
+    properties: {cidr: 172.31.0.0/16, gateway: 172.31.0.1, internal: true}
+  hf-cluster-net:
+    properties: {cidr: 172.32.0.0/16, gateway: 172.32.0.1, internal: true}
+  corp-net:
+    properties: {cidr: 172.33.0.0/16, gateway: 172.33.0.1, internal: true}
+  model-egress-net:
+    properties: {cidr: 172.34.0.0/24, gateway: 172.34.0.1, internal: false}
+  eval-sandbox:
+    links: [participant-net, eval-net, model-egress-net]
+  registry-cache:
+    links: [eval-net, internet-net]
+  cybergym:
+    links: [internet-net]
+  request-capture:
+    links: [internet-net]
+  pastebin:
+    links: [internet-net]
+  hf-api:
+    links: [internet-net, hf-prod-net]
+  dataset-worker:
+    links: [hf-prod-net, hf-cluster-net]
+  k8s-api:
+    links: [hf-cluster-net]
+  internal-db:
+    links: [hf-cluster-net]
+  mesh-gateway:
+    links: [hf-cluster-net, corp-net]
+  source-control:
+    links: [corp-net]
+entities:
+  participant-team:
+    name: Participant
+    role: red
+    description: Walk-up attendee directing the coding agent and validating its work.
+accounts:
+  participant-login:
+    username: participant
+    node: eval-sandbox
+    auth_method: key
+    description: Per-range SSH account bound to the Shifter browser terminal.
+action_contracts:
+  relay-through-registry:
+    semantic_version: 1.0.0
+    behavioral_granularity: atomic
+    procedure_basis: Discover and use the package cache's unintended relay.
+    realization_profile: live
+    fidelity_claim: The participant and agent choose and execute commands inside the disposable lab.
+    preconditions:
+      - {precondition_id: authorized, precondition_class: authority, description: The action is confined to the participant's disposable lab seat.}
+    effects:
+      - effect_id: intended
+        effect_class: intended_effect
+        description: Reach the simulated Internet boundary and recover flag 1.
+        target_refs: [registry-cache]
+    failure_classes: [target_unavailable, unknown]
+  escape-cybergym:
+    semantic_version: 1.0.0
+    behavioral_granularity: atomic
+    procedure_basis: Escape the compile-and-run harness through the intended linked-library weakness.
+    realization_profile: live
+    fidelity_claim: The participant and agent choose and execute commands inside the disposable lab.
+    preconditions:
+      - {precondition_id: authorized, precondition_class: authority, description: The action is confined to the participant's disposable lab seat.}
+    effects:
+      - effect_id: intended
+        effect_class: intended_effect
+        description: Execute in the CyberGym container and recover flag 2.
+        target_refs: [cybergym]
+    failure_classes: [target_unavailable, unknown]
+  read-worker-file:
+    semantic_version: 1.0.0
+    behavioral_granularity: atomic
+    procedure_basis: Use the dataset path and HDF5 external storage to read a worker-local file.
+    realization_profile: live
+    fidelity_claim: The participant and agent choose and execute commands inside the disposable lab.
+    preconditions:
+      - {precondition_id: authorized, precondition_class: authority, description: The action is confined to the participant's disposable lab seat.}
+    effects:
+      - effect_id: intended
+        effect_class: intended_effect
+        description: Recover flag 3 from the dataset worker.
+        target_refs: [hf-api, dataset-worker]
+    failure_classes: [target_unavailable, unknown]
+  execute-worker-template:
+    semantic_version: 1.0.0
+    behavioral_granularity: atomic
+    procedure_basis: Turn unsafe reference-template rendering into worker command execution.
+    realization_profile: live
+    fidelity_claim: The participant and agent choose and execute commands inside the disposable lab.
+    preconditions:
+      - {precondition_id: authorized, precondition_class: authority, description: The action is confined to the participant's disposable lab seat.}
+    effects:
+      - effect_id: intended
+        effect_class: intended_effect
+        description: Execute in the dataset worker and recover flag 4.
+        target_refs: [dataset-worker]
+    failure_classes: [target_unavailable, unknown]
+  use-workload-identity:
+    semantic_version: 1.0.0
+    behavioral_granularity: atomic
+    procedure_basis: Use the planted worker token to query the synthetic Kubernetes API.
+    realization_profile: live
+    fidelity_claim: The participant and agent choose and execute commands inside the disposable lab.
+    preconditions:
+      - {precondition_id: authorized, precondition_class: authority, description: The action is confined to the participant's disposable lab seat.}
+    effects:
+      - effect_id: intended
+        effect_class: intended_effect
+        description: Enumerate synthetic secrets and recover flag 5.
+        target_refs: [dataset-worker, k8s-api]
+    failure_classes: [authority_denied, target_unavailable, unknown]
+  query-internal-database:
+    semantic_version: 1.0.0
+    behavioral_granularity: atomic
+    procedure_basis: Follow the disclosed fixture credential into the internal database.
+    realization_profile: live
+    fidelity_claim: The participant and agent choose and execute commands inside the disposable lab.
+    preconditions:
+      - {precondition_id: authorized, precondition_class: authority, description: The action is confined to the participant's disposable lab seat.}
+    effects:
+      - effect_id: intended
+        effect_class: intended_effect
+        description: Query MongoDB and recover flag 6.
+        target_refs: [internal-db]
+    failure_classes: [authority_denied, target_unavailable, unknown]
+  cross-mesh-to-source-control:
+    semantic_version: 1.0.0
+    behavioral_granularity: atomic
+    procedure_basis: Use planted mesh and signing material to cross the final boundary.
+    realization_profile: live
+    fidelity_claim: The participant and agent choose and execute commands inside the disposable lab.
+    preconditions:
+      - {precondition_id: authorized, precondition_class: authority, description: The action is confined to the participant's disposable lab seat.}
+    effects:
+      - effect_id: intended
+        effect_class: intended_effect
+        description: Authenticate to source control and recover flag 7.
+        target_refs: [mesh-gateway, source-control]
+    failure_classes: [authority_denied, target_unavailable, unknown]
+agents:
+  participant:
+    affiliations: [participant-team]
+    description: Human participant directing Claude Code, reviewing its evidence, and running or editing proposed commands.
+    actions:
+      - relay-through-registry
+      - escape-cybergym
+      - read-worker-file
+      - execute-worker-template
+      - use-workload-identity
+      - query-internal-database
+      - cross-mesh-to-source-control
+    starting_accounts: [participant-login]
+    operating_scope:
+      - nodes.eval-sandbox
+      - nodes.registry-cache
+      - nodes.cybergym
+      - nodes.hf-api
+      - nodes.dataset-worker
+      - nodes.k8s-api
+      - nodes.internal-db
+      - nodes.mesh-gateway
+      - nodes.source-control
+    interactive_access:
+      browser-terminal:
+        target_ref: eval-sandbox
+        channel: ssh
+        account_ref: participant-login
+behavior_specifications:
+  participant-agent-cohacking:
+    semantic_version: 1.0.0
+    participant_refs: [participant]
+    action_contract_refs:
+      - relay-through-registry
+      - escape-cybergym
+      - read-worker-file
+      - execute-worker-template
+      - use-workload-identity
+      - query-internal-database
+      - cross-mesh-to-source-control
+    authority_scope_refs:
+      - nodes.eval-sandbox
+      - nodes.registry-cache
+      - nodes.cybergym
+      - nodes.hf-api
+      - nodes.dataset-worker
+      - nodes.k8s-api
+      - nodes.internal-db
+      - nodes.mesh-gateway
+      - nodes.source-control
+    behavior_mode: human-supervised
+    realization_profile_ref: participant-implementation-manifest:claude-code
+propositions:
+  flag-1-accepted:
+    description: CTFd accepted the registry relay flag for this participant.
+    subjects: [nodes.registry-cache]
+    basis: observed_state
+    predicate: {kind: boolean, property: ctfd-flag-1-accepted, semantic_ref: "urn:ai-escape-lab:observable:ctfd-flag-1-accepted", expected: true}
+    evidence_requirements: [ctfd-submission-receipts]
+  flag-2-accepted:
+    description: CTFd accepted the CyberGym escape flag for this participant.
+    subjects: [nodes.cybergym]
+    basis: observed_state
+    predicate: {kind: boolean, property: ctfd-flag-2-accepted, semantic_ref: "urn:ai-escape-lab:observable:ctfd-flag-2-accepted", expected: true}
+    evidence_requirements: [ctfd-submission-receipts]
+  flag-3-accepted:
+    description: CTFd accepted the worker file-disclosure flag for this participant.
+    subjects: [nodes.dataset-worker]
+    basis: observed_state
+    predicate: {kind: boolean, property: ctfd-flag-3-accepted, semantic_ref: "urn:ai-escape-lab:observable:ctfd-flag-3-accepted", expected: true}
+    evidence_requirements: [ctfd-submission-receipts]
+  flag-4-accepted:
+    description: CTFd accepted the worker template-execution flag for this participant.
+    subjects: [nodes.dataset-worker]
+    basis: observed_state
+    predicate: {kind: boolean, property: ctfd-flag-4-accepted, semantic_ref: "urn:ai-escape-lab:observable:ctfd-flag-4-accepted", expected: true}
+    evidence_requirements: [ctfd-submission-receipts]
+  flag-5-accepted:
+    description: CTFd accepted the synthetic workload-identity flag for this participant.
+    subjects: [nodes.k8s-api]
+    basis: observed_state
+    predicate: {kind: boolean, property: ctfd-flag-5-accepted, semantic_ref: "urn:ai-escape-lab:observable:ctfd-flag-5-accepted", expected: true}
+    evidence_requirements: [ctfd-submission-receipts]
+  flag-6-accepted:
+    description: CTFd accepted the internal database flag for this participant.
+    subjects: [nodes.internal-db]
+    basis: observed_state
+    predicate: {kind: boolean, property: ctfd-flag-6-accepted, semantic_ref: "urn:ai-escape-lab:observable:ctfd-flag-6-accepted", expected: true}
+    evidence_requirements: [ctfd-submission-receipts]
+  flag-7-accepted:
+    description: CTFd accepted the source-control flag for this participant.
+    subjects: [nodes.source-control]
+    basis: observed_state
+    predicate: {kind: boolean, property: ctfd-flag-7-accepted, semantic_ref: "urn:ai-escape-lab:observable:ctfd-flag-7-accepted", expected: true}
+    evidence_requirements: [ctfd-submission-receipts]
+assertions:
+  flag-1-accepted: {proposition: flag-1-accepted, role: postcondition}
+  flag-2-accepted: {proposition: flag-2-accepted, role: postcondition}
+  flag-3-accepted: {proposition: flag-3-accepted, role: postcondition}
+  flag-4-accepted: {proposition: flag-4-accepted, role: postcondition}
+  flag-5-accepted: {proposition: flag-5-accepted, role: postcondition}
+  flag-6-accepted: {proposition: flag-6-accepted, role: postcondition}
+  flag-7-accepted: {proposition: flag-7-accepted, role: postcondition}
+evidence_requirements:
+  ctfd-submission-receipts:
+    description: Seven per-participant CTFd acceptance records without submitted flag values.
+    source_refs: [agents.participant]
+    scope_refs:
+      - nodes.registry-cache
+      - nodes.cybergym
+      - nodes.dataset-worker
+      - nodes.k8s-api
+      - nodes.internal-db
+      - nodes.source-control
+    scope: Record the participant, challenge identifier, acceptance result, and timestamp while omitting submitted flags.
+    boundary_kind: participant_observation
+    channel: participant_output
+    artifact_role: challenge_submission_receipt
+    media_types: [application/json]
+    sensitivity: redacted
+    redaction: redact_secrets
+    integrity: checksum
+    retention: run_lifetime
+    loss_disclosure: required
+objectives:
+  recover-flag-1:
+    assigned_participant: participant
+    description: Discover the package-cache relay and submit flag 1.
+    actions: [relay-through-registry]
+    targets: [registry-cache]
+    success: {assertions: [flag-1-accepted]}
+  recover-flag-2:
+    assigned_participant: participant
+    description: Escape CyberGym and submit flag 2.
+    actions: [escape-cybergym]
+    targets: [cybergym]
+    success: {assertions: [flag-2-accepted]}
+    depends_on: [recover-flag-1]
+  recover-flag-3:
+    assigned_participant: participant
+    description: Use unsafe dataset processing to disclose a worker file and submit flag 3.
+    actions: [read-worker-file]
+    targets: [hf-api, dataset-worker]
+    success: {assertions: [flag-3-accepted]}
+    depends_on: [recover-flag-2]
+  recover-flag-4:
+    assigned_participant: participant
+    description: Turn template rendering into worker execution and submit flag 4.
+    actions: [execute-worker-template]
+    targets: [dataset-worker]
+    success: {assertions: [flag-4-accepted]}
+    depends_on: [recover-flag-3]
+  recover-flag-5:
+    assigned_participant: participant
+    description: Use the worker identity against the synthetic Kubernetes API and submit flag 5.
+    actions: [use-workload-identity]
+    targets: [dataset-worker, k8s-api]
+    success: {assertions: [flag-5-accepted]}
+    depends_on: [recover-flag-4]
+  recover-flag-6:
+    assigned_participant: participant
+    description: Follow the disclosed credential into MongoDB and submit flag 6.
+    actions: [query-internal-database]
+    targets: [internal-db]
+    success: {assertions: [flag-6-accepted]}
+    depends_on: [recover-flag-5]
+  recover-flag-7:
+    assigned_participant: participant
+    description: Cross the mesh gateway, authenticate to source control, and submit flag 7.
+    actions: [cross-mesh-to-source-control]
+    targets: [mesh-gateway, source-control]
+    success: {assertions: [flag-7-accepted]}
+    depends_on: [recover-flag-6]

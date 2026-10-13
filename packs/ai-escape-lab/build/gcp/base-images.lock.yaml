@@ -1,0 +1,12 @@
+schema_version: ai-escape-lab-base-images/v1
+architecture: linux/amd64
+images:
+  python:
+    source: python:3.11-slim
+    pinned: python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534
+  debian:
+    source: debian:bookworm-slim
+    pinned: debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251
+  mongo:
+    source: mongo:7
+    pinned: mongo@sha256:494b956596706b19ba44908cb9d03648b585214600987b86cd2a34249358e572

@@ -74,8 +74,8 @@ before any side effect — not a fallback, and not a pack-supplied override.
 ## Reference
 
 - The LilRAE project's APTL-era ownership record for this boundary:
-  [Brad-Edwards/aptl#589](https://github.com/Brad-Edwards/aptl/issues/589) and the
+  [OpenRAE/lilrae#589](https://github.com/OpenRAE/lilrae/issues/589) and the
   note it produced before the rename,
-  [environment-pack capture ownership](https://github.com/Brad-Edwards/aptl/blob/main/docs/architecture/issue-589-environment-pack-capture-ownership-preflight.md).
+  [scenario-pack capture ownership](https://github.com/OpenRAE/lilrae/blob/main/docs/architecture/issue-589-scenario-pack-capture-ownership-preflight.md).
 - The decision records for this repository's purpose and boundary live in the
   [developer decision log](https://github.com/OpenRAE/env-packs/blob/main/docs/decisions/adrs/README.md).

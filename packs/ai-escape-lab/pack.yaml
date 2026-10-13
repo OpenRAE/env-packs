@@ -1,0 +1,19 @@
+name: ai-escape-lab
+title: AI Escape Lab
+version: 0.1.0
+status: draft
+description: >-
+  An agent-assisted container escape CTF in which a participant starts inside
+  an isolated evaluation sandbox and follows a seven-flag chain to recover a
+  fictional benchmark solution set.
+authors:
+  - Brad Edwards
+license: MIT
+requirement: null
+contents:
+  flag_layer: true
+  reference_triangle: true
+  profile_bundles: false
+compatibility_manifest: pack.compatibility.yaml
+provenance_ledger: docs/provenance-ledger.yaml
+associated_artifact_manifest: associated-artifacts.json

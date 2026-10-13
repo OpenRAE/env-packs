@@ -5,7 +5,7 @@
 
 ## Context
 
-Per ADR 0001, catalog repositories (e.g. `penumbra-scenarios`) and others must
+Per ADR 0001, catalog repositories and other consumers must
 consume the scenario-pack definition and tooling cleanly. The tools were written
 for a monorepo layout: they resolve the schemas, the `_template`, the `_oracle`
 model, and the contract version relative to their own location on disk

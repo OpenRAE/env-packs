@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: issue-tracker
+  project_key: LAB
+variation:
+  deployment_profile: compact
+  service_label: issue-tracker-alternate
+  project_key: OPS
+multi_kit_group: collaboration-developer
