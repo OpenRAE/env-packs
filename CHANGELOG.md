@@ -11,6 +11,31 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.3.0](https://github.com/OpenRAE/env-packs/compare/v6.2.1...v6.3.0) (2026-10-13)
+
+
+### Features
+
+* add AI Escape Lab environment pack ([#423](https://github.com/OpenRAE/env-packs/issues/423)) ([56da2a3](https://github.com/OpenRAE/env-packs/commit/56da2a3083950674a0d6bcda6ead6cc585de6b5a))
+
+
+### Bug Fixes
+
+* **catalog:** report a malformed sources manifest or a non-string pack name instead of a traceback ([#449](https://github.com/OpenRAE/env-packs/issues/449)) ([1d8adfb](https://github.com/OpenRAE/env-packs/commit/1d8adfb948388a3f92e06e22696b9cfbd92c96d3))
+* declare techvault SOC credential fixtures ([#454](https://github.com/OpenRAE/env-packs/issues/454)) ([57f62f1](https://github.com/OpenRAE/env-packs/commit/57f62f16ee1d3fa8b4486329115b75b051f43bc3))
+* improve AI Escape participant guidance ([#431](https://github.com/OpenRAE/env-packs/issues/431)) ([e2ac9cd](https://github.com/OpenRAE/env-packs/commit/e2ac9cd95c92d7c06e87c6cd3fdf1901b6d8b6d2))
+* **kits:** release four kits with an open compute substrate ([#433](https://github.com/OpenRAE/env-packs/issues/433)) ([dca0f3f](https://github.com/OpenRAE/env-packs/commit/dca0f3f7a9b697fa932e5f686eaf186ba35852bd))
+* **kits:** release the Linux kits with an open compute substrate ([#434](https://github.com/OpenRAE/env-packs/issues/434)) ([6b9ffb3](https://github.com/OpenRAE/env-packs/commit/6b9ffb3be399b5b224305702624e5734f7ad5173)), closes [#413](https://github.com/OpenRAE/env-packs/issues/413)
+* qualify AI Escape Lab golden image ([#427](https://github.com/OpenRAE/env-packs/issues/427)) ([f9d268c](https://github.com/OpenRAE/env-packs/commit/f9d268c34a18b8e01710eb631ebbb26624c5ca98))
+* **techvault:** align integration endpoint TLS contracts ([#425](https://github.com/OpenRAE/env-packs/issues/425)) ([9ce449d](https://github.com/OpenRAE/env-packs/commit/9ce449d9e4d01d65f5ac0eac502e8b218bca5470))
+* **techvault:** repair packaged rule MCP sources ([#432](https://github.com/OpenRAE/env-packs/issues/432)) ([107281d](https://github.com/OpenRAE/env-packs/commit/107281d4a383b7539f89e24bf03dbfe0e81c3d94))
+* **wizard:** say that publishing a pack needs linux renameat2 instead of could not publish pack ([#445](https://github.com/OpenRAE/env-packs/issues/445)) ([fad8717](https://github.com/OpenRAE/env-packs/commit/fad8717eeed03ea282bce5ffbb27084f4164fcd2))
+
+
+### Documentation
+
+* remove downstream catalog references ([#441](https://github.com/OpenRAE/env-packs/issues/441)) ([132318f](https://github.com/OpenRAE/env-packs/commit/132318f9e17a6b869e649a73862ccaaa2af9e5bf))
+
 ## [6.2.1](https://github.com/OpenRAE/env-packs/compare/v6.2.0...v6.2.1) (2026-10-06)
 
 
