@@ -551,6 +551,22 @@ class AggregationFailClosedTests(CatalogFixture):
         self.assertEqual(out, "")
         self.assertIn("catalog.pack.invalid", err)
 
+    def test_cli_reports_a_pack_with_a_non_string_name_as_unknown(self) -> None:
+        # Issue #446: the name of an invalid pack can be any YAML value. The
+        # diagnostics still print, with the pack shown as (unknown).
+        for value in (2024, True, [1, 2]):
+            with self.subTest(name=value):
+                root = _valid_pack(self.tmp, f"named-{type(value).__name__}")
+                _set_manifest(root, name=value)
+                code, out, err = _run(str(root))
+                self.assertEqual(code, catalog.EXIT_BLOCKING)
+                self.assertEqual(out, "")
+                self.assertIn(
+                    "[local] (unknown) catalog.pack.invalid:pack.identity.missing "
+                    "at pack.yaml",
+                    err,
+                )
+
 
 class SafeInputTests(CatalogFixture):
     def test_unsafe_pack_member_is_blocking_not_a_crash(self) -> None:
@@ -631,6 +647,52 @@ class SourcesManifestTests(CatalogFixture):
         (self.tmp / "bad.yaml").write_text("just a string\n", encoding="utf-8")
         code, _out, _err = _run("--sources", "bad.yaml")
         self.assertEqual(code, catalog.EXIT_USAGE)
+
+    def test_unparseable_sources_manifest_is_usage_error(self) -> None:
+        # Issue #446: yaml.safe_load raises YAMLError subclasses, RecursionError
+        # for deep nesting, and KeyError, IndexError or AttributeError for core
+        # tags it cannot construct, including OverflowError for a long
+        # sexagesimal float. None of them is a ValueError.
+        self._chdir_tmp()
+        cases = {
+            "syntax": "[a, b\n",
+            "unhashable-key": "? [a]\n: 1\n",
+            "unknown-tag": "- !!python/object:os.system {}\n",
+            "too-deep": "[" * 3000 + "]" * 3000 + "\n",
+            "bad-bool": "- !!bool foo\n",
+            "empty-int": '- !!int ""\n',
+            "bad-timestamp": "- !!timestamp foo\n",
+            "overflow-float": '- !!float "' + ":".join(["1"] * 180) + '"\n',
+        }
+        for label, text in cases.items():
+            with self.subTest(label):
+                (self.tmp / "bad.yaml").write_text(text, encoding="utf-8")
+                code, out, err = _run("--sources", "bad.yaml")
+                self.assertEqual(code, catalog.EXIT_USAGE)
+                self.assertEqual(out, "")
+                self.assertIn("could not read sources: ValueError", err)
+                self.assertNotIn("Traceback", err)
+                self.assertNotIn(str(self.tmp), err)
+
+    def test_sources_manifest_reports_a_non_string_pack_name_as_unknown(self) -> None:
+        # Issue #446, aggregate mode: the catalog fails closed and names the
+        # source whose pack has a numeric name.
+        good = _security_pack(self.tmp)
+        bad = _valid_pack(self.tmp, "numeric-name")
+        _set_manifest(bad, name=2024)
+        self._chdir_tmp()
+        _dump(
+            self.tmp / "sources.yaml",
+            [
+                {"id": "repo-a", "revision": "1", "root": str(good)},
+                {"id": "repo-b", "revision": "2", "root": str(bad)},
+            ],
+        )
+        code, out, err = _run("--sources", "sources.yaml")
+        self.assertEqual(code, catalog.EXIT_BLOCKING)
+        self.assertEqual(out, "")
+        self.assertIn("[repo-b] (unknown) catalog.pack.invalid:", err)
+        self.assertNotIn("[repo-a]", err)
 
 
 class FixtureCoverageTests(CatalogFixture):
