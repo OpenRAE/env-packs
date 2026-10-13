@@ -310,7 +310,18 @@ def _index_ids(pc: PackContracts) -> tuple[set[object], list[str]]:
         return set(), failures + [
             f"{pc.name}: pack.yaml profile_bundles.bundles is a YAML "
             f"{_yaml_kind(rows)}, not a list"]
-    return {x.get("id") for x in rows if isinstance(x, dict)}, failures
+    ids: set[object] = set()
+    for pos, row in enumerate(rows):
+        if not isinstance(row, dict):
+            continue
+        row_id = row.get("id")
+        if isinstance(row_id, (list, dict)):
+            failures.append(
+                f"{pc.name}: pack.yaml profile_bundles.bundles[{pos}] id is a YAML "
+                f"{_yaml_kind(row_id)}, not a string")
+        else:
+            ids.add(row_id)
+    return ids, failures
 
 
 def lint_pack(pack_root: str) -> list[str]:
