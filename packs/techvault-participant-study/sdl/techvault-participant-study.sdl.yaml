@@ -4257,7 +4257,7 @@ accounts:
         auth_method: key
         material:
           classification: secret_fixture
-          value: "7ea54cbe19564f9893940770bbc659f890726557b0e56111437febd117014dace"
+          value: "7ea54cbe19564f9893940770bbc659f890726557"
   ad-administrator:
     username: Administrator
     node: ad

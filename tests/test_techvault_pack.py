@@ -91,11 +91,12 @@ _PROFILE = _PACK / "profiles" / "exact-artifact-copy-v1.json"
 _VALIDATOR = _PACK / "validation" / "validate_techvault.py"
 
 
-def _load_pack_validator() -> types.ModuleType:
+def _load_pack_validator(pack: pathlib.Path = _PACK) -> types.ModuleType:
+    validator_path = pack / "validation" / "validate_techvault.py"
     module = types.ModuleType("techvault_pack_validator")
-    module.__file__ = str(_VALIDATOR)
-    source = _VALIDATOR.read_text(encoding="utf-8")
-    exec(compile(source, str(_VALIDATOR), "exec"), module.__dict__)
+    module.__file__ = str(validator_path)
+    source = validator_path.read_text(encoding="utf-8")
+    exec(compile(source, str(validator_path), "exec"), module.__dict__)
     return module
 
 
@@ -3731,6 +3732,87 @@ class TechVaultFlagDeclarationTests(unittest.TestCase):
             self.assertNotIn("techvault-flaggen-script", set(manifest["artifacts"]))
         with self.subTest(surface="bundled script"):
             self.assertFalse((_PACK / "assets/content/flaggen.sh").exists())
+
+
+class TechVaultMispFixtureTests(unittest.TestCase):
+    PACK_NAMES = ("techvault", "techvault-participant-study")
+    ACCOUNT = "misp-suricata-sync-api-key"
+    ERROR = "misp.api-key-invalid"
+
+    def test_both_packs_declare_the_same_misp_compatible_fixture(self) -> None:
+        values = []
+        for name in self.PACK_NAMES:
+            with self.subTest(pack=name):
+                scenario = parse_sdl_file(_ROOT / "packs" / name / "sdl" / f"{name}.sdl.yaml")
+                (binding,) = scenario.accounts[self.ACCOUNT].credential_bindings
+                self.assertEqual(binding.credential_id, f"{self.ACCOUNT}-primary")
+                self.assertEqual(binding.material.classification, "secret_fixture")
+                values.append(binding.material.value)
+                self.assertIsNotNone(re.fullmatch(r"[A-Za-z0-9]{40}", binding.material.value))
+        self.assertEqual(values[0], values[1])
+
+    def test_both_validators_reject_invalid_primary_material_without_echoing_it(self) -> None:
+        for name in self.PACK_NAMES:
+            pack = _ROOT / "packs" / name
+            validator = _load_pack_validator(pack)
+            original = yaml.safe_load((pack / "sdl" / f"{name}.sdl.yaml").read_text())
+            invalid_values = {
+                "shipped fixture": "7ea54cbe19564f9893940770bbc659f890726557b0e56111437febd117014dace",
+                "short": "a" * 39,
+                "long": "a" * 41,
+                "empty": "",
+                "punctuation": "a" * 39 + "!",
+                "space": "a" * 39 + " ",
+                "newline": "a" * 40 + "\n",
+                "unicode": "a" * 39 + "é",
+                "integer": 123,
+                "null": None,
+            }
+            for label, value in invalid_values.items():
+                with self.subTest(pack=name, case=label):
+                    candidate = copy.deepcopy(original)
+                    candidate["accounts"][self.ACCOUNT]["credential_bindings"][0]["material"]["value"] = value
+                    errors = validator.validate_misp_contract(candidate)
+                    self.assertTrue(any(error.startswith(self.ERROR) for error in errors), errors)
+                    if isinstance(value, str) and value:
+                        self.assertTrue(all(value not in error for error in errors))
+
+            mutations = {
+                "missing account": lambda account: account.clear(),
+                "missing binding": lambda account: account.__setitem__("credential_bindings", []),
+                "wrong binding shape": lambda account: account.__setitem__("credential_bindings", {}),
+                "wrong binding identity": lambda account: account["credential_bindings"][0].__setitem__("credential_id", "other-primary"),
+                "wrong purpose": lambda account: account["credential_bindings"][0].__setitem__("purpose", "recovery"),
+                "wrong material shape": lambda account: account["credential_bindings"][0].__setitem__("material", "aZ09" * 10),
+                "wrong classification": lambda account: account["credential_bindings"][0]["material"].__setitem__("classification", "plain"),
+            }
+            for label, mutate in mutations.items():
+                with self.subTest(pack=name, case=label):
+                    candidate = copy.deepcopy(original)
+                    candidate["accounts"][self.ACCOUNT]["credential_bindings"][0]["material"]["value"] = "aZ09" * 10
+                    mutate(candidate["accounts"][self.ACCOUNT])
+                    errors = validator.validate_misp_contract(candidate)
+                    self.assertTrue(any(error.startswith(self.ERROR) for error in errors), errors)
+
+            with self.subTest(pack=name, case="alternate valid mixed-case fixture"):
+                candidate = copy.deepcopy(original)
+                candidate["accounts"][self.ACCOUNT]["credential_bindings"][0]["material"]["value"] = "aZ09" * 10
+                self.assertEqual(validator.validate_misp_contract(candidate), [])
+
+    def test_author_entrypoints_reject_invalid_keys_with_current_byte_bindings(self) -> None:
+        refresh = _load_refresh_tool().refresh
+        for name in self.PACK_NAMES:
+            with self.subTest(pack=name), tempfile.TemporaryDirectory() as directory:
+                pack = pathlib.Path(directory) / name
+                shutil.copytree(_ROOT / "packs" / name, pack)
+                path = pack / "sdl" / f"{name}.sdl.yaml"
+                sdl = yaml.safe_load(path.read_text())
+                sdl["accounts"][self.ACCOUNT]["credential_bindings"][0]["material"]["value"] = "a" * 41
+                path.write_text(yaml.safe_dump(sdl, sort_keys=False), encoding="utf-8")
+                refresh(pack)
+                validate_pack_content_manifest(pack)
+                errors = _load_pack_validator(pack).validate()
+                self.assertTrue(any(error.startswith(self.ERROR) for error in errors), errors)
 
 
 class TechVaultValidatorEntrypointTests(unittest.TestCase):
