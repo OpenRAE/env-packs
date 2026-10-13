@@ -251,6 +251,14 @@ _NESTED_SHAPE_CASES = (
      "pack.yaml profile_bundles.bundles[0] id is a YAML list, not a string"),
     ("profile_bundles", {"bundles": [{"id": "guided"}, {"id": {"a": 1}}]},
      "pack.yaml profile_bundles.bundles[1] id is a YAML mapping, not a string"),
+    # safe_dump writes a Python set as a YAML !!set, which safe_load reads back as a set
+    ("profile_bundles", {"bundles": [{"id": {"guided"}}]},
+     "pack.yaml profile_bundles.bundles[0] id is a YAML set, not a string"),
+    ("contents", {"profile_bundles"}, "pack.yaml contents is a YAML set, not a mapping"),
+    ("profile_bundles", {"bundles": ["guided"]},
+     "pack.yaml profile_bundles.bundles[0] is a YAML scalar, not a mapping"),
+    ("profile_bundles", {"bundles": [{"id": "guided"}, ["guided"]]},
+     "pack.yaml profile_bundles.bundles[1] is a YAML list, not a mapping"),
 )
 
 

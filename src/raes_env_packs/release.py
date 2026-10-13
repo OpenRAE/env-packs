@@ -50,6 +50,7 @@ import re
 import shutil
 import sys
 import tempfile
+from collections.abc import Hashable
 from pathlib import Path
 
 import yaml
@@ -283,6 +284,9 @@ def _yaml_kind(value: object) -> str:
         return "list"
     if isinstance(value, dict):
         return "mapping"
+    if isinstance(value, set):
+        # yaml.safe_load builds a ``!!set``-tagged mapping node as a Python set
+        return "set"
     return "scalar"
 
 
@@ -313,9 +317,12 @@ def _index_ids(pc: PackContracts) -> tuple[set[object], list[str]]:
     ids: set[object] = set()
     for pos, row in enumerate(rows):
         if not isinstance(row, dict):
+            failures.append(
+                f"{pc.name}: pack.yaml profile_bundles.bundles[{pos}] is a YAML "
+                f"{_yaml_kind(row)}, not a mapping")
             continue
         row_id = row.get("id")
-        if isinstance(row_id, (list, dict)):
+        if not isinstance(row_id, Hashable):
             failures.append(
                 f"{pc.name}: pack.yaml profile_bundles.bundles[{pos}] id is a YAML "
                 f"{_yaml_kind(row_id)}, not a string")
