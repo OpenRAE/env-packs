@@ -11,6 +11,15 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.3.1](https://github.com/OpenRAE/env-packs/compare/v6.3.0...v6.3.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **ci:** derive the distribution rehearsal's release paths from the pack version ([#453](https://github.com/OpenRAE/env-packs/issues/453)) ([812b8ef](https://github.com/OpenRAE/env-packs/commit/812b8ef37520b2fb3cce02bac0d1f5a26f7ae4b4)), closes [#452](https://github.com/OpenRAE/env-packs/issues/452)
+* correct techvault MISP sync API key fixtures ([#461](https://github.com/OpenRAE/env-packs/issues/461)) ([eb64eef](https://github.com/OpenRAE/env-packs/commit/eb64eefca4f984e2dba8df4102167893d0e98178))
+* **release:** report a pack.yaml contents or profile_bundles value that is not a mapping instead of crashing lint ([#456](https://github.com/OpenRAE/env-packs/issues/456)) ([9a5c065](https://github.com/OpenRAE/env-packs/commit/9a5c06558c168e4cc062b8db69175a78651cc629))
+
 ## [6.3.0](https://github.com/OpenRAE/env-packs/compare/v6.2.1...v6.3.0) (2026-10-13)
 
 
