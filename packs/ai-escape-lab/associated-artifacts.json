@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "eb2945ac5115040a7c9bce97533ed2617bc376e9f498e52e265959034aa35046"
+        "value": "140711d3e3e1af6b98115e6d8cb9e527c1626e4aeb91ca339b2ebba6f11d0f44"
       },
-      "size_bytes": 2227,
+      "size_bytes": 2233,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -211,9 +211,9 @@
       "uri": "raes-environment-pack:/build/gcp/scripts/prepare-source.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "1dd0ebd18e756c2a5b538c8d3871f79a400ed74e3c800ab0451453c4f2c942f8"
+        "value": "553ced3b0b3b01d035b66da4209d5570da298dbdaa9ab371419736b960c81859"
       },
-      "size_bytes": 4550,
+      "size_bytes": 5227,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -259,9 +259,9 @@
       "uri": "raes-environment-pack:/build/runtime/participant-briefing.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "c6a5cee2ea059890c02e936fa5eb83938bc4a21ce116f9f8e37761a533573958"
+        "value": "228906fe3dc15c7b5d82763e960a937e24369f3b910b57a89e05e77f12364e76"
       },
-      "size_bytes": 1461,
+      "size_bytes": 1640,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -307,7 +307,7 @@
       "uri": "raes-environment-pack:/build/runtime/readiness.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "f2307b60a0ef4d8d7e5caccc5fbacb722ef0b612edec937c975eb3d96d411167"
+        "value": "c5a538362e40fd3de321c078c987db3ac8148661407e351b9678b7afb14dddd4"
       },
       "size_bytes": 1264,
       "created_at": "2026-10-06T00:00:00Z",
@@ -323,9 +323,9 @@
       "uri": "raes-environment-pack:/build/runtime/readiness.sh",
       "checksum": {
         "algorithm": "sha256",
-        "value": "9e572c4c395806dc9076236f86dee96f9394f5aec968c8c51a03395e65cc88aa"
+        "value": "e459e8890f60d2f588f4e1ac5344bf85edd2e629f5e6d7b44cc1e9cb46081364"
       },
-      "size_bytes": 1647,
+      "size_bytes": 1548,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -403,9 +403,9 @@
       "uri": "raes-environment-pack:/build/tests/test_build.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "d7d38cd2c34ca7eff2e1d0e8610e9a93cddd5a4b047007c5ccc13ba8c5ff67d8"
+        "value": "74258809900db6f2118f5fdc1146c8f35df3fa74de646511da294cfe9f1d510a"
       },
-      "size_bytes": 10774,
+      "size_bytes": 12055,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -419,9 +419,9 @@
       "uri": "raes-environment-pack:/challenges/challenges.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "6d04a7404dcff45f17054d8ab08a7030ad3f7b95a7124ba8e3eb66a01f14746d"
+        "value": "803f798b60b9e5d1b509d44d9d04f1bf6b13ade4464636ff6159eda41fea2fd2"
       },
-      "size_bytes": 2833,
+      "size_bytes": 4456,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -467,9 +467,9 @@
       "uri": "raes-environment-pack:/ctfd/tests/test_export.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "c867eb0f3ba972f28d4b22ec72bcdee0bc3e35d0ba31de84f38534ca122ce1f9"
+        "value": "93ab435322ec4a02398271b00a8e3dc9afe3ec343d72611f4e7181aba56b25d5"
       },
-      "size_bytes": 835,
+      "size_bytes": 937,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -531,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/golden-readiness-checklist.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "eccf6bd2c7602d1ffee48c552f0e474b99e8136264bc268a1f868175c7e2ffa6"
+        "value": "63fefe8aac3c426366dea28a0dca4574c6826fb3b768876e540bf7d35bbf29b8"
       },
-      "size_bytes": 3115,
+      "size_bytes": 3125,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -547,9 +547,9 @@
       "uri": "raes-environment-pack:/docs/lineage.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "72983235321805759dc59a611868457988c2568533ecff8e3b5b618a0ce8b8aa"
+        "value": "1bbe5d9cac1e5bb5bd210abfd946a1268b64e30dbfff9189ef117f9a9a57b385"
       },
-      "size_bytes": 492,
+      "size_bytes": 609,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -563,9 +563,9 @@
       "uri": "raes-environment-pack:/docs/operator-runbook.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "8a4183d5b3ba178bd4bab51acb8b298e0863e15320c721c505bf05ab8831011c"
+        "value": "14f702b0f53388511fe77f076aaa0a6a74e9d61ba9bb485c9b79e725cbf3ac65"
       },
-      "size_bytes": 6942,
+      "size_bytes": 6969,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -579,9 +579,9 @@
       "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "6ba38c526b47508bf06c42bcc0fa2e03cf589ed70d585fc57dbf1d5bbe5d73cb"
+        "value": "9d87e7707f817c7673dd33d8b24e7024a8f816504fe7486a54acd29a910549bc"
       },
-      "size_bytes": 2819,
+      "size_bytes": 2896,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -685,5 +685,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:8ce57707a4090d7496e5c30883baee473d7db14a498d0d1aeb5e80d881da2582"
+  "set_digest": "sha256:e64a2fa8054dd15072ac9566526e551c587a3c7493f633417351c45ef71a558c"
 }
