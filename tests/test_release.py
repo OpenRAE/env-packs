@@ -23,9 +23,12 @@ to this definition/tools repo.
 from __future__ import annotations
 
 import importlib.util
+import io
+import itertools
 import os
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from unittest import mock
 
 import yaml
@@ -711,6 +714,110 @@ class CheckAllTests(unittest.TestCase):
             self.assertEqual(PR.check([pack_root]), [])
 
         releasable.assert_called_once_with(pack_root)
+
+
+# --------------------------------------------------------------------------
+# A pack.yaml that is not a mapping (#447)
+# --------------------------------------------------------------------------
+# (kind named in the failure, pack.yaml body)
+_NON_MAPPING_PACK_YAML = (
+    ("list", "- name: broken\n- version: 0.1.0\n"),
+    ("list", "[]\n"),
+    ("scalar", "just a string\n"),
+    ("scalar", "2024\n"),
+    ("scalar", "null\n"),
+    ("scalar", "~\n"),
+    ("scalar", ""),
+    ("scalar", "false\n"),
+    ("scalar", "0\n"),
+)
+_SUBCOMMAND_LABELS = (
+    ("check", "PACK RELEASE GATE"),
+    ("lint", "PACK LINT"),
+    ("smoke", "PROFILE SMOKE"),
+    ("metadata", "PACK METADATA"),
+    ("build", "PACK BUILD"),
+)
+
+
+def _write_broken_pack(parent: str, body: str) -> str:
+    root = os.path.join(parent, "broken")
+    _write(os.path.join(root, "pack.yaml"), body)
+    return root
+
+
+def _run_cli(argv: list[str]) -> tuple[int, str]:
+    out = io.StringIO()
+    with redirect_stdout(out):
+        code = PR.main(argv)
+    return code, out.getvalue()
+
+
+class MalformedPackYamlTests(unittest.TestCase):
+    """A pack.yaml that is not a mapping is a failure, never a traceback."""
+
+    def test_missing_manifest_and_absent_name_keep_directory_fallback(self):
+        for body in (None, "{}\n"):
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as tmp:
+                pack = os.path.join(tmp, "broken")
+                os.makedirs(pack)
+                if body is not None:
+                    _write(os.path.join(pack, "pack.yaml"), body)
+                pc = PR.PackContracts(pack)
+                self.assertEqual(pc.name, "broken")
+                self.assertEqual(pc.manifest_failures, [])
+                code, out = _run_cli(["check", "--pack", pack])
+                self.assertEqual(code, 0, out)
+                self.assertIn("  [skip] broken: not releasable", out)
+
+    def test_check_fails_the_pack_and_still_checks_the_packs_after_it(self):
+        for kind, body in _NON_MAPPING_PACK_YAML:
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as root:
+                # "broken" sorts before "synthpack", so the valid pack runs after it.
+                _write_broken_pack(root, body)
+                _make_pack(root, delivery_bundles=[])
+                code, out = _run_cli(["check", "--packs-root", root])
+                self.assertEqual(code, 1, out)
+                lines = out.splitlines()
+                self.assertIn("  [fail] broken release checks", lines)
+                self.assertIn("  [ok] synthpack release checks", lines)
+                self.assertIn("PACK RELEASE GATE: FAIL (1 issue(s))", lines)
+                self.assertIn(f" - broken: pack.yaml is a YAML {kind}, not a mapping", lines)
+
+    def test_every_subcommand_reports_the_pack_instead_of_raising(self):
+        for (kind, body), (cmd, label) in itertools.product(
+                _NON_MAPPING_PACK_YAML, _SUBCOMMAND_LABELS):
+            with self.subTest(cmd=cmd, body=body), tempfile.TemporaryDirectory() as tmp:
+                pack = _write_broken_pack(tmp, body)
+                out_dir = os.path.join(tmp, "out")
+                argv = [cmd, "--pack", pack] + (["--out", out_dir] if cmd == "build" else [])
+                code, out = _run_cli(argv)
+                self.assertEqual(code, 1, out)
+                self.assertIn(f"{label}: FAIL (1 issue(s))", out)
+                self.assertIn(f" - broken: pack.yaml is a YAML {kind}, not a mapping", out)
+                self.assertFalse(os.path.exists(out_dir), "a failed build wrote output")
+
+    def test_pack_yaml_readers_treat_it_as_absent(self):
+        for _, body in _NON_MAPPING_PACK_YAML:
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as tmp:
+                pack = _write_broken_pack(tmp, body)
+                self.assertFalse(PR.is_releasable(pack))
+                self.assertEqual(PR._manifest_pointer(pack), "")
+
+    def test_build_reports_a_non_string_pack_name_as_unsafe(self):
+        for value in (2024, True, ["synthpack"], 0, 0.0, False, [], {}, None):
+            with self.subTest(name=value), tempfile.TemporaryDirectory() as parent, \
+                    tempfile.TemporaryDirectory() as out:
+                pack = _make_pack(parent, delivery_bundles=[])
+                pack_yaml = os.path.join(pack, "pack.yaml")
+                with open(pack_yaml, encoding="utf-8") as fh:
+                    manifest = yaml.safe_load(fh)
+                manifest["name"] = value
+                _write(pack_yaml, yaml.safe_dump(manifest))
+                _meta, failures = PR.build_release(pack, out)
+                self.assertEqual(
+                    failures, [f"{value}: pack name {value!r} is not a path-safe slug"])
+                self.assertEqual(os.listdir(out), [], "a failed build wrote output")
 
 
 if __name__ == "__main__":
