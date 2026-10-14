@@ -165,13 +165,14 @@ class PackContracts(object):
         """Initialize the instance."""
         self.pack_root = os.path.abspath(pack_root)
         self._root_real = os.path.realpath(self.pack_root)
-        manifest = self._read("pack.yaml")
+        missing = object()
+        manifest = self._read("pack.yaml", default=missing)
         # A pack.yaml that parses to a list or a scalar is reported as a failure
         # for this pack instead of crashing every caller on ``.get``.
         self.pack_yaml = manifest if isinstance(manifest, dict) else {}
-        self.name = self.pack_yaml.get("name") or os.path.basename(self.pack_root)
+        self.name = self.pack_yaml.get("name", os.path.basename(self.pack_root))
         self.manifest_failures: list[str] = []
-        if manifest is not None and not isinstance(manifest, dict):
+        if manifest is not missing and not isinstance(manifest, dict):
             kind = "list" if isinstance(manifest, list) else "scalar"
             self.manifest_failures.append(
                 f"{self.name}: pack.yaml is a YAML {kind}, not a mapping")
@@ -180,16 +181,19 @@ class PackContracts(object):
         self.publication = self._read_pointer(self.pack_yaml.get("publication_supply"))
         self.bundles = self._read(os.path.join("profiles", "bundles.yaml"))
 
-    def _read(self, rel: str) -> object:
-        """Read a pack-relative YAML file, validated at the open() sink."""
+    def _read(self, rel: str, *, default: object = None) -> object:
+        """Read contained YAML; return ``default`` only when it cannot be read.
+
+        A successfully parsed null remains ``None``, distinct from ``default``.
+        """
         try:
             path = _resolved_within(self._root_real, rel)
             if not os.path.isfile(path):
-                return None
+                return default
             with open(path, "r", encoding="utf-8") as fh:
                 return yaml.safe_load(fh)
         except (ValueError, OSError, yaml.YAMLError):
-            return None
+            return default
 
     def _read_pointer(self, rel: object) -> object:
         """Read pointer."""

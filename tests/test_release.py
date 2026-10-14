@@ -722,8 +722,14 @@ class CheckAllTests(unittest.TestCase):
 # (kind named in the failure, pack.yaml body)
 _NON_MAPPING_PACK_YAML = (
     ("list", "- name: broken\n- version: 0.1.0\n"),
+    ("list", "[]\n"),
     ("scalar", "just a string\n"),
     ("scalar", "2024\n"),
+    ("scalar", "null\n"),
+    ("scalar", "~\n"),
+    ("scalar", ""),
+    ("scalar", "false\n"),
+    ("scalar", "0\n"),
 )
 _SUBCOMMAND_LABELS = (
     ("check", "PACK RELEASE GATE"),
@@ -749,6 +755,20 @@ def _run_cli(argv: list[str]) -> tuple[int, str]:
 
 class MalformedPackYamlTests(unittest.TestCase):
     """A pack.yaml that is not a mapping is a failure, never a traceback."""
+
+    def test_missing_manifest_and_absent_name_keep_directory_fallback(self):
+        for body in (None, "{}\n"):
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as tmp:
+                pack = os.path.join(tmp, "broken")
+                os.makedirs(pack)
+                if body is not None:
+                    _write(os.path.join(pack, "pack.yaml"), body)
+                pc = PR.PackContracts(pack)
+                self.assertEqual(pc.name, "broken")
+                self.assertEqual(pc.manifest_failures, [])
+                code, out = _run_cli(["check", "--pack", pack])
+                self.assertEqual(code, 0, out)
+                self.assertIn("  [skip] broken: not releasable", out)
 
     def test_check_fails_the_pack_and_still_checks_the_packs_after_it(self):
         for kind, body in _NON_MAPPING_PACK_YAML:
@@ -785,7 +805,7 @@ class MalformedPackYamlTests(unittest.TestCase):
                 self.assertEqual(PR._manifest_pointer(pack), "")
 
     def test_build_reports_a_non_string_pack_name_as_unsafe(self):
-        for value in (2024, True, ["synthpack"]):
+        for value in (2024, True, ["synthpack"], 0, 0.0, False, [], {}, None):
             with self.subTest(name=value), tempfile.TemporaryDirectory() as parent, \
                     tempfile.TemporaryDirectory() as out:
                 pack = _make_pack(parent, delivery_bundles=[])
@@ -797,6 +817,7 @@ class MalformedPackYamlTests(unittest.TestCase):
                 _meta, failures = PR.build_release(pack, out)
                 self.assertEqual(
                     failures, [f"{value}: pack name {value!r} is not a path-safe slug"])
+                self.assertEqual(os.listdir(out), [], "a failed build wrote output")
 
 
 if __name__ == "__main__":
