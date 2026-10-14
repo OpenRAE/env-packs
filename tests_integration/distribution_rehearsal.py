@@ -4,7 +4,8 @@
 Two rehearsals, one script:
 
 * The **offline** rehearsal runs everywhere with no external tooling: it
-  publishes TechVault, exports a deterministic archive, proves clean
+  publishes the pack named by ``REHEARSAL_PACK`` (default ``packs/techvault``),
+  exports a deterministic archive, proves clean
   reproduction, then installs, verifies, updates, and reads rollback guidance
   through the archive route. This is the inner-loop confidence check.
 * The **registry** rehearsal runs only when a real OCI registry is reachable and
@@ -34,13 +35,38 @@ _REPO = os.path.dirname(_HERE)
 sys.path.insert(0, os.path.join(_REPO, "src"))
 
 from raes_env_packs import distribution as dist  # noqa: E402
-from raes_env_packs import release, verify  # noqa: E402
+from raes_env_packs import release, validation, verify  # noqa: E402
 
-_TECHVAULT = os.path.join(_REPO, "packs", "techvault")
+_DEFAULT_PACK = "packs/techvault"
 
 
 def _log(message: str) -> None:
     print(f"[rehearsal] {message}", flush=True)
+
+
+def _pack_root() -> tuple[str, str]:
+    """Return the pack directory ``REHEARSAL_PACK`` names, as given and resolved.
+
+    The workflow passes its ``pack`` dispatch input here through ``env:``. An
+    unset or empty value means the default pack; a relative value is resolved
+    against the repository root, where the workflow runs.
+    """
+
+    requested = os.environ.get("REHEARSAL_PACK") or _DEFAULT_PACK
+    return requested, os.path.join(_REPO, requested)
+
+
+def _require_pack(requested: str, pack_root: str) -> None:
+    """Stop before anything is published unless ``pack_root`` is a pack.
+
+    ``validate_pack`` is the one static-validation authority (ADR 0013), so a
+    directory it rejects never reaches the publish gates (ADR 0037).
+    """
+
+    result = validation.validate_pack(pack_root)
+    if not result.ok:
+        raise SystemExit(f"rehearsal stopped: {requested} ({pack_root}) is not a pack: "
+                         f"{'; '.join(result.errors)}")
 
 
 class _Published(NamedTuple):
@@ -53,8 +79,8 @@ class _Published(NamedTuple):
     evidence_files: tuple[tuple[str, str], ...]
 
 
-def _publish(workdir: str) -> _Published:
-    """Publish TechVault, export its archive, and say where both were written.
+def _publish(workdir: str, pack_root: str) -> _Published:
+    """Publish the pack at ``pack_root``, export its archive, and say where both were written.
 
     The release directory, archive, and evidence names follow the pack name and
     version that ``build_release`` recorded in the release metadata, so the
@@ -62,7 +88,7 @@ def _publish(workdir: str) -> _Published:
     """
 
     release_out = os.path.join(workdir, "release")
-    metadata, failures = release.build_release(_TECHVAULT, release_out, publish=True)
+    metadata, failures = release.build_release(pack_root, release_out, publish=True)
     if failures:
         raise SystemExit(f"publish failed: {failures}")
     pack = metadata["release"]["pack"]
@@ -71,10 +97,10 @@ def _publish(workdir: str) -> _Published:
     if not os.path.isfile(os.path.join(evidence_dir, "release.yaml")):
         raise SystemExit(f"publish wrote no release.yaml under {evidence_dir}")
     archive = os.path.join(workdir, f"{stem}.tar.gz")
-    first = dist.export_pack_archive(_TECHVAULT, archive)
+    first = dist.export_pack_archive(pack_root, archive)
     # Clean reproduction: the same source exports byte-identical bytes.
     again = os.path.join(workdir, f"{stem}-again.tar.gz")
-    if dist.export_pack_archive(_TECHVAULT, again) != first:
+    if dist.export_pack_archive(pack_root, again) != first:
         raise SystemExit("archive export is not reproducible")
     _log(f"published {stem} + exported archive {first}")
     evidence = metadata["evidence"]
@@ -87,24 +113,25 @@ def _publish(workdir: str) -> _Published:
         ))
 
 
-def offline_rehearsal(workdir: str) -> None:
+def offline_rehearsal(workdir: str, pack_root: str) -> None:
     """Publish -> export -> install -> verify -> update -> rollback, no network."""
 
-    published = _publish(workdir)
+    published = _publish(workdir, pack_root)
     evidence_dir, archive = published.evidence_dir, published.archive
     selector = dist.Selector(
         repository="local", reference=archive, digest_domain=dist.DIGEST_DOMAIN_ARCHIVE)
     transport = dist.ArchiveTransport()
-    target = os.path.join(workdir, "consumer", "techvault")
+    # Static validation requires an installed pack's directory to carry its name.
+    target = os.path.join(workdir, "consumer", published.name)
 
     install = dist.plan_install(
-        _TECHVAULT, evidence_dir, target, selector=selector, transport=transport)
+        pack_root, evidence_dir, target, selector=selector, transport=transport)
     if not install.applicable:
         raise SystemExit(f"install plan not applicable: {install.render_human()}")
     # The offline route carries no signature; accept unsigned explicitly. The
     # authenticated path is exercised by the registry rehearsal.
     receipt = dist.apply_install(
-        install, _TECHVAULT, evidence_dir, target,
+        install, pack_root, evidence_dir, target,
         authorized=True,
         policy=dist.PromotionPolicy(selector=selector, transport=transport,
                                     require_signature=False))
@@ -116,10 +143,10 @@ def offline_rehearsal(workdir: str) -> None:
     _log("installed pack verifies")
 
     update = dist.plan_update(
-        target, _TECHVAULT, evidence_dir, selector=selector, transport=transport)
+        target, pack_root, evidence_dir, selector=selector, transport=transport)
     _log(f"update plan changes: {[c.category for c in update.changes]}")
     dist.apply_install(
-        update, _TECHVAULT, evidence_dir, target,
+        update, pack_root, evidence_dir, target,
         authorized=True,
         policy=dist.PromotionPolicy(selector=selector, transport=transport,
                                     require_signature=False))
@@ -136,10 +163,10 @@ def _run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, check=True, text=True, **kwargs)
 
 
-def registry_rehearsal(registry: str, workdir: str) -> None:
+def registry_rehearsal(registry: str, workdir: str, pack_root: str) -> None:
     """Push -> keyless-sign -> pull -> verify-signature -> install, over a registry."""
 
-    published = _publish(workdir)
+    published = _publish(workdir, pack_root)
     archive = published.archive
     repo = f"{registry}/{published.name}"
     ref = f"{repo}:{published.version}"
@@ -199,7 +226,7 @@ def registry_rehearsal(registry: str, workdir: str) -> None:
     # Stage the pulled archive into a clean, pack-named consumer directory and
     # verify those staged bytes against the pulled evidence (release.yaml + SBOM +
     # provenance now live under `pulled/`).
-    staged = os.path.join(workdir, "consumer", "techvault")
+    staged = os.path.join(workdir, "consumer", published.name)
     os.makedirs(os.path.dirname(staged), exist_ok=True)
     dist.stage_pack_archive(pulled_archive, staged)
     profile, sbom_doc, prov_doc = verify.load_release_evidence(pulled)
@@ -215,7 +242,7 @@ def registry_rehearsal(registry: str, workdir: str) -> None:
     selector = dist.Selector(
         repository=repo, reference=pulled_archive, digest_domain=dist.DIGEST_DOMAIN_ARCHIVE)
     transport = dist.ArchiveTransport()
-    target = os.path.join(workdir, "installed", "techvault")
+    target = os.path.join(workdir, "installed", published.name)
     plan = dist.plan_install(
         staged, pulled, target, selector=selector, transport=transport,
         signature_verifier=cosign_verifier)
@@ -228,12 +255,14 @@ def registry_rehearsal(registry: str, workdir: str) -> None:
 
 
 def main() -> int:
+    requested, pack_root = _pack_root()
+    _require_pack(requested, pack_root)
     with tempfile.TemporaryDirectory() as workdir:
-        offline_rehearsal(os.path.join(workdir, "offline"))
+        offline_rehearsal(os.path.join(workdir, "offline"), pack_root)
         registry = os.environ.get("REHEARSAL_REGISTRY")
         have_tools = shutil.which("oras") and shutil.which("cosign")
         if registry and have_tools:
-            registry_rehearsal(registry, os.path.join(workdir, "registry"))
+            registry_rehearsal(registry, os.path.join(workdir, "registry"), pack_root)
         else:
             _log("registry rehearsal skipped (set REHEARSAL_REGISTRY + install oras/cosign)")
     return 0
