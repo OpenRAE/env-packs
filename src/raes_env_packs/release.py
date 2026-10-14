@@ -50,6 +50,7 @@ import re
 import shutil
 import sys
 import tempfile
+from collections.abc import Hashable
 from pathlib import Path
 
 import yaml
@@ -277,6 +278,57 @@ def _lint_bundle(pc: "PackContracts", pack_root: str, bundle: dict[str, object],
     return failures
 
 
+# yaml.safe_load builds a ``!!set``-tagged mapping node as a Python set.
+_YAML_KINDS: tuple[tuple[type[object], str], ...] = (
+    (list, "list"), (dict, "mapping"), (set, "set"))
+
+
+def _yaml_kind(value: object) -> str:
+    """Name the YAML node kind of a parsed value, never the value itself."""
+    return next((kind for typ, kind in _YAML_KINDS if isinstance(value, typ)), "scalar")
+
+
+def _pack_yaml_mapping(pc: PackContracts, key: str) -> tuple[dict[str, object], list[str]]:
+    """Read a ``pack.yaml`` key that the contract defines as a mapping.
+
+    Absent or null reads as an empty mapping (no failure); any other
+    non-mapping value reads as empty and is reported, so lint never raises.
+    """
+    value = pc.pack_yaml.get(key)
+    if value is None:
+        return {}, []
+    if isinstance(value, dict):
+        return value, []
+    return {}, [f"{pc.name}: pack.yaml {key} is a YAML {_yaml_kind(value)}, not a mapping"]
+
+
+def _index_ids(pc: PackContracts) -> tuple[set[object], list[str]]:
+    """Bundle ids listed in the ``pack.yaml`` ``profile_bundles`` index."""
+    index, failures = _pack_yaml_mapping(pc, "profile_bundles")
+    rows = index.get("bundles")
+    if rows is None:
+        return set(), failures
+    if not isinstance(rows, list):
+        return set(), failures + [
+            f"{pc.name}: pack.yaml profile_bundles.bundles is a YAML "
+            f"{_yaml_kind(rows)}, not a list"]
+    ids: set[object] = set()
+    for pos, row in enumerate(rows):
+        if not isinstance(row, dict):
+            failures.append(
+                f"{pc.name}: pack.yaml profile_bundles.bundles[{pos}] is a YAML "
+                f"{_yaml_kind(row)}, not a mapping")
+            continue
+        row_id = row.get("id")
+        if not isinstance(row_id, Hashable):
+            failures.append(
+                f"{pc.name}: pack.yaml profile_bundles.bundles[{pos}] id is a YAML "
+                f"{_yaml_kind(row_id)}, not a string")
+        else:
+            ids.add(row_id)
+    return ids, failures
+
+
 def lint_pack(pack_root: str) -> list[str]:
     """Verify a pack ships every delivery bundle it advertises as supported."""
     pc = PackContracts(pack_root)
@@ -285,15 +337,14 @@ def lint_pack(pack_root: str) -> list[str]:
         # nothing claimed supported -> nothing to ship
         return []
 
-    failures: list[str] = []
-    contents = pc.pack_yaml.get("contents") or {}
+    contents, failures = _pack_yaml_mapping(pc, "contents")
     if contents.get("profile_bundles") is not True:
         failures += [
             f"{pc.name}: delivery bundle {b.get('bundle_id')} is status=supported "
             "but pack.yaml contents.profile_bundles is not true" for b in supported]
 
-    index = pc.pack_yaml.get("profile_bundles") or {}
-    index_ids = {x.get("id") for x in (index.get("bundles") or []) if isinstance(x, dict)}
+    index_ids, index_failures = _index_ids(pc)
+    failures += index_failures
     for bundle in supported:
         failures += _lint_bundle(pc, pack_root, bundle, pc.manifest_bundle_rows, index_ids)
     return failures

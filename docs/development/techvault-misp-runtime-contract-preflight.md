@@ -1,5 +1,12 @@
 # TechVault MISP runtime-contract preflight
 
+Credential-scope update: PR #454 subsequently declared the MISP administrator
+and sync account material as `secret_fixture`. The operator-secret description
+and fixture prohibitions below record issue #280's earlier design, not the
+current contract for those accounts. For the sync key, follow the
+[issue #460 preflight](techvault-misp-api-key-fixture-preflight.md). Database
+and Redis credential ownership is unchanged by that correction.
+
 Issue #280 is a missing portable service contract plus a downstream realization
 failure. TechVault must state the observable MISP, MariaDB, Redis, trust, and
 readiness outcomes that belong to the scenario. LilRAE must select components,

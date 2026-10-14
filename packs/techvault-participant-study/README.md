@@ -84,6 +84,11 @@ material; their account bindings carry the `secret_fixture` values. This does
 not make either identity an operator credential. TheHive's Cortex connector
 remains a separate service identity from the Cortex console administrator.
 
+The MISP synchronization key is exactly 40 ASCII alphanumeric characters, as
+required by [MISP’s authentication-key provisioning](https://github.com/MISP/MISP/blob/2.5/app/Console/Command/UserShell.php).
+The pack-local author validator rejects primary fixture material with any other
+length or characters, without including the rejected value in diagnostics.
+
 Filebeat and the dashboard's native configurations carry passwords matching
 the declared bindings. The indexer hashes match the same authored values;
 tests verify both matches and incorrect-password rejection. Credential files

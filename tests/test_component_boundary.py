@@ -50,7 +50,8 @@ def _techvault_with_associated_component(tmp: str, ref: str) -> str:
     aa_path = os.path.join(pack, "associated-artifacts.json")
     with open(aa_path, encoding="utf-8") as fh:
         aa = json.load(fh)
-    raw = open(os.path.join(pack, "publication-supply.yaml"), "rb").read()
+    with open(os.path.join(pack, "publication-supply.yaml"), "rb") as fh:
+        raw = fh.read()
     aa["artifacts"]["techvault-publication-supply"] = {
         "artifact_id": "techvault-publication-supply", "role": "other",
         "media_type": "application/yaml",
