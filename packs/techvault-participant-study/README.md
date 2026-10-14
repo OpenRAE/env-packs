@@ -31,6 +31,7 @@ From the repository root:
 ```sh
 raes-pack-validate --packs-root packs
 raes-pack-release check --packs-root packs
+python -m pip install -e ".[test]"
 python -m unittest tests.test_techvault_study_pack
 ```
 
@@ -57,6 +58,50 @@ verification scope, but may use native control-plane readback, daemon
 observation, guest observation, or another admitted method. It selects the
 least intrusive complete method allowed by realization scope; omission of a
 collection-method floor does not make evidence optional.
+
+## SOC credential fixtures
+
+All SOC console logins are in-world accounts. Their native RAES
+`accounts.<account-id>.credential_bindings` declare `secret_fixture` material
+with a value. Resolve a login by its account id and primary binding id; no
+backend environment variable or secret-store lookup supplies these values.
+
+| Surface | Account reference | Username |
+| --- | --- | --- |
+| Wazuh indexer / dashboard interactive login / Filebeat | `accounts.wazuh-indexer-admin` | `admin` |
+| Wazuh dashboard service login to the indexer | `accounts.wazuh-indexer-kibanaserver` | `kibanaserver` |
+| Wazuh manager API | `accounts.wazuh-manager-api` | `wazuh-wui` |
+| TheHive console | `accounts.thehive-administrator` | `admin@techvault.local` |
+| Cortex console | `accounts.cortex-administrator` | `admin@techvault.local` |
+| Shuffle console | `accounts.shuffle-administrator` | `admin@techvault.local` |
+| MISP console | `accounts.misp-administrator` | `admin@admin.test` |
+| MISP synchronization API | `accounts.misp-suricata-sync-api-key` | `techvault-suricata-sync` |
+
+Each primary binding is named `<account-id>-primary`. These intentionally public
+synthetic values belong to the scenario. The existing runtime MISP principal
+and API setting carry `redacted` posture because those RAES surfaces omit raw
+material; their account bindings carry the `secret_fixture` values. This does
+not make either identity an operator credential. TheHive's Cortex connector
+remains a separate service identity from the Cortex console administrator.
+
+The MISP synchronization key is exactly 40 ASCII alphanumeric characters, as
+required by [MISP’s authentication-key provisioning](https://github.com/MISP/MISP/blob/2.5/app/Console/Command/UserShell.php).
+The pack-local author validator rejects primary fixture material with any other
+length or characters, without including the rejected value in diagnostics.
+
+Filebeat and the dashboard's native configurations carry passwords matching
+the declared bindings. The indexer hashes match the same authored values;
+tests verify both matches and incorrect-password rejection. Credential files
+have restricted owner/mode declarations. The Filebeat configuration follows
+[Wazuh's 4.12.0 configuration](https://github.com/wazuh/wazuh/blob/v4.12.0/extensions/filebeat/7.x/filebeat.yml)
+for its Wazuh module and index-template behavior, retaining certificate-verified
+HTTPS to the declared indexer.
+
+The indexer's internal-users file defines initialization content. A retained
+security index may still contain earlier state; the backend must corroborate
+the declared credentials during realization and handle retained state through
+its own migration policy. Static validation does not prove live authentication
+or migrate retained data.
 
 ## Flag values
 

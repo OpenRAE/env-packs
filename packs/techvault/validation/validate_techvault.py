@@ -937,6 +937,30 @@ def validate_misp_contract(sdl: Mapping[str, Any]) -> list[str]:
     """Validate TechVault's closed, provider-neutral MISP contract."""
 
     errors: list[str] = []
+    account = _as_mapping(
+        _as_mapping(sdl.get("accounts")).get("misp-suricata-sync-api-key")
+    )
+    bindings = account.get("credential_bindings", [])
+    primary = [
+        item for item in bindings
+        if isinstance(item, Mapping)
+        and item.get("credential_id") == "misp-suricata-sync-api-key-primary"
+    ] if isinstance(bindings, list) else []
+    binding = _as_mapping(primary[0] if len(primary) == 1 else {})
+    material = _as_mapping(binding.get("material"))
+    value = material.get("value")
+    if (
+        binding.get("purpose") != "primary_authentication"
+        or binding.get("auth_method") != "key"
+        or material.get("classification") != "secret_fixture"
+        or not isinstance(value, str)
+        or re.fullmatch(r"[A-Za-z0-9]{40}", value) is None
+    ):
+        _misp_error(
+            errors, "api-key-invalid",
+            "misp-suricata-sync-api-key primary secret_fixture must contain "
+            "exactly 40 ASCII alphanumeric characters",
+        )
     nodes = _as_mapping(sdl.get("nodes"))
     misp_runtime = _as_mapping(_as_mapping(nodes.get("misp")).get("runtime"))
 
@@ -1022,8 +1046,8 @@ def validate_misp_contract(sdl: Mapping[str, Any]) -> list[str]:
         if isinstance(item, Mapping)
     }
     expected_principals = {
-        "misp-administrator": ("user", "admin@admin.test", "operator_secret"),
-        "misp-suricata-sync-api-key": ("api_key", "", "operator_secret"),
+        "misp-administrator": ("user", "admin@admin.test", "redacted"),
+        "misp-suricata-sync-api-key": ("api_key", "", "redacted"),
     }
     authorization_shape = {
         "roles": {

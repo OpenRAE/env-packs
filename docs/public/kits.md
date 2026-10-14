@@ -114,6 +114,11 @@ second dependency lock; RAES still resolves the selected module into
 
 ## Preview and add
 
+Creating the pack and changing its kits need Linux. `raes-pack-new` and each
+kit add, update, replace, and remove commit with the Linux `renameat2` system
+call, which macOS does not provide. A `--preview` run writes nothing, so it does
+not use `renameat2`.
+
 Start from any valid minimal pack. The first add initializes the existing RAES
 associated-artifact identity if the pack has not opted into it yet.
 

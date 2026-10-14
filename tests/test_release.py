@@ -186,6 +186,127 @@ class LintTests(unittest.TestCase):
             self.assertEqual(PR.lint_pack(tmp), [])
 
 
+def _make_supported_pack(root: str) -> str:
+    """A pack with one supported bundle that is otherwise lint-clean."""
+    return _make_pack(
+        root, profile_bundles=True,
+        bundles=[{"id": "guided", "audience": "participant",
+                  "participant_entrypoints": ["guided/participant/plan.md"],
+                  "operator_entrypoints": []}],
+        participant_files=["guided/participant/plan.md"],
+        delivery_bundles=[{"bundle_id": "guided", "status": "supported",
+                           "audience": "guided"}])
+
+
+def _edit_yaml(path: str, edit) -> None:
+    with open(path, encoding="utf-8") as fh:
+        doc = yaml.safe_load(fh)
+    edit(doc)
+    _write(path, yaml.safe_dump(doc))
+
+
+_ABSENT = object()
+
+
+def _set_pack_yaml(pack: str, key: str, value) -> None:
+    def edit(doc):
+        if value is _ABSENT:
+            doc.pop(key, None)
+        else:
+            doc[key] = value
+    _edit_yaml(os.path.join(pack, "pack.yaml"), edit)
+
+
+def _rename_pack(pack: str, name: str) -> str:
+    """Move a synthetic pack to ``name`` and keep its identity consistent."""
+    renamed = os.path.join(os.path.dirname(pack), name)
+    os.rename(pack, renamed)
+    _edit_yaml(os.path.join(renamed, "pack.yaml"), lambda d: d.update(name=name))
+    for rel in ("pack.compatibility.yaml", "docs/provenance-ledger.yaml"):
+        _edit_yaml(os.path.join(renamed, rel), lambda d: d["pack"].update(name=name))
+    _edit_yaml(os.path.join(renamed, "sdl", "example.sdl.yaml"),
+               lambda d: d.update(name=name))
+    return renamed
+
+
+def _run_main(argv: list[str]) -> tuple[int, list[str]]:
+    with mock.patch("builtins.print") as printed:
+        code = PR.main(argv)
+    return code, [" ".join(str(a) for a in c.args) for c in printed.call_args_list]
+
+
+# (pack.yaml key, replacement value, expected failure line after "synthpack: ")
+_NESTED_SHAPE_CASES = (
+    ("contents", ["profile_bundles"], "pack.yaml contents is a YAML list, not a mapping"),
+    ("contents", "yes", "pack.yaml contents is a YAML scalar, not a mapping"),
+    ("contents", [], "pack.yaml contents is a YAML list, not a mapping"),
+    ("profile_bundles", [{"id": "guided"}],
+     "pack.yaml profile_bundles is a YAML list, not a mapping"),
+    ("profile_bundles", "profiles/bundles.yaml",
+     "pack.yaml profile_bundles is a YAML scalar, not a mapping"),
+    ("profile_bundles", {"bundles": 3},
+     "pack.yaml profile_bundles.bundles is a YAML scalar, not a list"),
+    ("profile_bundles", {"bundles": "guided"},
+     "pack.yaml profile_bundles.bundles is a YAML scalar, not a list"),
+    ("profile_bundles", {"bundles": {"guided": {}}},
+     "pack.yaml profile_bundles.bundles is a YAML mapping, not a list"),
+    ("profile_bundles", {"bundles": [{"id": ["guided"]}]},
+     "pack.yaml profile_bundles.bundles[0] id is a YAML list, not a string"),
+    ("profile_bundles", {"bundles": [{"id": "guided"}, {"id": {"a": 1}}]},
+     "pack.yaml profile_bundles.bundles[1] id is a YAML mapping, not a string"),
+    # safe_dump writes a Python set as a YAML !!set, which safe_load reads back as a set
+    ("profile_bundles", {"bundles": [{"id": {"guided"}}]},
+     "pack.yaml profile_bundles.bundles[0] id is a YAML set, not a string"),
+    ("contents", {"profile_bundles"}, "pack.yaml contents is a YAML set, not a mapping"),
+    ("profile_bundles", {"bundles": ["guided"]},
+     "pack.yaml profile_bundles.bundles[0] is a YAML scalar, not a mapping"),
+    ("profile_bundles", {"bundles": [{"id": "guided"}, ["guided"]]},
+     "pack.yaml profile_bundles.bundles[1] is a YAML list, not a mapping"),
+)
+
+
+class NestedPackYamlShapeTests(unittest.TestCase):
+    """A nested pack.yaml value of the wrong YAML kind is a lint failure (#455)."""
+
+    def test_lint_and_check_report_the_shape_instead_of_raising(self):
+        for key, value, expected in _NESTED_SHAPE_CASES:
+            for argv, label in ((["lint", "--pack"], "PACK LINT: FAIL"),
+                                (["check", "--pack"], "PACK RELEASE GATE: FAIL")):
+                with self.subTest(key=key, value=value, command=argv[0]), \
+                        tempfile.TemporaryDirectory() as tmp:
+                    pack = _make_supported_pack(tmp)
+                    _set_pack_yaml(pack, key, value)
+                    code, lines = _run_main(argv + [pack])
+                    self.assertEqual(code, 1)
+                    self.assertTrue(any(line.startswith(label) for line in lines), lines)
+                    self.assertIn(" - synthpack: " + expected, lines)
+                    if argv[0] == "check":
+                        self.assertIn("  [fail] synthpack release checks", lines)
+
+    def test_check_fails_the_pack_and_still_checks_the_others(self):
+        with tempfile.TemporaryDirectory() as root:
+            broken = _rename_pack(_make_supported_pack(root), "broken-pack")
+            _set_pack_yaml(broken, "contents", ["profile_bundles"])
+            _make_supported_pack(root)
+            code, lines = _run_main(["check", "--packs-root", root])
+        self.assertEqual(code, 1)
+        self.assertIn("  [fail] broken-pack release checks", lines)
+        self.assertIn("  [ok] synthpack release checks", lines)
+        self.assertIn(" - broken-pack: pack.yaml contents is a YAML list, not a mapping",
+                      lines)
+        self.assertTrue(any(line.startswith("PACK RELEASE GATE: FAIL") for line in lines),
+                        lines)
+
+    def test_a_well_formed_pack_and_an_absent_index_still_pass(self):
+        for value in (_ABSENT, None):
+            with self.subTest(profile_bundles=value), tempfile.TemporaryDirectory() as tmp:
+                pack = _make_supported_pack(tmp)
+                self.assertEqual(PR.lint_pack(pack), [])
+                _set_pack_yaml(pack, "profile_bundles", value)
+                code, lines = _run_main(["lint", "--pack", pack])
+                self.assertEqual((code, lines), (0, ["PACK LINT: PASS"]))
+
+
 # --------------------------------------------------------------------------
 # AC2 — build separates participant / operator / oracle artifacts
 # --------------------------------------------------------------------------

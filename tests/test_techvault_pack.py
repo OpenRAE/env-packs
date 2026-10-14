@@ -91,11 +91,12 @@ _PROFILE = _PACK / "profiles" / "exact-artifact-copy-v1.json"
 _VALIDATOR = _PACK / "validation" / "validate_techvault.py"
 
 
-def _load_pack_validator() -> types.ModuleType:
+def _load_pack_validator(pack: pathlib.Path = _PACK) -> types.ModuleType:
+    validator_path = pack / "validation" / "validate_techvault.py"
     module = types.ModuleType("techvault_pack_validator")
-    module.__file__ = str(_VALIDATOR)
-    source = _VALIDATOR.read_text(encoding="utf-8")
-    exec(compile(source, str(_VALIDATOR), "exec"), module.__dict__)
+    module.__file__ = str(validator_path)
+    source = validator_path.read_text(encoding="utf-8")
+    exec(compile(source, str(validator_path), "exec"), module.__dict__)
     return module
 
 
@@ -265,11 +266,11 @@ def _assert_misp_runtime_contract(test: unittest.TestCase, sdl: dict) -> None:
     test.assertEqual(principals["misp-administrator"]["kind"], "user")
     test.assertEqual(
         principals["misp-administrator"]["credential_classification"],
-        "operator_secret",
+        "redacted",
     )
     test.assertEqual(
         principals["misp-suricata-sync-api-key"]["credential_classification"],
-        "operator_secret",
+        "redacted",
     )
 
     (database,) = nodes["misp-db"]["runtime"]["database_services"]
@@ -468,7 +469,7 @@ class TechVaultPackTests(unittest.TestCase):
             "evidence_requirements": 6,
             "identity_domains": 1,
             "relationships": 3,
-            "accounts": 14,
+            "accounts": 22,
             "variables": 10,
             "entities": 2,
             "agents": 2,
@@ -700,10 +701,10 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline & materialized, set())
         self.assertEqual(sourced & materialized, set())
         self.assertEqual(inline | sourced | materialized, set(content))
-        self.assertEqual(len(inline), 15)
+        self.assertEqual(len(inline), 16)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
         self.assertEqual(materialized, set())
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 53)
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 54)
 
     def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
         sdl = _load_sdl()
@@ -1862,7 +1863,7 @@ class TechVaultPackTests(unittest.TestCase):
                 lambda candidate: candidate["nodes"]["misp"]["runtime"][
                     "app_authorizations"
                 ][0]["principals"][0].__setitem__(
-                    "credential_classification", "redacted"
+                    "credential_classification", "operator_secret"
                 ),
                 "misp.principal-invalid",
             ),
@@ -2371,6 +2372,105 @@ _AD_ACCOUNT_ROSTER = {
 class TechVaultInWorldDeclarationTests(unittest.TestCase):
     """The pack states what exists in the scenario, never how it is built."""
 
+    def test_soc_logins_resolve_classified_fixture_material(self) -> None:
+        expected = {
+            "wazuh-indexer-admin": ("wazuh-indexer", "admin"),
+            "wazuh-indexer-kibanaserver": ("wazuh-indexer", "kibanaserver"),
+            "wazuh-manager-api": ("wazuh-manager", "wazuh-wui"),
+            "thehive-administrator": ("thehive", "admin@techvault.local"),
+            "cortex-administrator": ("cortex", "admin@techvault.local"),
+            "shuffle-administrator": ("shuffle-backend", "admin@techvault.local"),
+            "misp-administrator": ("misp", "admin@admin.test"),
+            "misp-suricata-sync-api-key": ("misp", "techvault-suricata-sync"),
+        }
+        scenario = parse_sdl_file(_SDL)
+        model = compile_scenario_runtime_model(
+            scenario, parameters={name: f"test-{name}" for name in _load_sdl()["variables"]},
+        )
+        for account_id, (node, username) in expected.items():
+            with self.subTest(account=account_id):
+                self.assertIn(account_id, scenario.accounts.keys())
+                account = scenario.accounts[account_id]
+                self.assertEqual((account.node, account.username), (node, username))
+                (binding,) = account.credential_bindings
+                self.assertEqual(binding.credential_id, f"{account_id}-primary")
+                self.assertEqual(binding.purpose.value, "primary_authentication")
+                self.assertEqual(binding.material.classification, "secret_fixture")
+                self.assertTrue(binding.material.value)
+                (placement,) = [item for item in model.account_placements.values() if item.account_name == account_id]
+                self.assertEqual(placement.spec["credential_bindings"][0]["material"], {
+                    "classification": "secret_fixture", "value": binding.material.value,
+                })
+
+    def test_indexer_fixture_credentials_match_native_consumers(self) -> None:
+        import bcrypt
+
+        for pack_name in ("techvault", "techvault-participant-study"):
+            with self.subTest(pack=pack_name):
+                path = _ROOT / "packs" / pack_name / "sdl" / f"{pack_name}.sdl.yaml"
+                scenario = parse_sdl_file(path)
+                content = scenario.content
+                users = yaml.safe_load(content["wazuh-indexer-internal-users"].text)
+                filebeat = yaml.safe_load(content["wazuh-manager-filebeat-config"].text)
+                dashboard = yaml.safe_load(content["wazuh-dashboard-opensearch-config"].text)
+                output = filebeat["output.elasticsearch"]
+                consumers = (
+                    (output["username"], output["password"], "admin"),
+                    (dashboard["opensearch.username"], dashboard["opensearch.password"], "kibanaserver"),
+                )
+                for username, password, expected in consumers:
+                    self.assertEqual(username, expected)
+                    self.assertTrue(users[username]["reserved"])
+                    hashed = users[username]["hash"].encode()
+                    self.assertTrue(bcrypt.checkpw(password.encode(), hashed), username)
+                    self.assertFalse(bcrypt.checkpw(b"incorrect-fixture-password", hashed))
+                    account = scenario.accounts[f"wazuh-indexer-{username}"]
+                    self.assertEqual(password, account.credential_bindings[0].material.value)
+                self.assertEqual(users["admin"]["backend_roles"], ["admin"])
+                self.assertNotEqual(consumers[0][1], consumers[1][1])
+                manager_api = yaml.safe_load(content["wazuh-dashboard-app-config"].text)
+                self.assertEqual(manager_api["hosts"][0]["default"]["username"], "wazuh-wui")
+                self.assertEqual(
+                    manager_api["hosts"][0]["default"]["password"],
+                    scenario.accounts["wazuh-manager-api"].credential_bindings[0].material.value,
+                )
+
+    def test_filebeat_fixture_preserves_wazuh_ingestion_and_tls(self) -> None:
+        sdl = _load_sdl()
+        filebeat = yaml.safe_load(sdl["content"]["wazuh-manager-filebeat-config"]["text"])
+        self.assertEqual(filebeat["filebeat.modules"], [
+            {"module": "wazuh", "alerts": {"enabled": True}, "archives": {"enabled": False}},
+        ])
+        self.assertTrue(filebeat["setup.template.json.enabled"])
+        self.assertEqual(filebeat["setup.template.json.path"], "/etc/filebeat/wazuh-template.json")
+        self.assertEqual(filebeat["setup.template.json.name"], "wazuh")
+        self.assertTrue(filebeat["setup.template.overwrite"])
+        self.assertFalse(filebeat["setup.ilm.enabled"])
+        output = filebeat["output.elasticsearch"]
+        self.assertEqual(output["hosts"], ["https://wazuh-indexer:9200"])
+        self.assertEqual(output["ssl.verification_mode"], "full")
+        self.assertEqual(output["ssl.certificate_authorities"], ["/etc/ssl/wazuh/root-ca-manager.pem"])
+        self.assertEqual(output["ssl.certificate"], "/etc/ssl/wazuh/wazuh.manager.pem")
+        self.assertEqual(output["ssl.key"], "/etc/ssl/wazuh/wazuh.manager-key.pem")
+        dashboard = yaml.safe_load(sdl["content"]["wazuh-dashboard-opensearch-config"]["text"])
+        self.assertEqual(dashboard["opensearch.ssl.verificationMode"], "certificate")
+
+    def test_indexer_credential_files_have_restricted_fixture_posture(self) -> None:
+        scenario = parse_sdl_file(_SDL)
+        expected = {
+            "wazuh-manager": ("wazuh-manager-filebeat-config", "/etc/filebeat/filebeat.yml", "root", "root"),
+            "wazuh-dashboard": ("wazuh-dashboard-opensearch-config", "/usr/share/wazuh-dashboard/config/opensearch_dashboards.yml", "wazuh-dashboard", "wazuh-dashboard"),
+        }
+        for node, (content_id, path, user, group) in expected.items():
+            with self.subTest(node=node):
+                self.assertTrue(scenario.content[content_id].sensitive)
+                self.assertEqual(scenario.content[content_id].target, node)
+                self.assertEqual(scenario.content[content_id].path, path)
+                entries = {entry.path: entry for entry in scenario.nodes[node].runtime.filesystem_inventory}
+                entry = entries[path]
+                self.assertEqual((entry.owner_user, entry.owner_group, entry.mode), (user, group, "0600"))
+                self.assertEqual(entry.sensitivity.value, "secret_fixture")
+
     def test_checked_in_sdl_contains_no_realization_method(self) -> None:
         self.assertEqual(
             _PACK_VALIDATOR.validate_realization_method_contract(_load_sdl()), []
@@ -2526,14 +2626,14 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
         }["misp-suricata-sync-api-key"]
         self.assertEqual(principal["principal_id"], "misp-suricata-sync-api-key")
         self.assertEqual(principal["kind"], "api_key")
-        self.assertEqual(principal["credential_classification"], "operator_secret")
+        self.assertEqual(principal["credential_classification"], "redacted")
 
         sync_runtime = sdl["nodes"]["misp-suricata-sync"]["runtime"]
         (sync_agent,) = sync_runtime["forwarding_agents"]
         settings = {item["setting_id"]: item for item in sync_agent["settings"]}
         self.assertEqual(
             settings["misp-api-authentication"]["classification"],
-            "operator_secret",
+            "redacted",
         )
         self.assertEqual(
             settings["misp-tls-verification"]["value"], "required"
@@ -3632,6 +3732,87 @@ class TechVaultFlagDeclarationTests(unittest.TestCase):
             self.assertNotIn("techvault-flaggen-script", set(manifest["artifacts"]))
         with self.subTest(surface="bundled script"):
             self.assertFalse((_PACK / "assets/content/flaggen.sh").exists())
+
+
+class TechVaultMispFixtureTests(unittest.TestCase):
+    PACK_NAMES = ("techvault", "techvault-participant-study")
+    ACCOUNT = "misp-suricata-sync-api-key"
+    ERROR = "misp.api-key-invalid"
+
+    def test_both_packs_declare_the_same_misp_compatible_fixture(self) -> None:
+        values = []
+        for name in self.PACK_NAMES:
+            with self.subTest(pack=name):
+                scenario = parse_sdl_file(_ROOT / "packs" / name / "sdl" / f"{name}.sdl.yaml")
+                (binding,) = scenario.accounts[self.ACCOUNT].credential_bindings
+                self.assertEqual(binding.credential_id, f"{self.ACCOUNT}-primary")
+                self.assertEqual(binding.material.classification, "secret_fixture")
+                values.append(binding.material.value)
+                self.assertIsNotNone(re.fullmatch(r"[A-Za-z0-9]{40}", binding.material.value))
+        self.assertEqual(values[0], values[1])
+
+    def test_both_validators_reject_invalid_primary_material_without_echoing_it(self) -> None:
+        for name in self.PACK_NAMES:
+            pack = _ROOT / "packs" / name
+            validator = _load_pack_validator(pack)
+            original = yaml.safe_load((pack / "sdl" / f"{name}.sdl.yaml").read_text())
+            invalid_values = {
+                "shipped fixture": "7ea54cbe19564f9893940770bbc659f890726557b0e56111437febd117014dace",
+                "short": "a" * 39,
+                "long": "a" * 41,
+                "empty": "",
+                "punctuation": "a" * 39 + "!",
+                "space": "a" * 39 + " ",
+                "newline": "a" * 40 + "\n",
+                "unicode": "a" * 39 + "é",
+                "integer": 123,
+                "null": None,
+            }
+            for label, value in invalid_values.items():
+                with self.subTest(pack=name, case=label):
+                    candidate = copy.deepcopy(original)
+                    candidate["accounts"][self.ACCOUNT]["credential_bindings"][0]["material"]["value"] = value
+                    errors = validator.validate_misp_contract(candidate)
+                    self.assertTrue(any(error.startswith(self.ERROR) for error in errors), errors)
+                    if isinstance(value, str) and value:
+                        self.assertTrue(all(value not in error for error in errors))
+
+            mutations = {
+                "missing account": lambda account: account.clear(),
+                "missing binding": lambda account: account.__setitem__("credential_bindings", []),
+                "wrong binding shape": lambda account: account.__setitem__("credential_bindings", {}),
+                "wrong binding identity": lambda account: account["credential_bindings"][0].__setitem__("credential_id", "other-primary"),
+                "wrong purpose": lambda account: account["credential_bindings"][0].__setitem__("purpose", "recovery"),
+                "wrong material shape": lambda account: account["credential_bindings"][0].__setitem__("material", "aZ09" * 10),
+                "wrong classification": lambda account: account["credential_bindings"][0]["material"].__setitem__("classification", "plain"),
+            }
+            for label, mutate in mutations.items():
+                with self.subTest(pack=name, case=label):
+                    candidate = copy.deepcopy(original)
+                    candidate["accounts"][self.ACCOUNT]["credential_bindings"][0]["material"]["value"] = "aZ09" * 10
+                    mutate(candidate["accounts"][self.ACCOUNT])
+                    errors = validator.validate_misp_contract(candidate)
+                    self.assertTrue(any(error.startswith(self.ERROR) for error in errors), errors)
+
+            with self.subTest(pack=name, case="alternate valid mixed-case fixture"):
+                candidate = copy.deepcopy(original)
+                candidate["accounts"][self.ACCOUNT]["credential_bindings"][0]["material"]["value"] = "aZ09" * 10
+                self.assertEqual(validator.validate_misp_contract(candidate), [])
+
+    def test_author_entrypoints_reject_invalid_keys_with_current_byte_bindings(self) -> None:
+        refresh = _load_refresh_tool().refresh
+        for name in self.PACK_NAMES:
+            with self.subTest(pack=name), tempfile.TemporaryDirectory() as directory:
+                pack = pathlib.Path(directory) / name
+                shutil.copytree(_ROOT / "packs" / name, pack)
+                path = pack / "sdl" / f"{name}.sdl.yaml"
+                sdl = yaml.safe_load(path.read_text())
+                sdl["accounts"][self.ACCOUNT]["credential_bindings"][0]["material"]["value"] = "a" * 41
+                path.write_text(yaml.safe_dump(sdl, sort_keys=False), encoding="utf-8")
+                refresh(pack)
+                validate_pack_content_manifest(pack)
+                errors = _load_pack_validator(pack).validate()
+                self.assertTrue(any(error.startswith(self.ERROR) for error in errors), errors)
 
 
 class TechVaultValidatorEntrypointTests(unittest.TestCase):

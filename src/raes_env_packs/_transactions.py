@@ -23,6 +23,24 @@ class TargetExistsError(TransactionError):
     """A no-replace transaction found an occupied target."""
 
 
+class UnsupportedPlatformError(TransactionError):
+    """The C library has no ``renameat2``, so no transaction can commit here."""
+
+
+UNSUPPORTED_PLATFORM_MESSAGE = (
+    "atomic directory transactions are unsupported on this platform: "
+    "they need the Linux renameat2 system call"
+)
+
+
+def failure_message(summary: str, exc: BaseException) -> str:
+    """Return a bounded failure summary that names a missing platform capability."""
+
+    if isinstance(exc, UnsupportedPlatformError):
+        return f"{summary}: {exc}"
+    return summary
+
+
 def write_member(root: Path, rel: str, content: bytes | str) -> None:
     """Write one canonical member below a fresh private staging root."""
 
@@ -58,7 +76,7 @@ def _renameat2(src: str, dst: str, flag: int) -> None:
     libc = ctypes.CDLL(None, use_errno=True)
     renameat2 = getattr(libc, "renameat2", None)
     if renameat2 is None:
-        raise TransactionError("atomic directory transactions are unsupported")
+        raise UnsupportedPlatformError(UNSUPPORTED_PLATFORM_MESSAGE)
     renameat2.argtypes = [
         ctypes.c_int,
         ctypes.c_char_p,
@@ -101,7 +119,10 @@ def exchange(staged: Path, target: Path) -> None:
 __all__ = [
     "TransactionError",
     "TargetExistsError",
+    "UNSUPPORTED_PLATFORM_MESSAGE",
+    "UnsupportedPlatformError",
     "exchange",
+    "failure_message",
     "publish_noreplace",
     "write_member",
 ]

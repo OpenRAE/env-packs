@@ -337,6 +337,11 @@ class LockFileIntegrityTests(unittest.TestCase):
         pins = _parse_lock(_REQ_DIR / "pip-audit.txt")
         self.assertGreaterEqual(Version(pins["pip"]), Version("26.2"))
 
+    def test_recovery_lock_excludes_pyjwt_affected_by_ghsa_ffc3_869f_jxw9(self) -> None:
+        # 2.15.0, not 2.14.0: GHSA-42vr-xj54-vc7v and GHSA-x33g-cr3x-6449 affect <= 2.14.0.
+        pins = _parse_lock(_REQ_DIR / "recovery-v2.0.2.txt")
+        self.assertGreaterEqual(Version(pins["pyjwt"]), Version("2.15.0"))
+
     def test_every_requirement_is_exactly_pinned_and_hashed(self) -> None:
         for path in _lock_files():
             text = path.read_text(encoding="utf-8")
