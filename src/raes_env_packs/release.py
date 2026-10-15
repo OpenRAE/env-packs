@@ -168,6 +168,12 @@ def _yaml_kind(value: object) -> str:
     return next((kind for typ, kind in _YAML_KINDS if isinstance(value, typ)), "scalar")
 
 
+def _list_at(doc: object, key: str) -> list[object]:
+    """Return the list at ``doc[key]``; any other value reads as empty."""
+    value = doc.get(key) if isinstance(doc, dict) else None
+    return value if isinstance(value, list) else []
+
+
 class PackContracts(object):
     """The committed contracts the release tool reads, loaded once per pack."""
 
@@ -194,6 +200,15 @@ class PackContracts(object):
         bundles_rel = os.path.join("profiles", "bundles.yaml")
         self.bundles = self._mapping(
             "profiles/bundles.yaml", self._read(bundles_rel, default=missing), missing)
+        # A value the release gate iterates that is not a list is reported as
+        # a failure for this pack and read as empty.
+        for rel, doc, key in ((compat_rel, self.compatibility, "delivery_bundles"),
+                              (compat_rel, self.compatibility, "runtime_profiles"),
+                              ("profiles/bundles.yaml", self.bundles, "bundles")):
+            value = doc.get(key) if isinstance(doc, dict) else None
+            if value is not None and not isinstance(value, list):
+                self.manifest_failures.append(
+                    f"{self.name}: {rel} {key} is a YAML {_yaml_kind(value)}, not a list")
 
     def _mapping(self, rel: object, value: object, missing: object) -> dict[str, object] | None:
         """Return ``value`` when it is a mapping; record a failure unless absent."""
@@ -225,15 +240,14 @@ class PackContracts(object):
     @property
     def supported_bundles(self) -> list[dict[str, object]]:
         """Supported bundles."""
-        compat = self.compatibility or {}
-        return [b for b in (compat.get("delivery_bundles") or [])
+        return [b for b in _list_at(self.compatibility, "delivery_bundles")
                 if isinstance(b, dict) and b.get("status") == "supported"]
 
     @property
     def manifest_bundle_rows(self) -> dict[str, dict[str, object]]:
         """Manifest bundle rows."""
-        rows = (self.bundles or {}).get("bundles") or []
-        return {r.get("id"): r for r in rows if isinstance(r, dict) and r.get("id")}
+        return {r.get("id"): r for r in _list_at(self.bundles, "bundles")
+                if isinstance(r, dict) and r.get("id")}
 
 
 def is_releasable(pack_root: str) -> bool:
@@ -487,9 +501,8 @@ def _resolve_release_paths(pc: "PackContracts", out_dir: str,
     """Validate pack-controlled name/version and resolve the staging + release
     roots, both contained under the resolved ``out_dir`` (Sonar S8707).
 
-    A pack.yaml, compatibility manifest or bundles manifest that is not a
-    mapping fails first: the name, version and views would only be fallbacks,
-    so nothing is resolved for it."""
+    A malformed pack manifest fails first: the name, version and views would
+    only be fallbacks, so nothing is resolved for it."""
     failures = list(pc.manifest_failures) or [
         f"{pc.name}: pack {label} {value!r} is not a path-safe slug"
         for label, value in (("name", pc.name), ("version", version))
@@ -635,7 +648,7 @@ def build_release(pack_root: str, out_dir: str, *,
     tier_stats: dict[str, dict[str, object]] = {
         tier: {"file_count": 0, "exports": {}} for tier in sorted(set(BOUNDARY_TIERS.values()))
     }
-    # No profile is derived from a pack manifest that is not a mapping;
+    # No profile is derived from a malformed pack manifest;
     # _resolve_release_paths reports it before anything is staged.
     metadata = {} if pc.manifest_failures else release_metadata(
         pack_root, include_build_provenance=include_build_provenance)
@@ -883,14 +896,14 @@ def _emit_evidence(pc: "PackContracts", pack_root: str,
 def _supported_bundle_ids(compat: dict[str, object]) -> list[str]:
     """Supported bundle ids."""
     return sorted(
-        b.get("bundle_id") for b in (compat.get("delivery_bundles") or [])
+        b.get("bundle_id") for b in _list_at(compat, "delivery_bundles")
         if isinstance(b, dict) and b.get("status") == "supported" and b.get("bundle_id"))
 
 
 def _runtime_profile_ids(compat: dict[str, object]) -> list[str]:
     """Runtime profile ids."""
     return sorted(
-        rp.get("profile_id") for rp in (compat.get("runtime_profiles") or [])
+        rp.get("profile_id") for rp in _list_at(compat, "runtime_profiles")
         if isinstance(rp, dict) and rp.get("status") in ("supported", "required")
         and rp.get("profile_id"))
 

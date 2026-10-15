@@ -904,5 +904,87 @@ class MalformedCompatibilityAndBundlesTests(unittest.TestCase):
             self.assertEqual(PR.lint_pack(pack), [])
 
 
+# --------------------------------------------------------------------------
+# A delivery_bundles, runtime_profiles or bundles value that is not a list (#468)
+# --------------------------------------------------------------------------
+_COMPAT_REL = "pack.compatibility.yaml"
+_BUNDLES_REL = "profiles/bundles.yaml"
+_LIST_KEYS = (
+    (_COMPAT_REL, "delivery_bundles"),
+    (_COMPAT_REL, "runtime_profiles"),
+    (_BUNDLES_REL, "bundles"),
+)
+# (replacement value, kind named in the failure)
+_NON_LIST_VALUES = (
+    (5, "scalar"),
+    ("guided", "scalar"),
+    (0, "scalar"),
+    ("", "scalar"),
+    (False, "scalar"),
+    ({"guided": {}}, "mapping"),
+    ({}, "mapping"),
+)
+
+
+def _set_list_value(pack: str, rel: str, key: str, value) -> None:
+    _edit_yaml(os.path.join(pack, rel), lambda d: d.__setitem__(key, value))
+
+
+class NonListBundleValueTests(unittest.TestCase):
+    """A bundle or profile value that is not a list is a failure, never a traceback."""
+
+    def test_every_subcommand_names_the_file_and_key(self):
+        for (rel, key), (value, kind), (cmd, label) in itertools.product(
+                _LIST_KEYS, _NON_LIST_VALUES, _SUBCOMMAND_LABELS):
+            with self.subTest(rel=rel, key=key, value=value, cmd=cmd), \
+                    tempfile.TemporaryDirectory() as tmp:
+                pack = _make_supported_pack(tmp)
+                _set_list_value(pack, rel, key, value)
+                out_dir = os.path.join(tmp, "out")
+                argv = [cmd, "--pack", pack] + (["--out", out_dir] if cmd == "build" else [])
+                code, out = _run_cli(argv)
+                self.assertEqual(code, 1, out)
+                self.assertIn(f"{label}: FAIL (1 issue(s))", out)
+                self.assertIn(
+                    f" - synthpack: {rel} {key} is a YAML {kind}, not a list", out)
+                self.assertFalse(os.path.exists(out_dir), "a failed build wrote output")
+
+    def test_check_fails_the_pack_and_still_checks_the_others(self):
+        for rel, key in _LIST_KEYS:
+            with self.subTest(rel=rel, key=key), tempfile.TemporaryDirectory() as root:
+                # "broken-pack" sorts before "synthpack", so the valid pack runs after it.
+                broken = _rename_pack(_make_supported_pack(root), "broken-pack")
+                _set_list_value(broken, rel, key, 5)
+                _make_supported_pack(root)
+                code, out = _run_cli(["check", "--packs-root", root])
+                self.assertEqual(code, 1, out)
+                lines = out.splitlines()
+                self.assertIn("  [fail] broken-pack release checks", lines)
+                self.assertIn("  [ok] synthpack release checks", lines)
+                self.assertIn("PACK RELEASE GATE: FAIL (1 issue(s))", lines)
+                self.assertIn(
+                    f" - broken-pack: {rel} {key} is a YAML scalar, not a list", lines)
+
+    def test_readers_treat_a_non_list_value_as_empty(self):
+        for rel, key in _LIST_KEYS:
+            with self.subTest(rel=rel, key=key), tempfile.TemporaryDirectory() as tmp:
+                pack = _make_supported_pack(tmp)
+                _set_list_value(pack, rel, key, 5)
+                pc = PR.PackContracts(pack)
+                self.assertEqual(len(pc.manifest_failures), 1)
+                self.assertIsInstance(pc.supported_bundles, list)
+                self.assertIsInstance(pc.manifest_bundle_rows, dict)
+                summary = PR.release_metadata(pack)["summary"]
+                self.assertIsInstance(summary["supported_profiles"], list)
+                self.assertIsInstance(summary["runtime_profiles"], list)
+
+    def test_a_null_value_reads_as_absent(self):
+        for rel, key in _LIST_KEYS:
+            with self.subTest(rel=rel, key=key), tempfile.TemporaryDirectory() as tmp:
+                pack = _make_supported_pack(tmp)
+                _set_list_value(pack, rel, key, None)
+                self.assertEqual(PR.PackContracts(pack).manifest_failures, [])
+
+
 if __name__ == "__main__":
     unittest.main()
