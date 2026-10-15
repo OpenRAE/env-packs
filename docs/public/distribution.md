@@ -41,7 +41,8 @@ fails the build.
 Signing and pushing to a registry use established tooling (cosign, oras) and a
 keyless Sigstore identity, so they run in CI, not on a laptop. The
 `Pack distribution rehearsal` workflow does the full publish → sign → install →
-verify pass against an ephemeral registry.
+verify pass against an ephemeral registry, for the pack directory named by its
+`pack` input (default `packs/techvault`).
 
 ## Verify
 
