@@ -99,6 +99,20 @@ class DistributionWorkflowContractTests(unittest.TestCase):
         self.assertLess(cosign, rehearsal, "cosign must be installed before the rehearsal")
         self.assertLess(oras, rehearsal, "oras must be installed before the rehearsal")
 
+    def test_rehearsal_step_passes_the_pack_input_through_env(self) -> None:
+        inputs = _triggers(self.data)["workflow_dispatch"]["inputs"]
+        self.assertEqual(inputs["pack"].get("default"), "packs/techvault")
+        step = next(s for s in self.steps if "distribution_rehearsal.py" in str(s.get("run", "")))
+        self.assertEqual(step.get("env", {}).get("REHEARSAL_PACK"), "${{ inputs.pack }}",
+                         "the rehearsal must receive the pack input through env:")
+
+    def test_no_run_body_interpolates_an_expression(self) -> None:
+        # GitHub's script-injection guidance: expressions go through env:, so a
+        # dispatch value is never pasted into the generated shell script.
+        for step in self.steps:
+            self.assertNotIn("${{", str(step.get("run", "")),
+                             f"step {step.get('name')!r} interpolates an expression in run:")
+
 
 if __name__ == "__main__":
     unittest.main()
