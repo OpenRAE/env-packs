@@ -12,7 +12,7 @@ from __future__ import annotations
 import pathlib
 import unittest
 
-from raes_env_packs import PackDigestError, content_ci
+from raes_env_packs import content_ci
 from raes_env_packs.digest import validate_pack_content_manifest
 
 _PACKS = pathlib.Path(__file__).resolve().parents[1] / "packs"
@@ -35,13 +35,7 @@ class HostedPackContentBindingTests(unittest.TestCase):
     def test_every_hosted_pack_manifest_binds_its_bytes(self) -> None:
         for name in _hosted_packs():
             with self.subTest(pack=name):
-                try:
-                    validate_pack_content_manifest(_PACKS / name)
-                except PackDigestError as error:
-                    self.fail(
-                        f"packs/{name}: {error}; re-derive associated-artifacts.json with "
-                        "derive_pack_content_manifest after editing pack files (ADR 0012)"
-                    )
+                validate_pack_content_manifest(_PACKS / name)
 
 
 if __name__ == "__main__":
