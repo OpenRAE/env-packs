@@ -846,6 +846,22 @@ def _write_broken_contract_pack(parent: str, rel: str, body: str) -> str:
 class MalformedCompatibilityAndBundlesTests(unittest.TestCase):
     """A non-mapping compatibility or bundles manifest fails the pack, never skips it."""
 
+    def test_top_level_and_nested_failures_are_both_reported(self):
+        for malformed, nested, key in (
+                (_COMPAT, _BUNDLES, "bundles"),
+                (_BUNDLES, _COMPAT, "delivery_bundles")):
+            with self.subTest(malformed=malformed), tempfile.TemporaryDirectory() as tmp:
+                pack = _make_supported_pack(tmp)
+                _write(os.path.join(pack, malformed), "- invalid\n")
+                _set_list_value(pack, nested, key, 5)
+                code, out = _run_cli(["check", "--pack", pack])
+                self.assertEqual(code, 1, out)
+                self.assertIn("PACK RELEASE GATE: FAIL (2 issue(s))", out)
+                self.assertIn(
+                    f" - synthpack: {malformed} is a YAML list, not a mapping", out)
+                self.assertIn(
+                    f" - synthpack: {nested} {key} is a YAML scalar, not a list", out)
+
     def test_every_subcommand_reports_the_file(self):
         for rel, (kind, body), (cmd, label) in itertools.product(
                 _MALFORMED_FILES, _NON_MAPPING_PACK_YAML, _SUBCOMMAND_LABELS):
