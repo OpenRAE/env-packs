@@ -158,6 +158,22 @@ def _resolved_within(base_real: str, *parts: str) -> str:
 # --------------------------------------------------------------------------
 # Pack contract loading
 # --------------------------------------------------------------------------
+# yaml.safe_load builds a ``!!set``-tagged mapping node as a Python set.
+_YAML_KINDS: tuple[tuple[type[object], str], ...] = (
+    (list, "list"), (dict, "mapping"), (set, "set"))
+
+
+def _yaml_kind(value: object) -> str:
+    """Name the YAML node kind of a parsed value, never the value itself."""
+    return next((kind for typ, kind in _YAML_KINDS if isinstance(value, typ)), "scalar")
+
+
+def _list_at(doc: object, key: str) -> list[object]:
+    """Return the list at ``doc[key]``; any other value reads as empty."""
+    value = doc.get(key) if isinstance(doc, dict) else None
+    return value if isinstance(value, list) else []
+
+
 class PackContracts(object):
     """The committed contracts the release tool reads, loaded once per pack."""
 
@@ -176,10 +192,20 @@ class PackContracts(object):
             kind = "list" if isinstance(manifest, list) else "scalar"
             self.manifest_failures.append(
                 f"{self.name}: pack.yaml is a YAML {kind}, not a mapping")
-        self.compatibility = self._read_pointer(self.pack_yaml.get("compatibility_manifest"))
+        compat_rel = self.pack_yaml.get("compatibility_manifest")
+        self.compatibility = self._read_pointer(compat_rel)
         self.provenance = self._read_pointer(self.pack_yaml.get("provenance_ledger"))
         self.publication = self._read_pointer(self.pack_yaml.get("publication_supply"))
         self.bundles = self._read(os.path.join("profiles", "bundles.yaml"))
+        # A value the release gate iterates that is not a list is reported as
+        # a failure for this pack and read as empty.
+        for rel, doc, key in ((compat_rel, self.compatibility, "delivery_bundles"),
+                              (compat_rel, self.compatibility, "runtime_profiles"),
+                              ("profiles/bundles.yaml", self.bundles, "bundles")):
+            value = doc.get(key) if isinstance(doc, dict) else None
+            if value is not None and not isinstance(value, list):
+                self.manifest_failures.append(
+                    f"{self.name}: {rel} {key} is a YAML {_yaml_kind(value)}, not a list")
 
     def _read(self, rel: str, *, default: object = None) -> object:
         """Read contained YAML; return ``default`` only when it cannot be read.
@@ -202,15 +228,14 @@ class PackContracts(object):
     @property
     def supported_bundles(self) -> list[dict[str, object]]:
         """Supported bundles."""
-        compat = self.compatibility or {}
-        return [b for b in (compat.get("delivery_bundles") or [])
+        return [b for b in _list_at(self.compatibility, "delivery_bundles")
                 if isinstance(b, dict) and b.get("status") == "supported"]
 
     @property
     def manifest_bundle_rows(self) -> dict[str, dict[str, object]]:
         """Manifest bundle rows."""
-        rows = (self.bundles or {}).get("bundles") or []
-        return {r.get("id"): r for r in rows if isinstance(r, dict) and r.get("id")}
+        return {r.get("id"): r for r in _list_at(self.bundles, "bundles")
+                if isinstance(r, dict) and r.get("id")}
 
 
 def is_releasable(pack_root: str) -> bool:
@@ -288,16 +313,6 @@ def _lint_bundle(pc: "PackContracts", pack_root: str, bundle: dict[str, object],
                 f"{pc.name}: supported delivery bundle {bid} validation reference "
                 f"missing: {vpath}")
     return failures
-
-
-# yaml.safe_load builds a ``!!set``-tagged mapping node as a Python set.
-_YAML_KINDS: tuple[tuple[type[object], str], ...] = (
-    (list, "list"), (dict, "mapping"), (set, "set"))
-
-
-def _yaml_kind(value: object) -> str:
-    """Name the YAML node kind of a parsed value, never the value itself."""
-    return next((kind for typ, kind in _YAML_KINDS if isinstance(value, typ)), "scalar")
 
 
 def _pack_yaml_mapping(pc: PackContracts, key: str) -> tuple[dict[str, object], list[str]]:
@@ -474,7 +489,7 @@ def _resolve_release_paths(pc: "PackContracts", out_dir: str,
     """Validate pack-controlled name/version and resolve the staging + release
     roots, both contained under the resolved ``out_dir`` (Sonar S8707).
 
-    A pack.yaml that is not a mapping fails first: the name and version would
+    A malformed pack manifest fails first: the name, version and views would
     only be fallbacks, so nothing is resolved for it."""
     failures = list(pc.manifest_failures) or [
         f"{pc.name}: pack {label} {value!r} is not a path-safe slug"
@@ -621,7 +636,7 @@ def build_release(pack_root: str, out_dir: str, *,
     tier_stats: dict[str, dict[str, object]] = {
         tier: {"file_count": 0, "exports": {}} for tier in sorted(set(BOUNDARY_TIERS.values()))
     }
-    # No profile is derived from a pack.yaml that is not a mapping;
+    # No profile is derived from a malformed pack manifest;
     # _resolve_release_paths reports it before anything is staged.
     metadata = {} if pc.manifest_failures else release_metadata(
         pack_root, include_build_provenance=include_build_provenance)
@@ -869,14 +884,14 @@ def _emit_evidence(pc: "PackContracts", pack_root: str,
 def _supported_bundle_ids(compat: dict[str, object]) -> list[str]:
     """Supported bundle ids."""
     return sorted(
-        b.get("bundle_id") for b in (compat.get("delivery_bundles") or [])
+        b.get("bundle_id") for b in _list_at(compat, "delivery_bundles")
         if isinstance(b, dict) and b.get("status") == "supported" and b.get("bundle_id"))
 
 
 def _runtime_profile_ids(compat: dict[str, object]) -> list[str]:
     """Runtime profile ids."""
     return sorted(
-        rp.get("profile_id") for rp in (compat.get("runtime_profiles") or [])
+        rp.get("profile_id") for rp in _list_at(compat, "runtime_profiles")
         if isinstance(rp, dict) and rp.get("status") in ("supported", "required")
         and rp.get("profile_id"))
 
@@ -1345,7 +1360,7 @@ def check(
     checked = 0
     for pack_root in pack_roots:
         name = os.path.basename(pack_root)
-        # A malformed pack.yaml fails this pack; the remaining packs still run.
+        # A malformed pack manifest fails this pack; the remaining packs still run.
         malformed = PackContracts(pack_root).manifest_failures
         if not malformed and not is_releasable(pack_root):
             print(f"  [skip] {name}: not releasable "
