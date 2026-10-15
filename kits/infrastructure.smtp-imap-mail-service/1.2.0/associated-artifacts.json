@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.smtp-imap-mail-service-associated-artifacts",
+  "manifest_version": "1.2.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "smtp-imap-mail-service",
+    "ref_version": null,
+    "ref_digest": "sha256:38ad49c3567fb8d6a1ef257d7a26e7a19a906f0e53d66102a04466759a4e5915",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d5ca58ea7130283318c6a3b7685dc711ebf805b0e3433b9d37feba90ee513c38"
+      },
+      "size_bytes": 477,
+      "created_at": "2026-10-15T00:00:00Z",
+      "source": "infrastructure.smtp-imap-mail-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "5370704a583607c25e92e340af96d060a8613df9bb2422e09cfce0c9694c237f"
+      },
+      "size_bytes": 515,
+      "created_at": "2026-10-15T00:00:00Z",
+      "source": "infrastructure.smtp-imap-mail-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "373971e0ebc64634f4b5c61f6303e7d2d9db6e42c38a59d1342355ac996b0da0"
+      },
+      "size_bytes": 645,
+      "created_at": "2026-10-15T00:00:00Z",
+      "source": "infrastructure.smtp-imap-mail-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "95983ba6063239f7b2321fb88cd5bbedee6c7d172139b065cd15193c4a0d8812"
+      },
+      "size_bytes": 1678,
+      "created_at": "2026-10-15T00:00:00Z",
+      "source": "infrastructure.smtp-imap-mail-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "4efabb0a668db232bc58e93a87340681b64ebcdfcfc20335f0dc7ea62c179271"
+      },
+      "size_bytes": 3086,
+      "created_at": "2026-10-15T00:00:00Z",
+      "source": "infrastructure.smtp-imap-mail-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d70f4fd395197c38a5b9ffdf68b71a6f9feca59059ed073e3c3fc1409b82d5f6"
+      },
+      "size_bytes": 265,
+      "created_at": "2026-10-15T00:00:00Z",
+      "source": "infrastructure.smtp-imap-mail-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:fd64f338c30e66354aef2f7b7de0afd5ed9e9defa60e0bbcc4227b239a9aa71f"
+}
