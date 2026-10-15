@@ -822,6 +822,105 @@ class MalformedPackYamlTests(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
+# A compatibility manifest or profiles/bundles.yaml that is not a mapping (#448)
+# --------------------------------------------------------------------------
+_COMPAT = "pack.compatibility.yaml"
+_BUNDLES = "profiles/bundles.yaml"
+_MALFORMED_FILES = (_COMPAT, _BUNDLES)
+# (PackContracts attribute, reader derived from it, its value when absent)
+_EMPTY_READERS = {
+    _COMPAT: ("compatibility", "supported_bundles", []),
+    _BUNDLES: ("bundles", "manifest_bundle_rows", {}),
+}
+
+
+def _write_broken_contract_pack(parent: str, rel: str, body: str) -> str:
+    """A pack named "broken" whose ``rel`` file parses to ``body``."""
+    root = os.path.join(parent, "broken")
+    _write(os.path.join(root, "pack.yaml"), yaml.safe_dump(
+        {"name": "broken", "compatibility_manifest": _COMPAT}))
+    _write(os.path.join(root, rel), body)
+    return root
+
+
+class MalformedCompatibilityAndBundlesTests(unittest.TestCase):
+    """A non-mapping compatibility or bundles manifest fails the pack, never skips it."""
+
+    def test_top_level_and_nested_failures_are_both_reported(self):
+        for malformed, nested, key in (
+                (_COMPAT, _BUNDLES, "bundles"),
+                (_BUNDLES, _COMPAT, "delivery_bundles")):
+            with self.subTest(malformed=malformed), tempfile.TemporaryDirectory() as tmp:
+                pack = _make_supported_pack(tmp)
+                _write(os.path.join(pack, malformed), "- invalid\n")
+                _set_list_value(pack, nested, key, 5)
+                code, out = _run_cli(["check", "--pack", pack])
+                self.assertEqual(code, 1, out)
+                self.assertIn("PACK RELEASE GATE: FAIL (2 issue(s))", out)
+                self.assertIn(
+                    f" - synthpack: {malformed} is a YAML list, not a mapping", out)
+                self.assertIn(
+                    f" - synthpack: {nested} {key} is a YAML scalar, not a list", out)
+
+    def test_every_subcommand_reports_the_file(self):
+        for rel, (kind, body), (cmd, label) in itertools.product(
+                _MALFORMED_FILES, _NON_MAPPING_PACK_YAML, _SUBCOMMAND_LABELS):
+            with self.subTest(file=rel, cmd=cmd, body=body), \
+                    tempfile.TemporaryDirectory() as tmp:
+                pack = _make_supported_pack(tmp)
+                _write(os.path.join(pack, rel), body)
+                out_dir = os.path.join(tmp, "out")
+                argv = [cmd, "--pack", pack] + (["--out", out_dir] if cmd == "build" else [])
+                code, out = _run_cli(argv)
+                self.assertEqual(code, 1, out)
+                lines = out.splitlines()
+                self.assertIn(f"{label}: FAIL (1 issue(s))", lines)
+                self.assertIn(f" - synthpack: {rel} is a YAML {kind}, not a mapping", lines)
+                self.assertFalse(os.path.exists(out_dir), "a failed build wrote output")
+
+    def test_check_fails_the_pack_and_still_checks_the_packs_after_it(self):
+        for rel, (kind, body) in itertools.product(_MALFORMED_FILES, _NON_MAPPING_PACK_YAML):
+            with self.subTest(file=rel, body=body), tempfile.TemporaryDirectory() as root:
+                # "broken" sorts before "synthpack", so the valid pack runs after it.
+                _write_broken_contract_pack(root, rel, body)
+                _make_pack(root, delivery_bundles=[])
+                code, out = _run_cli(["check", "--packs-root", root])
+                self.assertEqual(code, 1, out)
+                lines = out.splitlines()
+                self.assertIn("  [fail] broken release checks", lines)
+                self.assertIn("  [ok] synthpack release checks", lines)
+                self.assertIn("PACK RELEASE GATE: FAIL (1 issue(s))", lines)
+                self.assertIn(f" - broken: {rel} is a YAML {kind}, not a mapping", lines)
+
+    def test_readers_treat_the_file_as_absent(self):
+        for rel, (_, body) in itertools.product(_MALFORMED_FILES, _NON_MAPPING_PACK_YAML):
+            with self.subTest(file=rel, body=body), tempfile.TemporaryDirectory() as tmp:
+                pack = _make_supported_pack(tmp)
+                _write(os.path.join(pack, rel), body)
+                attr, reader, empty = _EMPTY_READERS[rel]
+                pc = PR.PackContracts(pack)
+                self.assertIsNone(getattr(pc, attr))
+                self.assertEqual(getattr(pc, reader), empty)
+                # Only the compatibility manifest decides releasability.
+                self.assertEqual(PR.is_releasable(pack), rel == _BUNDLES)
+                self.assertIsInstance(PR.release_metadata(pack), dict)
+
+    def test_absent_files_stay_explicit_skips(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pack = os.path.join(tmp, "broken")
+            _write(os.path.join(pack, "pack.yaml"), "name: broken\n")
+            self.assertEqual(PR.PackContracts(pack).manifest_failures, [])
+            code, out = _run_cli(["check", "--pack", pack])
+            self.assertEqual(code, 0, out)
+            self.assertIn("  [skip] broken: not releasable", out)
+        with tempfile.TemporaryDirectory() as tmp:
+            pack = _make_pack(tmp, delivery_bundles=[])
+            _write(os.path.join(pack, _BUNDLES), "{}\n")
+            self.assertEqual(PR.PackContracts(pack).manifest_failures, [])
+            self.assertEqual(PR.lint_pack(pack), [])
+
+
+# --------------------------------------------------------------------------
 # A delivery_bundles, runtime_profiles or bundles value that is not a list (#468)
 # --------------------------------------------------------------------------
 _COMPAT_REL = "pack.compatibility.yaml"

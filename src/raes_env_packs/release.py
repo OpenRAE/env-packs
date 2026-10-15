@@ -183,20 +183,23 @@ class PackContracts(object):
         self._root_real = os.path.realpath(self.pack_root)
         missing = object()
         manifest = self._read("pack.yaml", default=missing)
-        # A pack.yaml that parses to a list or a scalar is reported as a failure
-        # for this pack instead of crashing every caller on ``.get``.
-        self.pack_yaml = manifest if isinstance(manifest, dict) else {}
-        self.name = self.pack_yaml.get("name", os.path.basename(self.pack_root))
+        # A pack.yaml, compatibility manifest or profiles/bundles.yaml that
+        # parses to a list or a scalar (an empty or null file included) is
+        # reported as a failure for this pack and read as absent, instead of
+        # crashing every caller on ``.get``. An absent or unreadable file stays
+        # absent: a pack without a compatibility manifest is an explicit skip.
+        self.name = (manifest if isinstance(manifest, dict) else {}).get(
+            "name", os.path.basename(self.pack_root))
         self.manifest_failures: list[str] = []
-        if manifest is not missing and not isinstance(manifest, dict):
-            kind = "list" if isinstance(manifest, list) else "scalar"
-            self.manifest_failures.append(
-                f"{self.name}: pack.yaml is a YAML {kind}, not a mapping")
+        self.pack_yaml = self._mapping("pack.yaml", manifest, missing) or {}
         compat_rel = self.pack_yaml.get("compatibility_manifest")
-        self.compatibility = self._read_pointer(compat_rel)
+        self.compatibility = self._mapping(
+            compat_rel, self._read_pointer(compat_rel, default=missing), missing)
         self.provenance = self._read_pointer(self.pack_yaml.get("provenance_ledger"))
         self.publication = self._read_pointer(self.pack_yaml.get("publication_supply"))
-        self.bundles = self._read(os.path.join("profiles", "bundles.yaml"))
+        bundles_rel = os.path.join("profiles", "bundles.yaml")
+        self.bundles = self._mapping(
+            "profiles/bundles.yaml", self._read(bundles_rel, default=missing), missing)
         # A value the release gate iterates that is not a list is reported as
         # a failure for this pack and read as empty.
         for rel, doc, key in ((compat_rel, self.compatibility, "delivery_bundles"),
@@ -206,6 +209,15 @@ class PackContracts(object):
             if value is not None and not isinstance(value, list):
                 self.manifest_failures.append(
                     f"{self.name}: {rel} {key} is a YAML {_yaml_kind(value)}, not a list")
+
+    def _mapping(self, rel: object, value: object, missing: object) -> dict[str, object] | None:
+        """Return ``value`` when it is a mapping; record a failure unless absent."""
+        if isinstance(value, dict):
+            return value
+        if value is not missing:
+            self.manifest_failures.append(
+                f"{self.name}: {rel} is a YAML {_yaml_kind(value)}, not a mapping")
+        return None
 
     def _read(self, rel: str, *, default: object = None) -> object:
         """Read contained YAML; return ``default`` only when it cannot be read.
@@ -221,9 +233,9 @@ class PackContracts(object):
         except (ValueError, OSError, yaml.YAMLError):
             return default
 
-    def _read_pointer(self, rel: object) -> object:
-        """Read pointer."""
-        return self._read(rel) if isinstance(rel, str) else None
+    def _read_pointer(self, rel: object, *, default: object = None) -> object:
+        """Read the file a pack.yaml pointer names; ``default`` when it cannot be read."""
+        return self._read(rel, default=default) if isinstance(rel, str) else default
 
     @property
     def supported_bundles(self) -> list[dict[str, object]]:
