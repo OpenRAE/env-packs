@@ -17,13 +17,10 @@ manifest judges what the kit demands, not what a particular backend supports,
 and claims no backend behavior.
 
 Each kit in ``RUNTIME_COLLECTION_KITS`` puts a ``${parameter}`` inside a node
-runtime collection. RAES 6.0.1 cannot retain typed authority for a configurable
-string parameter there (OpenRAE/rae#1481), so planning still reports
-``realization.authority-bound-unavailable`` and the plan is not valid (#414).
-The planning test permits this known diagnostic for those kits. It rejects all
-other diagnostics and does not require the upstream failure to persist. Each of
-those kits is also composed with a custom value outside its default and
-variation values. Every other Linux kit must plan with no diagnostic at all, so
+runtime collection (#414). RAES 7.0.0 keeps typed authority for a configurable
+parameter there (OpenRAE/rae#1481). The planning test composes each of those
+kits with its default and variation values, and also with a custom value
+outside them. Every Linux kit must plan with no diagnostic in every case, so
 its plan is valid.
 """
 
@@ -69,7 +66,6 @@ EXACT_VIRTUAL_MACHINE = {
     "posture": "exact",
     "domain": {"kind": "exact", "value": "virtual-machine"},
 }
-AUTHORITY_BOUND_UNAVAILABLE = "realization.authority-bound-unavailable"
 CUSTOM_PARAMETERS = {
     "infrastructure.application-api-service": {"api_base_path": "/custom/v3"},
     "infrastructure.postgresql-database": {"database_name": "customer_data"},
@@ -200,23 +196,18 @@ class KitComputeSubstrateTests(unittest.TestCase):
                 (release / "tests/composition.yaml").read_text(encoding="utf-8")
             )
             names = ("default", "variation")
-            permitted: set[str] = set()
             if release.parent.name in RUNTIME_COLLECTION_KITS:
                 cases["custom"] = {
                     **cases["default"],
                     **CUSTOM_PARAMETERS[release.parent.name],
                 }
                 names += ("custom",)
-                # OpenRAE/rae#1481: the runtime-collection parameter has no
-                # authority bound under RAES 6.0.1. Permit that diagnostic
-                # without requiring the upstream failure to persist.
-                permitted = {AUTHORITY_BOUND_UNAVAILABLE}
             for case in names:
                 with self.subTest(kit=release.parent.name, version=release.name, case=case):
                     codes = _plan_release(
                         release, module["module"]["version"], cases[case]
                     )
-                    self.assertFalse(codes - permitted, codes)
+                    self.assertEqual(codes, set())
 
     def test_windows_kits_keep_an_exact_virtual_machine_substrate(self) -> None:
         releases = _releases(windows=True)
