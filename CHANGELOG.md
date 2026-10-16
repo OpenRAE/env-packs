@@ -11,6 +11,19 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.3.2](https://github.com/OpenRAE/env-packs/compare/v6.3.1...v6.3.2) (2026-10-16)
+
+
+### Bug Fixes
+
+* **ci:** rehearse the pack directory named by the pack distribution workflow's pack input ([#467](https://github.com/OpenRAE/env-packs/issues/467)) ([5c585f7](https://github.com/OpenRAE/env-packs/commit/5c585f7768e2e47c19c8acf1406d228ce7ff9dee)), closes [#451](https://github.com/OpenRAE/env-packs/issues/451)
+* **kits:** derive SMTP/IMAP mailbox addresses from mail_domain in a 1.2.0 release ([#474](https://github.com/OpenRAE/env-packs/issues/474)) ([7344730](https://github.com/OpenRAE/env-packs/commit/734473097dac17ed8c426aba4a4159ba67b47957))
+* **packs:** rebind the AI Escape Lab artifact manifest and byte-bind every hosted pack in CI ([#473](https://github.com/OpenRAE/env-packs/issues/473)) ([11bc9fe](https://github.com/OpenRAE/env-packs/commit/11bc9fe497ab2a39b0671e1852b336a67d19b4c7))
+* re-bind the AI Escape Lab associated-artifact manifest and byte-bind every hosted pack in CI ([#471](https://github.com/OpenRAE/env-packs/issues/471)) ([62a8aac](https://github.com/OpenRAE/env-packs/commit/62a8aacc3bf4e8bfe8d95aa211879d17bf11076f))
+* **release:** report a compatibility or bundles manifest that is not a mapping instead of crashing raes-pack-release ([#469](https://github.com/OpenRAE/env-packs/issues/469)) ([c6eeb7b](https://github.com/OpenRAE/env-packs/commit/c6eeb7b1c01498fe2b4cd09a5f9631d1d40822bd))
+* **release:** report a delivery_bundles, runtime_profiles or bundles value that is not a list instead of crashing raes-pack-release ([#472](https://github.com/OpenRAE/env-packs/issues/472)) ([8af70dd](https://github.com/OpenRAE/env-packs/commit/8af70dd086ec73b873bb260ac9a93b71cb9e21cd))
+* **release:** report a pack.yaml that is not a mapping instead of crashing raes-pack-release ([#450](https://github.com/OpenRAE/env-packs/issues/450)) ([5b1b859](https://github.com/OpenRAE/env-packs/commit/5b1b859342c752c21fba28d0edb7db7738ea0434))
+
 ## [6.3.1](https://github.com/OpenRAE/env-packs/compare/v6.3.0...v6.3.1) (2026-10-14)
 
 
