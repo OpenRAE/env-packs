@@ -17,6 +17,7 @@ anyio==4.15.1 \
     #   raes-env-packs (pyproject.toml)
     #   httpx2
     #   mcp
+    #   raes
     #   sse-starlette
     #   starlette
     #   watchfiles
@@ -424,7 +425,9 @@ mdurl==0.1.2 \
 opentelemetry-api==1.45.1 \
     --hash=sha256:aa38ed19bcc084ba42782a73255b3582283eced7ad6dddbd6695189e69adfb75 \
     --hash=sha256:b31553efa588ae44bc306f863c785c5333a9ecc091248c6ee68b4b6c87fdedfb
-    # via mcp
+    # via
+    #   fastapi
+    #   mcp
 packaging==26.3 \
     --hash=sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79 \
     --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
@@ -659,9 +662,9 @@ pyyaml==6.0.3 \
     #   raes-env-packs (pyproject.toml)
     #   raes
     #   uvicorn
-raes==6.0.1 \
-    --hash=sha256:3e97f42d42564acc1740757157ffd35a8c6373487845e987a314da54388a06c0 \
-    --hash=sha256:8ab156fb1b9c1f0b467c08d98c0695403224ad3c6f2b7835e30b570f8741e67f
+raes==7.0.0 \
+    --hash=sha256:3248f494ae635cd890a7697d14d31101c5525ffb92e729f4fe3f28377cc450aa \
+    --hash=sha256:e92685889f7a73ee806802692504a2d435d2c5e7ab2385800db6a8f134240371
     # via raes-env-packs (pyproject.toml)
 referencing==0.37.0 \
     --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231 \

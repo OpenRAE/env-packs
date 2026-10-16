@@ -4,11 +4,8 @@ The 1.0.0 and 1.1.0 releases substitute ``mail_domain`` into the domain name
 but hard-code both mailbox addresses to ``environment.test``. The 1.2.0
 release derives each address from ``mail_domain``. This test composes the
 release through RAES with the default, the declared variation, and a custom
-domain, and checks each composed address and domain reference.
-
-RAES 6.0.1 already reports ``realization.authority-bound-unavailable`` for
-the domain name (OpenRAE/rae#1481). The derived addresses must not add a
-planning diagnostic to the set that the 1.1.0 release reports.
+domain, and checks each composed address and domain reference. The composed
+1.2.0 release must plan with no diagnostic in each case.
 """
 
 from __future__ import annotations
@@ -28,7 +25,6 @@ from tests.test_kit_compute_substrate import MANIFEST
 
 KIT = Path(__file__).resolve().parents[1] / "kits/infrastructure.smtp-imap-mail-service"
 CORRECTED = KIT / "1.2.0"
-PREVIOUS = KIT / "1.1.0"
 
 
 def _compose(release: Path, parameters: dict) -> tuple[object, set[str]]:
@@ -90,12 +86,11 @@ class SmtpImapMailboxDomainTests(unittest.TestCase):
                     ],
                 )
 
-    def test_derived_addresses_add_no_planning_diagnostic(self) -> None:
+    def test_derived_addresses_plan_without_a_diagnostic(self) -> None:
         for case, (parameters, _) in _cases().items():
             with self.subTest(case=case):
-                _, corrected = _compose(CORRECTED, parameters)
-                _, previous = _compose(PREVIOUS, parameters)
-                self.assertLessEqual(corrected, previous)
+                _, codes = _compose(CORRECTED, parameters)
+                self.assertEqual(codes, set())
 
 
 if __name__ == "__main__":
