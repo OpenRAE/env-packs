@@ -1,12 +1,13 @@
 # Verified pack supply-chain rehearsal (issue #191, ADR 0037).
 #
 # Manually triggered end-to-end integration for the distribution workflow. It
-# stands up an ephemeral OCI registry (registry:2), publishes TechVault with its
-# generated SBOM + provenance, signs the validated set-digest subject with
-# keyless Sigstore (the GitHub Actions OIDC identity — the one thing a developer
-# box cannot provide), then pulls, verifies signature + content, installs, and
-# checks update/rollback guidance. Nothing here is standing infrastructure: the
-# registry and the signing identity are spun up per run.
+# stands up an ephemeral OCI registry (registry:2), publishes the pack directory
+# named by the `pack` input (TechVault by default) with its generated SBOM +
+# provenance, signs the validated set-digest subject with keyless Sigstore (the
+# GitHub Actions OIDC identity — the one thing a developer box cannot provide),
+# then pulls, verifies signature + content, installs, and checks update/rollback
+# guidance. Nothing here is standing infrastructure: the registry and the signing
+# identity are spun up per run.
 #
 # The workflow *shape* (triggers, permissions, pinning, step order) is guarded by
 # tests/test_pack_distribution_workflow.py, and the real acceptance criterion —
@@ -68,4 +69,7 @@ jobs:
           python -m pip install --require-hashes -r requirements/runtime.txt
           python -m pip install --no-deps -e .
       - name: Run the pack-distribution rehearsal
+        env:
+          # The dispatch value reaches the script as data, never as shell text.
+          REHEARSAL_PACK: ${{ inputs.pack }}
         run: python tests_integration/distribution_rehearsal.py
