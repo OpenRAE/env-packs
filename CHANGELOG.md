@@ -11,6 +11,13 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.3.3](https://github.com/OpenRAE/env-packs/compare/v6.3.2...v6.3.3) (2026-10-17)
+
+
+### Bug Fixes
+
+* pin RAES 7.0.0 and require clean kit planning ([#479](https://github.com/OpenRAE/env-packs/issues/479)) ([10e77a1](https://github.com/OpenRAE/env-packs/commit/10e77a1256fe37e1dd9bdf4e5d2b069a42da35d7))
+
 ## [6.3.2](https://github.com/OpenRAE/env-packs/compare/v6.3.1...v6.3.2) (2026-10-16)
 
 
