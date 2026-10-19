@@ -13,7 +13,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0005](0005-automatic-release-on-merge-to-main.md) | Automatic release on merge to main (amends 0003) | Superseded by 0006 |
 | [0006](0006-conventional-commit-releases.md) | Conventional-commit-driven automatic releases (reusable blueprint) | Versioning superseded by 0007 |
 | [0007](0007-changelog-driven-versioning.md) | Changelog-driven versioning (reusable blueprint) | Superseded by 0008 |
-| [0008](0008-adopt-release-please.md) | Adopt release-please (reusable blueprint) | Accepted |
+| [0008](0008-adopt-release-please.md) | Adopt release-please (reusable blueprint) | Commit contract amended by 0039 |
 | [0009](0009-scenario-packs-subordinate-to-aces.md) | Scenario packs are strictly subordinate to ACES (zero extensions) | No-hosting clause superseded by 0036; semantic boundary accepted |
 | [0010](0010-consume-aces-reusable-asset-trust-policy.md) | Consume ACES reusable-asset trust policy for pack provenance | Accepted |
 | [0011](0011-require-pinned-aces-sdl-validation.md) | Require pinned ACES SDL validation for scenario packs | Accepted |
@@ -44,6 +44,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0036](0036-publish-first-party-content-with-env-packs.md) | Publish first-party content with env-packs | Accepted |
 | [0037](0037-compose-verified-pack-distribution-from-existing-authorities.md) | Compose verified pack distribution from existing authorities | Accepted |
 | [0038](0038-ship-raes-concept-bindings-beside-pack-sdl.md) | Ship RAES concept bindings beside pack SDL | Accepted |
+| [0039](0039-demote-breaking-changes-to-minor-releases.md) | Demote breaking changes to minor releases (amends 0008) | Accepted |
 
 ```{toctree}
 :hidden:
