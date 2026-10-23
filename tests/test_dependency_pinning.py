@@ -342,6 +342,12 @@ class LockFileIntegrityTests(unittest.TestCase):
         pins = _parse_lock(_REQ_DIR / "recovery-v2.0.2.txt")
         self.assertGreaterEqual(Version(pins["pyjwt"]), Version("2.15.0"))
 
+    def test_locks_exclude_certifi_affected_by_pysec_2026_4320(self) -> None:
+        for name in ("docs.txt", "pip-audit.txt", "recovery-v2.0.2.txt"):
+            with self.subTest(lock=name):
+                pins = _parse_lock(_REQ_DIR / name)
+                self.assertGreaterEqual(Version(pins["certifi"]), Version("2026.10.19"))
+
     def test_every_requirement_is_exactly_pinned_and_hashed(self) -> None:
         for path in _lock_files():
             text = path.read_text(encoding="utf-8")
