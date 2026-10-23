@@ -124,7 +124,7 @@ docutils==0.21.2 \
 furo==2025.12.19 \
     --hash=sha256:188d1f942037d8b37cd3985b955839fea62baa1730087dc29d157677c857e2a7 \
     --hash=sha256:bb0ead5309f9500130665a26bee87693c41ce4dbdff864dbfb6b0dae4673d24f
-    # via -r docs.in
+    # via -r requirements/docs.in
 idna==3.18 \
     --hash=sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2 \
     --hash=sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848
@@ -247,7 +247,7 @@ mdurl==0.1.2 \
 myst-parser==5.1.0 \
     --hash=sha256:9c91c52b3cdb4d94a6506e4fab4e2f296c7623a0da0dcbe6de1565c3dad67a8a \
     --hash=sha256:ab69322dc6719dcc7f296479dbb70181b66df6ed315064f92dbc85c0e1bf2f02
-    # via -r docs.in
+    # via -r requirements/docs.in
 packaging==26.2 \
     --hash=sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e \
     --hash=sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661
@@ -354,7 +354,7 @@ sphinx==9.1.1 \
     --hash=sha256:48b627f02908f22c601b3ba9c7b17265b4f315dd05c8bc64cd4da41183f44fbc \
     --hash=sha256:f8b60013ce25017be41a509e5c2d265bc1918410061315c36b809c7f335646c0
     # via
-    #   -r docs.in
+    #   -r requirements/docs.in
     #   furo
     #   myst-parser
     #   sphinx-basic-ng
