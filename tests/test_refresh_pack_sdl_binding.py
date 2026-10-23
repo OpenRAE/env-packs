@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import importlib.util
+import json
 import pathlib
 import shutil
 import sys
@@ -56,6 +58,34 @@ class RefreshPackSdlBindingTests(unittest.TestCase):
         tool.refresh(self.pack)
 
         self.assertEqual(self._binding_errors(), [])
+        validate_pack_content_manifest(self.pack)
+
+    def test_refresh_rebinds_every_edited_pack_member(self) -> None:
+        readme = self.pack / "README.md"
+        readme.write_text(readme.read_text(encoding="utf-8") + "\nRelease note.\n", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            validate_pack_content_manifest(self.pack)
+
+        tool.refresh(self.pack)
+
+        validate_pack_content_manifest(self.pack)
+
+    def test_refresh_resolves_percent_encoded_member_locators(self) -> None:
+        manifest_path = self.pack / "associated-artifacts.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        readme = next(
+            artifact
+            for artifact in manifest["artifacts"].values()
+            if artifact["uri"] == "raes-environment-pack:/README.md"
+        )
+        notes = copy.deepcopy(readme)
+        notes.update(artifact_id="release-notes", uri="raes-environment-pack:/docs/release%20notes.md")
+        manifest["artifacts"]["release-notes"] = notes
+        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        (self.pack / "docs" / "release notes.md").write_text("Release notes.\n", encoding="utf-8")
+
+        tool.refresh(self.pack)
+
         validate_pack_content_manifest(self.pack)
 
     def test_refresh_is_idempotent_on_an_unchanged_pack(self) -> None:
