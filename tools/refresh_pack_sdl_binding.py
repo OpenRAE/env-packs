@@ -1,8 +1,9 @@
-"""Rebind a pack's SDL byte digest in associated-artifacts.json after editing it.
+"""Rebind a pack's byte digests in associated-artifacts.json after editing it.
 
-Editing ``sdl/<pack>.sdl.yaml`` changes its bytes, so the associated-artifact
-manifest's SHA-256 binding of that file and the manifest ``set_digest`` must be
-recomputed or the pack fails byte-binding validation.
+Editing ``sdl/<pack>.sdl.yaml`` or another pack member, such as ``pack.yaml`` in
+a pack release, changes its bytes. The associated-artifact manifest's SHA-256
+binding and size of every pack-local member, and the manifest ``set_digest``,
+are recomputed from current bytes or the pack fails byte-binding validation.
 
 A semantic SDL edit also changes the digest every external concept binding in
 ``sdl/<pack>.bindings.json`` pins its subject to. Each binding whose subject
@@ -29,6 +30,7 @@ from raes.external_concept_subjects import external_concept_subjects
 
 from raes_env_packs import _pack_fs
 from raes_env_packs.digest import (
+    _artifact_paths,
     associated_artifact_set_digest,
     load_associated_artifact_manifest_json,
 )
@@ -103,12 +105,14 @@ def refresh(pack_root: Path) -> str:
         bindings_rel = sdl_rel.removesuffix(".sdl.yaml") + ".bindings.json"
         if bindings_rel in inventory:
             bound[bindings_rel] = _retarget_bindings(root_fd, bindings_rel, sdl_bytes.decode("utf-8"))
-        manifest = json.loads(_read(root_fd, _MANIFEST))
-        for rel, data in bound.items():
-            for artifact in manifest["artifacts"].values():
-                if artifact.get("uri") == f"raes-environment-pack:/{rel}":
-                    artifact["checksum"]["value"] = hashlib.sha256(data).hexdigest()
-                    artifact["size_bytes"] = len(data)
+        manifest_text = _read(root_fd, _MANIFEST).decode("utf-8")
+        manifest = json.loads(manifest_text)
+        paths = _artifact_paths(load_associated_artifact_manifest_json(manifest_text), _MANIFEST)
+        for artifact_id, rel in paths.items():
+            artifact = manifest["artifacts"][artifact_id]
+            data = bound[rel] if rel in bound else _read(root_fd, rel)
+            artifact["checksum"]["value"] = hashlib.sha256(data).hexdigest()
+            artifact["size_bytes"] = len(data)
         model = load_associated_artifact_manifest_json(json.dumps(manifest))
         manifest["set_digest"] = associated_artifact_set_digest(model)
         if bindings_rel in bound:

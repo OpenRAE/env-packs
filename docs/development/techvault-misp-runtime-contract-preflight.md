@@ -7,6 +7,10 @@ current contract for those accounts. For the sync key, follow the
 [issue #460 preflight](techvault-misp-api-key-fixture-preflight.md). Database
 and Redis credential ownership is unchanged by that correction.
 
+Security-maintenance update: the [issue #491 guardrails below](#security-maintenance-contract-issue-491)
+supersede the 2.5.44 target. References to that version in the issue #280
+baseline are historical evidence, not safe component-selection guidance.
+
 Issue #280 is a missing portable service contract plus a downstream realization
 failure. TechVault must state the observable MISP, MariaDB, Redis, trust, and
 readiness outcomes that belong to the scenario. LilRAE must select components,
@@ -14,16 +18,17 @@ lower those outcomes into each selected component's configuration interface,
 and prove them without recreating or mutating containers after realization.
 Neither side may use the other's data as a substitute for its own authority.
 
-This note records the current contract, the ownership classification, and the
-cross-cutting gates for that work. It is not an implementation plan.
+This note records issue #280's baseline, ownership classification, and
+cross-cutting gates, with subsequent corrections identified above. It is not
+an implementation plan.
 
-## Current contract and recovery evidence
+## Issue #280 baseline and recovery evidence
 
-The checked-in SDL is backend-neutral. It declares `realization.default: open`,
-has no realization constraints or node sources, and the TechVault validator
-rejects node images, runtime environment, container commands, backend mounts,
-capability grants, restart policy, and host publication. The current authored
-MISP graph contains:
+The issue #280 baseline SDL was backend-neutral. It declared
+`realization.default: open`, had no realization constraints or node sources,
+and the TechVault validator rejected node images, runtime environment, container
+commands, backend mounts, capability grants, restart policy, and host publication.
+Its authored MISP graph contained:
 
 - an HTTPS MISP application and threat-intelligence capability at product
   version 2.5.44, with an operator-secret API principal;
@@ -60,7 +65,7 @@ Every fact in the completed contract must retain one of these owners:
 
 | Fact | Classification and carrier | Observable satisfaction |
 | --- | --- | --- |
-| MISP capability, version, HTTPS service, and authenticated API | Authored TechVault outcome through existing RAES application, platform-application, authorization, service, and listener fields | The declared HTTPS service presents MISP 2.5.44 behavior and rejects an unauthenticated API request. |
+| MISP capability, version, HTTPS service, and authenticated API | Authored TechVault outcome through existing RAES application, platform-application, authorization, service, and listener fields | The declared HTTPS service presents the authored MISP version's behavior and rejects an unauthenticated API request. |
 | MISP-to-MariaDB relation | Authored TechVault outcome through a `RuntimePlatformApplication.upstream_bindings` data-source join plus the existing database service | An authenticated MISP API write and read uses the declared `misp` database on the declared node/service. Dependency order alone is not satisfaction. |
 | Database name, application role, grants, and authentication posture | Authored TechVault outcome through `RuntimeDatabaseService` databases, roles, grants, and settings | Native database readback shows exactly the declared logical database/role/grants and authenticated application access. |
 | MISP-to-Redis relation and Redis authentication posture | Authored TechVault outcome through an application upstream binding, the existing datastore service, and an authorization reference/principal where the pinned RAES contract fits | MISP performs an authenticated Redis operation against the declared endpoint; anonymous and mismatched credentials fail. |
@@ -187,8 +192,8 @@ only after a replacement container does not satisfy the contract.
 - Do not restore historical exact images, Compose environment, container names,
   host paths, launch commands, healthchecks, or APTL vocabulary to TechVault.
 - Do not copy MISP Docker's current `main`/`latest` defaults into product-version
-  requirements. A backend selecting the historical 2.5.44 digest must inspect
-  and bind that immutable artifact's actual contract.
+  requirements. A backend must inspect and bind the selected immutable artifact's
+  actual contract; the historical 2.5.44 artifact is unsuitable for issue #491.
 - Do not encode `MYSQL_*`, `REDIS_*`, `BASE_URL`, `ADMIN_*`, nginx paths,
   `requirepass`, or another image API in portable SDL.
 - Do not classify database, Redis, administrator, or API credentials as fixture
@@ -209,6 +214,68 @@ only after a replacement container does not satisfy the contract.
 No new ADR is required. ADR 0009, ADR 0036, and the public ownership-boundary
 document already assign RAES semantics, TechVault authoring, and LilRAE
 realization. This note narrows their application to issue #280.
+
+## Security maintenance contract (issue #491)
+
+Issue #491 requires MISP **2.5.50** in both `techvault` and
+`techvault-participant-study`, refreshed derived identities, passing CI, and
+released content a consumer can select. Keep the version in the existing
+`nodes.misp.runtime.platform_applications` record. The existing product-version
+regression in `tests/test_techvault_pack.py` and the study pack's structural
+parity tests cover the two declarations; keep their distinct scenario identities.
+The acceptance audit spans all checked-in packs and kits; these are currently
+the only MISP application declarations.
+No new schema, version registry, validator framework, or ADR is needed.
+
+PHP's [OOM advisory](https://github.com/php/php-src/security/advisories/GHSA-w8hw-w9fx-j79w)
+and [stale-state advisory](https://github.com/php/php-src/security/advisories/GHSA-6wmf-4rv5-p3rp)
+identify 8.4.27 as the patched 8.4 release. The issue's package inspection proves
+the cited **`latest` digest**, not every image advertising MISP 2.5.50. Coordinate
+with the backend-profile change tracked in LilRAE #1407: its selected immutable
+artifact, for each supported platform, needs evidence of MISP 2.5.50 and patched
+PHP (the issue identifies `php8.4-fpm 8.4.27-1~deb13u1`). Do not infer this from a
+tag name, product-version comparison, pack digest, SBOM, or green static checks.
+Application authentication and configuration workarounds do not replace the PHP
+update. Image selection and package evidence remain backend responsibilities;
+do not put an image source, PHP build recipe, or backend environment map in SDL.
+
+| Cross-cutting layer | Incumbent and guardrail |
+| --- | --- |
+| Filesystem, parsing, configuration shapes | Reuse `_pack_fs`, `validation.py`'s bounded strict loaders and packaged pack/compatibility/provenance schemas, and pinned RAES 7.0.0 parsing. Preserve open realization and the pack validator's backend-field prohibitions. No new env-binding shape or parser is involved. |
+| Authorization, secrets, TLS and OS exposure | Preserve the MISP principal/grants, 40-character classified fixture, database/Redis contracts, least-output certificate selection and authenticated readiness. Backend adapters retain config/secret delivery; no token-bearing argv, shell tracing, environment dump, healthcheck or evidence. A PHP upgrade must not require disabling authentication or certificate verification, or publishing another host port. |
+| Author execution and diagnostics | Reuse `content_ci.check_static_contract`, executable snapshots, `check_validators` and `_run_pack_process` for eligibility, literal argv, deadlines and bounded output. Reuse `Diagnostic` / `ValidationResult`, pack-local `_misp_error` and `PackDigestError`; add no logger, exception family or raw configuration/exception dumps. Consumer `validate_pack()` remains inert and never executes pack code. |
+| Content identity and concept bindings | Run `tools/refresh_pack_sdl_binding.py` on each pack to derive concept-subject digests, the checksum and size of every pack-local member, and the set digest. The helper resolves member locators through the canonical pack-URI resolution in `digest.py`. Scheme snapshots do not change solely because their subjects' digests change. Then run `validate_pack_content_manifest`. Never hand-patch hashes or weaken exact-artifact checks. |
+| Locks and inventories | Neither TechVault pack currently has `sdl/raes.lock.json` or a MISP image lock. Python/Node dependency locks and unrelated pack image locks do not derive from this declaration. Do not create a second lock or invent a PHP dependency closure. Published inventories/evidence use `component_boundary.py`, `sbom.py`, `release_provenance.py` and `verify.py` under ADR 0037, retaining runtime-selected scope. |
+| Persistence and runtime proof | The declared version does not replace a running image or migrate retained MISP configuration/database volumes. The backend owns compatibility, reconciliation and fresh/reused-state evidence through its existing lifecycle; no post-start package installation, silent fallback to 2.5.44, or destructive volume reset. |
+
+MISP product version, pack release version and Python distribution version are
+three different identities. The issue #491 fix releases both packs as `0.1.3`.
+`release._immutability_failures` forbids replacing an already-published pack id
+and version with different bound bytes. A new pack release must keep
+`pack.yaml`, compatibility identity, manifest version and the existing exact
+content-source/artifact version references consistent; preserve content ids and
+unchanged asset digests. Study tests also assert the pack metadata version.
+The refresh helper rebinds those other members too.
+Release-please alone owns `[project].version` and `CHANGELOG.md`; the subsequent
+security fix needs a release-triggering `fix:` title, not a docs/chore title.
+
+Preserve `pyproject.toml`'s wheel/sdist mappings and
+`tests/test_distribution_contents.py`'s exact-content checks. The canonical
+`.github/workflows/ci.yml` gates and all six `AGENTS.md` verification commands
+apply. `raes-pack-release check` builds locally in scratch space; it does not
+publish. The pack-distribution workflow is a rehearsal, not a hosted production
+release. Use existing release/publication paths and their approval boundaries;
+do not introduce a registry, publisher or workflow to satisfy this fix. Evidence
+of a selectable release and the coordinated backend selection is distinct from
+a passing source PR. Do not overwrite older releases or claim live remediation
+from this preflight.
+
+The extensibility seam remains the authored application version plus the
+backend's immutable component selection and adapter. A later security rebuild
+of the same MISP version belongs in that selection seam, not a new portable
+PHP/security-policy field. Non-goals here include implementing #491, changing
+RAES semantics or pins, redesigning credentials/readiness/persistence, rebuilding
+unrelated archives, adding a CVE scanner, or performing merges/publication.
 
 ## External component references
 

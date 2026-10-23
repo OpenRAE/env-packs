@@ -2689,7 +2689,7 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
             "wazuh-indexer": ("datastore_services", "4.12.0"),
             "wazuh-dashboard": ("platform_applications", "4.12.0"),
             "suricata": ("network_detection_engines", "7.0"),
-            "misp": ("platform_applications", "2.5.44"),
+            "misp": ("platform_applications", "2.5.50"),
             "misp-db": ("database_services", "10.11"),
             "misp-redis": ("datastore_services", "7"),
             "thehive": ("platform_applications", "5.4"),
