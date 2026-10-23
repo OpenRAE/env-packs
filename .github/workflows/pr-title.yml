@@ -2,7 +2,9 @@ name: PR Title
 
 # Repository-side PR title guard (ADR 0006). Enforces the Conventional Commit
 # shape and bans agent/tool advertising prefixes (e.g. `[claude] ...`) on
-# feature PRs. Scoped to PRs whose BASE is `dev`: those titles are squash-merged
+# feature PRs. It also rejects breaking-change markers in the title, the PR
+# body, and the PR commit messages, so release-please never bumps the major
+# version on its own (ADR 0039). Scoped to PRs whose BASE is `dev`: those titles are squash-merged
 # into the commit that later drives release-please, so the convention matters.
 # `dev`->`main` promotion PRs are exempt — their title is a merge subject, not a
 # release-driving commit, so enforcing it there is pure noise (it always fails).
@@ -19,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: pr-title-${{ github.event.pull_request.number }}
@@ -41,7 +44,19 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
+      # The squash commit body carries the PR commit messages, so the guard
+      # must see them. The PR number is runner-provided, not PR-controlled.
+      - name: Fetch PR commit messages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh api --paginate --slurp \
+            "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits" \
+            > "${RUNNER_TEMP}/pr-commits.json"
       - name: Validate PR title
+        env:
+          PR_COMMIT_MESSAGES_FILE: ${{ runner.temp }}/pr-commits.json
         run: |
           if [ ! -f tools/check_pr_title.py ]; then
             echo "::notice::tools/check_pr_title.py is not on the base ref yet; skipping (bootstrap for the PR that introduces the guard). Enforcement is active for every subsequent PR."
