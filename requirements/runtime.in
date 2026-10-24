@@ -1,0 +1,9 @@
+# Copy of [project].dependencies in pyproject.toml. Dependabot re-resolves a
+# lock only when the lock has an .in file with the same name, so runtime.txt
+# compiles from this file. tests/test_dependency_pinning.py checks that this
+# list and pyproject.toml are the same.
+PyYAML>=6
+raes==7.0.0
+mcp>=2,<3
+jsonschema>=4
+anyio>=4,<5
