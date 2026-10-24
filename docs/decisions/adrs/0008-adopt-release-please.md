@@ -1,6 +1,7 @@
 # ADR 0008 — Adopt release-please
 
-- Status: Accepted
+- Status: Accepted; commit contract amended by
+  [ADR 0039](0039-demote-breaking-changes-to-minor-releases.md)
 - Date: 2026-07-06
 - Supersedes: the versioning + release mechanism of
   [ADR 0007](0007-changelog-driven-versioning.md) (and 0006). ADR 0004 (SBOM),
@@ -33,8 +34,10 @@ towncrier and `changelog.d/` are removed.
 
 ### 3. Commit contract (what release-please reads)
 Squash-merge feature PRs; the PR title is a Conventional Commit:
-`feat:`→minor, `fix:`/`perf:`→patch, `feat!:`/`BREAKING CHANGE:`→major (pre-1.0
-demotes major→minor); `docs`/`chore`/`refactor`/`test`/`ci`/`build`→no release.
+`feat:`→minor, `fix:`/`perf:`→patch; `docs`/`chore`/`refactor`/`test`/`ci`/`build`→no
+release. A breaking change uses `feat:` and gets a minor release. The guard
+rejects breaking markers, and only a `Release-As:` footer makes a major release
+(ADR 0039).
 The required PR-title guard keeps this enforced on `dev` and `main`.
 
 ### 4. Config

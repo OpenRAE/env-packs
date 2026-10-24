@@ -42,8 +42,11 @@ python3 -m compileall src tests
 - PR titles MUST be Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`,
   `refactor:`, `test:`, `ci:`, `build:`); a required CI check enforces it.
 - The type is the release decision: `feat:`→minor, `fix:`/`perf:`→patch,
-  `feat!:`/`BREAKING CHANGE:`→major (pre-1.0 → minor); docs/chore/test/ci/
-  refactor/build don't release.
+  docs/chore/test/ci/refactor/build don't release.
+- A breaking change uses `feat:` and gets a minor release. CI rejects `!` and
+  `BREAKING CHANGE:` markers. Only a `Release-As: X.0.0` commit footer makes a
+  major release, and only the maintainer decides it. See
+  [ADR 0039](docs/decisions/adrs/0039-demote-breaking-changes-to-minor-releases.md).
 - **Never hand-edit the version or `CHANGELOG.md`** — the version lives in
   `pyproject.toml` (`[project].version`) and both are owned by **release-please**,
   which maintains a `chore(main): release X.Y.Z` PR; merging it publishes.

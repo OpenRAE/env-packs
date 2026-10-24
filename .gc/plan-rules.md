@@ -13,8 +13,10 @@ the generic workflow. Ground Control injects this file into planning via
   that does is wrong; drop that change.
 - **The PR title (Conventional Commit) is the release decision** — there are no
   changelog fragments and no scripts to run. Rubric: `feat:`→minor,
-  `fix:`/`perf:`→patch, `feat!:`/`BREAKING CHANGE:`→major (pre-1.0 → minor);
-  `docs`/`chore`/`refactor`/`test`/`ci`/`build`→no release.
+  `fix:`/`perf:`→patch; `docs`/`chore`/`refactor`/`test`/`ci`/`build`→no release.
+  A breaking change uses `feat:` (minor). Never use `!` or `BREAKING CHANGE:`;
+  the PR title guard rejects them. Do not add `Release-As:` unless the
+  maintainer asks for a major release (ADR 0039).
 - **PR titles MUST be Conventional Commits** — a required CI check
   (`PR title guard`, `tools/check_pr_title.py`) blocks non-conforming titles and
   bans agent/tool prefixes like `[claude]`/`[codex]`.
