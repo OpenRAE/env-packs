@@ -11,6 +11,16 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.3.4](https://github.com/OpenRAE/env-packs/compare/v6.3.3...v6.3.4) (2026-10-24)
+
+
+### Bug Fixes
+
+* **deps:** bump pycparser from 3.0 to 3.11 ([#485](https://github.com/OpenRAE/env-packs/issues/485)) ([64e0b04](https://github.com/OpenRAE/env-packs/commit/64e0b048439293340c228c4281ba9daae26e7600))
+* **deps:** bump starlette from 1.7.0 to 1.8.0 ([#483](https://github.com/OpenRAE/env-packs/issues/483)) ([901e626](https://github.com/OpenRAE/env-packs/commit/901e626bb83336c4b867e056d80bccb90e9ae6d2))
+* **deps:** bump truststore from 0.10.4 to 0.10.5 ([#486](https://github.com/OpenRAE/env-packs/issues/486)) ([1940048](https://github.com/OpenRAE/env-packs/commit/1940048cf56644a7f5a4e92d693b18a95216e0c1))
+* **techvault:** declare MISP 2.5.50 for the php2shell PHP fix and release both packs as 0.1.3 ([#492](https://github.com/OpenRAE/env-packs/issues/492)) ([8925b09](https://github.com/OpenRAE/env-packs/commit/8925b09dbd2c3f1ead8dad00b38ce6198d45cd69))
+
 ## [6.3.3](https://github.com/OpenRAE/env-packs/compare/v6.3.2...v6.3.3) (2026-10-17)
 
 
