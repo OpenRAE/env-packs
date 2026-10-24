@@ -38,6 +38,7 @@ import unittest
 
 import yaml
 from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 from packaging.version import Version
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -429,6 +430,37 @@ class LockMatchesProjectMetadataTests(unittest.TestCase):
                     f"{self.runtime[key]}, which does not satisfy the declared "
                     f"constraint {spec!r}",
                 )
+
+    def test_runtime_input_copies_declared_dependencies(self) -> None:
+        # Dependabot re-resolves runtime.txt only through runtime.in, so the
+        # copy must not drift from pyproject.toml.
+        lines = (_REQ_DIR / "runtime.in").read_text(encoding="utf-8").splitlines()
+        copied = {str(Requirement(line)) for line in lines if line and not line.startswith("#")}
+        declared = {str(Requirement(spec)) for spec in self.declared["project"]["dependencies"]}
+        self.assertEqual(
+            copied, declared,
+            "requirements/runtime.in must list the pyproject.toml dependencies "
+            "exactly; update it and regenerate requirements/runtime.txt",
+        )
+
+    def test_dependabot_owners_match_declared_dependencies(self) -> None:
+        # The "/" entry updates the declared dependencies in pyproject.toml and
+        # runtime.in together. The "/requirements" entry must leave them alone,
+        # or it would change runtime.in without pyproject.toml.
+        config = yaml.safe_load((_ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8"))
+        entries = {
+            u["directory"]: u for u in config["updates"] if u["package-ecosystem"] == "pip"
+        }
+        declared = {
+            canonicalize_name(Requirement(spec).name)
+            for spec in self.declared["project"]["dependencies"]
+        }
+        allowed = {canonicalize_name(a["dependency-name"]) for a in entries["/"]["allow"]}
+        ignored = {
+            canonicalize_name(i["dependency-name"]) for i in entries["/requirements"]["ignore"]
+        }
+        self.assertEqual(allowed, declared, 'the "/" entry must allow exactly the declared dependencies')
+        self.assertLessEqual(declared, ignored, 'the "/requirements" entry must ignore the declared dependencies')
 
     def test_declared_floor_is_not_rewritten_as_a_lock(self) -> None:
         # Guardrail from the #142 architecture preflight: this package is a
