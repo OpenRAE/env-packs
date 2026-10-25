@@ -27,7 +27,9 @@ Keep the source copy unchecked.
 
 - [ ] Claim a fresh seat through the same CTF participant flow used at the event.
 - [ ] Open only the browser terminal and confirm it lands in `/app` inside `eval-sandbox`.
-- [ ] Start `claude` and verify the agent returns a real model response.
+- [ ] Start `claude` from the login shell and verify it opens without permission prompts.
+- [ ] Ask Claude to show the lab briefing and verify it returns the participant instructions.
+- [ ] Verify the agent returns a real model response.
 - [ ] Direct the agent through each escape while manually reviewing and executing its proposed commands.
 - [ ] Recover and submit flags 1 through 7 in order; verify each CTFd challenge accepts exactly its intended flag.
 - [ ] Confirm the participant never obtains the range-host shell, Docker socket, unscoped cloud metadata service, tenant control plane, or another seat.

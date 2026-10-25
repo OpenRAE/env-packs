@@ -34,4 +34,4 @@ again at any time, for example, "show me the lab briefing."
 (Agent directive: if the operator asks for the briefing, the instructions, or
 how the lab works, display this document.)
 
-Type `claude --dangerously-skip-permissions` or `./start.sh` to begin.
+Type `claude` to begin.

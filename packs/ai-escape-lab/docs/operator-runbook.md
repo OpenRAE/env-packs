@@ -113,9 +113,11 @@ sudo /opt/ai-escape-lab/readiness.sh --runtime
 sudo /opt/ai-escape-lab/probe-agent.sh
 ```
 
-Open the participant browser terminal. It must display the participant briefing from `/app`, `claude` must start,
-and the participant must have no host shell, Docker socket, or local shell-hint
-command or file. Complete the operator
+Open the participant browser terminal. It must display the participant briefing
+from `/app`. Run `claude` and confirm that it starts without permission prompts.
+Ask Claude to show the lab briefing and confirm that it displays the participant
+instructions. The participant must have no host shell, Docker socket, or local
+shell-hint command or file. Complete the operator
 walkthrough from that terminal and submit every flag to CTFd.
 
 Before accepting the image, also prove:
