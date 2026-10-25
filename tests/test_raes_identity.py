@@ -36,8 +36,6 @@ _HISTORICAL_ALLOWLIST = {
     "docs/decisions/adrs/README.md",
     "docs/decisions/adrs/0021-adopt-raes-environment-pack-identity.md",
     "docs/public/raes-migration.md",
-    "requirements/recovery-v2.0.2.in",
-    "requirements/recovery-v2.0.2.txt",
     # Immutable upstream byte carrier: its internal project metadata records
     # the historical dependency name. The study pack is an exact TechVault
     # copy with its own pack identity, so it retains the same pack-bound bytes.

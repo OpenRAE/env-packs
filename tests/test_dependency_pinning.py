@@ -338,13 +338,8 @@ class LockFileIntegrityTests(unittest.TestCase):
         pins = _parse_lock(_REQ_DIR / "pip-audit.txt")
         self.assertGreaterEqual(Version(pins["pip"]), Version("26.2"))
 
-    def test_recovery_lock_excludes_pyjwt_affected_by_ghsa_ffc3_869f_jxw9(self) -> None:
-        # 2.15.0, not 2.14.0: GHSA-42vr-xj54-vc7v and GHSA-x33g-cr3x-6449 affect <= 2.14.0.
-        pins = _parse_lock(_REQ_DIR / "recovery-v2.0.2.txt")
-        self.assertGreaterEqual(Version(pins["pyjwt"]), Version("2.15.0"))
-
     def test_locks_exclude_certifi_affected_by_pysec_2026_4320(self) -> None:
-        for name in ("docs.txt", "pip-audit.txt", "recovery-v2.0.2.txt"):
+        for name in ("docs.txt", "pip-audit.txt"):
             with self.subTest(lock=name):
                 pins = _parse_lock(_REQ_DIR / name)
                 self.assertGreaterEqual(Version(pins["certifi"]), Version("2026.10.19"))
@@ -368,12 +363,6 @@ class LockFileIntegrityTests(unittest.TestCase):
                     # A bare version is not a pin unless it is an `==` pin, which
                     # _PIN_RE already required; guard against ranges sneaking in.
                     self.assertNotIn(",", version, f"{name} must be a single == pin")
-
-    def test_legacy_release_lock_matches_the_2_0_2_runtime(self) -> None:
-        pins = _parse_lock(_REQ_DIR / "recovery-v2.0.2.txt")
-        self.assertEqual(pins.get("a" + "ces-sdl"), "0.23.1")
-        self.assertEqual(pins.get("cyclonedx-bom"), "7.3.0")
-        self.assertIn("pyyaml", pins)
 
     def test_co_installed_locks_agree_on_shared_packages(self) -> None:
         # A workflow job is one Python environment: every lock installed by any
