@@ -63,8 +63,8 @@ challenges:
       Use the disclosed internal service credentials to reach MongoDB and
       recover its flag.
     hints:
-      - "The Kubernetes response is not the worker's only credential source. Inspect /opt/secrets."
-      - "The MongoDB password is in mongo_static_password. The database service is internal-db:27017."
+      - "The dataset worker holds the MongoDB password as a mounted secret in /opt/secrets; the mesh key is in the Kubernetes secret set."
+      - "Read mongo_static_password from the worker. The database service is internal-db:27017."
       - "Authenticate as admin, then enumerate its databases and collections. The relevant collection records dataset operations."
   - flag_id: flag-7
     title: Steal the Benchmark
