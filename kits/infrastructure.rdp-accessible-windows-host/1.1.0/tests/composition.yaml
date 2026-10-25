@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: rdp-accessible-windows-host
+  login_name: analyst
+variation:
+  deployment_profile: compact
+  service_label: rdp-accessible-windows-host-alternate
+  login_name: operator
+multi_kit_group: access-workstation

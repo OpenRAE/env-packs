@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.policy-engine
+configuration:
+  policy_bundle: baseline
+  deployment_profile: standard
+  service_label: policy-engine
+declared_objects:
+- id: policy_bundle
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: decision_route
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: data_documents
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: query_examples
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

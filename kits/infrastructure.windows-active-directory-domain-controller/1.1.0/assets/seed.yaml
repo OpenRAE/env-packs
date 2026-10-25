@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.windows-active-directory-domain-controller
+configuration:
+  domain_name: directory.example.test
+  deployment_profile: standard
+  service_label: windows-active-directory-domain-controller
+declared_objects:
+- id: organizational_units
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: directory_groups
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: dns_zone
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: administrator_identity
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.suricata-network-intrusion-detection-sensor-associated-artifacts",
+  "manifest_version": "1.2.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "suricata-network-intrusion-detection-sensor",
+    "ref_version": null,
+    "ref_digest": "sha256:7ae13201601bb4852ed190f91af097ff4af1c632f47fe1ff803733212770446f",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "b3e84f62fa9c25ae0279ec5c448947b754b862e612928068571904ef8e2cbf57"
+      },
+      "size_bytes": 519,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.suricata-network-intrusion-detection-sensor@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d351b5b7af867498cd326bf1669ad45e0216665ccbe4082d85e3c0c113144969"
+      },
+      "size_bytes": 503,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.suricata-network-intrusion-detection-sensor@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "236545e5498bab8d25e1055d41439a2790f20238f27689eca35dc53e8297d77f"
+      },
+      "size_bytes": 690,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.suricata-network-intrusion-detection-sensor@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "3570ab4ca740367e3d66da2311efad6f4615ccca0abcb1579a993e9b922788f9"
+      },
+      "size_bytes": 1780,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.suricata-network-intrusion-detection-sensor@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "27d3f9fad9671f2563277de3b02d244f70097fc88795b3ad266a7b36d7c03c7b"
+      },
+      "size_bytes": 2785,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.suricata-network-intrusion-detection-sensor@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "3c38e0d4dd875b6099304752204930ecf09e38b96ff0db22074fcd1a3b5177cf"
+      },
+      "size_bytes": 297,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.suricata-network-intrusion-detection-sensor@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:106beb5f65ed4d913d9bbe1a9275b8b46781766a957060ceec9efa9d630100ed"
+}

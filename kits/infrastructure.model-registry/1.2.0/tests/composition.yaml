@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: model-registry
+  registry_namespace: baseline
+variation:
+  deployment_profile: compact
+  service_label: model-registry-alternate
+  registry_namespace: candidate
+multi_kit_group: ai-model
