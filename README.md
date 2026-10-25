@@ -2,7 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/raes-env-packs)](https://pypi.org/project/raes-env-packs/)
 [![Python](https://img.shields.io/pypi/pyversions/raes-env-packs)](https://pypi.org/project/raes-env-packs/)
-[![Documentation](https://app.readthedocs.org/projects/env-packs/badge/?version=latest)](https://env-packs.readthedocs.io/en/latest/)
+[![Documentation](https://app.readthedocs.org/projects/raes-environment-packs/badge/?version=latest)](https://raes-environment-packs.readthedocs.io/en/latest/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/OpenRAE/env-packs/badge)](https://scorecard.dev/viewer/?uri=github.com/OpenRAE/env-packs)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13833/badge)](https://www.bestpractices.dev/projects/13833)
@@ -76,18 +76,18 @@ system call, which macOS does not provide. Kit changes and
 
 `validate_pack` is the check a consumer runs before trusting a pack: it reads the
 staged files, returns a result, prints nothing, and never runs the pack's code.
-The [quickstart](https://env-packs.readthedocs.io/en/latest/quickstart.html) walks
+The [quickstart](https://raes-environment-packs.readthedocs.io/en/latest/quickstart.html) walks
 through it step by step.
 
 ## Choose your route
 
-- **Author a pack** — start with the [quickstart](https://env-packs.readthedocs.io/en/latest/quickstart.html)
-  and the [pack reference](https://env-packs.readthedocs.io/en/latest/environment-packs.html),
-  then compose common infrastructure from [kits](https://env-packs.readthedocs.io/en/latest/kits.html).
-- **Consume a pack** — see [validating a pack](https://env-packs.readthedocs.io/en/latest/validating.html).
+- **Author a pack** — start with the [quickstart](https://raes-environment-packs.readthedocs.io/en/latest/quickstart.html)
+  and the [pack reference](https://raes-environment-packs.readthedocs.io/en/latest/environment-packs.html),
+  then compose common infrastructure from [kits](https://raes-environment-packs.readthedocs.io/en/latest/kits.html).
+- **Consume a pack** — see [validating a pack](https://raes-environment-packs.readthedocs.io/en/latest/validating.html).
 - **Contribute** — read [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Full documentation is on [Read the Docs](https://env-packs.readthedocs.io/en/latest/).
+Full documentation is on [Read the Docs](https://raes-environment-packs.readthedocs.io/en/latest/).
 
 ## What this is and is not
 
@@ -97,7 +97,7 @@ scenario meaning — the RAES scenario language and its semantics belong to
 [RAES](https://github.com/OpenRAE/rae), and this project consumes them from an
 exactly pinned `raes` release. It is a single-maintainer project with no support
 SLA. See the
-[limitations](https://env-packs.readthedocs.io/en/latest/limitations.html) for the
+[limitations](https://raes-environment-packs.readthedocs.io/en/latest/limitations.html) for the
 full picture.
 
 ## Contributing
