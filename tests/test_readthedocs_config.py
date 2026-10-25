@@ -33,7 +33,7 @@ _README = _ROOT / "README.md"
 
 # The interpreter every other automated surface in this repo uses. Docs drifting
 # onto a different one is how "works locally, breaks on RTD" starts.
-_EXPECTED_PYTHON = "3.12"
+_EXPECTED_PYTHON = "3.14"
 
 # The Read the Docs project slug that serves docs/public/.
 _RTD_SLUG = "raes-environment-packs"

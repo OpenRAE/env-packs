@@ -105,7 +105,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.12"
+          python-version: "3.14"
 
       # A normal push resolves the PR whose merge produced the push. An explicit
       # recovery names a previously merged main release PR whose publish run was
@@ -199,33 +199,23 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.12"
+          python-version: "3.14"
 
-      # The signed release source and the trusted release tooling have separate
-      # identities during historical recovery. Normal targets consume their own
-      # committed locks. The sole pre-lock target is bound to its exact tag and
-      # commit, then consumes the combined hash lock reviewed on the current
-      # workflow commit (ADR 0026). Any other missing-lock target fails closed.
+      # Every release target consumes its own committed build, runtime, and SBOM
+      # locks. A target without them fails closed (ADR 0040).
       - name: Materialize hash-locked release tooling
         run: |
           set -euo pipefail
-          legacy_target="45f39a930625c9de4c44017e8966d00b82f65052"
           mkdir -p requirements
-          if git cat-file -e "${TARGET_SHA}:requirements/build.txt" \
-            && git cat-file -e "${TARGET_SHA}:requirements/runtime.txt" \
-            && git cat-file -e "${TARGET_SHA}:requirements/sbom.txt"; then
-            git show "${TARGET_SHA}:requirements/build.txt" > requirements/build.txt
-            git show "${TARGET_SHA}:requirements/runtime.txt" > requirements/runtime.txt
-            git show "${TARGET_SHA}:requirements/sbom.txt" > requirements/sbom.txt
-          else
-            if [ "${TAG}" != "v2.0.2" ] || [ "${TARGET_SHA}" != "${legacy_target}" ]; then
-              echo "Release target ${TARGET_SHA} has no approved tooling-lock recovery." >&2
-              exit 1
-            fi
-            git show "${GITHUB_SHA}:requirements/recovery-v2.0.2.txt" > requirements/build.txt
-            git show "${GITHUB_SHA}:requirements/recovery-v2.0.2.txt" > requirements/runtime.txt
-            git show "${GITHUB_SHA}:requirements/recovery-v2.0.2.txt" > requirements/sbom.txt
+          if ! git cat-file -e "${TARGET_SHA}:requirements/build.txt" \
+            || ! git cat-file -e "${TARGET_SHA}:requirements/runtime.txt" \
+            || ! git cat-file -e "${TARGET_SHA}:requirements/sbom.txt"; then
+            echo "Release target ${TARGET_SHA} has no hash-locked release tooling." >&2
+            exit 1
           fi
+          git show "${TARGET_SHA}:requirements/build.txt" > requirements/build.txt
+          git show "${TARGET_SHA}:requirements/runtime.txt" > requirements/runtime.txt
+          git show "${TARGET_SHA}:requirements/sbom.txt" > requirements/sbom.txt
 
       # ADR 0024: install the last patched pre-regression gitsign release
       # directly from its upstream release asset and verify the published
@@ -386,22 +376,14 @@ jobs:
             --output release-notes.md
 
       # PyPI trusted publishing is bound to the active raes-env-packs project.
-      # The exact historical v2.0.2 recovery still completes its signed GitHub
-      # release, assets, and release-please state transition, but cannot target
-      # the retired PyPI project. Any other distribution name fails closed
-      # before the GitHub Release or PyPI state changes (ADR 0027).
+      # Any other distribution name fails closed before the GitHub Release or
+      # PyPI state changes (ADR 0027, ADR 0040).
       - name: Authorize the PyPI distribution
         id: pypi-policy
         run: |
           set -euo pipefail
-          legacy_target="45f39a930625c9de4c44017e8966d00b82f65052"
           distribution="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["name"])')"
-          if [ "${distribution}" = "raes-env-packs" ]; then
-            echo "publish=true" >> "${GITHUB_OUTPUT}"
-          elif [ "${TAG}" = "v2.0.2" ] && [ "${TARGET_SHA}" = "${legacy_target}" ]; then
-            echo "Skipping retired PyPI distribution for the exact historical recovery."
-            echo "publish=false" >> "${GITHUB_OUTPUT}"
-          else
+          if [ "${distribution}" != "raes-env-packs" ]; then
             echo "Distribution ${distribution} is not authorized for PyPI publication." >&2
             exit 1
           fi
@@ -424,7 +406,6 @@ jobs:
           fi
 
       - name: Publish to PyPI (OIDC trusted publishing)
-        if: steps.pypi-policy.outputs.publish == 'true'
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
           packages-dir: dist
