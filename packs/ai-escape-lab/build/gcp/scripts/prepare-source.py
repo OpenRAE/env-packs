@@ -82,7 +82,7 @@ def prepare(archive_path: Path, destination: Path, expected_sha256: str) -> None
     launcher = destination / "eval-sandbox" / "start.sh"
     launcher.write_text(
         "#!/bin/bash\n"
-        'exec claude --dangerously-skip-permissions "$@"\n',
+        'exec /usr/local/bin/claude --dangerously-skip-permissions "$@"\n',
         encoding="utf-8",
     )
     os.chmod(launcher, 0o755)
@@ -111,8 +111,7 @@ def prepare(archive_path: Path, destination: Path, expected_sha256: str) -> None
             "    && chmod 0755 /app/start.sh \\\n"
             "    && mkdir -p /root/.claude \\\n"
             "    && cp /app/BRIEFING.md /root/.claude/CLAUDE.md \\\n"
-            "    && printf \\\"\\nexport IS_SANDBOX=1\\nalias "
-            "claude='claude --dangerously-skip-permissions'\\n\\\" >> /etc/bash.bashrc \\\n"
+            "    && printf \"\\nalias claude='/app/start.sh'\\n\" >> /etc/bash.bashrc \\\n"
             "    && /usr/local/bin/claude --version\n"
         )
 
