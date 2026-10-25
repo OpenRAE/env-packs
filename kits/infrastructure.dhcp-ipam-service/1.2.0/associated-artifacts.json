@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.dhcp-ipam-service-associated-artifacts",
+  "manifest_version": "1.2.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "dhcp-ipam-service",
+    "ref_version": null,
+    "ref_digest": "sha256:8d1cc244ba1a796a0af0effbf13a274304d38dce353bf79633ebb854b4f872d2",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "437ad366faa3d8ac4a4e10cdf1d0de66d5e99f27965c9a743061aa85e43ebb9f"
+      },
+      "size_bytes": 724,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.dhcp-ipam-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "dc7dbc0013d30fe1b4b2207619c7939eadf33fff255b9dc7ad68ec9ab2d648d8"
+      },
+      "size_bytes": 487,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.dhcp-ipam-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "20ef88bf57385985ea15be01d693bc0f57b882ad184fba29b95ed8ea0da1c8eb"
+      },
+      "size_bytes": 624,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.dhcp-ipam-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "f9112742e3cc97e01d0286b772d255d89d91aa108e42a988c5bf4d100b0ad3ba"
+      },
+      "size_bytes": 1573,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.dhcp-ipam-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "8e6c33a601d7dd5c3b575183980559cc7236f80cabe861e8dd705c9f71e5f91d"
+      },
+      "size_bytes": 2627,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.dhcp-ipam-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "12e91eb64d222d66d5c72529225c865d25480ad7820c3c12a2d96fe59ed65ab5"
+      },
+      "size_bytes": 251,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.dhcp-ipam-service@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:34607904ad702cc60b2dfb24d12d37c0d19d9bb0c43166bf210cbbb4ef688128"
+}

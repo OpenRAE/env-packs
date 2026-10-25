@@ -1,0 +1,113 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.isolated-python-analysis-sandbox-associated-artifacts",
+  "manifest_version": "1.2.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "isolated-python-analysis-sandbox",
+    "ref_version": null,
+    "ref_digest": "sha256:8f481432b9562fc542a256f5b77306ce85f400c3aa1c6523a619f6e27da3cde2",
+    "ref_path": null
+  },
+  "artifacts": {
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "d3d9cfcc687058fb83f60e826c68ea9692beb45109cfc070e4a77af86baf7874"
+      },
+      "size_bytes": 497,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "a7757e2d8ee6af0fcf7de52111d8fe0789c2a47aa3811dfb56d3c126c394d3b9"
+      },
+      "size_bytes": 524,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "5d4573b1c50d1c37f1fc9d7801bb1bb6698c4ecb4463f8499313fdebbc792f18"
+      },
+      "size_bytes": 668,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "9b1e1354653f61eb875f6c27a518e76326161e998d7642d55bed941ca19ad21d"
+      },
+      "size_bytes": 1716,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "e9c57f8608bc0909be4d2f7f32b0f93b00e0ab536f8d2aec99c7f407113a1195"
+      },
+      "size_bytes": 3015,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "7529010a00b60cf4c5fa10b6ab0727c7f8ce1ecf20f4ee716fcdc835b8eccbda"
+      },
+      "size_bytes": 273,
+      "created_at": "2026-10-25T00:00:00Z",
+      "source": "infrastructure.isolated-python-analysis-sandbox@1.2.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:98503527287047a5e5f7e8ae50dfdcb3cfc600def4b7e31ba765cb9cfe7fe113"
+}

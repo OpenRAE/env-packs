@@ -1,0 +1,19 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.ssh-accessible-linux-host
+configuration:
+  login_name: analyst
+  deployment_profile: standard
+  service_label: ssh-accessible-linux-host
+declared_objects:
+- id: login_account
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: authorized_access
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: shell_profile
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: windows-active-directory-domain-controller
+  domain_name: directory.example.test
+variation:
+  deployment_profile: compact
+  service_label: windows-active-directory-domain-controller-alternate
+  domain_name: branch.example.test
+multi_kit_group: identity-domain
