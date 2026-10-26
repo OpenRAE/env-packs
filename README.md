@@ -55,6 +55,10 @@ That installs the command-line tools and the importable library:
   reusable infrastructure kits.
 - `raes-pack-issue-skeleton` — generate a pack's starter GitHub issues.
 
+It also includes every first-party kit release. Pin the package version and
+use `bundled_kit_source()` to discover and validate the installed collection
+without a Git checkout. See [using released kits](docs/public/kits.md#use-a-pinned-package-release).
+
 ## Validate your first pack
 
 Scaffold a valid minimal pack in your catalog repository and check it. The
