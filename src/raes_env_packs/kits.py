@@ -18,6 +18,8 @@ import shutil
 import tempfile
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from importlib import resources
+from importlib.metadata import version as distribution_version
 from pathlib import Path
 from urllib.parse import quote, unquote_to_bytes, urlsplit
 
@@ -158,6 +160,24 @@ class KitSource(object):
     id: str
     revision: str
     root: str
+
+
+def bundled_kit_source() -> KitSource:
+    """Describe the installed first-party collection without granting trust.
+
+    Requires a filesystem installation with bundled kits. Checkout sources
+    must use an explicit ``KitSource`` and their admitted source revision.
+    Discovery and byte validation remain with the existing kit loader.
+    """
+
+    root = resources.files("raes_env_packs").joinpath("resources")
+    if not isinstance(root, Path) or not (root / "kits").is_dir():
+        raise KitError("bundled kit resources require a filesystem installation with kits")
+    return KitSource(
+        id="openrae-env-packs",
+        revision=f"raes-env-packs=={distribution_version('raes-env-packs')}",
+        root=str(root),
+    )
 
 
 @dataclass(frozen=True)
@@ -2705,6 +2725,7 @@ __all__ = [
     "KitSource",
     "apply_proposal",
     "build_kit_catalog",
+    "bundled_kit_source",
     "catalog_json",
     "inspect_kit",
     "load_kit_release",

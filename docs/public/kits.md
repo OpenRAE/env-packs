@@ -87,8 +87,63 @@ open, so the backend decides whether it can realize them.
 
 ## Discover and inspect
 
-Use an `env-packs` checkout and identify the exact revision you admitted. The
-CLI performs no acquisition and no network access.
+### Use a pinned package release
+
+Install an exact package release to obtain the complete first-party kit
+collection without a Git checkout:
+
+```sh
+python -m pip install "raes-env-packs==<release>"
+```
+
+Replace `<release>` with a published package version that includes bundled
+kits. The wheel and source distribution contain every kit release from that
+package's source tree, including historical kit versions.
+
+Use the installed collection through the existing library APIs:
+
+```python
+from raes_env_packs import (
+    build_kit_catalog, bundled_kit_source, source_release,
+)
+
+source = bundled_kit_source()
+catalog = build_kit_catalog((source,))
+release = source_release(source, "infrastructure.postgresql-database", "1.2.0")
+print(release.id, release.version)
+print(release.associated_artifacts.set_digest)
+```
+
+```text
+infrastructure.postgresql-database 1.2.0
+sha256:b0842f0e5ea56b2f82c90f7d0eb242de5450177434f1478690436f36daca14eb
+```
+
+The source id is `openrae-env-packs`. Its revision is
+`raes-env-packs==<installed-version>`. The package version pins the collection;
+each kit retains its own version and RAES associated-artifact set digest.
+`source_release()` verifies the digest against the kit's exact files and SDL
+parent before returning. It rejects missing, changed, or undeclared files.
+
+Pass this same `source` to the kit proposal APIs when composing a pack.
+Discovery and inspection read the installed resources without changing them,
+running kit code, or contacting the network. The source root contains `kits/`;
+it is also usable with the CLI's existing source arguments.
+
+The helper requires filesystem-backed installed resources. If they are absent
+or the package is loaded from a ZIP file, it raises `KitError` without extracting
+files or searching a checkout. Editable installations should use an explicit
+checkout source as shown below.
+
+A kit digest proves content integrity, not authenticity. Admit the acquired
+Python distribution through your supply-chain policy. The existing release
+workflow supplies distribution build attestations. See
+[ADR 0041](https://github.com/OpenRAE/env-packs/blob/main/docs/decisions/adrs/0041-distribute-kits-as-package-resources.md).
+
+### Use an explicit checkout source
+
+You can also use an `env-packs` checkout. Identify the exact revision you
+admitted. The CLI performs no acquisition and no network access.
 
 ```sh
 catalog_revision=$(git rev-parse HEAD)
