@@ -28,7 +28,7 @@ Every kit release must provide all of these layers:
 - declared service, identity, data, or integration surfaces appropriate to the
   infrastructure;
 - at least three benign seed-inventory items describing useful environment
-  state;
+  state, with concrete dataset values or an immutable content source;
 - pack-local seed and integration assets;
 - planning estimates, limitations, external authoring prerequisites where
   applicable, and component-inventory inputs;

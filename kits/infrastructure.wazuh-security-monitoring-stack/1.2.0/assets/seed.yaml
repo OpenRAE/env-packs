@@ -1,0 +1,22 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.wazuh-security-monitoring-stack
+configuration:
+  enrollment_group: lab
+  deployment_profile: standard
+  service_label: wazuh-security-monitoring-stack
+declared_objects:
+- id: manager_configuration
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: agent_group
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: index_pattern
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: dashboard_space
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- No mandatory external authoring prerequisite; connect exported surfaces at the pack
+  composition root as needed.

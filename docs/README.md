@@ -30,6 +30,14 @@ User-facing documentation is under [`public/`](public/index.md).
 - [Defensive-tooling composition preflight](development/defensive-tooling-composition-preflight.md)
   — pack-root relationship, lifecycle ordering, and static-evidence guardrails
   for issue #378.
+- [Multi-node kit topology and seed preflight](development/multi-node-kit-topology-seed-preflight.md)
+  — RAES topology, seed-value, immutable-release, and validation guardrails for
+  issue #416.
+- [Bundled kit distribution](development/bundled-kit-distribution.md) — installed
+  source selection, data flows, and integrity checks.
+- [Released kit artifact preflight](development/released-kit-artifact-preflight.md)
+  — package resources, per-kit identity, installed-consumer evidence, and release
+  guardrails for issue #415.
 - [Two-audience delivery-bundle preflight](development/two-audience-bundles-preflight.md)
   — bundle/release view separation, exposure checks, and existing-contract
   guardrails for issue #379.

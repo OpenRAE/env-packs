@@ -146,6 +146,11 @@ class AiEscapeLabPackTests(unittest.TestCase):
         self.assertEqual(len({item["value"] for item in placements}), 7)
         self.assertEqual([len(item["hints"]) for item in challenges], [4, 2, 4, 3, 3, 3, 4])
         self.assertEqual(sum(len(item["hints"]) for item in challenges), 23)
+        flag_six_hints = " ".join(challenges[5]["hints"])
+        self.assertIn("mounted secret in /opt/secrets", flag_six_hints)
+        self.assertIn("mesh key is in the Kubernetes secret set", flag_six_hints)
+        self.assertIn("mongo_static_password", flag_six_hints)
+        self.assertNotIn("secret set contains the MongoDB password", flag_six_hints)
 
         with tempfile.TemporaryDirectory() as directory:
             output = pathlib.Path(directory) / "ctfd.json"

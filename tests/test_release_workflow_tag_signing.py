@@ -46,7 +46,6 @@ _GITSIGN_PIN = "0.15.1"
 _GITSIGN_SHA256 = (
     "8712be2e5fe89c9728c50beed20f1d37340b9f2dc3306cfb8830ef975549e170"
 )
-_LEGACY_2_0_2_TARGET = "45f39a930625c9de4c44017e8966d00b82f65052"
 
 
 def _load_workflow() -> dict:
@@ -377,11 +376,6 @@ class TagSigningContractTests(unittest.TestCase):
         for step in self.publish["steps"]:
             if str(step.get("uses", "")).startswith(_PYPI_ACTION):
                 self.assertIs(step.get("with", {}).get("skip-existing"), True)
-                self.assertEqual(
-                    step.get("if"),
-                    "steps.pypi-policy.outputs.publish == 'true'",
-                    "PyPI must consume the parsed distribution-name policy",
-                )
                 return
         self.fail("no PyPI publication step")
 
@@ -392,13 +386,9 @@ class TagSigningContractTests(unittest.TestCase):
         )
         run = str(policy.get("run", ""))
         self.assertIn("tomllib", run)
-        self.assertIn('distribution}" = "raes-env-packs"', run)
-        self.assertIn('"${TAG}" = "v2.0.2"', run)
-        self.assertIn(f'legacy_target="{_LEGACY_2_0_2_TARGET}"', run)
-        self.assertIn('"${TARGET_SHA}" = "${legacy_target}"', run)
-        self.assertIn("publish=true", run)
-        self.assertIn("publish=false", run)
+        self.assertIn('distribution}" != "raes-env-packs"', run)
         self.assertIn("exit 1", run)
+        self.assertNotIn("v2.0.2", run)
 
         policy_index = self.publish["steps"].index(policy)
         release_index = _index(self.publish, "gh release create")
@@ -466,33 +456,28 @@ class TagSigningContractTests(unittest.TestCase):
         self.assertLess(steps.index(tag_step), steps.index(export))
         self.assertLess(steps.index(export), steps.index(upload))
 
-    def test_historical_release_materializes_hash_locked_tooling(self) -> None:
+    def test_release_materializes_the_target_hash_locked_tooling(self) -> None:
         materialize = _step_run(
             self.publish,
-            "requirements/recovery-v2.0.2.txt",
+            'git cat-file -e "${TARGET_SHA}:requirements/build.txt"',
         )
-        self.assertIn("GITHUB_SHA", materialize)
-        self.assertIn(_LEGACY_2_0_2_TARGET, materialize)
-        self.assertIn('"${TAG}" != "v2.0.2"', materialize)
-        self.assertIn('"${TARGET_SHA}"', materialize)
-        self.assertIn('git cat-file -e "${TARGET_SHA}:requirements/build.txt"', materialize)
-        self.assertIn(
-            'git show "${GITHUB_SHA}:requirements/recovery-v2.0.2.txt"',
-            materialize,
-        )
-        self.assertGreaterEqual(
-            materialize.count(
-                'git show "${GITHUB_SHA}:requirements/recovery-v2.0.2.txt"'
-            ),
-            3,
-        )
-        self.assertIn("> requirements/build.txt", materialize)
-        self.assertIn("> requirements/runtime.txt", materialize)
-        self.assertIn("> requirements/sbom.txt", materialize)
+        for lock in ("build", "runtime", "sbom"):
+            with self.subTest(lock=lock):
+                self.assertIn(
+                    f'git cat-file -e "${{TARGET_SHA}}:requirements/{lock}.txt"',
+                    materialize,
+                )
+                self.assertIn(
+                    f'git show "${{TARGET_SHA}}:requirements/{lock}.txt"'
+                    f" > requirements/{lock}.txt",
+                    materialize,
+                )
+        self.assertIn("exit 1", materialize)
+        self.assertNotIn("GITHUB_SHA", materialize)
 
         materialize_index = _index(
             self.publish,
-            "requirements/recovery-v2.0.2.txt",
+            'git cat-file -e "${TARGET_SHA}:requirements/build.txt"',
         )
         build_index = _index(self.publish, "-m build")
         self.assertLess(materialize_index, build_index)

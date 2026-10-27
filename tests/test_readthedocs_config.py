@@ -33,7 +33,10 @@ _README = _ROOT / "README.md"
 
 # The interpreter every other automated surface in this repo uses. Docs drifting
 # onto a different one is how "works locally, breaks on RTD" starts.
-_EXPECTED_PYTHON = "3.12"
+_EXPECTED_PYTHON = "3.14"
+
+# The Read the Docs project slug that serves docs/public/.
+_RTD_SLUG = "raes-environment-packs"
 
 # Every markdown link target: the "x" in [text](x).
 _LINK = re.compile(r"\]\(([^)]+)\)")
@@ -261,6 +264,30 @@ class DocsBadgeTests(unittest.TestCase):
             _README.read_text(encoding="utf-8").lower(),
             "README must advertise the published documentation (#142)",
         )
+
+    def test_readme_links_the_live_project_and_real_pages(self) -> None:
+        # The project serves from the `raes-environment-packs` slug; README links
+        # to an unowned `env-packs` slug returned 404 (#442).
+        readme = _README.read_text(encoding="utf-8")
+        site = f"https://{_RTD_SLUG}.readthedocs.io/en/latest/"
+        rtd_links = [t for t in _link_targets(readme) if "readthedocs" in t]
+        self.assertTrue(rtd_links, "README must link the published documentation")
+        pages = _public_pages()
+        for target in rtd_links:
+            with self.subTest(target=target):
+                if target.startswith("https://app.readthedocs.org/"):
+                    self.assertTrue(
+                        target.startswith(
+                            f"https://app.readthedocs.org/projects/{_RTD_SLUG}/badge/"
+                        ),
+                        f"badge must reflect the {_RTD_SLUG} build",
+                    )
+                    continue
+                self.assertTrue(
+                    target.startswith(site), f"documentation link must use {site}"
+                )
+                page = target.removeprefix(site).removesuffix(".html") or "index"
+                self.assertIn(page, pages, f"no docs/public/{page}.md for {target}")
 
 
 if __name__ == "__main__":

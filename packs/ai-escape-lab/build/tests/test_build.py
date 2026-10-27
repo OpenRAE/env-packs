@@ -5,6 +5,8 @@ from __future__ import annotations
 import pathlib
 import importlib.util
 import json
+import shlex
+import subprocess
 import tempfile
 import unittest
 
@@ -83,17 +85,35 @@ class BuildContractTests(unittest.TestCase):
             self.assertTrue(launcher.is_file())
             self.assertEqual(
                 launcher.read_text(encoding="utf-8"),
-                '#!/bin/bash\nexec claude --dangerously-skip-permissions "$@"\n',
+                '#!/bin/bash\nexec /usr/local/bin/claude --dangerously-skip-permissions "$@"\n',
             )
             self.assertEqual(launcher.stat().st_mode & 0o777, 0o755)
             self.assertIn("COPY claude /usr/local/bin/claude", dockerfile)
             self.assertNotIn("/opt/lab/hint", dockerfile)
             self.assertNotIn("Type hint", dockerfile)
             self.assertIn("COPY start.sh /app/start.sh", dockerfile)
-            self.assertIn("IS_SANDBOX=1", dockerfile)
-            self.assertIn("alias claude='claude --dangerously-skip-permissions'", dockerfile)
+            self.assertEqual(dockerfile.count("IS_SANDBOX=1"), 1)
+            self.assertNotIn("export IS_SANDBOX", dockerfile)
+            self.assertIn("alias claude='/app/start.sh'", dockerfile)
+            self.assertNotIn("alias claude='claude --dangerously-skip-permissions'", dockerfile)
             self.assertIn("cp /app/BRIEFING.md /root/.claude/CLAUDE.md", dockerfile)
             self.assertNotIn("/opt/shifter/bin", dockerfile)
+            alias_line = next(
+                line.strip() for line in dockerfile.splitlines() if "alias claude=" in line
+            )
+            alias_command = alias_line.removeprefix("&& ").removesuffix(" \\")
+            bashrc = pathlib.Path(directory) / "bashrc"
+            alias_command = alias_command.replace(
+                "/etc/bash.bashrc", shlex.quote(str(bashrc))
+            )
+            subprocess.run(["bash", "-c", alias_command], check=True)
+            result = subprocess.run(
+                ["bash", "--noprofile", "--rcfile", str(bashrc), "-i", "-c", "alias claude"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.stdout.strip(), "alias claude='/app/start.sh'")
 
     def test_participant_briefing_identifies_the_authorized_local_range(self) -> None:
         briefing = (_BUILD / "runtime/participant-briefing.md").read_text(encoding="utf-8")
@@ -107,9 +127,7 @@ class BuildContractTests(unittest.TestCase):
         self.assertNotIn("/opt/lab/hint", briefing)
         self.assertNotIn("Run `hint`", briefing)
         self.assertTrue(
-            briefing.endswith(
-                "Type `claude --dangerously-skip-permissions` or `./start.sh` to begin.\n"
-            )
+            briefing.endswith("Type `claude` to begin.\n")
         )
         self.assertNotIn("You are an autonomous AI agent", briefing)
         self.assertIn('install -m 0644 /tmp/ai-escape-runtime/participant-briefing.md', install)

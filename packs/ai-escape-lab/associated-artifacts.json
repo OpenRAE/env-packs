@@ -211,9 +211,9 @@
       "uri": "raes-environment-pack:/build/gcp/scripts/prepare-source.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "553ced3b0b3b01d035b66da4209d5570da298dbdaa9ab371419736b960c81859"
+        "value": "f214720de10d0235e707cef247bf5cbd8dc7847160f2a592171bc67ac22ae6cf"
       },
-      "size_bytes": 5227,
+      "size_bytes": 5177,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -259,9 +259,9 @@
       "uri": "raes-environment-pack:/build/runtime/participant-briefing.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "228906fe3dc15c7b5d82763e960a937e24369f3b910b57a89e05e77f12364e76"
+        "value": "951dd1bfdae46b0c6d4b019e9280f15704dca49563610c77ef244cbab6bc538b"
       },
-      "size_bytes": 1640,
+      "size_bytes": 1593,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -403,9 +403,9 @@
       "uri": "raes-environment-pack:/build/tests/test_build.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "74258809900db6f2118f5fdc1146c8f35df3fa74de646511da294cfe9f1d510a"
+        "value": "d32da008cd6980c47026a78e3ef5ebef3dcdcac3c90c55d1cd8cc4e93c3d1dfe"
       },
-      "size_bytes": 12055,
+      "size_bytes": 12960,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -419,9 +419,9 @@
       "uri": "raes-environment-pack:/challenges/challenges.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "803f798b60b9e5d1b509d44d9d04f1bf6b13ade4464636ff6159eda41fea2fd2"
+        "value": "02da438975e922ef6ad25fe4bf835e73a5c0cd85d593bde8a2eaced7de46a89b"
       },
-      "size_bytes": 4456,
+      "size_bytes": 4489,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -531,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/golden-readiness-checklist.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "63fefe8aac3c426366dea28a0dca4574c6826fb3b768876e540bf7d35bbf29b8"
+        "value": "6fddc38f7fdaf2f359773afb7be00f382d44adeba1e287bd3c9acb260dc2f01b"
       },
-      "size_bytes": 3125,
+      "size_bytes": 3290,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -563,10 +563,26 @@
       "uri": "raes-environment-pack:/docs/operator-runbook.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "14f702b0f53388511fe77f076aaa0a6a74e9d61ba9bb485c9b79e725cbf3ac65"
+        "value": "6f6b2e1210de881cebf751ca6839066a5e429ba24e9990f46bdf7432db36354e"
       },
-      "size_bytes": 6969,
+      "size_bytes": 7107,
       "created_at": "2026-10-06T00:00:00Z",
+      "source": "environment-pack-author",
+      "satisfies_refs": [],
+      "sensitivity": "internal",
+      "description": null
+    },
+    "pack-3d4353980524351a": {
+      "artifact_id": "pack-3d4353980524351a",
+      "role": "configuration",
+      "media_type": "application/octet-stream",
+      "uri": "raes-environment-pack:/docs/participant-agent-entry.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "4b39e0585dd00b5c94c59e87566bf36a2283c16c142151b4af60d9be7056c1c6"
+      },
+      "size_bytes": 2801,
+      "created_at": "2026-10-25T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
       "sensitivity": "internal",
@@ -685,5 +701,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:e64a2fa8054dd15072ac9566526e551c587a3c7493f633417351c45ef71a558c"
+  "set_digest": "sha256:f4cbbd4513207e1a96e4176e064bbf50d7fa2e5759ec1c1575a0ca48af872961"
 }

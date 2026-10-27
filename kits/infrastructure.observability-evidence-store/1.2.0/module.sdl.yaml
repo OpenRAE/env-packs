@@ -1,0 +1,204 @@
+name: observability-evidence-store
+version: 1.2.0
+description: Reusable static infrastructure for Observability/evidence store. Configures retention_profile
+  through the kit parameter contract.
+module:
+  id: infrastructure/observability-evidence-store
+  version: 1.2.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - retention_profile
+  exports:
+    nodes:
+    - metrics
+    - traces
+    - internal_network
+    content:
+    - seed_inventory
+    accounts:
+    - observability_operator
+    infrastructure:
+    - internal_network
+    - metrics
+    - traces
+    relationships:
+    - metrics_depends_on_traces
+  description: Composable Observability/evidence store infrastructure module.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+  service_label:
+    type: string
+    default: observability-evidence-store
+  retention_profile:
+    type: string
+    default: standard
+nodes:
+  metrics:
+    type: compute
+    description: '${deployment_profile} profile for ${service_label} (Observability/evidence
+      store). Configuration: ${retention_profile}.'
+    source:
+      name: grafana
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 3000
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: metrics_surface
+        service: http
+        protocol: http
+        name: Metrics surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+  traces:
+    type: compute
+    description: ${deployment_profile} profile for ${service_label} (Observability/evidence
+      store).
+    source:
+      name: tempo
+      version: stable
+    resources:
+      cpu: 2
+      ram: 2 GiB
+    services:
+    - port: 3200
+      protocol: tcp
+      name: http
+      description: Declared http service surface.
+    runtime:
+      applications:
+      - application_id: traces_surface
+        service: http
+        protocol: http
+        name: Traces surface
+        routes:
+        - route_id: primary
+          path: /
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared primary response.
+        - route_id: health
+          path: /health
+          methods:
+          - GET
+          responses:
+          - status_code: 200
+            description: Declared health response.
+  internal_network:
+    type: switch
+    description: Module-local network for the declared service nodes.
+content:
+  seed_inventory:
+    type: dataset
+    target: metrics
+    description: Benign infrastructure seed inventory for ${retention_profile}.
+    items:
+    - name: metrics_datasource
+      display_name: Metrics Datasource
+      tags:
+      - infrastructure
+      - seed
+      description: Declared metrics datasource for this reusable service.
+    - name: trace_tenant
+      display_name: Trace Tenant
+      tags:
+      - infrastructure
+      - seed
+      description: Declared trace tenant for this reusable service.
+    - name: dashboards
+      display_name: Dashboards
+      tags:
+      - infrastructure
+      - seed
+      description: Declared dashboards for this reusable service.
+    - name: retention_policy
+      display_name: Retention Policy
+      tags:
+      - infrastructure
+      - seed
+      description: Declared retention policy for this reusable service.
+    format: application/json
+    text: |
+      {
+        "metrics_datasource": {
+          "type": "prometheus-compatible",
+          "access": "proxy",
+          "default_source": true
+        },
+        "trace_tenant": {
+          "isolation": "logical",
+          "ingest_protocol": "otlp",
+          "retention_days": 3
+        },
+        "dashboards": [
+          {
+            "name": "Service Health",
+            "refresh_seconds": 30
+          },
+          {
+            "name": "Trace Overview",
+            "refresh_seconds": 60
+          }
+        ],
+        "retention_policy": {
+          "metrics_days": 7,
+          "traces_days": 3,
+          "evidence_days": 30
+        }
+      }
+accounts:
+  observability_operator:
+    username: observability-operator
+    node: metrics
+    password_strength: strong
+    description: Declared environment account; credential delivery remains backend-owned.
+realization:
+  constraints:
+  - field_pointer: /nodes/metrics
+    concern: compute-substrate
+    posture: open
+  - field_pointer: /nodes/traces
+    concern: compute-substrate
+    posture: open
+infrastructure:
+  internal_network:
+    count: 1
+  metrics:
+    links:
+    - internal_network
+  traces:
+    links:
+    - internal_network
+relationships:
+  metrics_depends_on_traces:
+    type: depends_on
+    source: metrics
+    target: traces
+    description: metrics requires traces as an internal service dependency.

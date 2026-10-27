@@ -31,8 +31,8 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0023](0023-recover-interrupted-signed-releases.md) | Recover interrupted signed releases | Accepted |
 | [0024](0024-pin-gitsign-pre-regression-release.md) | Pin the pre-regression gitsign release | Accepted |
 | [0025](0025-recover-historical-tags-with-verified-handoff.md) | Recover historical tags with a verified object handoff | Accepted |
-| [0026](0026-separate-historical-source-from-release-tooling.md) | Separate historical source from release tooling | Accepted |
-| [0027](0027-publish-only-the-active-pypi-distribution.md) | Publish only the active PyPI distribution | Accepted |
+| [0026](0026-separate-historical-source-from-release-tooling.md) | Separate historical source from release tooling | `v2.0.2` exception superseded by 0040 |
+| [0027](0027-publish-only-the-active-pypi-distribution.md) | Publish only the active PyPI distribution | `v2.0.2` exception superseded by 0040 |
 | [0028](0028-project-raes-artifact-satisfaction-into-publication.md) | Project RAES artifact satisfaction into pack publication | Accepted |
 | [0029](0029-parallel-pr-feedback-with-a-complete-merge-gate.md) | Parallel PR feedback with a complete merge gate | Accepted |
 | [0030](0030-separate-public-and-developer-documentation.md) | Separate public and developer documentation | Accepted |
@@ -41,10 +41,12 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0033](0033-resolve-pack-artifacts-through-one-bounded-open.md) | Resolve pack artifacts through one bounded open | Accepted |
 | [0034](0034-compose-progressive-scaffolding-from-pack-and-raes-authorities.md) | Compose progressive scaffolding from pack and RAES authorities | Accepted |
 | [0035](0035-compose-catalog-kits-through-raes-and-transactional-pack-projections.md) | Compose catalog kits through RAES and transactional pack projections | Content location superseded by 0036 |
-| [0036](0036-publish-first-party-content-with-env-packs.md) | Publish first-party content with env-packs | Accepted |
+| [0036](0036-publish-first-party-content-with-env-packs.md) | Publish first-party content with env-packs | Installed source revision extended by 0041 |
 | [0037](0037-compose-verified-pack-distribution-from-existing-authorities.md) | Compose verified pack distribution from existing authorities | Accepted |
 | [0038](0038-ship-raes-concept-bindings-beside-pack-sdl.md) | Ship RAES concept bindings beside pack SDL | Accepted |
 | [0039](0039-demote-breaking-changes-to-minor-releases.md) | Demote breaking changes to minor releases (amends 0008) | Accepted |
+| [0040](0040-retire-the-v2-0-2-recovery-exception.md) | Retire the v2.0.2 recovery exception | Accepted |
+| [0041](0041-distribute-kits-as-package-resources.md) | Distribute kits as package resources | Accepted |
 
 ```{toctree}
 :hidden:

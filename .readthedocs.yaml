@@ -20,7 +20,7 @@ build:
   tools:
     # Matches the version CI, SonarCloud, and the release build all use, so the
     # docs build cannot drift onto a different interpreter than everything else.
-    python: "3.12"
+    python: "3.14"
 
 sphinx:
   configuration: docs/public/conf.py

@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: container-orchestration
+  cluster_name: lab-cluster
+variation:
+  deployment_profile: compact
+  service_label: container-orchestration-alternate
+  cluster_name: training-cluster
+multi_kit_group: data-workflow
