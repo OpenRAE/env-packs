@@ -338,6 +338,10 @@ class LockFileIntegrityTests(unittest.TestCase):
         pins = _parse_lock(_REQ_DIR / "pip-audit.txt")
         self.assertGreaterEqual(Version(pins["pip"]), Version("26.2"))
 
+    def test_audit_lock_excludes_msgpack_affected_by_cve_2026_114613(self) -> None:
+        pins = _parse_lock(_REQ_DIR / "pip-audit.txt")
+        self.assertGreaterEqual(Version(pins["msgpack"]), Version("1.2.3"))
+
     def test_locks_exclude_certifi_affected_by_pysec_2026_4320(self) -> None:
         for name in ("docs.txt", "pip-audit.txt"):
             with self.subTest(lock=name):
