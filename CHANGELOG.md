@@ -11,6 +11,22 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.4.0](https://github.com/OpenRAE/env-packs/compare/v6.3.4...v6.4.0) (2026-10-27)
+
+
+### Features
+
+* add actionable kit seed data and topology ([#507](https://github.com/OpenRAE/env-packs/issues/507)) ([4a4d5ae](https://github.com/OpenRAE/env-packs/commit/4a4d5ae6b7dd47f688c7d0dd5cd2460a52bd7785))
+* ship first-party kits in package distributions ([#508](https://github.com/OpenRAE/env-packs/issues/508)) ([ce69008](https://github.com/OpenRAE/env-packs/commit/ce690082510d379972dfde994546e162bb980d9d))
+
+
+### Bug Fixes
+
+* bump RAES dependency to 8.0.0 ([#510](https://github.com/OpenRAE/env-packs/issues/510)) ([5c2a261](https://github.com/OpenRAE/env-packs/commit/5c2a2619e49e3b3c41db77a2fb0aea96f66ec91f))
+* correct AI Escape MongoDB secret hint ([#506](https://github.com/OpenRAE/env-packs/issues/506)) ([92b422e](https://github.com/OpenRAE/env-packs/commit/92b422eada92be01f96dcead705ac596ea26e6b9))
+* point README documentation links at the live Read the Docs project ([#503](https://github.com/OpenRAE/env-packs/issues/503)) ([b78c786](https://github.com/OpenRAE/env-packs/commit/b78c7861d9b555570ca5602c3143019388f83584))
+* streamline sandbox participant entry ([#505](https://github.com/OpenRAE/env-packs/issues/505)) ([865bc65](https://github.com/OpenRAE/env-packs/commit/865bc6549b7bdb74e4c740207be956bde5403554))
+
 ## [6.3.4](https://github.com/OpenRAE/env-packs/compare/v6.3.3...v6.3.4) (2026-10-24)
 
 
