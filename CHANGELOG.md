@@ -11,6 +11,13 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.4.2](https://github.com/OpenRAE/env-packs/compare/v6.4.1...v6.4.2) (2026-10-28)
+
+
+### Bug Fixes
+
+* **deps:** update RAES to 9.1.0 ([#520](https://github.com/OpenRAE/env-packs/issues/520)) ([b4da008](https://github.com/OpenRAE/env-packs/commit/b4da008fb9994b26dd682c8b45d080f793c789f8))
+
 ## [6.4.1](https://github.com/OpenRAE/env-packs/compare/v6.4.0...v6.4.1) (2026-10-27)
 
 
