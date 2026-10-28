@@ -143,7 +143,7 @@ class PackageIdentityTests(unittest.TestCase):
                 for dependency in dependencies
             )
         )
-        self.assertEqual(_project()["requires-python"], ">=3.11")
+        self.assertEqual(_project()["requires-python"], ">=3.14,<3.15")
 
 
 class PackContractIdentityTests(unittest.TestCase):
