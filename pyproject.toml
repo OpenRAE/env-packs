@@ -8,8 +8,7 @@ name = "raes-env-packs"
 version = "6.4.1"
 description = "RAES environment-pack definition, schemas, template, and authoring/validation tooling."
 readme = "README.md"
-# Prepare for RAES 9, which supports only CPython 3.14 (issue #519).
-# (ADR 0011). SDL validation flows entirely through RAES, so this package tracks
+# RAES 9 supports only CPython 3.14 (issue #519, ADR 0011). SDL validation flows entirely through RAES, so this package tracks
 # the RAES Python floor rather than restating one.
 requires-python = ">=3.14,<3.15"
 license = { text = "MIT" }
@@ -28,7 +27,7 @@ classifiers = [
 # compatibility tests against this package's validator and template, so a
 # downstream consumer resolves exactly the RAES runtime this release was
 # validated against.
-dependencies = ["PyYAML>=6", "raes==8.1.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
+dependencies = ["PyYAML>=6", "raes==9.1.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
 
 [project.optional-dependencies]
 test = ["bcrypt==5.0.0"]
