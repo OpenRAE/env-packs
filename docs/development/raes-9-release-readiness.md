@@ -8,7 +8,8 @@ uses a patch-producing `fix(deps):` title.
 ## Dependency artifacts
 
 `pyproject.toml` and `requirements/runtime.in` declare `raes==9.1.0`.
-`uv.lock` and `requirements/runtime.txt` were regenerated against the existing
+`uv.lock`, `requirements/runtime.txt`, and the co-installed SBOM tool lock
+were regenerated against the existing
 PyPI source. RAES now requires `rpds-py==0.30.0`; the locks replace the previous
 calendar-versioned rpds-py releases with that exact version.
 Other dependency versions are retained.
@@ -44,4 +45,4 @@ checks for the exact PR head.
 
 - [RAES 9.1.0 release](https://github.com/OpenRAE/rae/releases/tag/v9.1.0)
 - [Published package](https://pypi.org/project/raes/9.1.0/)
-- [Dependency authority](../decisions/adrs/0011-require-pinned-aces-sdl-validation.md)
+- ADR 0011: require validation through the exactly pinned RAES dependency
