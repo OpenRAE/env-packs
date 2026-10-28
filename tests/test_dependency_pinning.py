@@ -196,7 +196,7 @@ def _parse_lock(path: pathlib.Path) -> dict[str, str]:
 class PythonAnalysisCompatibilityTests(unittest.TestCase):
     def test_analysis_and_source_syntax_include_the_declared_python_floor(self) -> None:
         project = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))["project"]
-        declared = re.fullmatch(r">=(\d+)\.(\d+)", project["requires-python"])
+        declared = re.fullmatch(r">=(\d+)\.(\d+),<3\.15", project["requires-python"])
         self.assertIsNotNone(declared, "update the floor check when the supported range changes")
         floor = tuple(map(int, declared.groups()))
         properties = (_ROOT / "sonar-project.properties").read_text(encoding="utf-8")
