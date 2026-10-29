@@ -56,7 +56,7 @@ raes-pack-kit inspect . \
 Repeat `inspect` for the Suricata and TheHive identifiers in the table. The
 machine document provides the parameters, defaults, exports, assets,
 limitations, prerequisites, resource estimates, and unresolved component
-scope derived from the released content and the pinned RAES library.
+scope derived from the released content and the installed RAES library.
 
 ## Follow the authoring tutorial
 

@@ -24,7 +24,7 @@ APTL-era issue #589. The two records are meant to agree and be read together.
 RAES owns portable scenario, workflow, capture, evidence, and inventory meaning:
 the SDL and its objectives, conditions, evidence requirements, and
 participant/attacker behavior, along with the controlled vocabularies and
-diagnostics. This repository consumes those from the exactly pinned `raes`
+diagnostics. This repository consumes those from the installed `raes`
 package and defines zero extensions to them. Where a scenario needs expressivity
 RAES lacks, that gap is fixed upstream in RAES, never worked around in the pack
 format.

@@ -1,6 +1,6 @@
 # Environment pack convention
 
-**Environment-pack contract version:** `7`
+**Environment-pack contract version:** `8`
 
 This document is the authoritative layout convention every RAES environment pack
 follows. It ships inside the `raes-env-packs` package alongside the schemas,
@@ -51,6 +51,7 @@ environments/<name>/
     <name>.schemes.json  # pinned scheme snapshots those bindings resolve against
     raes.lock.json # RAES-owned exact module resolution, when imports are present
     kits/          # ordinary materialized RAES modules, when kits are present
+  experiments/    # optional RAES experiment artifact set (ADR 0042)
   assets/         # bespoke files/content the scenario needs
   flags/          # flag values | generator | instructions, + placement.yaml
   challenges/     # CTF questions, hints, ratings — keyed by flag id
@@ -346,13 +347,55 @@ artifact roots, so an overlay can be removed without contaminating the base
 pack's source, licensing, or redistributability claims — and a base export never
 includes customer-specific material.
 
+### Experiment artifact set (`experiments/`)
+
+**Optional.** A pack can carry the RAES documents that define an experiment
+over its scenario family. RAES owns every experiment contract, every selection
+rule, and the trial compiler (ADR 0042).
+
+Direct members of `experiments/` are recognized by suffix:
+
+| Member | RAES contract | Admitted by |
+|---|---|---|
+| `<name>.exp.yaml` | `experiment-authoring-input-v1` | `raes_contracts.experiment_spec.parse_experiment_spec` |
+| `<name>.task.json` | `experiment-task-v1` | `ExperimentTaskModel` |
+| `<name>.capture.json` | `experiment-capture-spec-v1` | `ExperimentCaptureSpecModel` |
+
+Other members of `experiments/` are not experiment documents.
+
+- Every recognized document must pass its RAES contract, even when no
+  experiment refers to it.
+- RAES reference fields join the documents. `task_ref` and each
+  `capture_spec_refs` entry resolve by id, and by version when the reference
+  has one. Each reference must match exactly one document. File names carry no
+  identity.
+- The RAES trial compiler keys capture specifications by id. One experiment
+  references one version of each capture specification id.
+- Two documents of one kind must not share an id and version.
+- `intended_scenario_ref` must be an id-only `scenario` reference to the `name`
+  of exactly one `sdl/*.sdl.yaml` document. That document is the scenario
+  family.
+- RAES must admit the family through `admit_scenario_family`. A composed family
+  from the trusted author lane is already admitted. Selection policies, typed
+  treatments, and scenario-plane bindings must pass the RAES family checks.
+- A typed treatment pins the canonical family digest. A family edit requires
+  new pins.
+- Participant and apparatus targets, capture offers, and every requested
+  combination need caller-supplied manifests. The RAES trial compiler checks
+  them. Static validity is not trial admission.
+
+Classify `experiments/` in `artifact_boundaries`. Treatment labels and prompt
+commitments can reveal the experiment design, so do not expose them to
+participants. Prompt content stays outside the pack. The family SDL carries the
+prompt commitments in `control_context_assets`.
+
 ### Validity and RAES participant behavior
 
 The hydrated RAES SDL is the scenario specification. A pack declares the
 attacker through RAES `agents` and `behavior_specifications`, binds governed
 actions through `action_contracts`, and uses RAES preconditions, effects,
 failure classes, observation boundaries, outcome interpretation rules,
-objectives, evidence requirements, and workflows as needed. The pinned
+objectives, evidence requirements, and workflows as needed. The installed
 `raes` parser is the semantic authority; this package defines no parallel
 behavior, route, reachability, or validity schema.
 
@@ -585,7 +628,7 @@ A pack puts in what the scenario has. The sections divide into three tiers:
 |---|---|---|
 | **Required** | `pack.yaml`, `sdl/`, `docs/concepts.md`, `docs/attack-path.md` | Every pack. A pack with no identity, no start state, and no way to understand it is not a pack. |
 | **Required-if-present** | the flag layer (`flags/` + `challenges/` + `ctfd/`); the reference triangle (`build/` + `tests/` + `docs/walkthroughs/`) | Each group is all-or-nothing. If a pack ships flags it ships their placement and challenge text; if it ships a golden build it ships the tests and the matching walkthrough. |
-| **Optional** | `assets/`, `docs/lineage.md`, `docs/diagrams/`, `profiles/`, `pack.compatibility.yaml` | Include when the scenario has them. `profiles/` (delivery bundles) ships its own `profiles/bundles.yaml` manifest + `validate_*.py` gate when present. `pack.compatibility.yaml` is validated when `pack.yaml` references it. |
+| **Optional** | `assets/`, `docs/lineage.md`, `docs/diagrams/`, `profiles/`, `pack.compatibility.yaml`, `experiments/` | Include when the scenario has them. `profiles/` (delivery bundles) ships its own `profiles/bundles.yaml` manifest + `validate_*.py` gate when present. `pack.compatibility.yaml` is validated when `pack.yaml` references it. `experiments/` is validated through RAES when present. |
 
 The **minimum complete pack** is therefore `pack.yaml` + `sdl/` +
 `docs/concepts.md` + `docs/attack-path.md`. A pure-emulation scenario with no objectives is complete
@@ -732,7 +775,7 @@ The publication profile turns one validated pack release into distributable,
 verifiable release views. It **consumes** the RAES artifact-requirement contract
 (RAES ADR-098, `artifact-requirement-v1`) and defines no RAES semantics: author
 posture, mechanism vocabulary, acquisition, timing, permitted routes, and trust
-references are RAES-owned and read from the exactly pinned `raes` release. See
+references are RAES-owned and read from the installed `raes` release. See
 [ADR 0028](../../../docs/decisions/adrs/0028-project-raes-artifact-satisfaction-into-publication.md).
 
 Publication is a **claim about release assets**, never an override of author

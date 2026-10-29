@@ -28,12 +28,15 @@ explains each problem in plain language (or JSON), with documented exit codes.
   directory;
 - the required provenance ledger — its schema, its matching pack name, its
   content-safety attestations, and its review gates;
-- the referenced compatibility manifest, if the pack has one; and
-- every `sdl/*.sdl.yaml` start-state document, parsed through the pinned `raes`;
-  and
+- the referenced compatibility manifest, if the pack has one;
+- every `sdl/*.sdl.yaml` start-state document, parsed through the installed
+  `raes`;
 - any concept bindings beside an SDL document (`sdl/<name>.bindings.json`),
   resolved against its pinned schemes (`sdl/<name>.schemes.json`). A binding
-  that no longer resolves fails with `sdl.bindings-unresolved`.
+  that no longer resolves fails with `sdl.bindings-unresolved`; and
+- any experiment artifact set in `experiments/`, admitted through RAES and
+  joined to its scenario family (see
+  [experiments](environment-packs.md#experiments)).
 
 ## What it will not do
 
@@ -71,7 +74,7 @@ There are two checks, and they trust their input differently.
 
 Use `validate_pack` at an ingest boundary. Use `raes-pack-validate` in your own
 catalog CI, where running the pack's tests is safe and expected. Both parse the
-start state through the same pinned `raes`, so a self-contained start state gets
+start state through the same installed `raes`, so a self-contained start state gets
 the same verdict from either. They are not identical: `validate_pack` rejects SDL
 imports (`sdl.imports-denied`) because it runs without a file context, while
 `raes-pack-validate` can resolve them — so the consumer boundary is the stricter.
@@ -121,3 +124,35 @@ to an ambient path; failures raise `PackDigestError`.
 This is the post-validation byte-open step, not a replacement for it: keep
 running `validate_pack()` / `validate_pack_content_manifest()` first, and supply
 an immutably staged pack root.
+
+## Loading an experiment
+
+A pack can carry RAES experiment documents in `experiments/`. Load them after
+the same static check:
+
+```python
+from raes_env_packs import PackExperimentError, load_pack_experiments
+from raes_processor.trial_compiler import compile_admitted_trial_plan
+
+try:
+    experiments = load_pack_experiments(pack_root)
+except PackExperimentError as exc:
+    reject(exc.result.errors)
+
+for experiment in experiments:
+    request = experiment.compilation_request(
+        apparatus=apparatus,
+        apparatus_manifests=apparatus_manifests,
+        realization_envelope=envelope,
+        execution_authority=authority,
+        participant_manifests=participant_manifests,
+        participant_configuration_validators=validators,
+    )
+    result = compile_admitted_trial_plan(request)
+```
+
+Each `PackExperiment` holds the RAES-validated authoring input, its task, its
+capture specifications, and the admitted scenario family. The apparatus
+arguments are your trusted context. The RAES trial compiler checks them and
+every requested combination. It returns a plan or bounded diagnostics, and one
+invalid combination rejects the whole design.

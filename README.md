@@ -98,8 +98,8 @@ Full documentation is on [Read the Docs](https://raes-environment-packs.readthed
 This project defines the pack format and tools, publishes first-party reusable
 kits, and hosts major example packs. It does **not** run a scenario or define
 scenario meaning — the RAES scenario language and its semantics belong to
-[RAES](https://github.com/OpenRAE/rae), and this project consumes them from an
-exactly pinned `raes` release. It is a single-maintainer project with no support
+[RAES](https://github.com/OpenRAE/rae), and this project consumes them from a
+`raes` release at or above a minimum version. It is a single-maintainer project with no support
 SLA. See the
 [limitations](https://raes-environment-packs.readthedocs.io/en/latest/limitations.html) for the
 full picture.

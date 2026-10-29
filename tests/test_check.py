@@ -75,6 +75,22 @@ _KNOWN_CODES = (
     "sdl.bindings-unresolved",
     "sdl.bindings-schemes-missing",
     "sdl.bindings-orphan",
+    "experiment.spec-invalid",
+    "experiment.task-invalid",
+    "experiment.capture-invalid",
+    "experiment.family-invalid",
+    "experiment.selection-invalid",
+    "experiment.treatment-invalid",
+    "experiment.binding-invalid",
+    "experiment.spec-duplicate",
+    "experiment.task-duplicate",
+    "experiment.capture-duplicate",
+    "experiment.task-unresolved",
+    "experiment.task-ambiguous",
+    "experiment.capture-unresolved",
+    "experiment.capture-ambiguous",
+    "experiment.scenario-unresolved",
+    "experiment.scenario-ambiguous",
 ) + tuple(f"provenance.schema.{sub}" for sub in _SCHEMA_SUBCODES) + tuple(
     f"compatibility.schema.{sub}" for sub in _SCHEMA_SUBCODES
 )

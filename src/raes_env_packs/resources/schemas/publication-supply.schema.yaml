@@ -10,7 +10,7 @@ description: >
   pack distributes, so these rows are authored; everything else in the release
   profile is derived by the release tool. This document defines ZERO extensions
   to RAES semantics: publication and capability rows are validated by
-  constructing the exactly pinned upstream RAES models, and this schema
+  constructing the installed upstream RAES models, and this schema
   enumerates no mechanism, trust, or identity vocabulary of its own.
 $comment: >
   The component boundary is the accountable inventory input. Each entry names one

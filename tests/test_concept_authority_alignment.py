@@ -70,10 +70,10 @@ _TACTIC_ID_RE = re.compile(r"^(?:AML\.)?TA\d{4}$")
 
 
 def _governed_tactic_terms() -> frozenset[str]:
-    """Governed ATT&CK/ATLAS tactic shortnames from the pinned RAES corpus.
+    """Governed ATT&CK/ATLAS tactic shortnames from the installed RAES corpus.
 
     Read through the public ``raes_contracts.controlled_vocabularies`` API of the
-    exactly pinned ``raes`` distribution, which ships the concept-authority
+    installed ``raes`` distribution, which ships the concept-authority
     corpus — the ADR 0021 extensibility seam. Deriving the set instead of
     snapshotting it means the guard tracks the authority automatically.
     """

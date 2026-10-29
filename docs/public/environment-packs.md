@@ -22,6 +22,7 @@ example-pack/
 ├── assets/                        # custom files, planted content, briefings
 ├── build/  tests/  docs/walkthroughs/   # the reference triangle (optional)
 ├── flags/  challenges/  ctfd/     # the flag layer (optional, all-or-nothing)
+├── experiments/                   # RAES experiment artifact set (optional)
 └── profiles/                      # delivery bundles (optional)
 ```
 
@@ -36,7 +37,7 @@ records which optional layers ship. It is metadata, not a runtime contract.
 The `sdl/` directory holds the authored environment as one or more
 `<name>.sdl.yaml` documents, written in RAES SDL. This is the heart of a pack.
 
-The validator parses **every** `sdl/*.sdl.yaml` through the exactly pinned `raes`
+The validator parses **every** `sdl/*.sdl.yaml` through the installed `raes`
 release, with full semantic validation. A pack that ships no start-state document,
 or any document RAES rejects, fails. SDL is validated *through RAES* — this
 project restates none of the SDL schema.
@@ -92,6 +93,48 @@ files and hands the bytes to RAES to bind.
 Set identity, scenario meaning, and trust are separate claims: proving which
 bytes a pack is does not prove the scenario's semantics, nor that the pack is
 authentic or safe to run. See [validating a pack](validating.md) for the API.
+
+## Experiments
+
+A pack can carry the RAES documents that define an experiment over its scenario
+family. Put them in `experiments/`:
+
+| File | RAES contract |
+| --- | --- |
+| `<name>.exp.yaml` | `experiment-authoring-input-v1` |
+| `<name>.task.json` | `experiment-task-v1` |
+| `<name>.capture.json` | `experiment-capture-spec-v1` |
+
+The scenario family is an `sdl/*.sdl.yaml` document with RAES variation points.
+Each experiment names it with an id-only `intended_scenario_ref`:
+
+```yaml
+intended_scenario_ref:
+  ref_kind: scenario
+  ref_id: example-pack   # the SDL document's name
+```
+
+The documents join through their RAES references. `task_ref` and
+`capture_spec_refs` resolve by id and version, never by file name. Several
+experiments can share one task or capture specification.
+
+The validator admits every document and the family through RAES. It checks
+selection policies, typed treatments such as `factorial-treatments-v1`, and
+scenario bindings against the family. A typed treatment pins the family's
+canonical digest, so edit the pins after you edit the family.
+
+Participant targets, apparatus compatibility, and every requested combination
+need the consumer's manifests. The RAES trial compiler checks them, so a valid
+pack is not yet an admitted trial plan. See
+[loading an experiment](validating.md#loading-an-experiment).
+
+Classify `experiments/` in the compatibility manifest's artifact boundaries.
+Treatment labels and prompt commitments can reveal the design to participants.
+Prompt content stays outside the pack; the family SDL carries only its
+commitments.
+
+This support requires `raes>=9.2.0` on CPython 3.14 and layout contract
+version 8.
 
 ## Status
 
@@ -155,4 +198,5 @@ This page explains the format. These decide it:
 - `contract/pack-layout.md`, bundled in the package — the field-by-field layout
   contract.
 - The packaged schemas under `schemas/` — provenance and compatibility.
-- The exactly pinned `raes` release — all SDL semantics.
+- The installed `raes` release, at or above the package's minimum version — all
+  SDL semantics.
