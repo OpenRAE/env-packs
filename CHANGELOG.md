@@ -11,6 +11,13 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.5.0](https://github.com/OpenRAE/env-packs/compare/v6.4.2...v6.5.0) (2026-10-29)
+
+
+### Features
+
+* validate and release pack experiment artifact sets ([#527](https://github.com/OpenRAE/env-packs/issues/527)) ([4688118](https://github.com/OpenRAE/env-packs/commit/4688118f816e25fbfaf5c3016924d31a2f4dd62c))
+
 ## [6.4.2](https://github.com/OpenRAE/env-packs/compare/v6.4.1...v6.4.2) (2026-10-28)
 
 
