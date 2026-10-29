@@ -61,9 +61,11 @@ left out of the aggregate.
 coverage producer, downloads that same-run `coverage.xml`, and runs the
 SonarCloud scan — it does **not** re-run the suite. It is skipped for fork and
 Dependabot pull requests (which cannot see `SONAR_TOKEN`) and therefore is **not**
-part of the universally-required `verify` aggregate; the post-merge push to
-`dev`/`main` scans the integrated code with full token access. The assigned
-SonarCloud quality gate stays strict (`sonar.qualitygate.wait=true`).
+part of the universally-required `verify` aggregate. The SonarCloud plan
+analyzes only the main branch and pull requests, so the job runs on pull requests
+and on the push to `main`. It does not run on a push to `dev`. The push to `main`
+scans the integrated code with full token access. The assigned SonarCloud quality
+gate stays strict (`sonar.qualitygate.wait=true`).
 
 ## Shard ownership
 
