@@ -65,8 +65,8 @@ requirements:
     - ASP-0001
     - ASP-0002
 sonarcloud:
-  project_key: Brad-Edwards_aces-scenario-packs
-  organization: brad-edwards
+  project_key: OpenRAE_env-packs
+  organization: raesystem
 architecture:
   vocabulary:
     patterns:

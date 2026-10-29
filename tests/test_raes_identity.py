@@ -21,7 +21,7 @@ _RETIRED_DISTRIBUTION = f"{_RETIRED_PREFIX}-scenario-packs"
 _RETIRED_IMPORT = f"{_RETIRED_PREFIX}_scenario_packs"
 _OLD_PACKAGE = _ROOT / "src" / _RETIRED_IMPORT
 _GROUND_CONTROL_PROJECT = _RETIRED_DISTRIBUTION
-_SONAR_PROJECT_KEY = f"Brad-Edwards_{_RETIRED_DISTRIBUTION}"
+_SONAR_PROJECT_KEY = "OpenRAE_env-packs"
 
 _RETIRED_TOKENS = (
     f"{_RETIRED_PREFIX}-sdl",
@@ -253,13 +253,13 @@ class RepositoryIdentityTests(unittest.TestCase):
             ground_control["sonarcloud"],
             {
                 "project_key": _SONAR_PROJECT_KEY,
-                "organization": "brad-edwards",
+                "organization": "raesystem",
             },
         )
 
         sonar = (_ROOT / "sonar-project.properties").read_text(encoding="utf-8")
         self.assertIn(f"sonar.projectKey={_SONAR_PROJECT_KEY}", sonar)
-        self.assertIn("sonar.organization=brad-edwards", sonar)
+        self.assertIn("sonar.organization=raesystem", sonar)
 
 
 if __name__ == "__main__":
