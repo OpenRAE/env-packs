@@ -64,6 +64,7 @@ _BINDINGS_SUFFIX = ".bindings.json"
 _BINDINGS_INVALID = "sdl.bindings-invalid"
 _SCHEMES_SUFFIX = ".schemes.json"
 _METADATA_LIMIT_MESSAGE = "pack metadata exceeds the validation limit"
+_METADATA_LIMIT_CODE = "resource.metadata-limit"
 _SECRET_KEY_FRAGMENTS = (
     "credential",
     "password",
@@ -457,6 +458,17 @@ def _check_yaml_events(text: str, limits: PackValidationLimits) -> None:
             raise yaml.YAMLError("YAML expansion limit exceeded")
 
 
+def _add_member_read_error(
+    errors: _Errors, rel: str, exc: _pack_fs.PackFilesystemError
+) -> None:
+    """Record one bounded member-read failure as its stable code."""
+
+    if str(exc) == _METADATA_LIMIT_MESSAGE:
+        errors.add(_METADATA_LIMIT_CODE, rel)
+    else:
+        errors.add(_FILESYSTEM_CHANGED, rel)
+
+
 def _load_yaml_member(
     root_fd: int,
     rel: str,
@@ -479,10 +491,7 @@ def _load_yaml_member(
     except yaml.YAMLError:
         errors.add("yaml.invalid", rel)
     except _pack_fs.PackFilesystemError as exc:
-        if str(exc) == _METADATA_LIMIT_MESSAGE:
-            errors.add("resource.metadata-limit", rel)
-        else:
-            errors.add(_FILESYSTEM_CHANGED, rel)
+        _add_member_read_error(errors, rel, exc)
     return None
 
 
@@ -557,10 +566,7 @@ def _strict_json_member(
     except (ValueError, RecursionError):
         errors.add(invalid_code, rel)
     except _pack_fs.PackFilesystemError as exc:
-        if str(exc) == _METADATA_LIMIT_MESSAGE:
-            errors.add("resource.metadata-limit", rel)
-        else:
-            errors.add(_FILESYSTEM_CHANGED, rel)
+        _add_member_read_error(errors, rel, exc)
     return None
 
 
@@ -1620,10 +1626,7 @@ def _experiment_text(
     except (UnicodeDecodeError, yaml.YAMLError):
         errors.add("experiment.spec-invalid", rel)
     except _pack_fs.PackFilesystemError as exc:
-        if str(exc) == _METADATA_LIMIT_MESSAGE:
-            errors.add("resource.metadata-limit", rel)
-        else:
-            errors.add(_FILESYSTEM_CHANGED, rel)
+        _add_member_read_error(errors, rel, exc)
     return None
 
 
@@ -1642,6 +1645,8 @@ def _validate_experiments(
     """
 
     def documents(suffix: str, kind: str) -> dict[str, object]:
+        """Read every recognized JSON member with one suffix."""
+
         loaded: dict[str, object] = {}
         for rel in _experiment_set.experiment_members(inventory, suffix):
             document = _strict_json_member(

@@ -260,27 +260,42 @@ def _family(
     """Admit the pack SDL document the experiment names as its family."""
 
     reference = spec.intended_scenario_ref
+    match: tuple[str, object] | None = None
     if reference is None or reference.ref_kind != "scenario":
         add("experiment.scenario-unresolved", rel)
-        return None
-    matches = [
-        (sdl_rel, scenario)
-        for sdl_rel, scenario in sorted(scenarios.items())
-        if getattr(scenario, "name", None) == reference.ref_id
-    ]
-    match = _one(matches, "scenario", rel, add)
+    else:
+        matches = [
+            (sdl_rel, scenario)
+            for sdl_rel, scenario in sorted(scenarios.items())
+            if getattr(scenario, "name", None) == reference.ref_id
+        ]
+        match = _one(matches, "scenario", rel, add)
     if match is None:
         return None
     sdl_rel, scenario = match
-    if isinstance(scenario, ExpandedScenario) and scenario.semantic_validated:
-        return sdl_rel, scenario
-    try:
-        if not isinstance(scenario, Scenario):
-            raise ValueError("family is not an authored scenario")
-        return sdl_rel, admit_scenario_family(scenario)
-    except (SDLError, ValueError):
+    family = _admitted_family(scenario)
+    if family is None:
         add("experiment.family-invalid", rel)
-    return None
+        return None
+    return sdl_rel, family
+
+
+def _admitted_family(scenario: object) -> ExpandedScenario | None:
+    """Return the RAES-admitted family form of one parsed SDL document.
+
+    A composed document from the trusted author lane is already admitted. An
+    import-free document is admitted through ``admit_scenario_family``.
+    """
+
+    admitted: ExpandedScenario | None = None
+    if isinstance(scenario, ExpandedScenario) and scenario.semantic_validated:
+        admitted = scenario
+    elif isinstance(scenario, Scenario):
+        try:
+            admitted = admit_scenario_family(scenario)
+        except (SDLError, ValueError):
+            admitted = None
+    return admitted
 
 
 def _check_family(

@@ -152,7 +152,9 @@ def compile_fixture(experiment: PackExperiment, **context: object):
     return request, compile_admitted_trial_plan(request)
 
 
-class _FixturePack(unittest.TestCase):
+class _FixturePack:
+    """Shared scratch-pack helpers; mixed into each ``unittest.TestCase``."""
+
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
@@ -195,7 +197,7 @@ class _FixturePack(unittest.TestCase):
         return experiments[0]
 
 
-class ValidArtifactSetTests(_FixturePack):
+class ValidArtifactSetTests(_FixturePack, unittest.TestCase):
     def test_fixture_pack_passes_consumer_and_author_validation(self) -> None:
         result = validate_pack(self.root)
         self.assertTrue(result.ok, result.errors)
@@ -256,7 +258,7 @@ class ValidArtifactSetTests(_FixturePack):
         self.assertIn("sdl.imports-denied", self.codes())
 
 
-class CompilationTests(_FixturePack):
+class CompilationTests(_FixturePack, unittest.TestCase):
     def test_every_requested_combination_compiles_with_supplied_manifests(self) -> None:
         experiment = self.only_experiment()
         request, result = compile_fixture(experiment)
@@ -373,7 +375,7 @@ class CompilationTests(_FixturePack):
         self.assertEqual(dict(request.capture_specs), dict(experiment.capture_specs))
 
 
-class ReleaseAndReloadTests(_FixturePack):
+class ReleaseAndReloadTests(_FixturePack, unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         pack = yaml.safe_load(self.read("pack.yaml"))
@@ -453,7 +455,7 @@ class ReleaseAndReloadTests(_FixturePack):
         )
 
 
-class InvalidArtifactSetTests(_FixturePack):
+class InvalidArtifactSetTests(_FixturePack, unittest.TestCase):
     def assert_fails(self, code: str) -> None:
         result = validate_pack(self.root)
         self.assertIn(code, {diagnostic.code for diagnostic in result.diagnostics}, result.errors)
