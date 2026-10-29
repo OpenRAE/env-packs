@@ -8,7 +8,7 @@ description: >
   extensions to RAES semantics (ADR 0009, ADR 0028): author posture, mechanism
   vocabulary, acquisition, timing, permitted routes, trust references, and
   associated-artifact byte binding are RAES-owned and are consumed through the
-  exactly pinned `raes` release, never restated here.
+  installed `raes` release, never restated here.
 $comment: >
   Field disposition. `release` is the immutable identity block: `pack` is
   pack-domain identity; `semantic_parent` references the RAES scenario parent;

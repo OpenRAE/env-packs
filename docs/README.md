@@ -14,6 +14,11 @@ User-facing documentation is under [`public/`](public/index.md).
 
 ## Repository mechanics
 
+- [Experiment artifact set design](development/experiment-artifact-set-design.md)
+  — components, failure codes, security controls, and data flow for issue #504.
+- [Experiment artifact set preflight](development/experiment-artifact-set-preflight.md)
+  — RAES experiment validation, family treatments, safe references, release and
+  installed-artifact guardrails for issue #504.
 - [AI Escape Lab preflight](development/ai-escape-lab-preflight.md) — portable
   campaign, GCP reference deployment, seat containment, model access, and proof
   guardrails for issue #422.

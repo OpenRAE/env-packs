@@ -97,6 +97,10 @@ the pack ships. Owned by
 **env-packs**: this package defines the pack layout. Fix the pack's manifest or
 files.
 
+The `experiment` codes for duplicate, unresolved, or ambiguous references are
+also pack layout codes. Each experiment reference must select exactly one pack
+document.
+
 ### Trust and provenance
 
 `provenance` codes. The provenance ledger — the pack's origin, licensing,
@@ -115,9 +119,13 @@ declaration without contacting or starting any backend.
 ### SDL and RAES
 
 `sdl` codes. Every `sdl/*.sdl.yaml` start-state document, parsed through the
-pinned `raes`. Owned by **RAES**: it is the sole authority for SDL syntax and
+installed `raes`. Owned by **RAES**: it is the sole authority for SDL syntax and
 meaning. By default the check denies SDL imports (`sdl.imports-denied`) because
 resolving them can reach the network.
+
+The other `experiment` codes are also owned by **RAES**. They report an
+experiment, task, or capture specification that fails its RAES contract, or an
+experiment that does not fit its scenario family.
 
 ## Safe by default
 

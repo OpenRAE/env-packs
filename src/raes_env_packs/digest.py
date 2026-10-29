@@ -655,7 +655,7 @@ def _project_artifact_identity(
     """Project one byte-bound descriptor + pack version into the RAES identity.
 
     env-packs owns this projection so consumers never choose the version rule
-    locally. The identity is constructed through the pinned upstream model; a
+    locally. The identity is constructed through the upstream RAES model; a
     descriptor that cannot construct a canonical identity fails closed.
     """
 

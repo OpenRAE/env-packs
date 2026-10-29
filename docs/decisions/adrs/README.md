@@ -16,7 +16,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0008](0008-adopt-release-please.md) | Adopt release-please (reusable blueprint) | Commit contract amended by 0039 |
 | [0009](0009-scenario-packs-subordinate-to-aces.md) | Scenario packs are strictly subordinate to ACES (zero extensions) | No-hosting clause superseded by 0036; semantic boundary accepted |
 | [0010](0010-consume-aces-reusable-asset-trust-policy.md) | Consume ACES reusable-asset trust policy for pack provenance | Accepted |
-| [0011](0011-require-pinned-aces-sdl-validation.md) | Require pinned ACES SDL validation for scenario packs | Accepted |
+| [0011](0011-require-pinned-aces-sdl-validation.md) | Require pinned ACES SDL validation for scenario packs | Exact pin superseded by 0043 |
 | [0012](0012-pack-content-identity-and-trust-boundary.md) | Pack content identity consumes RAES associated-artifact manifests | Accepted |
 | [0013](0013-separate-consumer-static-validation-from-author-ci.md) | Separate consumer static validation from author CI | Accepted |
 | [0014](0014-consume-aces-concept-authority.md) | Keep governed concept references in ACES concept-authority | Accepted |
@@ -26,7 +26,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0018](0018-openssf-scorecard-posture.md) | OpenSSF Scorecard posture | Accepted |
 | [0019](0019-preserve-history-in-dev-main-promotions.md) | Preserve history in dev-to-main promotions | Accepted |
 | [0020](0020-no-auto-merge.md) | No auto-merge; a human merges every pull request | Accepted |
-| [0021](0021-adopt-raes-environment-pack-identity.md) | Adopt the RAES environment-pack identity as a hard cut | Upstream pin/spellings superseded by 0022 |
+| [0021](0021-adopt-raes-environment-pack-identity.md) | Adopt the RAES environment-pack identity as a hard cut | Upstream pin/spellings superseded by 0022; exact pin superseded by 0043 |
 | [0022](0022-adopt-raes-2-upstream-contract.md) | Adopt the RAES 2 upstream contract | Accepted |
 | [0023](0023-recover-interrupted-signed-releases.md) | Recover interrupted signed releases | Accepted |
 | [0024](0024-pin-gitsign-pre-regression-release.md) | Pin the pre-regression gitsign release | Accepted |
@@ -47,6 +47,8 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0039](0039-demote-breaking-changes-to-minor-releases.md) | Demote breaking changes to minor releases (amends 0008) | Accepted |
 | [0040](0040-retire-the-v2-0-2-recovery-exception.md) | Retire the v2.0.2 recovery exception | Accepted |
 | [0041](0041-distribute-kits-as-package-resources.md) | Distribute kits as package resources | Accepted |
+| [0042](0042-carry-raes-experiment-artifact-sets-in-packs.md) | Carry RAES experiment artifact sets in packs | Accepted |
+| [0043](0043-require-a-minimum-raes-version.md) | Require a minimum RAES version | Accepted |
 
 ```{toctree}
 :hidden:

@@ -575,6 +575,23 @@ class ConceptBindingValidationTests(PackValidationFixture):
                 self._write(bindings, schemes)
                 self.assertEqual(self._binding_errors(), [expected])
 
+    def test_json_null_documents_fail_closed(self) -> None:
+        for target, expected in (
+            ("bindings", "sdl.bindings-invalid: sdl/example.bindings.json"),
+            ("schemes", "sdl.bindings-invalid: sdl/example.schemes.json"),
+        ):
+            with self.subTest(target=target):
+                self._write(_binding_document(_BOUND_SDL), [_scheme_snapshot()])
+                getattr(self, target).write_text("null", encoding="utf-8")
+                self.assertEqual(self._binding_errors(), [expected])
+
+    def test_a_json_null_kit_ledger_fails_closed(self) -> None:
+        (self.root / "kit.materializations.json").write_text("null", encoding="utf-8")
+        self.assertIn(
+            "kit-materializations.invalid: kit.materializations.json",
+            self.validate().errors,
+        )
+
     def test_bindings_without_their_sdl_are_orphans(self) -> None:
         orphan = self.root / "sdl" / "missing.bindings.json"
         orphan.write_text(json.dumps(_binding_document(_BOUND_SDL)), encoding="utf-8")

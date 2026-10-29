@@ -22,7 +22,7 @@ For each release, inspection shows:
 - the kit identity, author value, infrastructure concern, release terms,
   limitations, and planning estimates;
 - the module identity, parameters, defaults, exports, and topology derived from
-  the pinned RAES library;
+  the installed RAES library;
 - pack-local assets and visibility;
 - kit prerequisites and declared software-component inputs; and
 - validation, parameter-variation, and multi-kit test declarations.

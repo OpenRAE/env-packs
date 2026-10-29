@@ -2,7 +2,7 @@
 
 The publication profile turns one validated pack release into distributable,
 verifiable release views. It *consumes* the RAES artifact-requirement contract
-shipped in the exactly pinned ``raes`` release and defines no RAES semantics of
+shipped in the installed ``raes`` release and defines no RAES semantics of
 its own: author posture, mechanism vocabulary, acquisition, timing, and trust
 references all remain RAES-owned.
 

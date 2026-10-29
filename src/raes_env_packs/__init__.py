@@ -36,6 +36,11 @@ from .distribution import (
     plan_verify,
     stage_pack_archive,
 )
+from .experiments import (
+    PackExperiment,
+    PackExperimentError,
+    load_pack_experiments,
+)
 from .release_provenance import (
     build_release_provenance,
     validate_release_provenance,
@@ -84,12 +89,15 @@ __all__ = [
     "Diagnostic",
     "DistributionError",
     "OperationPlan",
+    "PackExperiment",
+    "PackExperimentError",
     "Selector",
     "VerificationResult",
     "apply_install",
     "build_release_provenance",
     "export_pack_archive",
     "generate_sbom",
+    "load_pack_experiments",
     "load_release_evidence",
     "pack_component_boundary",
     "plan_install",

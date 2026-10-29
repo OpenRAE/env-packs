@@ -974,7 +974,7 @@ _INVALID_SDL = "\n".join([
 class SdlValidationGateTest(unittest.TestCase):
     """SDL-through-RAES gate + flag-placement cross-check (issue #84, ADR 0011).
 
-    SDL is validated through the real RAES parser (a hard, pinned dependency),
+    SDL is validated through the real RAES parser (a hard dependency),
     never a local schema. These drive the gate over temp catalogs using the same
     ``CI.PACKS_ROOT``/``CI._REPO`` repointing pattern as the other gate-infra tests.
     """

@@ -33,7 +33,7 @@ from yaml.events import (
     SequenceStartEvent,
 )
 
-from . import _pack_fs
+from . import _experiment_set, _pack_fs
 
 CONTENT_SAFETY_FLAGS = (
     "no_real_malware",
@@ -64,6 +64,7 @@ _BINDINGS_SUFFIX = ".bindings.json"
 _BINDINGS_INVALID = "sdl.bindings-invalid"
 _SCHEMES_SUFFIX = ".schemes.json"
 _METADATA_LIMIT_MESSAGE = "pack metadata exceeds the validation limit"
+_METADATA_LIMIT_CODE = "resource.metadata-limit"
 _SECRET_KEY_FRAGMENTS = (
     "credential",
     "password",
@@ -457,6 +458,17 @@ def _check_yaml_events(text: str, limits: PackValidationLimits) -> None:
             raise yaml.YAMLError("YAML expansion limit exceeded")
 
 
+def _add_member_read_error(
+    errors: _Errors, rel: str, exc: _pack_fs.PackFilesystemError
+) -> None:
+    """Record one bounded member-read failure as its stable code."""
+
+    if str(exc) == _METADATA_LIMIT_MESSAGE:
+        errors.add(_METADATA_LIMIT_CODE, rel)
+    else:
+        errors.add(_FILESYSTEM_CHANGED, rel)
+
+
 def _load_yaml_member(
     root_fd: int,
     rel: str,
@@ -479,10 +491,7 @@ def _load_yaml_member(
     except yaml.YAMLError:
         errors.add("yaml.invalid", rel)
     except _pack_fs.PackFilesystemError as exc:
-        if str(exc) == _METADATA_LIMIT_MESSAGE:
-            errors.add("resource.metadata-limit", rel)
-        else:
-            errors.add(_FILESYSTEM_CHANGED, rel)
+        _add_member_read_error(errors, rel, exc)
     return None
 
 
@@ -518,7 +527,13 @@ def _strict_json_member(
     *,
     invalid_code: str = "kit-materializations.invalid",
 ) -> object | None:
-    """Load one bounded JSON member without duplicate keys or non-finite numbers."""
+    """Load one bounded JSON member without duplicate keys or non-finite numbers.
+
+    ``None`` always means the member failed and a diagnostic was recorded. A
+    top-level JSON ``null`` is therefore rejected here: no pack JSON contract
+    accepts it, and a decoded ``None`` would otherwise be indistinguishable
+    from a read failure and skip admission silently.
+    """
 
     def object_pairs(pairs: list[tuple[str, object]]) -> dict[str, object]:
         """Reject duplicate object members during JSON decoding."""
@@ -544,15 +559,14 @@ def _strict_json_member(
             object_pairs_hook=object_pairs,
             parse_constant=invalid_constant,
         )
+        if document is None:
+            raise ValueError("JSON null document")
         _check_json_shape(document, limits)
         return document
     except (ValueError, RecursionError):
         errors.add(invalid_code, rel)
     except _pack_fs.PackFilesystemError as exc:
-        if str(exc) == _METADATA_LIMIT_MESSAGE:
-            errors.add("resource.metadata-limit", rel)
-        else:
-            errors.add(_FILESYSTEM_CHANGED, rel)
+        _add_member_read_error(errors, rel, exc)
     return None
 
 
@@ -1575,7 +1589,7 @@ def _validate_sdl_documents(
     errors: _Errors,
     *,
     author_sdl: bool,
-) -> tuple[object, ...]:
+) -> dict[str, object]:
     """Validate every direct SDL document and retain successful scenarios."""
 
     documents = _direct_sdl_documents(inventory)
@@ -1590,7 +1604,70 @@ def _validate_sdl_documents(
             _validate_content_set_inventory(scenario, rel, errors)
             parsed[rel] = scenario
     _validate_concept_bindings(root_fd, inventory, parsed, limits, errors)
-    return tuple(parsed.values())
+    return parsed
+
+
+def _experiment_text(
+    root_fd: int, rel: str, limits: PackValidationLimits, errors: _Errors
+) -> str | None:
+    """Read one bounded authoring input and apply the YAML structure limits.
+
+    The RAES experiment loader parses the text and owns its meaning; this read
+    only keeps the byte, node, alias, and depth bounds every pack member has.
+    """
+
+    try:
+        raw = _pack_fs.read_member_bytes(
+            root_fd, rel, max_bytes=limits.max_metadata_bytes
+        )
+        text = raw.decode("utf-8", errors="strict")
+        _check_yaml_events(text, limits)
+        return text
+    except (UnicodeDecodeError, yaml.YAMLError):
+        errors.add("experiment.spec-invalid", rel)
+    except _pack_fs.PackFilesystemError as exc:
+        _add_member_read_error(errors, rel, exc)
+    return None
+
+
+def _validate_experiments(
+    root_fd: int,
+    inventory: frozenset[str],
+    scenarios: dict[str, object],
+    limits: PackValidationLimits,
+    errors: _Errors,
+) -> tuple[_experiment_set.PackExperiment, ...]:
+    """Admit the optional ``experiments/`` artifact set through RAES (ADR 0042).
+
+    Direct members are recognized by suffix. Every recognized document is
+    admitted even when no experiment refers to it; joins and family checks
+    belong to :mod:`._experiment_set`.
+    """
+
+    def documents(suffix: str, kind: str) -> dict[str, object]:
+        """Read every recognized JSON member with one suffix."""
+
+        loaded: dict[str, object] = {}
+        for rel in _experiment_set.experiment_members(inventory, suffix):
+            document = _strict_json_member(
+                root_fd, rel, limits, errors, invalid_code=f"experiment.{kind}-invalid"
+            )
+            if document is not None:
+                loaded[rel] = document
+        return loaded
+
+    specs: dict[str, str] = {}
+    for rel in _experiment_set.experiment_members(inventory, _experiment_set.SPEC_SUFFIX):
+        text = _experiment_text(root_fd, rel, limits, errors)
+        if text is not None:
+            specs[rel] = text
+    return _experiment_set.admit_experiment_set(
+        tasks=documents(_experiment_set.TASK_SUFFIX, "task"),
+        captures=documents(_experiment_set.CAPTURE_SUFFIX, "capture"),
+        specs=specs,
+        scenarios=scenarios,
+        add=errors.add,
+    )
 
 
 def _load_optional_publication(
@@ -1682,6 +1759,7 @@ class _PackSnapshot(object):
     publication_declared: bool
     publication: dict[str, object] | None
     scenarios: tuple[object, ...]
+    experiments: tuple[_experiment_set.PackExperiment, ...] = ()
 
 
 def _validate_pack_core(
@@ -1693,7 +1771,8 @@ def _validate_pack_core(
     """Run shared static validation and retain the parsed snapshot."""
 
     errors = _Errors(active)
-    scenarios: tuple[object, ...] = ()
+    scenarios: dict[str, object] = {}
+    experiments: tuple[_experiment_set.PackExperiment, ...] = ()
     root_out: str | None = None
     inventory_out: frozenset[str] = frozenset()
     manifest: dict[str, object] | None = None
@@ -1741,6 +1820,9 @@ def _validate_pack_core(
                         errors,
                         author_sdl=author_sdl,
                     )
+                    experiments = _validate_experiments(
+                        root_fd, inventory, scenarios, active, errors
+                    )
         finally:
             os.close(root_fd)
     snapshot = _PackSnapshot(
@@ -1751,7 +1833,8 @@ def _validate_pack_core(
         compatibility=compatibility,
         publication_declared=publication_declared,
         publication=publication,
-        scenarios=scenarios,
+        scenarios=tuple(scenarios.values()),
+        experiments=experiments,
     )
     return errors.result(), snapshot
 
