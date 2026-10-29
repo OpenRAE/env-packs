@@ -37,8 +37,8 @@ pack portable.
 
 - **RAES owns the meaning.** The scenario language (SDL), its objectives,
   evidence, and participant behavior belong to [RAES](https://github.com/OpenRAE/rae).
-  This repository consumes them from a pinned `raes` release and adds nothing to
-  them.
+  This repository consumes them from the installed `raes` release and adds
+  nothing to them.
 - **This repository owns the format.** It defines how a pack is laid out,
   authored, validated, and released — and the tools that enforce that. It owns
   the *shape* of a pack, never the content of any particular one.
@@ -64,7 +64,7 @@ There are two checks, for two situations:
   repository you control. It may run the pack's own validators and tests, so it
   is for trusted checkouts only.
 
-Both check the start state through the same pinned `raes` parser, so a
+Both check the start state through the same installed `raes` parser, so a
 self-contained start state gets the same verdict from either. They are not
 identical, though: the consumer boundary runs without a file context and rejects
 SDL that imports other files, while the author CLI can resolve those imports. The

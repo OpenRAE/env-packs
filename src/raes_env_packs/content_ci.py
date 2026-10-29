@@ -33,7 +33,8 @@ packs root:
      SDL is validated *through RAES*, with no SDL schema restated here; the gate
      is fail-closed on a missing/invalid document (ADR 0011, issue #84).
 
-Stdlib + PyYAML, plus RAES (``raes``, exactly pinned per ADR 0011) for SDL
+Stdlib + PyYAML, plus RAES (``raes``, a required dependency with a minimum
+version per ADR 0011 and ADR 0043) for SDL
 validation. Run locally exactly as CI does:
 
     raes-pack-validate --pack ./path/to/pack
@@ -608,9 +609,9 @@ def check_tests(
 def _load_raes() -> tuple[Callable[..., object], type[BaseException]]:
     """Return ``(parse_sdl_file, SDLError)`` from RAES, or raise ``ImportError``.
 
-    ``raes`` is a hard, exactly-pinned dependency (ADR 0011): SDL is
-    validated *through RAES*, never a local restatement. The import is isolated
-    (and lazy) so a broken environment where the pinned dep is missing surfaces
+    ``raes`` is a hard dependency (ADR 0011, ADR 0043): SDL is validated
+    *through RAES*, never a local restatement. The import is isolated (and
+    lazy) so a broken environment where the dependency is missing surfaces
     as a fail-closed gate failure in :func:`check_sdl` rather than crashing the
     import of the other, RAES-independent gates.
     """
@@ -814,14 +815,14 @@ def check_sdl(
     ADR 0011: SDL is validated *through RAES* (``parse_sdl_file`` with full
     semantic validation), with no SDL schema restated here. The gate is
     fail-closed — a pack with no start-state document, a document RAES rejects,
-    a placement ``host`` that resolves to no node, or a missing pinned ``raes``
+    a placement ``host`` that resolves to no node, or a missing ``raes``
     dependency all fail.
     """
     try:
         _load_raes()
     except ImportError as exc:
         failures.append(
-            "SDL VALIDATION UNAVAILABLE: raes (pinned dependency, ADR 0011) "
+            "SDL VALIDATION UNAVAILABLE: raes (required dependency, ADR 0011) "
             f"is not importable: {exc}")
         return
     for pack in packs if packs is not None else _packs():

@@ -21,7 +21,7 @@ _RETIRED_DISTRIBUTION = f"{_RETIRED_PREFIX}-scenario-packs"
 _RETIRED_IMPORT = f"{_RETIRED_PREFIX}_scenario_packs"
 _OLD_PACKAGE = _ROOT / "src" / _RETIRED_IMPORT
 _GROUND_CONTROL_PROJECT = _RETIRED_DISTRIBUTION
-_SONAR_PROJECT_KEY = f"Brad-Edwards_{_RETIRED_DISTRIBUTION}"
+_SONAR_PROJECT_KEY = "OpenRAE_env-packs"
 
 _RETIRED_TOKENS = (
     f"{_RETIRED_PREFIX}-sdl",
@@ -126,7 +126,8 @@ class PackageIdentityTests(unittest.TestCase):
             },
         )
 
-    def test_raes_is_the_single_exact_upstream_pin(self) -> None:
+    def test_raes_is_the_single_upstream_floor(self) -> None:
+        # ADR 0043: a minimum version, not one exact patch level.
         dependencies = _project()["dependencies"]
         specs = [
             dependency.replace(" ", "")
@@ -134,7 +135,7 @@ class PackageIdentityTests(unittest.TestCase):
             if re.match(r"raes(?![\w-])", dependency.strip())
         ]
         self.assertEqual(len(specs), 1)
-        self.assertRegex(specs[0], r"\Araes==[^=<>!~;,\s]+\Z")
+        self.assertRegex(specs[0], r"\Araes>=[^=<>!~;,\s]+\Z")
         self.assertFalse(
             any(
                 dependency.startswith(
@@ -175,7 +176,7 @@ class PackContractIdentityTests(unittest.TestCase):
         layout = (
             _NEW_PACKAGE / "resources" / "contract" / "pack-layout.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("Environment-pack contract version:** `7`", layout)
+        self.assertIn("Environment-pack contract version:** `8`", layout)
 
         digest = (_NEW_PACKAGE / "digest.py").read_text(encoding="utf-8")
         self.assertIn('_PACK_URI_SCHEME = "raes-environment-pack"', digest)
@@ -252,13 +253,13 @@ class RepositoryIdentityTests(unittest.TestCase):
             ground_control["sonarcloud"],
             {
                 "project_key": _SONAR_PROJECT_KEY,
-                "organization": "brad-edwards",
+                "organization": "raesystem",
             },
         )
 
         sonar = (_ROOT / "sonar-project.properties").read_text(encoding="utf-8")
         self.assertIn(f"sonar.projectKey={_SONAR_PROJECT_KEY}", sonar)
-        self.assertIn("sonar.organization=brad-edwards", sonar)
+        self.assertIn("sonar.organization=raesystem", sonar)
 
 
 if __name__ == "__main__":

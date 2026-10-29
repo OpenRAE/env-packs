@@ -320,7 +320,7 @@ _CATALOG: dict[str, Presentation] = {
     # -- SDL (RAES-owned) -------------------------------------------------------
     "sdl": _sdl(
         "An SDL start-state document did not pass RAES validation.",
-        "The start state must be valid under the pinned raes.",
+        "The start state must be valid under the installed raes.",
         "Fix the SDL document; RAES owns its syntax and meaning.",
     ),
     "sdl.missing": _sdl(
@@ -330,7 +330,7 @@ _CATALOG: dict[str, Presentation] = {
     ),
     "sdl.invalid": _sdl(
         "The SDL start state failed RAES validation.",
-        "The start state must parse and validate under the pinned raes.",
+        "The start state must parse and validate under the installed raes.",
         "Validate the document with raes and fix the reported SDL error.",
     ),
     "sdl.invalid-utf8": _sdl(
@@ -362,6 +362,94 @@ _CATALOG: dict[str, Presentation] = {
         "A concept-binding or scheme-snapshot document has no matching SDL document.",
         "Bindings attach to one sdl/<name>.sdl.yaml start state and its schemes to those bindings.",
         "Rename the document to match its SDL start state, or remove it.",
+    ),
+    # -- experiment artifact set (ADR 0042) -------------------------------------
+    # Document validity and family checks are RAES-owned; joins between pack
+    # documents are env-packs-owned.
+    "experiment": _sdl(
+        "An experiment document did not pass RAES validation.",
+        "RAES owns the experiment, task, and capture specification contracts.",
+        "Fix the reported experiment document; RAES owns its syntax and meaning.",
+    ),
+    "experiment.spec-invalid": _sdl(
+        "An experiment authoring input (*.exp.yaml) failed the RAES experiment loader.",
+        "The authoring input must be bounded YAML that validates as experiment-authoring-input-v1.",
+        "Validate the document with the RAES experiment loader and fix the reported contract error.",
+    ),
+    "experiment.task-invalid": _sdl(
+        "An experiment task (*.task.json) is malformed or fails its RAES contract.",
+        "A task must be strict JSON that validates as experiment-task-v1.",
+        "Fix the reported task so it validates as experiment-task-v1.",
+    ),
+    "experiment.capture-invalid": _sdl(
+        "An experiment capture specification (*.capture.json) is malformed or fails its RAES contract.",
+        "A capture specification must be strict JSON that validates as experiment-capture-spec-v1.",
+        "Fix the reported capture specification so it validates as experiment-capture-spec-v1.",
+    ),
+    "experiment.family-invalid": _sdl(
+        "RAES did not admit the SDL document an experiment names as its scenario family.",
+        "Experiment checks need a scenario family that RAES admits.",
+        "Fix the scenario family SDL so RAES admits it.",
+    ),
+    "experiment.selection-invalid": _sdl(
+        "An experiment selection policy does not fit its scenario family.",
+        "RAES checks each policy against a declared variation point and its domain.",
+        "Point the policy at a declared variation point and use an outcome in its domain.",
+    ),
+    "experiment.treatment-invalid": _sdl(
+        "An experiment treatment selection does not match its scenario family.",
+        "RAES checks the family id, family digest, point, target, owner, and outcome of each treatment.",
+        "Update the treatment pins after a family edit, and use a declared point and member.",
+    ),
+    "experiment.binding-invalid": _sdl(
+        "An experiment scenario binding does not match its scenario family.",
+        "RAES resolves each scenario binding to the canonical target of a declared variation point.",
+        "Use the canonical target id, value type, and owner of a declared variation point.",
+    ),
+    "experiment.spec-duplicate": _pack(
+        "Two experiment authoring inputs share one id and version.",
+        "An experiment identity must select one document.",
+        "Give each experiment authoring input a distinct spec_id or spec_version.",
+    ),
+    "experiment.task-duplicate": _pack(
+        "Two experiment tasks share one id and version.",
+        "A task reference must select one document.",
+        "Give each experiment task a distinct task_id or task_version.",
+    ),
+    "experiment.capture-duplicate": _pack(
+        "Two experiment capture specifications share one id and version.",
+        "A capture reference must select one document.",
+        "Give each experiment capture specification a distinct capture_spec_id or spec_version.",
+    ),
+    "experiment.task-unresolved": _pack(
+        "An experiment's task_ref matches no task in experiments/.",
+        "The pack must carry the task each experiment references.",
+        "Add the referenced experiments/<name>.task.json, or correct task_ref.",
+    ),
+    "experiment.task-ambiguous": _pack(
+        "An experiment's task_ref matches more than one task in experiments/.",
+        "A reference without a version must still select one document.",
+        "Add ref_version to task_ref, or remove the extra task.",
+    ),
+    "experiment.capture-unresolved": _pack(
+        "An experiment's capture_spec_refs entry matches no capture specification in experiments/.",
+        "The pack must carry each capture specification an experiment references.",
+        "Add the referenced experiments/<name>.capture.json, or correct the reference.",
+    ),
+    "experiment.capture-ambiguous": _pack(
+        "An experiment's capture_spec_refs entry matches more than one capture specification.",
+        "A reference without a version must still select one document.",
+        "Add ref_version to the reference, or remove the extra capture specification.",
+    ),
+    "experiment.scenario-unresolved": _pack(
+        "An experiment does not name a pack SDL document as its scenario family.",
+        "Each experiment needs an id-only scenario intended_scenario_ref that matches an SDL document name.",
+        "Set intended_scenario_ref to {ref_kind: scenario, ref_id: <SDL name>}.",
+    ),
+    "experiment.scenario-ambiguous": _pack(
+        "An experiment's scenario family name matches more than one SDL document.",
+        "The family reference must select one SDL document.",
+        "Give each sdl/*.sdl.yaml document a distinct name.",
     ),
 }
 

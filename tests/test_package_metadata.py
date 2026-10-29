@@ -22,15 +22,15 @@ class VersionTests(unittest.TestCase):
 
 
 class RaesDependencyTests(unittest.TestCase):
-    def test_raes_is_exactly_pinned(self):
-        """ADR 0011: raes is a single, exactly (``==``) pinned runtime dep.
+    def test_raes_declares_one_minimum_version(self):
+        """ADR 0043: raes is a single runtime dep with a ``>=`` floor.
 
-        The concrete version is deliberately NOT asserted here. A Dependabot
-        bump edits only ``pyproject.toml``; asserting the literal version would
-        turn every bump into a manual test edit (ADR 0016).
-        This guards the *invariant* — exactly one ``raes`` requirement,
-        pinned with ``==`` — while the version itself advances through the
-        reviewed pin (ADR 0011) and the CI compatibility gate.
+        The concrete version is deliberately NOT asserted here. A floor change
+        edits only ``pyproject.toml`` and ``requirements/runtime.in``; asserting
+        the literal version would turn every change into a manual test edit
+        (ADR 0016). This guards the *invariant*: exactly one ``raes``
+        requirement, declared as a minimum version and not as one exact patch
+        level.
         """
         root = pathlib.Path(__file__).resolve().parents[1]
         with (root / "pyproject.toml").open("rb") as handle:
@@ -43,15 +43,9 @@ class RaesDependencyTests(unittest.TestCase):
             f"expected exactly one raes requirement, got {raes_specs}")
 
         spec = raes_specs[0].replace(" ", "")
-        self.assertTrue(
-            spec.startswith("raes=="),
-            f"raes must be exactly (==) pinned per ADR 0011, got {spec!r}")
-        self.assertNotRegex(
-            spec, r"[<>~!,]",
-            f"raes must be a single exact pin, no ranges (ADR 0011), got {spec!r}")
         self.assertRegex(
-            spec[len("raes=="):], r"^\d+(\.\d+)+",
-            f"raes pin must carry a concrete version, got {spec!r}")
+            spec, r"^raes>=\d+(\.\d+)+$",
+            f"raes must declare one minimum version per ADR 0043, got {spec!r}")
 
     def test_bespoke_oracle_package_surface_is_absent(self):
         package_root = pathlib.Path(raes_env_packs.__file__).resolve().parent

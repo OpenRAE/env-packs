@@ -6,7 +6,7 @@ Read this before you build on the format, so its edges are clear up front.
 
 - Defines the environment-pack layout, schemas, and template.
 - Ships tools to scaffold a pack, validate one, and prepare a release.
-- Validates a pack's start state through a pinned RAES release.
+- Validates a pack's start state through the installed RAES release.
 - Publishes first-party infrastructure kits and major example packs.
 
 ## What it does not do
@@ -26,10 +26,9 @@ Read this before you build on the format, so its edges are clear up front.
 - **One maintainer.** This is a single-maintainer project. There is no support
   SLA and no separate review or enforcement team. See
   [SUPPORT](https://github.com/OpenRAE/env-packs/blob/main/SUPPORT.md).
-- **RAES is pinned exactly.** The project depends on one exact `raes` version.
-  While the upstream RAES schemas are still draft, that pin moves deliberately,
-  behind compatibility checks — so a pack's validation result is stable for a
-  given release.
+- **RAES has a minimum version.** The project depends on `raes` at or above
+  one minimum version. CI tests one locked RAES version. A newer RAES release is
+  not tested here until that lock moves.
 - **The contract still evolves.** The pack format is versioned. Breaking changes
   are possible and are recorded in the
   [decision records](https://github.com/OpenRAE/env-packs/blob/main/docs/decisions/adrs/README.md).
