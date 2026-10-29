@@ -216,19 +216,15 @@ jobs:
     # scanner's single input is the same-run coverage.xml, so it starts as soon
     # as that artifact exists (ADR 0029).
     needs: [tests]
-    # The SonarCloud plan analyzes only the main branch and pull requests. A
-    # push scan of dev cannot read its quality gate, so the job runs only on
-    # pushes to main and on pull requests.
     # SonarCloud needs SONAR_TOKEN, which GitHub withholds from PRs that don't
     # carry repository secrets: forks and Dependabot PRs (Dependabot runs read a
     # separate secret store that this token isn't in). Skip both — the scan still
-    # runs on the push to main with full token access, so the quality gate
-    # covers the integrated code. Dependency bumps don't touch sonar.sources
-    # (src/) anyway, so there is nothing new to analyze here.
+    # runs on the post-merge push to dev/main with full token access, so the
+    # quality gate covers the integrated code. Dependency bumps don't touch
+    # sonar.sources (src/) anyway, so there is nothing new to analyze here.
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
        github.actor != 'dependabot[bot]')
     steps:
       - name: Check out repository

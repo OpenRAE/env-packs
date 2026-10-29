@@ -313,16 +313,6 @@ class SecretEligibilityTests(unittest.TestCase):
         self.assertIn("github.repository", cond)
         self.assertIn("pull_request", cond)
 
-    def test_sonar_analyzes_only_main_pushes_and_pull_requests(self) -> None:
-        # The SonarCloud plan analyzes only the main branch and pull requests;
-        # a dev push scan cannot read its quality gate and fails the job.
-        cond = " ".join(str(self.jobs["sonar"].get("if", "")).split())
-        self.assertIn(
-            "github.event_name == 'push' && github.ref == 'refs/heads/main'", cond
-        )
-        self.assertNotIn("refs/heads/dev", cond)
-        self.assertNotIn("github.event_name != 'pull_request'", cond)
-
     def test_sonar_token_is_passed_by_environment_not_argv(self) -> None:
         # The token must reach the scanner through step `env:`, never a shell
         # command line where it could land in process argv or logs.
