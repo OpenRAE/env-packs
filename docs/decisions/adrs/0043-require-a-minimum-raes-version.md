@@ -2,9 +2,9 @@
 
 - Status: Accepted
 - Date: 2026-10-29
-- Supersedes: the exact-pin rule of
-  [ADR 0011](0011-require-pinned-aces-sdl-validation.md) and the exact-pin
-  consequence of [ADR 0021](0021-adopt-raes-environment-pack-identity.md)
+- Supersedes: the exact-pin rule of ADR 0011 (pinned RAES SDL validation) and
+  the exact-pin consequence of
+  [ADR 0021](0021-adopt-raes-environment-pack-identity.md)
 - Coordination: OpenRAE/env-packs issue 504
 
 ## Context
