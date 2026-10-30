@@ -34,6 +34,7 @@ from raes_contracts.contracts import (
     ExperimentArtifactRefModel,
 )
 from raes_contracts.diagnostics import Diagnostic
+from raes_contracts.json_ingress import StrictJsonIngressError
 from raes import SDLError, Scenario, load_sdl_fragment, parse_sdl, parse_sdl_file
 from raes.artifact_requirements import ArtifactIdentity
 
@@ -248,7 +249,7 @@ def _load_manifest(
         )
     except PackDigestError:
         raise
-    except (ValueError, TypeError) as exc:
+    except (StrictJsonIngressError, ValueError, TypeError) as exc:
         raise PackDigestError("associated artifact manifest is structurally invalid") from exc
 
 

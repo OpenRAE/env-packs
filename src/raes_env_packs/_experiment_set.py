@@ -14,7 +14,7 @@ from pathlib import PurePosixPath
 from types import MappingProxyType
 from typing import TypeVar
 
-from raes import SDLError, admit_scenario_family
+from raes import SDLError, SDLSelectionError, admit_scenario_family
 from raes.canonical import canonical_sdl_digest
 from raes.experiment_selection import validate_experiment_selection_against_family
 from raes.scenario import ExpandedScenario, Scenario
@@ -38,6 +38,7 @@ from raes_contracts.contracts import (
 from raes_contracts.experiment_bindings import (
     ApparatusManifest,
     ApparatusManifestKey,
+    ExperimentBindingTargetError,
     ParticipantManifestKey,
     validate_experiment_binding_targets,
 )
@@ -313,7 +314,7 @@ def _check_family(
     for kind, check in checks:
         try:
             check()
-        except ValueError:
+        except (SDLSelectionError, ExperimentBindingTargetError, ValueError):
             add(f"experiment.{kind}-invalid", rel)
             ok = False
     return ok

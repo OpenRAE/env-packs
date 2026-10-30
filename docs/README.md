@@ -14,6 +14,10 @@ User-facing documentation is under [`public/`](public/index.md).
 
 ## Repository mechanics
 
+- [Dependent-declaration variation preflight](development/dependent-declaration-variation-preflight.md)
+  — released RAES dependency, validation, and publication guardrails for issue #526.
+- [RAES 10 dependency design](development/raes-10-dependency-design.md)
+  — dependency floor, exception contract, data flow, and security controls for issue #526.
 - [Experiment artifact set design](development/experiment-artifact-set-design.md)
   — components, failure codes, security controls, and data flow for issue #504.
 - [Experiment artifact set preflight](development/experiment-artifact-set-preflight.md)

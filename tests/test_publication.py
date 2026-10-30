@@ -22,6 +22,7 @@ release assets rather than an override of RAES author intent:
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 
 from raes.artifact_requirements import (
     ArtifactCandidate,
@@ -30,6 +31,7 @@ from raes.artifact_requirements import (
     ArtifactRequirement,
     ArtifactSatisfactionRoute,
 )
+from raes_contracts.backend_profiles import BackendProfileIdentityError
 
 from raes_env_packs import publication
 
@@ -849,6 +851,22 @@ class TrustedBackendProfileTests(unittest.TestCase):
             {"profile_id": "totally-made-up-profile", "version": "1"})
         self.assertIn("publication.backend-profile-untrusted",
                       _codes(profile, [open_requirement()]))
+
+    def test_profile_with_a_mismatched_identity_is_rejected(self) -> None:
+        profile = self._claim_with_profile(
+            {"profile_id": "provisioning-only", "version": "1"})
+        with mock.patch.object(publication, "load_backend_profile",
+                               side_effect=BackendProfileIdentityError("mismatch")):
+            codes = _codes(profile, [open_requirement()])
+        self.assertIn("publication.backend-profile-untrusted", codes)
+
+    def test_a_defect_in_the_profile_loader_is_not_hidden(self) -> None:
+        profile = self._claim_with_profile(
+            {"profile_id": "provisioning-only", "version": "1"})
+        with mock.patch.object(publication, "load_backend_profile",
+                               side_effect=RuntimeError("defect")):
+            with self.assertRaises(RuntimeError):
+                _codes(profile, [open_requirement()])
 
     def test_every_trusted_profile_declares_the_manifest_contract(self) -> None:
         """The binding rests on backend-manifest-v2 being the mechanism carrier."""

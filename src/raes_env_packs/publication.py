@@ -41,7 +41,7 @@ from raes_contracts.addressing import (
     require_compiled_address,
 )
 from raes_contracts.artifact_requirements import ArtifactMechanismCapability
-from raes_contracts.backend_profiles import load_backend_profile
+from raes_contracts.backend_profiles import BackendProfileIdentityError, load_backend_profile
 
 from raes_env_packs import validation
 
@@ -694,8 +694,9 @@ def _is_trusted_backend_profile(profile: object) -> bool:
         return False
     try:
         model = load_backend_profile(profile_id)
-    # Upstream raises its own error types for an unknown or malformed profile.
-    except Exception:
+    # An unknown id is absent (OSError); a malformed id or payload fails
+    # validation (ValueError); a mislabelled artifact fails its identity check.
+    except (BackendProfileIdentityError, OSError, ValueError):
         return False
     return _BACKEND_MANIFEST_CONTRACT in getattr(model, "required_contracts", ())
 

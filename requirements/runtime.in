@@ -3,7 +3,7 @@
 # compiles from this file. tests/test_dependency_pinning.py checks that this
 # list and pyproject.toml are the same.
 PyYAML>=6
-raes>=9.2.0
+raes>=10.0.0
 mcp>=2,<3
 jsonschema>=4
 anyio>=4,<5

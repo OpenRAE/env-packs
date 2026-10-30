@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import cast
 
 import yaml
+from raes import SDLError
 from raes.module_registry import load_lockfile
 
 from . import _pack_fs
@@ -559,7 +560,7 @@ def _load_lockfile(pack_root: str | os.PathLike[str]) -> object:
 
     try:
         return load_lockfile(Path(pack_root, _SDL_LOCK_DIR))
-    except (OSError, ValueError):
+    except (SDLError, OSError, ValueError):
         return None
 
 

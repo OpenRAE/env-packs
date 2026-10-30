@@ -271,6 +271,13 @@ class MergeTests(unittest.TestCase):
 
 
 class PackLoaderTests(unittest.TestCase):
+    def test_a_malformed_module_lock_has_no_incumbents(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "sdl"))
+            with open(os.path.join(tmp, "sdl", "raes.lock.json"), "w", encoding="utf-8") as fh:
+                fh.write("{not json")
+            self.assertIsNone(cb._load_lockfile(tmp))
+
     def _write_pack(self, tmp: str, supply: dict | None) -> str:
         pack = os.path.join(tmp, "demo")
         os.makedirs(pack)

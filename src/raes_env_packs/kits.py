@@ -40,6 +40,7 @@ from raes_contracts.associated_artifacts import (
     validate_associated_artifact_manifest,
 )
 from raes_contracts.contracts import AssociatedArtifactManifestModel
+from raes_contracts.json_ingress import StrictJsonIngressError
 
 from . import _pack_fs, _transactions, validation
 from ._authoring_safety import admit_members
@@ -740,7 +741,7 @@ def _load_release_manifest(
     manifest_bytes = _read_member(root_fd, manifest_rel, limits)
     try:
         manifest = load_associated_artifact_manifest_json(manifest_bytes)
-    except (ValueError, TypeError) as exc:
+    except (StrictJsonIngressError, ValueError, TypeError) as exc:
         raise KitError("kit associated-artifact manifest is invalid") from exc
     expected_id = f"{document['id']}-associated-artifacts"
     if manifest.manifest_id != expected_id or manifest.manifest_version != document["version"]:
@@ -1188,7 +1189,7 @@ def _load_pack_artifacts(
 
     try:
         manifest = load_associated_artifact_manifest_json(files[manifest_rel])
-    except (KeyError, ValueError, TypeError) as exc:
+    except (KeyError, StrictJsonIngressError, ValueError, TypeError) as exc:
         raise KitError("pack associated-artifact manifest is invalid") from exc
     paths: dict[str, str] = {}
     for artifact_id, artifact in manifest.artifacts.items():

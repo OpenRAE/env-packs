@@ -133,7 +133,7 @@ Treatment labels and prompt commitments can reveal the design to participants.
 Prompt content stays outside the pack; the family SDL carries only its
 commitments.
 
-This support requires `raes>=9.2.0` on CPython 3.14 and layout contract
+This support requires `raes>=10.0.0` on CPython 3.14 and layout contract
 version 8.
 
 ## Status
