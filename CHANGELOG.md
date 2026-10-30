@@ -11,6 +11,13 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [6.5.1](https://github.com/OpenRAE/env-packs/compare/v6.5.0...v6.5.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps:** support RAES 10 and dependent-declaration variation targets ([#532](https://github.com/OpenRAE/env-packs/issues/532)) ([429ea09](https://github.com/OpenRAE/env-packs/commit/429ea092bb3c125aaa132c1802234f027899de47))
+
 ## [6.5.0](https://github.com/OpenRAE/env-packs/compare/v6.4.2...v6.5.0) (2026-10-29)
 
 
