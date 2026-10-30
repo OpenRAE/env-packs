@@ -863,10 +863,11 @@ class TrustedBackendProfileTests(unittest.TestCase):
     def test_a_defect_in_the_profile_loader_is_not_hidden(self) -> None:
         profile = self._claim_with_profile(
             {"profile_id": "provisioning-only", "version": "1"})
+        requirements = [open_requirement()]
         with mock.patch.object(publication, "load_backend_profile",
                                side_effect=RuntimeError("defect")):
             with self.assertRaises(RuntimeError):
-                _codes(profile, [open_requirement()])
+                _codes(profile, requirements)
 
     def test_every_trusted_profile_declares_the_manifest_contract(self) -> None:
         """The binding rests on backend-manifest-v2 being the mechanism carrier."""
