@@ -1,6 +1,6 @@
 $TTL 86400
 @   IN  SOA ns1.techvault.local. admin.techvault.local. (
-        2024010101  ; Serial
+        2026103001  ; Serial
         3600        ; Refresh
         900         ; Retry
         604800      ; Expire
@@ -39,8 +39,6 @@ ids         IN  A   172.20.0.15
 suricata    IN  A   172.20.0.15
 threatintel IN  A   172.20.0.16
 misp        IN  A   172.20.0.16
-casemgmt    IN  A   172.20.0.18
-thehive     IN  A   172.20.0.18
 soar        IN  A   172.20.0.20
 shuffle     IN  A   172.20.0.20
 

@@ -1,5 +1,8 @@
 # TechVault Cortex enrichment preflight
 
+Issue #536 retires this feature. The [removal preflight](techvault-case-management-removal-preflight.md)
+governs that change; the implemented boundary below records the earlier design.
+
 Issue #286 began with a healthy Cortex API but an empty analyzer inventory and
 a failed TheHive connector. The gap was not liveness: TechVault had no analyzer
 bytes, organization enablement, connector identity, or executable enrichment

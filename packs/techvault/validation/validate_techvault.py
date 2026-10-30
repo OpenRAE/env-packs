@@ -232,10 +232,6 @@ def _error(errors: list[str], code: str, detail: str) -> None:
     errors.append(f"suricata.{code}: {detail}")
 
 
-def _cortex_error(errors: list[str], code: str, detail: str) -> None:
-    errors.append(f"cortex.{code}: {detail}")
-
-
 def _misp_error(errors: list[str], code: str, detail: str) -> None:
     errors.append(f"misp.{code}: {detail}")
 
@@ -1375,120 +1371,6 @@ def validate_misp_contract(sdl: Mapping[str, Any]) -> list[str]:
     return errors
 
 
-def validate_cortex_contract(
-    pack_root: pathlib.Path, sdl: Mapping[str, Any]
-) -> list[str]:
-    """Validate the closed joins that make TechVault's Cortex useful."""
-
-    errors: list[str] = []
-    nodes = _as_mapping(sdl.get("nodes"))
-    content = _as_mapping(sdl.get("content"))
-    cortex = _as_mapping(nodes.get("cortex"))
-    thehive = _as_mapping(nodes.get("thehive"))
-
-    cortex_runtime = _as_mapping(cortex.get("runtime"))
-    applications = cortex_runtime.get("platform_applications", [])
-    application = applications[0] if isinstance(applications, list) and applications else {}
-    application = _as_mapping(application)
-    if application.get("platform_application_id") != "cortex-enrichment":
-        _cortex_error(errors, "application-missing", "cortex-enrichment")
-    capabilities = {
-        item.get("kind")
-        for item in application.get("capabilities", [])
-        if isinstance(item, Mapping)
-    }
-    if "analysis_execution" not in capabilities:
-        _cortex_error(errors, "capability-missing", "analysis_execution")
-
-    thehive_runtime = _as_mapping(thehive.get("runtime"))
-    thehive_applications = thehive_runtime.get("platform_applications", [])
-    thehive_application = _as_mapping(
-        thehive_applications[0]
-        if isinstance(thehive_applications, list) and thehive_applications
-        else {}
-    )
-    cortex_bindings = [
-        item
-        for item in thehive_application.get("upstream_bindings", [])
-        if isinstance(item, Mapping)
-        and item.get("target_node_ref") == "cortex"
-        and item.get("target_service_ref") == "cortex-api"
-        and item.get("role") == "backend_api"
-    ]
-    connectors = [
-        item
-        for item in thehive_application.get("connectors", [])
-        if isinstance(item, Mapping) and item.get("kind") == "analyzer_engine"
-    ]
-    if len(cortex_bindings) != 1 or len(connectors) != 1:
-        _cortex_error(errors, "connector-binding-invalid", "TheHive connector")
-    elif connectors[0].get("credential_classification") != "redacted":
-        _cortex_error(errors, "connector-key-mismatch", "TheHive connector")
-
-    authorizations = cortex_runtime.get("app_authorizations", [])
-    authorization = (
-        authorizations[0]
-        if isinstance(authorizations, list) and authorizations
-        else {}
-    )
-    principals = {
-        item.get("principal_id"): item
-        for item in _as_mapping(authorization).get("principals", [])
-        if isinstance(item, Mapping)
-    }
-    principal = _as_mapping(principals.get("thehive-cortex-connector"))
-    if (
-        principal.get("kind") != "service_account"
-        or principal.get("credential_classification") != "redacted"
-        or principal.get("backend_roles") != ["read", "analyze"]
-    ):
-        _cortex_error(errors, "connector-principal-invalid", "least privilege")
-    if set(principals) != {"thehive-cortex-connector"}:
-        _cortex_error(errors, "unexpected-principal", "Cortex authorization")
-    if "cortex-job-index-schema" in content:
-        _cortex_error(errors, "native-schema-leaked", "Cortex owns its index mapping")
-
-    expected_content = {
-        "cortex-analyzer-definition": (
-            "techvault-cortex-analyzer-definition",
-            "/opt/techvault/cortex-analyzers/TechVaultScenarioContext/analyzer.json",
-        ),
-        "cortex-analyzer-executable": (
-            "techvault-cortex-analyzer-executable",
-            "/opt/techvault/cortex-analyzers/TechVaultScenarioContext/techvault_scenario_context.py",
-        ),
-    }
-    resolved: dict[str, bytes] = {}
-    for content_id, (artifact_id, path) in expected_content.items():
-        item = _as_mapping(content.get(content_id))
-        source = _as_mapping(item.get("source"))
-        exact = _as_mapping(_as_mapping(source.get("artifact_requirement")).get("exact_artifact"))
-        if item.get("path") != path or source.get("name") != artifact_id:
-            _cortex_error(errors, "content-placement-mismatch", content_id)
-            continue
-        try:
-            artifact = resolve_pack_artifact(pack_root, artifact_id)
-        except (PackDigestError, OSError, ValueError):
-            _cortex_error(errors, "content-identity-mismatch", content_id)
-            continue
-        if artifact.identity.digest != exact.get("digest"):
-            _cortex_error(errors, "content-identity-mismatch", content_id)
-        resolved[content_id] = artifact.data
-
-    try:
-        definition = json.loads(resolved.get("cortex-analyzer-definition", b"{}"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        definition = {}
-    if (
-        definition.get("name") != "TechVaultScenarioContext"
-        or definition.get("version") != "1.0"
-        or definition.get("dataTypeList") != ["ip"]
-        or not definition.get("command")
-    ):
-        _cortex_error(errors, "analyzer-definition-invalid", "TechVaultScenarioContext_1_0")
-    return errors
-
-
 def _is_build_recipe(requirement: Mapping[str, Any]) -> bool:
     if requirement.get("materialization_specifications"):
         return True
@@ -1735,7 +1617,6 @@ def validate() -> list[str]:
         errors.extend(validate_shuffle_orborus_contract(sdl))
         errors.extend(validate_misp_contract(sdl))
         errors.extend(validate_suricata_contract(root, sdl))
-        errors.extend(validate_cortex_contract(root, sdl))
         errors.extend(validate_wazuh_agent_contract(sdl))
     return errors
 

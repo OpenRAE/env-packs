@@ -17,7 +17,7 @@ from raes_env_packs.kits import KitSource, build_kit_catalog, load_kit_release
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_RELEASE_COUNT = 136
+EXPECTED_RELEASE_COUNT = 133
 
 MULTI_NODE_DEPENDENCIES = {
     "infrastructure.observability-evidence-store": {
@@ -25,9 +25,6 @@ MULTI_NODE_DEPENDENCIES = {
     },
     "infrastructure.shuffle-automation-service": {
         ("automation", "storage"),
-    },
-    "infrastructure.thehive-case-management-service": {
-        ("case_manager", "storage"),
     },
     "infrastructure.wazuh-security-monitoring-stack": {
         ("manager", "indexer"),
@@ -176,6 +173,23 @@ class PublishedKitTests(unittest.TestCase):
         second = build_kit_catalog((source,))
         self.assertEqual(first, second)
         self.assertEqual(len(first["entries"]), EXPECTED_RELEASE_COUNT)
+
+    def test_collection_offers_no_thehive_case_management_kit(self) -> None:
+        source = KitSource(
+            id="openrae-env-packs",
+            revision="test-revision",
+            root=str(ROOT),
+        )
+        for entry in build_kit_catalog((source,))["entries"]:
+            with self.subTest(kit=entry["id"], version=entry["version"]):
+                self.assertNotRegex(json.dumps(entry), "(?i)thehive")
+        for path in sorted((ROOT / "kits").rglob("*")):
+            if not path.is_file() or "__pycache__" in path.parts:
+                continue
+            relative = path.relative_to(ROOT).as_posix()
+            with self.subTest(path=relative):
+                self.assertNotRegex(relative, "(?i)thehive")
+                self.assertNotRegex(path.read_bytes(), rb"(?i)thehive")
 
     def test_newest_releases_have_actionable_seed_content(self) -> None:
         for release_root in _newest_releases():

@@ -74,29 +74,6 @@ _KITS = (
         },
         "component_refs": {"/nodes/sensor/source"},
     },
-    {
-        "id": "infrastructure.thehive-case-management-service",
-        "namespace": "thehive",
-        "parameters": {
-            "deployment_profile": "compact",
-            "service_label": "case-management",
-            "organization_name": "blue-team",
-        },
-        "parameter_names": {
-            "deployment_profile",
-            "service_label",
-            "organization_name",
-        },
-        "exports": {
-            "nodes": {"case_manager", "storage"},
-            "content": {"seed_inventory"},
-            "accounts": {"case_analyst"},
-        },
-        "component_refs": {
-            "/nodes/case_manager/source",
-            "/nodes/storage/source",
-        },
-    },
 )
 _EXPECTED_LOCK = {
     "wazuh": ("infrastructure/wazuh-security-monitoring-stack", _VERSION),
@@ -104,7 +81,6 @@ _EXPECTED_LOCK = {
         "infrastructure/suricata-network-intrusion-detection-sensor",
         _VERSION,
     ),
-    "thehive": ("infrastructure/thehive-case-management-service", _VERSION),
 }
 _RELATIONSHIP = {
     "suricata-can-reach-wazuh": {
@@ -243,7 +219,7 @@ def _create_pack(result: Result, workspace: Path) -> Path:
 def _compose_and_update(
     result: Result, pack: Path, catalog: Path, revision: str
 ) -> None:
-    print("\n== preview and compose three releases ==")
+    print("\n== preview and compose two releases ==")
     before_preview = _snapshot(pack)
     previewed = _kit(
         [
@@ -272,7 +248,7 @@ def _compose_and_update(
     initial = _materializations(pack)
     specs_by_namespace = {str(spec["namespace"]): spec for spec in _KITS}
     result.check(
-        "three exact materializations and source coordinates are recorded",
+        "two exact materializations and source coordinates are recorded",
         set(initial) == set(_EXPECTED_LOCK)
         and all(
             row["kit_id"] == specs_by_namespace[name]["id"]
@@ -324,8 +300,8 @@ def _remove_and_readd(
     removed = _kit(["remove", str(pack), "suricata", "--json"])
     result.command("Suricata removed through explicit ownership", removed)
     result.check(
-        "Wazuh and TheHive remain materialized",
-        set(_materializations(pack)) == {"wazuh", "thehive"},
+        "Wazuh remains materialized",
+        set(_materializations(pack)) == {"wazuh"},
     )
     result.command(
         "Suricata re-added for relationship authoring",
@@ -345,7 +321,7 @@ def _assert_identity(result: Result, pack: Path) -> None:
         for item in lock["imports"]
     }
     result.check(
-        "RAES lock contains the three exact module resolutions",
+        "RAES lock contains the two exact module resolutions",
         actual_lock == _EXPECTED_LOCK,
     )
     result.check(
@@ -358,7 +334,7 @@ def _assert_identity(result: Result, pack: Path) -> None:
     manifest = validate_pack_content_manifest(pack)
     result.check(
         "the complete associated-artifact set validates",
-        manifest.set_digest.startswith("sha256:") and len(manifest.artifacts) == 17,
+        manifest.set_digest.startswith("sha256:") and len(manifest.artifacts) == 14,
     )
 
 
@@ -390,7 +366,7 @@ def _author_relationship(result: Result, pack: Path) -> None:
         and relationship.target == "wazuh.manager",
     )
     result.check(
-        "no unsupported Wazuh-to-TheHive mapping is asserted",
+        "only the authored relationship is asserted",
         set(scenario.relationships) == {"suricata-can-reach-wazuh"},
     )
 

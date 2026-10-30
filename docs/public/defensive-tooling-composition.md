@@ -1,10 +1,10 @@
 # Build a defensive-tooling environment pack from kits
 
 Use this authoring tutorial to create a versioned, validated starting
-environment with network sensing, security monitoring, and case-management
-surfaces. Instead of rewriting those infrastructure declarations for each
-environment, you compose three released kits into an ordinary pack, retain
-their provenance, and keep each kit independently replaceable.
+environment with network sensing and security monitoring surfaces. Instead of
+rewriting those infrastructure declarations for each environment, you compose
+two released kits into an ordinary pack, retain their provenance, and keep
+each kit independently replaceable.
 
 The completed pack gives authors a concrete scaffold to extend with
 scenario-specific RAES source and gives runtime backends a portable input to
@@ -13,8 +13,8 @@ between exported nodes without turning the releases into a new bundle or
 duplicating their module descriptors.
 
 The result is static authoring evidence. It does not show that services start,
-telemetry moves, alerts are generated, cases are created, or a backend can
-realize the environment.
+telemetry moves, alerts are generated, or a backend can realize the
+environment.
 
 ## Use these exact releases
 
@@ -26,9 +26,8 @@ provenance; it is not a substitute for independently admitting the source.
 | --- | --- | --- | --- |
 | `infrastructure.wazuh-security-monitoring-stack@1.0.0` as `wazuh` | `deployment_profile`, `service_label`, `enrollment_group` | nodes `manager`, `indexer`, `dashboard`; content `seed_inventory`; account `monitoring_operator` | Wazuh manager, indexer, and dashboard 4 |
 | `infrastructure.suricata-network-intrusion-detection-sensor@1.0.0` as `suricata` | `deployment_profile`, `service_label`, `ruleset_name` | node `sensor`; content `seed_inventory` | Suricata 8 |
-| `infrastructure.thehive-case-management-service@1.0.0` as `thehive` | `deployment_profile`, `service_label`, `organization_name` | nodes `case_manager`, `storage`; content `seed_inventory`; account `case_analyst` | TheHive 5 and Cassandra 5 |
 
-All three releases have the same important limitations:
+Both releases have the same important limitations:
 
 - they declare static infrastructure, seeded state, and integration surfaces;
 - they do not claim launch, readiness, traffic attachment, credential delivery,
@@ -53,7 +52,7 @@ raes-pack-kit inspect . \
   infrastructure.wazuh-security-monitoring-stack 1.0.0 --json
 ```
 
-Repeat `inspect` for the Suricata and TheHive identifiers in the table. The
+Repeat `inspect` for the Suricata identifier in the table. The
 machine document provides the parameters, defaults, exports, assets,
 limitations, prerequisites, resource estimates, and unresolved component
 scope derived from the released content and the installed RAES library.
@@ -122,13 +121,12 @@ mark these items complete based on the static checks in this tutorial.
 
 ### 2. Inspect the releases
 
-Inspect all three exact releases before accepting their files or limitations:
+Inspect both exact releases before you accept their files or limitations:
 
 ```sh
 for kit in \
   infrastructure.wazuh-security-monitoring-stack \
-  infrastructure.suricata-network-intrusion-detection-sensor \
-  infrastructure.thehive-case-management-service
+  infrastructure.suricata-network-intrusion-detection-sensor
 do
   raes-pack-kit inspect "$catalog_root" \
     --source-id openrae-env-packs \
@@ -174,7 +172,7 @@ printf '%s\n' \
     --parameters - --json
 ```
 
-### 4. Add Suricata and TheHive
+### 4. Add Suricata
 
 Use distinct namespaces so every exported declaration has an unambiguous RAES
 address:
@@ -189,33 +187,22 @@ printf '%s\n' \
     --namespace suricata \
     --target-sdl sdl/defensive-tooling.sdl.yaml \
     --parameters - --json
-
-printf '%s\n' \
-  '{"deployment_profile":"compact","service_label":"case-management","organization_name":"blue-team"}' |
-  raes-pack-kit add "$pack" "$catalog_root" \
-    --source-id openrae-env-packs \
-    --source-revision "$catalog_revision" \
-    infrastructure.thehive-case-management-service 1.0.0 \
-    --namespace thehive \
-    --target-sdl sdl/defensive-tooling.sdl.yaml \
-    --parameters - --json
 ```
 
-Validate the three-kit intermediate result:
+Validate the two-kit intermediate result:
 
 ```sh
 raes-pack-validate --pack "$pack"
 ```
 
-At this point the pack contains three exact materializations, their ordinary
+At this point the pack contains two exact materializations, their ordinary
 module files and assets, a RAES-owned `sdl/raes.lock.json`, and a byte-bound
 associated-artifact set.
 
 ### 5. Update a meaningful parameter
 
 Perform updates before adding an author-owned relationship to the shared root
-SDL. This changes Suricata's ruleset name while preserving the Wazuh and
-TheHive materializations:
+SDL. This changes Suricata's ruleset name and keeps the Wazuh materialization:
 
 ```sh
 printf '%s\n' \
@@ -234,7 +221,7 @@ without changing the pack:
 raes-pack-kit remove "$pack" suricata --preview --json
 ```
 
-The three selected releases have no kit prerequisites, so this preview cannot
+The two selected releases have no kit prerequisites, so this preview cannot
 demonstrate a kit-dependency conflict. Its safety comes from explicit file
 ownership and full-successor validation.
 
@@ -305,11 +292,6 @@ replaceable kits. File-backed RAES parsing verifies that both resolve. The
 relationship says only that the authored nodes have a static connectivity edge.
 Matching `events` service names or ports do not establish event compatibility,
 delivery, indexing, alert creation, or detection behavior.
-
-The current releases expose no RAES declaration that supports a
-Wazuh-to-TheHive alert or case mapping. Do not invent one in prose or encode a
-deployment-specific setup as a portable relationship. A portable mapping needs
-an upstream RAES contract and corresponding exported surfaces first.
 
 ### 7. Validate the completed pack
 

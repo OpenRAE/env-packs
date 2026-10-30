@@ -762,147 +762,6 @@ nodes:
             - reload_channel_id: suricata-command-socket
               target_ref: nodes.suricata.runtime.network_detection_engines.suricata-engine.control_channels.command-socket
               kind: unix_socket
-  thehive:
-    type: compute
-    os: linux
-    services:
-      - {name: thehive-api, port: 9000, protocol: tcp}
-    runtime:
-      service_listeners:
-        - service_listener_id: thehive-api-listener
-          service: thehive-api
-          address: 0.0.0.0
-          port: 9000
-          protocol: tcp
-          scope: wildcard
-          provenance: operator
-      applications:
-        - application_id: thehive-web
-          service: thehive-api
-          protocol: https
-          routes:
-            - route_id: thehive-root
-              path: /
-              methods: [GET]
-              auth_required: true
-      platform_applications:
-        - platform_application_id: thehive-case-management
-          service: thehive-api
-          platform_kind: case_management
-          product: TheHive
-          capabilities:
-            - capability_id: case-management
-              kind: case_management
-          upstream_bindings:
-            - binding_id: thehive-cql-backend
-              role: cql_backend
-              target_node_ref: thehive-cassandra
-              target_service_ref: cassandra
-            - binding_id: thehive-index-backend
-              role: index_backend
-              target_node_ref: thehive-es
-              target_service_ref: elasticsearch
-            - binding_id: thehive-cortex-api
-              role: backend_api
-              target_node_ref: cortex
-              target_service_ref: cortex-api
-              description: Least-privilege analyzer execution and result retrieval.
-          connectors:
-            - connector_id: cortex-analyzer-engine
-              kind: analyzer_engine
-              enabled: true
-              credential_classification: redacted
-              description: TheHive uses the declared least-privilege Cortex service account; credential bytes are not pack content.
-          version: "5.4"
-  thehive-cassandra:
-    type: compute
-    os: linux
-    services:
-      - {name: cassandra, port: 9042, protocol: tcp}
-    runtime:
-      datastore_services:
-        - datastore_service_id: thehive-cassandra
-          engine: cassandra
-          data_model: wide_column
-          version: '4.1'
-          description: Primary case store.
-          partitions:
-            - partition_id: thehive
-              kind: keyspace
-              name: thehive
-              replication_strategy: simple_strategy
-              replication_factor: 1
-  thehive-es:
-    type: compute
-    os: linux
-    services:
-      - {name: elasticsearch, port: 9200, protocol: tcp}
-    runtime:
-      datastore_services:
-        - datastore_service_id: thehive-es
-          service: elasticsearch
-          engine: elasticsearch
-          data_model: unknown
-          protocol: http
-          version: 7.17.28
-          description: Search datastore for TheHive and Cortex state.
-  cortex:
-    type: compute
-    os: linux
-    services:
-      - {name: cortex-api, port: 9001, protocol: tcp}
-    runtime:
-      service_listeners:
-        - service_listener_id: cortex-api-listener
-          service: cortex-api
-          address: 0.0.0.0
-          port: 9001
-          protocol: tcp
-          scope: wildcard
-          provenance: operator
-      applications:
-        - application_id: cortex-web
-          service: cortex-api
-          protocol: http
-          routes:
-            - route_id: cortex-root
-              path: /
-              methods: [GET]
-              auth_required: true
-      platform_applications:
-        - platform_application_id: cortex-enrichment
-          service: cortex-api
-          platform_kind: analyzer_engine
-          product: Cortex
-          capabilities:
-            - capability_id: analysis-execution
-              kind: analysis_execution
-              evidence_refs: [cortex-enrichment-readback]
-          content_objects:
-            - content_object_id: techvault-scenario-context
-              kind: analyzer
-              name: TechVaultScenarioContext_1_0
-              attributes:
-                data_types: [ip]
-                execution: offline
-              evidence_refs: [cortex-enrichment-readback]
-          upstream_bindings:
-            - binding_id: cortex-index-backend
-              role: index_backend
-              target_node_ref: thehive-es
-              target_service_ref: elasticsearch
-          authorization_ref: cortex-rbac
-          version: 3.1.8
-      app_authorizations:
-        - app_authorization_id: cortex-rbac
-          auth_enabled: true
-          principals:
-            - principal_id: thehive-cortex-connector
-              kind: service_account
-              credential_classification: redacted
-              backend_roles: [read, analyze]
-              description: Dedicated least-privilege identity used by TheHive.
-          description: Cortex authorization state required by the scenario.
   shuffle-backend:
     type: compute
     os: linux
@@ -1902,12 +1761,6 @@ nodes:
           component_type: library
           provenance: dependency_manifest
           manifest_path: /opt/techvault/mcp/aptl-mcp-common/package-lock.json
-        - component_id: mcp-casemgmt
-          name: aptl-casemgmt-mcp-server
-          version: 0.1.0
-          component_type: application
-          provenance: dependency_manifest
-          manifest_path: /opt/techvault/mcp/mcp-casemgmt/package-lock.json
         - component_id: mcp-indexer
           name: aptl-indexer-mcp-server
           version: 0.1.0
@@ -1982,16 +1835,6 @@ infrastructure:
   misp-suricata-sync:
     links: [security-net]
     dependencies: [misp, suricata]
-  thehive:
-    links: [security-net]
-    dependencies: [thehive-cassandra, thehive-es, cortex]
-  thehive-cassandra:
-    links: [security-net]
-  thehive-es:
-    links: [security-net]
-  cortex:
-    links: [security-net]
-    dependencies: [thehive-es]
   shuffle-backend:
     links: [security-net]
     dependencies: [shuffle-opensearch]
@@ -2177,12 +2020,6 @@ generated_artifacts:
       - name: misp-private-key
         path: misp/server.key
         sensitivity: secret
-      - name: thehive-keystore
-        path: thehive/keystore.p12
-        sensitivity: restricted
-      - name: thehive-keystore-password
-        path: thehive/keystore.p12.password
-        sensitivity: secret
       - name: shuffle-certificate
         path: shuffle-frontend/server.pem
         sensitivity: public
@@ -2195,14 +2032,6 @@ generated_artifacts:
         access_mode: read_only
         selected_outputs: [ca-certificate, misp-certificate, misp-private-key]
       - node: misp-suricata-sync
-        mount_destination: /opt/techvault/soc-certs
-        access_mode: read_only
-        selected_outputs: [ca-certificate]
-      - node: thehive
-        mount_destination: /opt/techvault/soc-certs
-        access_mode: read_only
-        selected_outputs: [ca-certificate, thehive-keystore, thehive-keystore-password]
-      - node: cortex
         mount_destination: /opt/techvault/soc-certs
         access_mode: read_only
         selected_outputs: [ca-certificate]
@@ -2293,11 +2122,6 @@ persistent_volumes:
     access_mode: read_write_once
     consumers:
       - {node: ad, mount_destination: /var/log/samba, access_mode: read_write}
-  cortex_data:
-    lifecycle: retain
-    access_mode: read_write_once
-    consumers:
-      - {node: cortex, mount_destination: /opt/cortex/jobs, access_mode: read_write}
   misp_config:
     lifecycle: retain
     access_mode: read_write_once
@@ -2335,26 +2159,6 @@ persistent_volumes:
     consumers:
       - {node: suricata, mount_destination: /var/lib/suricata/rules/misp, access_mode: read_only}
       - {node: misp-suricata-sync, mount_destination: /var/lib/suricata/rules/misp, access_mode: read_write}
-  thehive_cassandra_data:
-    lifecycle: retain
-    access_mode: read_write_once
-    consumers:
-      - {node: thehive-cassandra, mount_destination: /var/lib/cassandra, access_mode: read_write}
-  thehive_data:
-    lifecycle: retain
-    access_mode: read_write_once
-    consumers:
-      - {node: thehive, mount_destination: /opt/thp/thehive/data, access_mode: read_write}
-  thehive_es_data:
-    lifecycle: retain
-    access_mode: read_write_once
-    consumers:
-      - {node: thehive-es, mount_destination: /usr/share/elasticsearch/data, access_mode: read_write}
-  thehive_index:
-    lifecycle: retain
-    access_mode: read_write_once
-    consumers:
-      - {node: thehive, mount_destination: /opt/thp/thehive/index, access_mode: read_write}
   wazuh-dashboard-config:
     lifecycle: retain
     access_mode: read_write_once
@@ -2789,67 +2593,6 @@ content:
           - mechanism: *suricata-content-copy
             acquisition: copy
             timing: pack-ingestion
-  cortex-app-config:
-    type: file
-    target: cortex
-    path: /etc/cortex/application.conf
-    text: |
-      # Elasticsearch backend (thehive-es on the security network). Cortex
-      # 3.1.8 expects search.uri; HTTP-only on the scenario security network.
-      search {
-        index = "cortex"
-        uri = "http://thehive-es:9200"
-      }
-      auth.provider = ["local", "key"]
-      job.directory = "/opt/cortex/jobs"
-      job.runners = ["process"]
-      analyzer.urls = ["/opt/techvault/cortex-analyzers"]
-  cortex-analyzer-definition:
-    type: file
-    target: cortex
-    path: /opt/techvault/cortex-analyzers/TechVaultScenarioContext/analyzer.json
-    source:
-      name: techvault-cortex-analyzer-definition
-      version: 0.1.3
-      artifact_requirement:
-        requirement_id: techvault-cortex-analyzer-definition-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-cortex-analyzer-definition
-          version: 0.1.3
-          digest: sha256:9c8bfce7a9b41ed10f549e1d841879ec350a3ea1b4b03b6658313255ef435970
-          media_type: application/json
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
-  cortex-analyzer-executable:
-    type: file
-    target: cortex
-    path: /opt/techvault/cortex-analyzers/TechVaultScenarioContext/techvault_scenario_context.py
-    source:
-      name: techvault-cortex-analyzer-executable
-      version: 0.1.3
-      artifact_requirement:
-        requirement_id: techvault-cortex-analyzer-executable-requirement
-        explicitness: exact
-        exact_artifact:
-          artifact_id: techvault-cortex-analyzer-executable
-          version: 0.1.3
-          digest: sha256:ce6962465bc7bdd6394b4df3785685a8cf32f22689671dfda644540ffc51f152
-          media_type: text/x-python
-        permitted_routes:
-          - mechanism:
-              mechanism: exact-artifact
-              profile: raes-env-pack-exact-copy
-              version: "1"
-              digest: sha256:cf33e4765c4f56532e13f0209fda26a2d3e100b8dead37f75be5a44b51507daa
-            acquisition: copy
-            timing: pack-ingestion
   misp-suricata-sync-pyproject:
     type: file
     target: misp-suricata-sync
@@ -3001,7 +2744,7 @@ content:
         exact_artifact:
           artifact_id: techvault-dns-forward-zone
           version: 0.1.3
-          digest: sha256:d12de977f09275e342454a58ca004f7909ff808c29143b4c6d4ecb14db611a82
+          digest: sha256:9efd88205b775d0d483664c0d20d54594ba4452f0c66f90411416860b9fb054c
           media_type: text/plain
         permitted_routes:
           - mechanism:
@@ -3024,7 +2767,7 @@ content:
         exact_artifact:
           artifact_id: techvault-dns-reverse-zone
           version: 0.1.3
-          digest: sha256:ceb577f74bf3841ee10dae1a35e07afb921f9136bd4f9dbbd60d4afd1a4f0a02
+          digest: sha256:efea4b1320d6fa363a165a0d433596f298043e64973677502430fbd8cc3696de
           media_type: text/plain
         permitted_routes:
           - mechanism:
@@ -3250,7 +2993,7 @@ content:
         exact_artifact:
           artifact_id: techvault-red-mcp-sources
           version: 0.1.3
-          digest: sha256:ec849aba9d33c5079e5db5f960fa9e827f71f90c6794d22d9c36388800c1f529
+          digest: sha256:8cefa8d3b2f874b6bf2f031b05e1795ba3b6877601a6dc073be2357d5b4855ce
           media_type: application/x-tar
         permitted_routes:
           - mechanism:
@@ -3273,7 +3016,7 @@ content:
         exact_artifact:
           artifact_id: techvault-blue-mcp-sources
           version: 0.1.3
-          digest: sha256:19bbf9548af0e91f60e1dea2fd1d13626403ec6098b89e45365db09ae5a86bd7
+          digest: sha256:1176d40061d1721cad006c2ff2230f98338efd807f1770db8c69351f758f037a
           media_type: application/x-tar
         permitted_routes:
           - mechanism:
@@ -3309,16 +3052,6 @@ propositions:
       semantic_ref: urn:techvault:observable:wazuh-agent-ready
       expected: true
     evidence_requirements: [wazuh-agent-readiness]
-  cortex-enrichment-ready:
-    description: The exact TechVault analyzer executes offline and TheHive reports its authenticated Cortex connector ready.
-    subjects: [cortex, thehive]
-    basis: observed_state
-    predicate:
-      kind: boolean
-      property: cortex-enrichment-ready
-      semantic_ref: urn:raes:observable:cortex-enrichment-ready
-      expected: true
-    evidence_requirements: [cortex-enrichment-readback]
   suricata-local-rules-ready:
     description: The exact TechVault local corpus passes native configuration validation and all 16 declared SIDs are loaded.
     subjects: [nodes.suricata.runtime.network_detection_engines.suricata-engine.rule_sources.techvault-local]
@@ -3346,21 +3079,12 @@ assertions:
   wazuh-agents-ready:
     proposition: wazuh-agents-ready
     role: precondition
-  cortex-enrichment-ready:
-    proposition: cortex-enrichment-ready
-    role: postcondition
   suricata-local-rules-ready:
     proposition: suricata-local-rules-ready
     role: postcondition
   suricata-login-sqli-detected:
     proposition: suricata-login-sqli-detected
     role: postcondition
-observation_boundaries:
-  participant-cortex-enrichment-view:
-    projection_basis: ordinary operator access through TheHive and Cortex APIs
-    observable_refs: [nodes.cortex, nodes.thehive]
-    redaction_policy: preserve analyzer identity and bounded result status while removing credentials
-    latency_profile: available after Cortex reaches its declared ready state
 evidence_requirements:
   misp-authenticated-api-readiness:
     description: Records bounded authenticated MISP, MariaDB, Redis, and TLS readiness results without configuration bodies or credential material.
@@ -3413,23 +3137,6 @@ evidence_requirements:
     channel: file_artifact
     media_types: [application/json]
     artifact_role: service_materialization_readback
-    sensitivity: plain
-    redaction: redact_secrets
-    integrity: checksum
-    retention: run_lifetime
-    loss_disclosure: required
-  cortex-enrichment-readback:
-    description: Records the exact enabled analyzer identity, a successful bounded report for the scenario attacker IP, and TheHive's Cortex connector status without credentials or full report bodies.
-    source_refs:
-      - nodes.cortex.runtime.platform_applications.cortex-enrichment
-      - nodes.thehive.runtime.platform_applications.thehive-case-management
-    scope_refs: [nodes.cortex, nodes.thehive]
-    scope: Exact analyzer inventory, successful TechVaultScenarioContext_1_0 execution for 172.20.1.30, and TheHive Cortex connector status OK.
-    boundary_ref: participant-cortex-enrichment-view
-    boundary_kind: system_under_test
-    channel: api_response
-    artifact_role: service_materialization_readback
-    media_types: [application/json]
     sensitivity: plain
     redaction: redact_secrets
     integrity: checksum
@@ -3510,18 +3217,6 @@ relationships:
       role_ref: misp-application-role
       auth_method: password
       description: MISP authenticates as the declared application role; the open backend selects and applies the credential bytes consistently.
-  thehive-uses-cortex-enrichment:
-    type: connects_to
-    source: thehive
-    target: cortex
-    service_integration:
-      consumer_ref: thehive-case-management
-      engine_ref: cortex-enrichment
-      integration_kind: enrichment
-      auth_principal_ref: thehive-cortex-connector
-      enabled: true
-      direction: outbound
-      description: TheHive submits observables to Cortex using its dedicated read/analyze service account.
   ad-controls-techvault-domain:
     type: domain_controller_for
     source: ad
@@ -3591,32 +3286,6 @@ accounts:
         material:
           classification: secret_fixture
           value: "WazuhPass123!"
-  thehive-administrator:
-    username: admin@techvault.local
-    node: thehive
-    auth_method: password
-    password_strength: weak
-    description: TheHive console administrator login.
-    credential_bindings:
-      - credential_id: thehive-administrator-primary
-        purpose: primary_authentication
-        auth_method: password
-        material:
-          classification: secret_fixture
-          value: "TechVault-TheHive-Admin-2026!"
-  cortex-administrator:
-    username: admin@techvault.local
-    node: cortex
-    auth_method: password
-    password_strength: weak
-    description: Cortex console administrator login; separate from the TheHive connector identity.
-    credential_bindings:
-      - credential_id: cortex-administrator-primary
-        purpose: primary_authentication
-        auth_method: password
-        material:
-          classification: secret_fixture
-          value: "TechVault-Cortex-Admin-2026!"
   shuffle-administrator:
     username: admin@techvault.local
     node: shuffle-backend

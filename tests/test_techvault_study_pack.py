@@ -60,6 +60,8 @@ class StudyPackTests(unittest.TestCase):
             for name in names:
                 self.assertIn(name, study[section])
                 study[section].pop(name)
+            if not study[section] and section not in base:
+                study.pop(section)
 
         study_agents = study.pop("agents")
         base_agents = base.pop("agents")
