@@ -11,15 +11,9 @@ Policy:
     ``[claude] ...``, ``[openai] ...``, ``[chatgpt] ...`` (case-insensitive), on
     every target branch including ``dev`` — no ``dev`` exemption.
   * Enforce the Conventional Commit shape ``<type>(<optional-scope>): <subject>``
-    with a single allowed type. The type drives the release-please version bump
-    (ADR 0008).
+    with a single allowed type. This keeps git history tidy; it does NOT drive the
+    version (changelog fragments do — ADR 0007).
   * Require the subject to start lowercase (``^[a-z].*$``).
-  * Reject breaking-change markers (ADR 0039). A ``!`` after the type, a
-    ``BREAKING CHANGE:`` or ``BREAKING-CHANGE:`` footer, or a ``<type>!:`` footer
-    line makes release-please bump the major version. A breaking change uses
-    ``feat:`` and gets a minor release. A ``Release-As:`` footer is the only
-    path to a major release. The guard checks the title, the PR body, and every
-    PR commit message, because the squash commit carries the commit messages.
 
 Security: the PR title is untrusted GitHub event data. The CLI reads it from
 ``$GITHUB_EVENT_PATH`` (parsed as JSON) or the ``PR_TITLE`` env var, never from a
@@ -69,16 +63,6 @@ RULE_AGENT_BRAND = "pr-title-agent-brand"
 RULE_CONVENTIONAL = "pr-title-conventional"
 RULE_SUBJECT_LOWERCASE = "pr-title-subject-lowercase"
 RULE_EMPTY = "pr-title-empty"
-RULE_BREAKING_MARKER = "pr-breaking-marker"
-
-#: Body tokens that release-please reads as a breaking change.
-_BREAKING_FOOTER_RE = re.compile(r"BREAKING[ -]CHANGE")
-
-#: Message that tells the author how to ship a breaking change (ADR 0039).
-_BREAKING_GUIDANCE = (
-    "Breaking changes get a minor release (ADR 0039): use 'feat:' and describe "
-    "the break in prose. Only a 'Release-As: X.0.0' footer makes a major release."
-)
 
 
 @dataclass(frozen=True)
@@ -103,16 +87,6 @@ def _conventional_re(types: Sequence[str]) -> re.Pattern[str]:
     alternation = "|".join(re.escape(t) for t in types)
     # <type>(<optional-scope>)<optional breaking !>: <subject>
     return re.compile(rf"^(?:{alternation})(?:\([^()\n]+\))?(?:!)?: (?P<subject>.+)$")
-
-
-def _breaking_footer_line_re(types: Sequence[str]) -> re.Pattern[str]:
-    alternation = "|".join(re.escape(t) for t in types)
-    # A body line that release-please can parse as a breaking footer commit,
-    # with an optional list bullet (GitHub squash bodies list commits as "* ").
-    return re.compile(
-        rf"^\s*(?:[*-]\s+)?(?:{alternation})(?:\([^()\n]+\))?!:",
-        re.MULTILINE,
-    )
 
 
 def validate_pr_title(
@@ -150,13 +124,6 @@ def validate_pr_title(
 
     # Rule 2: conventional-commit shape with a single allowed type.
     match = _conventional_re(types).match(stripped)
-    if match is not None and stripped.split(":", 1)[0].endswith("!"):
-        violations.append(
-            TitleViolation(
-                RULE_BREAKING_MARKER,
-                f"PR title must not use the '!' breaking marker. {_BREAKING_GUIDANCE}",
-            )
-        )
     if match is None:
         allowed = ", ".join(types)
         violations.append(
@@ -189,58 +156,6 @@ def validate_pr_title(
         )
 
     return violations
-
-
-def validate_merge_text(
-    text: str | None,
-    *,
-    source: str,
-    types: Sequence[str] = CONVENTIONAL_TYPES,
-) -> list[TitleViolation]:
-    """Reject breaking-change markers in text that can reach the squash commit.
-
-    ``source`` names the text (for example ``"PR body"``) in the message.
-    """
-    body = text or ""
-    if _BREAKING_FOOTER_RE.search(body) or _breaking_footer_line_re(types).search(body):
-        return [
-            TitleViolation(
-                RULE_BREAKING_MARKER,
-                f"{source} must not contain a 'BREAKING CHANGE' token or a "
-                f"'<type>!:' line. {_BREAKING_GUIDANCE}",
-            )
-        ]
-    return []
-
-
-def _load_event(args: argparse.Namespace) -> dict | None:
-    """Parse the GitHub event JSON, or return ``None`` when it is unavailable."""
-    event_path = args.event_path or os.environ.get("GITHUB_EVENT_PATH")
-    if not event_path:
-        return None
-    try:
-        with open(event_path, encoding="utf-8") as handle:
-            return json.load(handle)
-    except (OSError, json.JSONDecodeError):
-        return None
-
-
-def _load_commit_messages(path: str) -> list[str] | None:
-    """Read PR commit messages from ``gh api --paginate --slurp`` output.
-
-    The file holds a list of pages; each page is a list of commit objects.
-    Returns ``None`` when the file is unreadable or malformed (fail closed).
-    """
-    try:
-        with open(path, encoding="utf-8") as handle:
-            pages = json.load(handle)
-        return [str(item["commit"]["message"]) for page in pages for item in page]
-    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
-        print(
-            f"pr-title-guard: could not read commit messages from {path}: {exc}",
-            file=sys.stderr,
-        )
-        return None
 
 
 def _resolve_title(args: argparse.Namespace) -> str | None:
@@ -280,7 +195,14 @@ def _resolve_author(args: argparse.Namespace) -> str | None:
     The event payload is runner-provided (trusted), not PR-controllable, so a PR
     cannot spoof its author to dodge the guard.
     """
-    event = _load_event(args) or {}
+    event_path = args.event_path or os.environ.get("GITHUB_EVENT_PATH")
+    if not event_path:
+        return None
+    try:
+        with open(event_path, encoding="utf-8") as handle:
+            event = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
     return ((event.get("pull_request") or {}).get("user") or {}).get("login")
 
 
@@ -297,14 +219,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--event-path",
         default=None,
         help="Path to the GitHub event JSON (defaults to $GITHUB_EVENT_PATH).",
-    )
-    parser.add_argument(
-        "--commit-messages-file",
-        default=None,
-        help=(
-            "JSON from `gh api --paginate --slurp .../pulls/N/commits` "
-            "(defaults to $PR_COMMIT_MESSAGES_FILE)."
-        ),
     )
     args = parser.parse_args(argv)
 
@@ -325,19 +239,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     violations = validate_pr_title(title)
-    event = _load_event(args) or {}
-    violations += validate_merge_text(
-        (event.get("pull_request") or {}).get("body"), source="PR body"
-    )
-    commits_path = args.commit_messages_file or os.environ.get("PR_COMMIT_MESSAGES_FILE")
-    if commits_path:
-        messages = _load_commit_messages(commits_path)
-        if messages is None:
-            return 2
-        for index, message in enumerate(messages, start=1):
-            violations += validate_merge_text(message, source=f"PR commit {index}")
     if violations:
-        print(f"pr-title-guard: rejected PR {title!r}:", file=sys.stderr)
+        print(f"pr-title-guard: rejected PR title: {title!r}", file=sys.stderr)
         for violation in violations:
             print(f"  {violation.render()}", file=sys.stderr)
         return 1
