@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import shutil
 import tempfile
@@ -40,6 +42,7 @@ from raes_env_packs import (
     validate_pack_content_manifest,
 )
 from raes_env_packs import check as _check
+from raes_env_packs import content_ci
 from raes_env_packs import release as _release
 from raes_env_packs import validation as _validation
 from raes_env_packs.distribution import export_pack_archive, stage_pack_archive
@@ -373,6 +376,101 @@ class CompilationTests(_FixturePack, unittest.TestCase):
             ("fixture-crossed-design", "1.0.0"),
         )
         self.assertEqual(dict(request.capture_specs), dict(experiment.capture_specs))
+
+
+class DependentDeclarationTests(_FixturePack, unittest.TestCase):
+    """A node absent together with a declaration on it (issue #526, OpenRAE/rae#1733)."""
+
+    _ACCOUNT = "sensor-svc"
+
+    def dependent_family(self, owner: str = _ACCOUNT) -> dict:
+        """Couple the sensor node's absence to the absence of an account on it."""
+
+        family = yaml.safe_load(self.read(_SDL))
+        family["accounts"] = {self._ACCOUNT: {"username": "sensor", "node": "sensor-9"}}
+        points = family["variation_points"]
+        points["sensor-layout"]["alternatives"]["dark"]["requires"] = [
+            {"point": "sensor-account", "members": ["absent"]}
+        ]
+        points["sensor-account"] = {
+            "kind": "alternative",
+            "target": {"kind": "structural", "owner": owner, "slot": "accounts.presence"},
+            "alternatives": {
+                "absent": {"kind": "declaration-presence", "present": False},
+                "present": {
+                    "kind": "declaration-presence",
+                    "present": True,
+                    "requires": [{"point": "sensor-layout", "members": ["watching"]}],
+                },
+            },
+        }
+        return family
+
+    def select_account(self, absent_member: str = "absent", owner: str = _ACCOUNT) -> None:
+        """Select the account point beside the sensor point at each sensor level."""
+
+        document = self.spec()
+        levels = document["factorial_design"]["level_effects"]["sensor"]
+        for level, member in (("absent", absent_member), ("present", "present")):
+            selection = json.loads(json.dumps(levels[level]["selections"][0]))
+            selection["target"]["variation_point_id"] = "sensor-account"
+            selection["target"]["target_id"] = f"accounts.{owner}.presence"
+            selection["outcome"]["member_id"] = member
+            levels[level]["selections"].append(selection)
+        self.write_spec(document)
+
+    def test_the_pack_passes_the_content_checks(self) -> None:
+        self.write_family(self.dependent_family())
+        self.select_account()
+        self.assertEqual(self.codes(), set())
+        author, _scenarios = _validation._validate_pack_for_author_ci(self.root)
+        self.assertTrue(author.ok, author.errors)
+        self.write(
+            "tests/test_family.py",
+            "import unittest\nfrom pathlib import Path\n\n\n"
+            "class FamilyTests(unittest.TestCase):\n"
+            "    def test_family_is_shipped(self):\n"
+            f"        self.assertTrue((Path(__file__).parents[1] / {_SDL!r}).is_file())\n",
+        )
+        output = io.StringIO()
+        with mock.patch.object(content_ci, "_REPO"), mock.patch.object(content_ci, "PACKS_ROOT"), \
+                contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            status = content_ci.main(["--pack", str(self.root)])
+        self.assertEqual(status, 0, output.getvalue())
+
+    def test_selected_scenarios_drop_the_node_and_its_account_together(self) -> None:
+        self.write_family(self.dependent_family())
+        self.select_account()
+        experiment = self.only_experiment()
+        request, result = compile_fixture(experiment)
+        self.assertIsNotNone(result.plan, result.diagnostics)
+        allocation = experiment.experiment.run_plan.allocation
+        for entry in result.plan.entries.values():
+            levels = allocation.condition_assignments[entry.coordinate.condition_id].factor_levels
+            selected = instantiate_admitted_trial_entry(
+                plan=result.plan, plan_entry_id=entry.plan_entry_id, family=request.family
+            )
+            present = levels["sensor"] == "present"
+            self.assertEqual("sensor-9" in selected.nodes, present)
+            self.assertEqual(self._ACCOUNT in selected.accounts, present)
+
+    def test_an_account_left_on_an_absent_node_rejects_the_design(self) -> None:
+        self.write_family(self.dependent_family())
+        self.select_account(absent_member="present")
+        self.assertEqual(self.codes(), set())
+        _request, result = compile_fixture(self.only_experiment())
+        self.assertIsNone(result.plan)
+        self.assertTrue(result.diagnostics)
+
+    def test_an_unresolved_dependent_target_is_rejected(self) -> None:
+        self.write(_SDL, yaml.safe_dump(self.dependent_family(owner="missing-svc"), sort_keys=False))
+        self.select_account(owner="missing-svc")
+        self.assertIn("sdl.invalid", self.codes())
+
+    def test_a_dependent_selection_outside_its_domain_is_rejected(self) -> None:
+        self.write_family(self.dependent_family())
+        self.select_account(absent_member="unknown-member")
+        self.assertIn("experiment.treatment-invalid", self.codes())
 
 
 class ReleaseAndReloadTests(_FixturePack, unittest.TestCase):

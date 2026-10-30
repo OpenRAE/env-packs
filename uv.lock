@@ -586,7 +586,7 @@ wheels = [
 
 [[package]]
 name = "raes"
-version = "9.2.0"
+version = "10.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -611,14 +611,14 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "z3-solver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ec/3a/227adc79978a22227905142fc48398f81de4a0ecebdc5326bbbe3341a362/raes-9.2.0.tar.gz", hash = "sha256:ba6403ff6496b0da529e4ee9de1be8ddf156e4359d9d2df1e55a71670cd97f9d", size = 5455270, upload-time = "2026-10-29T04:20:23.969Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/29/65896921b51d6f989266aa070aef5abc6dcf88de4d0601148af4e9d2fd9b/raes-10.0.0.tar.gz", hash = "sha256:33d4213497c999769b9ad61990c6267ba6b11a99818b4266ab85b231f33edfd4", size = 5743729, upload-time = "2026-10-30T00:24:10.479Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/ad/cfca99cdaa697d7c88ba449099f9ea5cc09796849d38b888d46607279ac1/raes-9.2.0-py3-none-any.whl", hash = "sha256:7f5562544d3d87c99f1cae436c4bff8a01636a6641d35a45c106af347181992a", size = 4999259, upload-time = "2026-10-29T04:20:21.764Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/34/578151bf210c4b18d3bbd7e95881acd664bea12414142c289dab142d656b/raes-10.0.0-py3-none-any.whl", hash = "sha256:b2c1bd909618443ade49732413ebf16bf09f1f8e8bbd49a6d60049367d5ad73f", size = 5103574, upload-time = "2026-10-30T00:24:08.321Z" },
 ]
 
 [[package]]
 name = "raes-env-packs"
-version = "6.4.2"
+version = "6.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -640,7 +640,7 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4" },
     { name = "mcp", specifier = ">=2,<3" },
     { name = "pyyaml", specifier = ">=6" },
-    { name = "raes", specifier = ">=9.2.0" },
+    { name = "raes", specifier = ">=10.0.0" },
 ]
 provides-extras = ["test"]
 

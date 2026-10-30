@@ -54,6 +54,7 @@ from collections.abc import Hashable
 from pathlib import Path
 
 import yaml
+from raes import SDLError
 from raes.module_registry import load_lockfile
 from raes_contracts.associated_artifacts import associated_artifact_set_digest
 
@@ -811,7 +812,7 @@ def _lock_projection(pack_root: str) -> dict[str, object] | None:
                 "module_version": getattr(record, "module_version", None),
                 "content_digest": getattr(record, "content_digest", None),
             })
-    except (OSError, ValueError):
+    except (SDLError, OSError, ValueError):
         modules = []
     return {"digest": digest, "modules": modules}
 

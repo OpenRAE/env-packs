@@ -1004,3 +1004,14 @@ class NonListBundleValueTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LockProjectionTests(unittest.TestCase):
+    """A malformed module lock projects no modules, never a traceback."""
+
+    def test_a_malformed_module_lock_projects_no_modules(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write(os.path.join(tmp, "sdl", "raes.lock.json"), "{not json")
+            projection = PR._lock_projection(tmp)
+        self.assertEqual(projection["modules"], [])
+        self.assertTrue(projection["digest"].startswith("sha256:"))

@@ -277,6 +277,23 @@ class KitInspectionTests(unittest.TestCase):
             with self.assertRaises(kits.KitError):
                 kits.load_kit_release(root)
 
+    def test_release_rejects_a_manifest_with_a_duplicate_member(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = _write_synthetic_kit(Path(tmp) / "kit")
+            manifest = root / "associated-artifacts.json"
+            body = manifest.read_text(encoding="utf-8")
+            manifest.write_text(
+                body.replace('"scope": "scenario",', '"scope": "scenario",\n  "scope": "scenario",'),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(kits.KitError, "manifest is invalid"):
+                kits.load_kit_release(root)
+
+    def test_pack_artifacts_reject_a_manifest_with_a_duplicate_member(self) -> None:
+        files = {"associated-artifacts.json": b'{"scope": "scenario", "scope": "scenario"}'}
+        with self.assertRaisesRegex(kits.KitError, "manifest is invalid"):
+            kits._load_pack_artifacts(files, "associated-artifacts.json")
+
     def test_release_rejects_an_extra_file_outside_the_exact_set(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = _write_synthetic_kit(Path(tmp) / "kit")
