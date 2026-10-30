@@ -1,6 +1,7 @@
 # ADR 0039 — Demote breaking changes to minor releases
 
-- Status: Accepted
+- Status: Superseded by
+  [ADR 0044](0044-restore-breaking-changes-to-major-releases.md)
 - Date: 2026-10-19
 - Amends: [ADR 0008](0008-adopt-release-please.md) (commit contract)
 
