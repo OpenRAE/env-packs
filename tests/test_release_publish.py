@@ -70,10 +70,15 @@ class PublishedReleaseTests(unittest.TestCase):
         with open(os.path.join(self.release_root, f"techvault-{_PACK_VERSION}.cdx.json")) as fh:
             doc = json.load(fh)
         self.assertEqual(doc["bomFormat"], "CycloneDX")
-        self.assertGreaterEqual(len(doc["components"]), 30)
         containers = [c for c in doc["components"] if c["type"] == "container"]
         self.assertEqual(containers, [])
         refs = {component["bom-ref"] for component in doc["components"]}
+        with open(os.path.join(_TECHVAULT, "sdl", "techvault.sdl.yaml"), encoding="utf-8") as fh:
+            content = yaml.safe_load(fh)["content"]
+        self.assertEqual(
+            refs,
+            {f"artifact-{item['source']['name']}" for item in content.values() if "source" in item},
+        )
         self.assertIn("artifact-techvault-red-mcp-sources", refs)
         self.assertIn("artifact-techvault-blue-mcp-sources", refs)
         # The metadata component is bound to the release subject.
