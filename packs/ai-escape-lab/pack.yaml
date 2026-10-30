@@ -1,6 +1,6 @@
 name: ai-escape-lab
 title: AI Escape Lab
-version: 0.1.0
+version: 6.5.1
 status: draft
 description: >-
   An agent-assisted container escape CTF in which a participant starts inside

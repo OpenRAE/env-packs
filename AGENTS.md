@@ -47,6 +47,9 @@ python3 -m compileall src tests
 - **Never hand-edit the version or `CHANGELOG.md`** — the version lives in
   `pyproject.toml` (`[project].version`) and both are owned by **release-please**,
   which maintains a `chore(main): release X.Y.Z` PR; merging it publishes.
+- **Never hand-edit a pack version.** Every pack under `packs/` carries the
+  package version. The release workflow writes it and refreshes the pack
+  digests (ADR 0045).
 - Squash-merge feature PRs. See
   `docs/decisions/adrs/0008-adopt-release-please.md`.
 - Open the `dev` → `main` promotion PR with `make devmain`. Merge it with a

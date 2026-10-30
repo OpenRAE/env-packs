@@ -20,6 +20,7 @@ ADRs 0009, 0036, 0038, and 0041 govern the boundaries.
 | Pack documentation | Remove the TheHive and Cortex claims. |
 | Kit collection | Delete `kits/infrastructure.thehive-case-management-service` and its three releases. |
 | Composition walkthrough | Compose Wazuh and Suricata only. Keep the root relationship and the ownership refusal. |
+| Pack versions | Every pack carries the package version ([ADR 0045](../decisions/adrs/0045-version-packs-with-the-package.md)). `tools/sync_pack_versions.py` writes it and refreshes the digests. The `sync-pack-versions` release job runs the tool on the open release PR. |
 
 `build_kit_catalog` derives offerings from release directories.
 The checkout, sdist, wheel, and installed catalog therefore need no other change.
@@ -67,6 +68,10 @@ Pack files
   -- bounded reads --> validate_pack and RAES --> bounded diagnostics
 Kit release directories
   -- release records --> build_kit_catalog --> checkout, sdist, and wheel catalogs
+pyproject.toml on the release PR branch
+  -- package version --> sync job --> pack version fields and refreshed digests
+Sync job
+  -- one commit, GITHUB_TOKEN --> release PR branch
 ```
 
 The upstream repository, the pack bytes, and the package distribution are separate trust boundaries.
@@ -90,6 +95,7 @@ The service graph and this data flow show all affected interfaces.
 | A rebuild drops the Wazuh rule-schema correction. | Upstream source to builder | Reviewed hash and exact replacements | Builder tests compare the adapted source and metadata with both archives. |
 | A rebuild exports tool payloads in telemetry. | Upstream source to builder | The existing telemetry adaptation | Archive telemetry assertions |
 | An artifact identity drifts. | Pack bytes to consumers | Derive identities from the final bytes. | `validate_pack` and the exact-resolution tests |
+| The sync job writes outside the release PR. | Release job to repository | Fixed branch name, `contents: write` and `pull-requests: read` only, no signing privilege | Workflow policy tests |
 | A DNS name leads a participant to an absent host. | Pack content to scenario | Remove the three records. | The pack absence test scans both zone files. |
 
 Earlier package versions and Git history still contain the kit and the services.
@@ -102,14 +108,15 @@ The change grants no new execution authority, credential, or host access.
 The pack-local validator is the pack policy code.
 The change removes its Cortex check and keeps the MISP, Suricata, Wazuh, Shuffle, and realization checks.
 Repository tests assert that the retired declarations, files, archive members, and kit are absent.
-CI workflows, scanners, and quality gates do not change.
+Scanners and quality gates do not change. The release workflow adds the `sync-pack-versions` job.
 
 The SDL `nodes` and `infrastructure` sections are the architecture code.
 The change updates them, and no other infrastructure code exists.
 
-No ADR changes.
+The kit removal needs no ADR change.
 ADR 0041 selects the kit collection by package version.
 A new collection without the kit changes no released kit bytes.
+ADR 0045 records that every pack carries the package version.
 
 ## Reference basis
 
