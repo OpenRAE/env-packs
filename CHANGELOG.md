@@ -11,6 +11,17 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [7.0.0](https://github.com/OpenRAE/env-packs/compare/v6.5.1...v7.0.0) (2026-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove TheHive and Cortex from the packs and kits ([#538](https://github.com/OpenRAE/env-packs/issues/538))
+
+### Bug Fixes
+
+* remove TheHive and Cortex from the packs and kits ([#538](https://github.com/OpenRAE/env-packs/issues/538)) ([f9a2a8b](https://github.com/OpenRAE/env-packs/commit/f9a2a8bfd6752a28029e05cec29dca55e2902d61))
+
 ## [6.5.1](https://github.com/OpenRAE/env-packs/compare/v6.5.0...v6.5.1) (2026-10-30)
 
 
