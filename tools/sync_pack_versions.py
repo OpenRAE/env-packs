@@ -8,13 +8,16 @@ checksummed, so after the version scalars change this tool reruns
 ``refresh_pack_sdl_binding.refresh`` for the pack.
 
 Version scalars are replaced in place at their YAML node positions, so every
-other byte of each file is preserved. The tool is idempotent. Usage:
+other byte of each file is preserved. The tool is idempotent. With
+``--check`` it writes nothing and exits non-zero when a pack does not carry the
+package version. Usage:
 
-    python tools/sync_pack_versions.py
+    python tools/sync_pack_versions.py [--check]
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import sys
@@ -91,6 +94,33 @@ def _sdl_version_paths(sdl_text: str, artifact_ids: set[str]) -> list[tuple[str,
     return paths
 
 
+def declared_versions(pack: pathlib.Path) -> dict[str, str]:
+    """Return every version that ``pack`` declares, keyed by its location."""
+
+    manifest = json.loads((pack / _MANIFEST).read_text(encoding="utf-8"))
+    compatibility = yaml.safe_load(
+        (pack / "pack.compatibility.yaml").read_text(encoding="utf-8")
+    )
+    versions = {
+        "pack.yaml": yaml.safe_load((pack / "pack.yaml").read_text(encoding="utf-8"))[
+            "version"
+        ],
+        "pack.compatibility.yaml": compatibility["pack"]["version"],
+        "manifest_version": manifest["manifest_version"],
+    }
+    (sdl_path,) = sorted((pack / "sdl").glob("*.sdl.yaml"))
+    content = yaml.safe_load(sdl_path.read_text(encoding="utf-8")).get("content") or {}
+    for content_id, item in content.items():
+        source = item.get("source") if isinstance(item, dict) else None
+        if not isinstance(source, dict):
+            continue
+        exact = (source.get("artifact_requirement") or {}).get("exact_artifact") or {}
+        if exact.get("artifact_id") in manifest["artifacts"]:
+            versions[f"content.{content_id}.source"] = source["version"]
+            versions[f"content.{content_id}.exact_artifact"] = exact["version"]
+    return versions
+
+
 def sync_pack(pack: pathlib.Path, version: str) -> bool:
     """Write ``version`` into ``pack`` and refresh its digests; return whether it changed."""
 
@@ -122,7 +152,31 @@ def sync_pack(pack: pathlib.Path, version: str) -> bool:
     return changed
 
 
-def main(root: pathlib.Path = _REPOSITORY_ROOT) -> int:
+def check(root: pathlib.Path = _REPOSITORY_ROOT) -> list[str]:
+    """Return each pack version location that differs from the package version."""
+
+    version = package_version(root)
+    return [
+        f"{pack_yaml.parent.name}: {location} is {declared}, not {version}"
+        for pack_yaml in sorted((root / "packs").glob("*/pack.yaml"))
+        for location, declared in declared_versions(pack_yaml.parent).items()
+        if declared != version
+    ]
+
+
+def main(argv: list[str] | None = None, root: pathlib.Path = _REPOSITORY_ROOT) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="write nothing; fail when a pack does not carry the package version",
+    )
+    args = parser.parse_args(argv)
+    if args.check:
+        mismatches = check(root)
+        for mismatch in mismatches:
+            print(mismatch, file=sys.stderr)
+        return 1 if mismatches else 0
     version = package_version(root)
     for pack_yaml in sorted((root / "packs").glob("*/pack.yaml")):
         if sync_pack(pack_yaml.parent, version):

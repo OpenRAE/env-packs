@@ -28,7 +28,9 @@ pip install raes-env-packs
   plan it against the [golden-readiness checklist](golden-readiness.md), then
   add common infrastructure from [reusable kits](kits.md). The
   [defensive-tooling composition](defensive-tooling-composition.md) is a
-  verified multi-kit example. To keep one scenario unchanged while varying
+  verified multi-kit example. The [Owlbear guide](owlbear-composition.md) covers
+  a synthetic study scaffold and its runtime-adapter boundary.
+  To keep one scenario unchanged while varying
   participant guidance, follow the [two-audience bundle
   walkthrough](two-audience-bundles.md).
 - **Use an MCP host** — [search, inspect, and author packs](mcp.md) with explicit
@@ -63,6 +65,7 @@ new-pack-script
 mcp
 kits
 defensive-tooling-composition
+owlbear-composition
 two-audience-bundles
 kit-content-strategy
 pack-issue-skeleton-script
