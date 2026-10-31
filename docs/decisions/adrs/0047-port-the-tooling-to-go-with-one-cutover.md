@@ -128,14 +128,16 @@ These standards stay as they are today:
 
 ### During the port
 
-- The Python implementation stays the shipped product until the cutover.
-- Python changes are limited to fixes, security updates, and RAES dependency
-  updates.
-- A change to a contract changes the corpus in the same pull request. Both
+- The Go work lands on the `go-cutover` branch. Each pull request for the port
+  targets `go-cutover`, or the branch of an unmerged chunk that it needs.
+- `dev` keeps the Python implementation as the shipped product until the
+  cutover. Python changes on `dev` are limited to fixes, security updates, and
+  RAES dependency updates.
+- A sync pull request brings `dev` into `go-cutover`. When a `dev` change alters
+  a contract, the sync pull request also changes the corpus, so both
   implementations follow it.
-- A pull request that changes only Go code, CI, or documents uses a Conventional
-  Commit type that does not release: `build`, `ci`, `docs`, `refactor`, `test`,
-  or `chore`.
+- A pull request for the port uses a Conventional Commit type that does not
+  release: `build`, `ci`, `docs`, `refactor`, `test`, or `chore`.
 
 ### Commands after the cutover
 
@@ -188,16 +190,17 @@ a minimum version in `go.mod` (ADR 0043).
 
 ### The cutover
 
-One pull request makes the Go implementation the product. It merges after every
-other chunk of the milestone is closed, every corpus case passes against Go, no
-Python deviation mark remains, and every gate is green.
+The last chunk on `go-cutover` removes the Python implementation, its tests, its
+packaging, its locks, its requirement files, and the Python repository tools.
+It keeps the pack and kit content, including pack-local Python code, and the
+documentation toolchain: `requirements/docs.in`, `requirements/docs.txt`, and
+`docs/public/conf.py`. Its title marks a breaking change, so the next release is
+a major release.
 
-The cutover removes the Python implementation, its tests, its packaging, its
-locks, its requirement files, and the Python repository tools. It keeps the pack
-and kit content, including pack-local Python code, and the documentation
-toolchain: `requirements/docs.in`, `requirements/docs.txt`, and
-`docs/public/conf.py`. Its title marks a breaking change, so the next release
-is a major release.
+Then one pull request merges `go-cutover` into `dev` and makes the Go
+implementation the product. It merges after every other chunk of the milestone
+is closed, every corpus case passes against Go, no Python deviation mark
+remains, and every gate is green.
 
 ## Consequences
 
