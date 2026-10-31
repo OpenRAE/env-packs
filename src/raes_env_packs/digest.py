@@ -35,11 +35,15 @@ from raes_contracts.contracts import (
 )
 from raes_contracts.diagnostics import Diagnostic
 from raes_contracts.json_ingress import StrictJsonIngressError
-from raes import SDLError, Scenario, load_sdl_fragment, parse_sdl, parse_sdl_file
+from raes import SDLError, Scenario, load_sdl_fragment, parse_sdl_file
 from raes.artifact_requirements import ArtifactIdentity
 
 from . import _pack_fs
-from .validation import PackValidationLimits
+from .validation import (
+    PackValidationLimits,
+    _consumer_sdl_members,
+    _parse_consumer_sdl,
+)
 
 _MANIFEST_POINTER = "associated_artifact_manifest"
 _PACK_MANIFEST = "pack.yaml"
@@ -313,11 +317,17 @@ def authored_sdl_parent(path: Path, *, expanded: object) -> Scenario:
     validated expanded authoring object directly (OpenRAE/rae#1040).
     """
 
+    return _authored_parent(path.read_text(encoding="utf-8"), expanded=expanded)
+
+
+def _authored_parent(text: str, *, expanded: object) -> Scenario:
+    """Return RAES's authored ``Scenario`` for validated SDL text."""
+
     # ``load_sdl_fragment`` is RAES's public bounded, duplicate-key-safe source
     # loader. Scenario is RAES's public authored model; no SDL field is restated.
     if not getattr(expanded, "semantic_validated", False):
         raise PackDigestError("expanded SDL validation witness is missing")
-    document = load_sdl_fragment(path.read_text(encoding="utf-8"))
+    document = load_sdl_fragment(text)
     return Scenario.model_validate(document)
 
 
@@ -508,14 +518,14 @@ def _consumer_parent_candidates(
     selected_rel: str | None = None,
     selected_bytes: bytes | None = None,
 ) -> tuple[object, ...]:
-    """Parse direct SDL parents from bounded descriptor bytes, imports denied.
+    """Parse direct SDL parents from bounded descriptor bytes through RAES.
 
-    The consumer boundary reads each ``sdl/*.sdl.yaml`` through the descriptor-
-    anchored, size-bounded member reader and parses it with the public RAES
-    ``parse_sdl`` (which denies file-backed imports), never the pathname-based
-    author parser. When the selected artifact is itself a parent document, its
-    already-materialized bytes are reused so the selected payload is opened
-    exactly once (ADR 0033).
+    The consumer boundary reads the SDL and lock source set through the
+    descriptor-anchored, size-bounded member reader and parses each direct
+    parent with the RAES supplied-source parser (ADR 0046), never the
+    pathname-based author parser. When the selected artifact is in the source
+    set, its already-materialized bytes are reused so the selected payload is
+    opened exactly once (ADR 0033).
     """
 
     sdl_docs = [
@@ -525,23 +535,54 @@ def _consumer_parent_candidates(
     ]
     if not sdl_docs:
         raise PackDigestError("pack has no direct SDL parent document")
-    candidates: list[object] = []
-    for rel in sdl_docs:
+    sources = _consumer_sdl_sources(
+        root_fd, inventory, limits, selected_rel=selected_rel, selected_bytes=selected_bytes
+    )
+    return tuple(
+        candidate for rel in sdl_docs for candidate in _consumer_parents(sources, rel, limits)
+    )
+
+
+def _consumer_sdl_sources(
+    root_fd: int,
+    inventory: tuple[str, ...],
+    limits: PackValidationLimits,
+    *,
+    selected_rel: str | None,
+    selected_bytes: bytes | None,
+) -> dict[str, bytes]:
+    """Read the bounded consumer source set, reusing the selected bytes."""
+
+    sources: dict[str, bytes] = {}
+    total = 0
+    for rel in _consumer_sdl_members(inventory):
         if rel == selected_rel and selected_bytes is not None:
             raw = selected_bytes
         else:
             raw = _read_member_bytes(root_fd, rel, max_bytes=limits.max_sdl_bytes)
-        try:
-            text = raw.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise PackDigestError("pack SDL parent is not valid UTF-8") from exc
-        try:
-            candidates.append(
-                parse_sdl(text, limits=limits.sdl, migration_policy="accept")
-            )
-        except SDLError as exc:
-            raise PackDigestError("pack SDL parent is invalid") from exc
-    return tuple(candidates)
+        total += len(raw)
+        if total > limits.sdl.max_composed_bytes:
+            raise PackDigestError("pack SDL sources exceed the parse limit")
+        sources[rel] = raw
+    return sources
+
+
+def _consumer_parents(
+    sources: Mapping[str, bytes], rel: str, limits: PackValidationLimits
+) -> list[object]:
+    """Return the parent candidates of one direct root, as the author lane does."""
+
+    try:
+        text = sources[rel].decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise PackDigestError("pack SDL parent is not valid UTF-8") from exc
+    try:
+        parsed = _parse_consumer_sdl(sources, rel, text, limits)
+        if isinstance(parsed, Scenario):
+            return [parsed]
+        return [_authored_parent(text, expanded=parsed), parsed]
+    except SDLError as exc:
+        raise PackDigestError("pack SDL parent is invalid") from exc
 
 
 def _resolve_selector(

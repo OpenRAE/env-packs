@@ -274,10 +274,9 @@ class AuthoringTests(TestCase):
             for change in prepared["result"]["changes"]:
                 if change["after"] is not None:
                     self.assertEqual((self.pack / change["path"]).read_text(), change["after"]["text"])
-            # Consumer import denial retains its separate meaning after author composition.
+            # The consumer check admits the pinned, locked import that composition wrote.
             checked = session.call("pack_validate", {"source": "sample"})
-            self.assertEqual(checked["status"], 1)
-            self.assertIn("sdl.imports-denied", [d["code"] for d in checked["result"]["diagnostics"]])
+            self.assertEqual(checked["status"], 0, checked)
             for operation, materialization in (("update", "web"), ("replace", "web"), ("remove", "api")):
                 args = {"source": "sample", "operation": operation, "materialization": materialization}
                 if operation != "remove":

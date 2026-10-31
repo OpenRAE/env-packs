@@ -42,9 +42,17 @@ explains each problem in plain language (or JSON), with documented exit codes.
 
 `validate_pack` is the boundary for content you do not yet trust, so it is
 deliberately inert. It does not run the pack's code, start a subprocess, open a
-network connection, read environment variables, write a cache, or log. An SDL
-document that tries to import another file is rejected with `sdl.imports-denied`
-rather than reaching out to fetch it.
+network connection, read environment variables, write a cache, or log.
+
+It admits an SDL import only when all of these are true:
+
+- the import is `local:` and names an `sdl/` file in the pack;
+- the import has a `sha256:` digest pin of the module bytes; and
+- one matching record is in the `raes.lock.json` beside the importing document.
+
+`raes-pack-kit add` writes imports and locks in this form. Every other import,
+such as a registry or network import, fails with `sdl.imports-denied`. The
+check never fetches it.
 
 Because it works on files, it cannot make storage atomic for you. Stage the pack
 immutably first, validate those exact bytes, then promote the same bytes — and
@@ -75,9 +83,9 @@ There are two checks, and they trust their input differently.
 Use `validate_pack` at an ingest boundary. Use `raes-pack-validate` in your own
 catalog CI, where running the pack's tests is safe and expected. Both parse the
 start state through the same installed `raes`, so a self-contained start state gets
-the same verdict from either. They are not identical: `validate_pack` rejects SDL
-imports (`sdl.imports-denied`) because it runs without a file context, while
-`raes-pack-validate` can resolve them — so the consumer boundary is the stricter.
+the same verdict from either. They are not identical: `validate_pack` admits only
+pinned and locked local imports, while `raes-pack-validate` can also resolve other
+imports. The consumer boundary is the stricter.
 
 ## Proving which bytes a pack is
 

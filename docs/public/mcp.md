@@ -113,8 +113,8 @@ The adapter rejects symlinks, special files, known secret-file names, and
 `raes-trust.yaml` before content reads. Kit release inspection parses an
 import-free module in memory. Explicit preparation supports local imports
 under RAES's empty registry policy; pack-supplied policies cannot enable network
-access. Static consumer validation remains import-denying, so a composed pack
-can correctly report `sdl.imports-denied` on that route.
+access. Static consumer validation admits only pinned and locked local imports.
+It reports any other import as `sdl.imports-denied`.
 
 Tool arguments are closed objects, bounded to 64 KiB and 32 levels. Transport
 frames are capped at 256 KiB; invalid frames close input without echoing content.
