@@ -71,7 +71,7 @@ _KIT_MATERIALIZATIONS_FILE = "kit.materializations.json"
 _FILESYSTEM_CHANGED = "filesystem.changed"
 _SDL_SUFFIX = ".sdl.yaml"
 _SDL_LIMIT = "resource.sdl-limit"
-_IMPORT_POINTER = re.compile(r"/imports(?:/[0-9]{1,4})?")
+_IMPORT_POINTER = re.compile(r"/imports(?:/\d{1,4})?", re.ASCII)
 _BINDINGS_SUFFIX = ".bindings.json"
 _BINDINGS_INVALID = "sdl.bindings-invalid"
 _SCHEMES_SUFFIX = ".schemes.json"
@@ -1493,6 +1493,20 @@ def _consumer_sdl_members(inventory: Iterable[str]) -> list[str]:
     )
 
 
+def _read_sdl_member(
+    root_fd: int, rel: str, limits: PackValidationLimits, errors: _Errors
+) -> bytes | None:
+    """Read one bounded SDL member, or record its bounded failure."""
+
+    try:
+        return _pack_fs.read_member_bytes(root_fd, rel, max_bytes=limits.max_sdl_bytes)
+    except OSError:
+        errors.add(_FILESYSTEM_CHANGED, rel)
+    except _pack_fs.PackFilesystemError as exc:
+        _add_sdl_read_error(errors, rel, exc)
+    return None
+
+
 def _read_consumer_sdl_sources(
     root_fd: int,
     inventory: frozenset[str],
@@ -1504,15 +1518,8 @@ def _read_consumer_sdl_sources(
     sources: dict[str, bytes] = {}
     total = 0
     for rel in _consumer_sdl_members(inventory):
-        try:
-            raw = _pack_fs.read_member_bytes(
-                root_fd, rel, max_bytes=limits.max_sdl_bytes
-            )
-        except OSError:
-            errors.add(_FILESYSTEM_CHANGED, rel)
-            return None
-        except _pack_fs.PackFilesystemError as exc:
-            _add_sdl_read_error(errors, rel, exc)
+        raw = _read_sdl_member(root_fd, rel, limits, errors)
+        if raw is None:
             return None
         total += len(raw)
         if total > limits.sdl.max_composed_bytes:

@@ -340,7 +340,8 @@ _CATALOG: dict[str, Presentation] = {
     ),
     "sdl.imports-denied": _sdl(
         "RAES refused an SDL import in the reported document.",
-        "The consumer check admits only local imports with a digest pin and one matching raes.lock.json record, so it never reaches the network.",
+        "The consumer check admits only local imports with a digest pin and one matching "
+        "raes.lock.json record, so it never reaches the network.",
         "Add or update the import with raes-pack-kit so it is pinned and locked, or inline the imported content.",
     ),
     "sdl.bindings-invalid": _sdl(

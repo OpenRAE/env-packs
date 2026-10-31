@@ -535,6 +535,24 @@ def _consumer_parent_candidates(
     ]
     if not sdl_docs:
         raise PackDigestError("pack has no direct SDL parent document")
+    sources = _consumer_sdl_sources(
+        root_fd, inventory, limits, selected_rel=selected_rel, selected_bytes=selected_bytes
+    )
+    return tuple(
+        candidate for rel in sdl_docs for candidate in _consumer_parents(sources, rel, limits)
+    )
+
+
+def _consumer_sdl_sources(
+    root_fd: int,
+    inventory: tuple[str, ...],
+    limits: PackValidationLimits,
+    *,
+    selected_rel: str | None,
+    selected_bytes: bytes | None,
+) -> dict[str, bytes]:
+    """Read the bounded consumer source set, reusing the selected bytes."""
+
     sources: dict[str, bytes] = {}
     total = 0
     for rel in _consumer_sdl_members(inventory):
@@ -546,22 +564,25 @@ def _consumer_parent_candidates(
         if total > limits.sdl.max_composed_bytes:
             raise PackDigestError("pack SDL sources exceed the parse limit")
         sources[rel] = raw
-    candidates: list[object] = []
-    for rel in sdl_docs:
-        try:
-            text = sources[rel].decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise PackDigestError("pack SDL parent is not valid UTF-8") from exc
-        try:
-            parsed = _parse_consumer_sdl(sources, rel, text, limits)
-            if isinstance(parsed, Scenario):
-                candidates.append(parsed)
-            else:
-                candidates.append(_authored_parent(text, expanded=parsed))
-                candidates.append(parsed)
-        except SDLError as exc:
-            raise PackDigestError("pack SDL parent is invalid") from exc
-    return tuple(candidates)
+    return sources
+
+
+def _consumer_parents(
+    sources: Mapping[str, bytes], rel: str, limits: PackValidationLimits
+) -> tuple[object, ...]:
+    """Return the parent candidates of one direct root, as the author lane does."""
+
+    try:
+        text = sources[rel].decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise PackDigestError("pack SDL parent is not valid UTF-8") from exc
+    try:
+        parsed = _parse_consumer_sdl(sources, rel, text, limits)
+        if isinstance(parsed, Scenario):
+            return (parsed,)
+        return (_authored_parent(text, expanded=parsed), parsed)
+    except SDLError as exc:
+        raise PackDigestError("pack SDL parent is invalid") from exc
 
 
 def _resolve_selector(
