@@ -35,6 +35,7 @@ raes-pack-release check --all
 raes-pack-validate --packs-root packs
 raes-pack-release check --packs-root packs
 python3 -m compileall src tests
+make go-check
 ```
 
 ## Commits & releases
