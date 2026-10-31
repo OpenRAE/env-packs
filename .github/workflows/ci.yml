@@ -1,14 +1,16 @@
 name: CI
 
 # Pull requests run CI whatever their base branch is. The Go port (ADR 0047)
-# lands as a stack of pull requests, each based on the one below it, and every
-# pull request in the stack must show the complete check result before review.
+# lands on the go-cutover branch, and a pull request that needs an unmerged
+# chunk uses that chunk's branch as its base. Every such pull request must show
+# the complete check result before review.
 on:
   pull_request:
   push:
     branches:
       - main
       - dev
+      - go-cutover
 
 # Least privilege (#142): CI only reads the repository. SonarCloud authenticates
 # with SONAR_TOKEN, not GITHUB_TOKEN, so no job here needs a write scope. An

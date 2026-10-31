@@ -35,15 +35,16 @@ See [ADR 0008](../docs/decisions/adrs/0008-adopt-release-please.md).
 
 ## Go port (ADR 0047)
 
-- **Until the cutover, a pull request that changes only Go code, CI, or
-  documents uses a type that does not release:** `build`, `ci`, `docs`,
-  `refactor`, `test`, or `chore`. A `feat:` or `fix:` title would release the
-  Python distribution without a Python change.
-- **Python changes are limited to fixes, security updates, and RAES dependency
-  updates.** A change to a contract changes the conformance corpus in the same
-  pull request.
-- **The Go work lands as a stack of pull requests.** Each pull request uses the
-  branch of the chunk below it as its base.
+- **Pull requests for the port target `go-cutover`.** A pull request that needs
+  an unmerged chunk uses the branch of that chunk as its base. `dev` keeps the
+  Python product until one pull request merges `go-cutover` into `dev`.
+- **A pull request for the port uses a type that does not release:** `build`,
+  `ci`, `docs`, `refactor`, `test`, or `chore`. Only the chunk that removes the
+  Python implementation has a breaking-change title.
+- **Python changes on `dev` are limited to fixes, security updates, and RAES
+  dependency updates.** A sync pull request brings `dev` into `go-cutover`. When
+  a `dev` change alters a contract, the sync pull request also changes the
+  conformance corpus.
 
 ## Repository boundary
 
