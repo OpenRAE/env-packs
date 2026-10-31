@@ -15,8 +15,8 @@ workflow:
   # resolves -- and an automated runner (CI, an agent workflow) does not activate
   # anything. Prefer a local .venv when one exists, and fall back to `python3`
   # otherwise, which is the CI case where the package is already installed.
-  test_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); "$PY" -m unittest discover -s tests'
-  completion_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); export PATH=".venv/bin:$PATH"; "$PY" -m unittest discover -s tests && raes-pack-validate --repo . && raes-pack-release check --all && raes-pack-validate --packs-root packs && raes-pack-release check --packs-root packs'
+  test_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); "$PY" -m unittest discover -s tests && make go-check'
+  completion_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); export PATH=".venv/bin:$PATH"; "$PY" -m unittest discover -s tests && raes-pack-validate --repo . && raes-pack-release check --all && raes-pack-validate --packs-root packs && raes-pack-release check --packs-root packs && make go-check'
   # This repository has no separate policy tool -- no bin/policy, no rule engine.
   # Its repository policy is written as contract tests that assert the governance
   # invariants the ADRs commit to: supply-chain pinning (ADR 0004), least-privilege
