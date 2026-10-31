@@ -15,8 +15,8 @@ from raes import canonical_sdl_digest, parse_sdl_file
 from raes_contracts.associated_artifacts import associated_artifact_set_digest
 from raes_contracts.contracts import AssociatedArtifactManifestModel
 
-from raes_env_packs import kits, wizard
-from raes_env_packs.digest import validate_pack_content_manifest
+from raes_env_packs import kits, validate_pack, wizard
+from raes_env_packs.digest import resolve_pack_artifact, validate_pack_content_manifest
 from raes_env_packs.validation import _validate_pack_for_author_ci
 from tests.test_kits import KIT_ID, KIT_VERSION, _write_synthetic_kit
 
@@ -206,6 +206,38 @@ class KitProposalTests(unittest.TestCase):
         result, _scenarios = _validate_pack_for_author_ci(self.pack)
         self.assertTrue(result.ok, result.errors)
         validate_pack_content_manifest(self.pack)
+
+    def test_kit_made_pack_passes_the_consumer_check(self) -> None:
+        kits.apply_proposal(self._add_proposal())
+
+        result = validate_pack(self.pack)
+
+        self.assertTrue(result.ok, result.errors)
+        manifest = json.loads(
+            (self.pack / "associated-artifacts.json").read_text(encoding="utf-8")
+        )
+        for artifact_id in sorted(manifest["artifacts"]):
+            with self.subTest(artifact=artifact_id):
+                self.assertTrue(resolve_pack_artifact(self.pack, artifact_id).data)
+
+    def test_documents_in_one_directory_share_a_complete_lock(self) -> None:
+        primary = self.pack / "sdl" / "example-pack.sdl.yaml"
+        document = yaml.safe_load(primary.read_text(encoding="utf-8"))
+        document["name"] = "second-scenario"
+        (self.pack / "sdl" / "second.sdl.yaml").write_text(
+            yaml.safe_dump(document, sort_keys=False), encoding="utf-8"
+        )
+        kits.apply_proposal(self._add_proposal())
+        kits.apply_proposal(
+            self._add_proposal(namespace="api", target_sdl="sdl/second.sdl.yaml")
+        )
+
+        lock = json.loads((self.pack / "sdl/raes.lock.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            sorted(record["namespace"] for record in lock["imports"]), ["api", "web"]
+        )
+        result = validate_pack(self.pack)
+        self.assertTrue(result.ok, result.errors)
 
     def test_canonical_pack_validation_enforces_the_materialization_ledger(self) -> None:
         kits.apply_proposal(self._add_proposal())

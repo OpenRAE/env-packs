@@ -33,7 +33,7 @@ from raes import (
     parse_sdl_file,
 )
 from raes.language_service import apply_structured_edit
-from raes.module_registry import TrustPolicy, resolve_lock_records
+from raes.module_registry import Lockfile, LockRecord, TrustPolicy, resolve_lock_records
 from raes_contracts.associated_artifacts import (
     associated_artifact_set_digest,
     load_associated_artifact_manifest_json,
@@ -1578,14 +1578,34 @@ def _edit_import(
 
 
 def _lock_bytes(candidate: Path, target_sdl: str) -> bytes:
-    """Resolve and serialize RAES's exact module lock for one target SDL."""
+    """Resolve and serialize RAES's exact module lock for one SDL directory.
 
+    Every SDL document in the directory shares the lock, so it holds the RAES
+    records of each document (ADR 0046). Two records for one import that
+    disagree cannot share one lock.
+    """
+
+    directory = candidate.joinpath(*target_sdl.split("/")).parent
     try:
-        lock = resolve_lock_records(
-            candidate.joinpath(*target_sdl.split("/")), trust_policy=TrustPolicy()
+        documents = sorted(
+            path
+            for path in directory.iterdir()
+            if path.name.endswith(".sdl.yaml")
+            and path.is_file()
+            and not path.is_symlink()
         )
+        locks = [
+            resolve_lock_records(document, trust_policy=TrustPolicy())
+            for document in documents
+        ]
     except (SDLError, OSError, ValueError) as exc:
         raise KitError("RAES could not resolve the exact module lock") from exc
+    records: dict[tuple[str, str, str], LockRecord] = {}
+    for record in (item for lock in locks for item in lock.imports):
+        key = (record.source, record.namespace, record.requested_version)
+        if records.setdefault(key, record) != record:
+            raise KitError("SDL documents in one directory need conflicting lock records")
+    lock = Lockfile(imports=list(records.values()))
     return (
         json.dumps(lock.model_dump(mode="python"), indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
