@@ -1,6 +1,6 @@
 name: CI
 
-# Pull requests run CI whatever their base branch is. The Go port (ADR 0046)
+# Pull requests run CI whatever their base branch is. The Go port (ADR 0047)
 # lands as a stack of pull requests, each based on the one below it, and every
 # pull request in the stack must show the complete check result before review.
 on:
@@ -210,7 +210,7 @@ jobs:
       - name: Assert the publication boundary
         run: python tools/check_docs_publication_boundary.py docs/public/_build/html
 
-  # Builds, vets, and tests the Go code of the port (ADR 0046) with the toolchain
+  # Builds, vets, and tests the Go code of the port (ADR 0047) with the toolchain
   # that go.mod pins. It runs the same `make go-check` target as a local run, so
   # the two cannot drift. There is no module cache: the downloads are small, and a
   # cache adds a path for poisoned content.

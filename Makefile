@@ -11,7 +11,7 @@
 # .ground-control.yaml, and .github/workflows/ci.yml already each hold that list;
 # a fourth copy would drift out of step with them.
 #
-# The Go checks of the port (ADR 0046) are the exception. CI runs `make
+# The Go checks of the port (ADR 0047) are the exception. CI runs `make
 # go-check`, so this target is their one definition, and the other lists call it.
 
 # Substitutable so the contract test in tests/test_makefile.py can drive the

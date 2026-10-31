@@ -33,7 +33,7 @@ the generic workflow. Ground Control injects this file into planning via
 
 See [ADR 0008](../docs/decisions/adrs/0008-adopt-release-please.md).
 
-## Go port (ADR 0046)
+## Go port (ADR 0047)
 
 - **Until the cutover, a pull request that changes only Go code, CI, or
   documents uses a type that does not release:** `build`, `ci`, `docs`,

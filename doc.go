@@ -2,6 +2,6 @@
 // environment-pack tooling.
 //
 // The Python implementation under src/ stays the shipped product until the
-// cutover that ADR 0046 describes. The Go code keeps the external contracts of
+// cutover that ADR 0047 describes. The Go code keeps the external contracts of
 // the Python implementation and does not copy its structure.
 package envpacks

@@ -26,7 +26,7 @@ raes-pack-release check --all          # pack release gate
 raes-pack-validate --packs-root packs  # hosted first-party packs
 raes-pack-release check --packs-root packs
 python -m compileall src tests         # byte-compile
-make go-check                          # Go build, vet, and tests (ADR 0046)
+make go-check                          # Go build, vet, and tests (ADR 0047)
 ```
 
 ## Stay inside the boundary
