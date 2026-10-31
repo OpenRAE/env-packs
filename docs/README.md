@@ -19,6 +19,12 @@ User-facing documentation is under [`public/`](public/index.md).
 - [Pack-local consumer validation preflight](development/pack-local-consumer-validation-preflight.md)
   — public import policy, RAES resolver prerequisite, lock coverage, and inert
   consumer validation guardrails for issue #412.
+- [Owlbear protected-target design](development/owlbear-protected-target-design.md)
+  — source-backed input requirements, typed runtime variation, and trust boundaries.
+
+- [Owlbear protected-target preflight](development/owlbear-protected-target-preflight.md)
+  — reusable target, runtime/artifact boundaries, composition, and security
+  guardrails for #540 and the composition documentation boundary for #541.
 - [TechVault case management removal preflight](development/techvault-case-management-removal-preflight.md)
   — complete service retirement, archive preservation, and catalog/distribution
   guardrails for issue #536.

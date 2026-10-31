@@ -1,0 +1,9 @@
+default:
+  deployment_profile: standard
+  service_label: owlbear-target
+  daemon_active_state: active
+variation:
+  deployment_profile: compact
+  service_label: owlbear-maintenance
+  daemon_active_state: inactive
+multi_kit_group: security-operations

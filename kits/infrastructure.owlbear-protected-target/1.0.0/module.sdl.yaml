@@ -1,0 +1,181 @@
+name: owlbear-protected-target
+version: 1.0.0
+description: Reusable Owlbear target declarations. Daemon activity does not establish
+  effective protection.
+module:
+  id: infrastructure/owlbear-protected-target
+  version: 1.0.0
+  parameters:
+  - deployment_profile
+  - service_label
+  - daemon_active_state
+  exports:
+    nodes:
+    - target
+    content:
+    - seed_inventory
+    - kernel_module
+    - daemon_binary
+    - game_binary
+    - signature_database
+  description: Static ARM64 Linux target and Owlbear artifact inputs.
+variables:
+  deployment_profile:
+    type: string
+    default: standard
+    allowed_values:
+    - compact
+    - standard
+    description: Planning label only; does not change allocated resources.
+  service_label:
+    type: string
+    default: owlbear-protected-target
+  daemon_active_state:
+    type: string
+    default: active
+    allowed_values:
+    - active
+    - inactive
+    description: Required service-manager state, independent of native enforcement
+      mode.
+nodes:
+  target:
+    type: compute
+    description: ${deployment_profile} profile for ${service_label}.
+    os: linux
+    os_distribution: ubuntu
+    os_version: '24.04'
+    architecture: arm64
+    source:
+      name: ubuntu
+      version: '24.04'
+    resources:
+      cpu: 2
+      ram: 4 GiB
+    runtime:
+      software_components:
+      - component_id: owlbear_daemon
+        name: owlbeard
+        version: 2.3.0
+        component_type: application
+        provenance: self_reported
+        installed_paths:
+        - /opt/owlbear/daemon/owlbeard
+        description: Reference daemon includes the upstream eBPF programs.
+      - component_id: owlbear_kernel
+        name: owlbear.ko
+        version: 2.3.0
+        component_type: device_driver
+        provenance: self_reported
+        installed_paths:
+        - /opt/owlbear/kernel/owlbear.ko
+        description: Build must match the admitted target kernel.
+      - component_id: owlbear_game
+        name: owlbear-game
+        version: 2.3.0
+        component_type: application
+        provenance: self_reported
+        installed_paths:
+        - /opt/owlbear/game/owlbear-game
+        description: Synthetic reference workload; process identity is selected during
+          backend preparation.
+      service_manager_units:
+      - unit_id: owlbear_protection
+        unit_type: service
+        active_state: ${daemon_active_state}
+        description: Backend-supplied service binding to owlbeard; no upstream unit
+          file is bundled.
+      filesystem_inventory:
+      - path: /opt/owlbear/kernel/owlbear.ko
+        entry_type: file
+        owner_user: root
+        owner_group: root
+        mode: '0644'
+        sensitivity: plain
+      - path: /opt/owlbear/daemon/owlbeard
+        entry_type: file
+        owner_user: root
+        owner_group: root
+        mode: '0755'
+        sensitivity: plain
+      - path: /opt/owlbear/game/owlbear-game
+        entry_type: file
+        owner_user: root
+        owner_group: root
+        mode: '0755'
+        sensitivity: plain
+      - path: /opt/owlbear/signatures/default.sigs
+        entry_type: file
+        owner_user: root
+        owner_group: root
+        mode: '0644'
+        sensitivity: plain
+content:
+  seed_inventory:
+    type: dataset
+    target: target
+    description: Benign reference defaults; copied assets are not parameter templates.
+    format: application/json
+    items:
+    - name: protected_workload
+      display_name: Protected Workload
+      tags:
+      - infrastructure
+      - seed
+      description: Reference protected workload.
+    - name: protection_components
+      display_name: Protection Components
+      tags:
+      - infrastructure
+      - seed
+      description: Reference protection components.
+    - name: runtime_posture
+      display_name: Runtime Posture
+      tags:
+      - infrastructure
+      - seed
+      description: Reference runtime posture.
+    text: "{\n  \"protected_workload\": {\n    \"name\": \"owlbear-game\",\n    \"\
+      path\": \"/opt/owlbear/game/owlbear-game\",\n    \"kind\": \"synthetic-game\"\
+      \n  },\n  \"protection_components\": {\n    \"daemon\": \"/opt/owlbear/daemon/owlbeard\"\
+      ,\n    \"kernel_module\": \"/opt/owlbear/kernel/owlbear.ko\",\n    \"signatures\"\
+      : \"/opt/owlbear/signatures/default.sigs\"\n  },\n  \"runtime_posture\": {\n\
+      \    \"unit_id\": \"owlbear_protection\",\n    \"daemon_active_state\": \"active\"\
+      ,\n    \"kernel_reference\": \"6.17\"\n  }\n}\n"
+  kernel_module:
+    type: file
+    target: target
+    path: /opt/owlbear/kernel/owlbear.ko
+    description: Kernel-specific Owlbear loadable module.
+    source:
+      name: owlbear-kernel-module
+      version: fa4497f3273517611e2d62f5fb32c620a00a9681
+  daemon_binary:
+    type: file
+    target: target
+    path: /opt/owlbear/daemon/owlbeard
+    description: Owlbear daemon with embedded eBPF skeletons.
+    source:
+      name: owlbear-daemon
+      version: fa4497f3273517611e2d62f5fb32c620a00a9681
+  game_binary:
+    type: file
+    target: target
+    path: /opt/owlbear/game/owlbear-game
+    description: Benign ncurses workload protected by Owlbear.
+    source:
+      name: owlbear-game
+      version: fa4497f3273517611e2d62f5fb32c620a00a9681
+  signature_database:
+    type: file
+    target: target
+    path: /opt/owlbear/signatures/default.sigs
+    description: Reference signature data for the Owlbear scanner.
+    source:
+      name: owlbear-signatures
+      version: fa4497f3273517611e2d62f5fb32c620a00a9681
+realization:
+  constraints:
+  - field_pointer: /nodes/target
+    concern: compute-substrate
+    posture: open
