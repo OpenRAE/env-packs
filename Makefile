@@ -10,14 +10,20 @@
 # raes-pack-release, compileall -- is intentionally NOT restated here. AGENTS.md,
 # .ground-control.yaml, and .github/workflows/ci.yml already each hold that list;
 # a fourth copy would drift out of step with them.
+#
+# The Go checks of the port (ADR 0046) are the exception. CI runs `make
+# go-check`, so this target is their one definition, and the other lists call it.
 
 # Substitutable so the contract test in tests/test_makefile.py can drive the
 # promotion target without touching GitHub.
 GH ?= gh
 
+# Substitutable so a caller can select a specific Go toolchain binary.
+GO ?= go
+
 .DEFAULT_GOAL := help
 
-.PHONY: help devmain
+.PHONY: help devmain go-check
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -47,3 +53,9 @@ devmain: ## Open the dev -> main promotion PR
 	@$(GH) pr create --base main --head dev \
 	  --title "chore: promote dev to main" \
 	  --body "$$DEVMAIN_BODY"
+
+# Builds, vets, and tests every Go package with the toolchain that go.mod pins.
+go-check: ## Build, vet, and test the Go code
+	$(GO) build ./...
+	$(GO) vet ./...
+	$(GO) test ./...
