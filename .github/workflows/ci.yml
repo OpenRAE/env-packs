@@ -1,10 +1,10 @@
 name: CI
 
+# Pull requests run CI whatever their base branch is. The Go port (ADR 0047)
+# lands as a stack of pull requests, each based on the one below it, and every
+# pull request in the stack must show the complete check result before review.
 on:
   pull_request:
-    branches:
-      - main
-      - dev
   push:
     branches:
       - main
@@ -210,6 +210,27 @@ jobs:
       - name: Assert the publication boundary
         run: python tools/check_docs_publication_boundary.py docs/public/_build/html
 
+  # Builds, vets, and tests the Go code of the port (ADR 0047) with the toolchain
+  # that go.mod pins. It runs the same `make go-check` target as a local run, so
+  # the two cannot drift. There is no module cache: the downloads are small, and a
+  # cache adds a path for poisoned content.
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Build, vet, and test the Go code
+        run: make go-check
+
   sonar:
     runs-on: ubuntu-latest
     # Depend only on the coverage producer, not on the audit or pack gates: the
@@ -252,7 +273,7 @@ jobs:
   # adding it to `needs` and to the check below (ADR 0029).
   verify:
     runs-on: ubuntu-latest
-    needs: [compile, tests, audit, content, docs]
+    needs: [compile, tests, audit, content, docs, go]
     if: always()
     steps:
       - name: Require every mandatory verification job to pass
@@ -262,9 +283,10 @@ jobs:
           AUDIT: ${{ needs.audit.result }}
           CONTENT: ${{ needs.content.result }}
           DOCS: ${{ needs.docs.result }}
+          GO: ${{ needs.go.result }}
         run: |
-          echo "compile=$COMPILE tests=$TESTS audit=$AUDIT content=$CONTENT docs=$DOCS"
-          for result in "$COMPILE" "$TESTS" "$AUDIT" "$CONTENT" "$DOCS"; do
+          echo "compile=$COMPILE tests=$TESTS audit=$AUDIT content=$CONTENT docs=$DOCS go=$GO"
+          for result in "$COMPILE" "$TESTS" "$AUDIT" "$CONTENT" "$DOCS" "$GO"; do
             if [ "$result" != "success" ]; then
               echo "::error::A mandatory verification job did not succeed; blocking merge."
               exit 1

@@ -33,6 +33,18 @@ the generic workflow. Ground Control injects this file into planning via
 
 See [ADR 0008](../docs/decisions/adrs/0008-adopt-release-please.md).
 
+## Go port (ADR 0047)
+
+- **Until the cutover, a pull request that changes only Go code, CI, or
+  documents uses a type that does not release:** `build`, `ci`, `docs`,
+  `refactor`, `test`, or `chore`. A `feat:` or `fix:` title would release the
+  Python distribution without a Python change.
+- **Python changes are limited to fixes, security updates, and RAES dependency
+  updates.** A change to a contract changes the conformance corpus in the same
+  pull request.
+- **The Go work lands as a stack of pull requests.** Each pull request uses the
+  branch of the chunk below it as its base.
+
 ## Repository boundary
 
 - This repo **defines and validates** the environment-pack format, publishes
