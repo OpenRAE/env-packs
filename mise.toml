@@ -1,0 +1,9 @@
+# Tool pins for the Go port (ADR 0047). `mise install` installs the versions
+# below and verifies each download against the checksums in mise.lock.
+min_version = "2026.10.2"
+
+[settings]
+exec_auto_install = false
+
+[tools]
+"aqua:golangci/golangci-lint" = "2.15.0"

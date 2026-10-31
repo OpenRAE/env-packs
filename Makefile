@@ -21,9 +21,13 @@ GH ?= gh
 # Substitutable so a caller can select a specific Go toolchain binary.
 GO ?= go
 
+# Substitutable so a caller can use a mise binary that is not on PATH. mise
+# installs the tool versions that mise.toml pins and mise.lock verifies.
+MISE ?= mise
+
 .DEFAULT_GOAL := help
 
-.PHONY: help devmain go-check
+.PHONY: help devmain go-check go-lint
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -59,3 +63,10 @@ go-check: ## Build, vet, and test the Go code
 	$(GO) build ./...
 	$(GO) vet ./...
 	$(GO) test ./...
+
+# Lints the Go code with the pinned golangci-lint, checks the formatting, and
+# checks that go.mod and go.sum are tidy (docs/development/go-style-map.md).
+go-lint: ## Lint the Go code and check formatting and tidiness
+	$(MISE) exec -- golangci-lint run ./...
+	$(MISE) exec -- golangci-lint fmt --diff ./...
+	$(GO) mod tidy -diff
