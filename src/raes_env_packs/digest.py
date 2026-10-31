@@ -35,11 +35,15 @@ from raes_contracts.contracts import (
 )
 from raes_contracts.diagnostics import Diagnostic
 from raes_contracts.json_ingress import StrictJsonIngressError
-from raes import SDLError, Scenario, load_sdl_fragment, parse_sdl, parse_sdl_file
+from raes import SDLError, Scenario, load_sdl_fragment, parse_sdl_file
 from raes.artifact_requirements import ArtifactIdentity
 
 from . import _pack_fs
-from .validation import PackValidationLimits
+from .validation import (
+    PackValidationLimits,
+    _consumer_sdl_members,
+    _parse_consumer_sdl,
+)
 
 _MANIFEST_POINTER = "associated_artifact_manifest"
 _PACK_MANIFEST = "pack.yaml"
@@ -313,11 +317,17 @@ def authored_sdl_parent(path: Path, *, expanded: object) -> Scenario:
     validated expanded authoring object directly (OpenRAE/rae#1040).
     """
 
+    return _authored_parent(path.read_text(encoding="utf-8"), expanded=expanded)
+
+
+def _authored_parent(text: str, *, expanded: object) -> Scenario:
+    """Return RAES's authored ``Scenario`` for validated SDL text."""
+
     # ``load_sdl_fragment`` is RAES's public bounded, duplicate-key-safe source
     # loader. Scenario is RAES's public authored model; no SDL field is restated.
     if not getattr(expanded, "semantic_validated", False):
         raise PackDigestError("expanded SDL validation witness is missing")
-    document = load_sdl_fragment(path.read_text(encoding="utf-8"))
+    document = load_sdl_fragment(text)
     return Scenario.model_validate(document)
 
 
@@ -508,14 +518,14 @@ def _consumer_parent_candidates(
     selected_rel: str | None = None,
     selected_bytes: bytes | None = None,
 ) -> tuple[object, ...]:
-    """Parse direct SDL parents from bounded descriptor bytes, imports denied.
+    """Parse direct SDL parents from bounded descriptor bytes through RAES.
 
-    The consumer boundary reads each ``sdl/*.sdl.yaml`` through the descriptor-
-    anchored, size-bounded member reader and parses it with the public RAES
-    ``parse_sdl`` (which denies file-backed imports), never the pathname-based
-    author parser. When the selected artifact is itself a parent document, its
-    already-materialized bytes are reused so the selected payload is opened
-    exactly once (ADR 0033).
+    The consumer boundary reads the SDL and lock source set through the
+    descriptor-anchored, size-bounded member reader and parses each direct
+    parent with the RAES supplied-source parser (ADR 0046), never the
+    pathname-based author parser. When the selected artifact is in the source
+    set, its already-materialized bytes are reused so the selected payload is
+    opened exactly once (ADR 0033).
     """
 
     sdl_docs = [
@@ -525,20 +535,30 @@ def _consumer_parent_candidates(
     ]
     if not sdl_docs:
         raise PackDigestError("pack has no direct SDL parent document")
-    candidates: list[object] = []
-    for rel in sdl_docs:
+    sources: dict[str, bytes] = {}
+    total = 0
+    for rel in _consumer_sdl_members(inventory):
         if rel == selected_rel and selected_bytes is not None:
             raw = selected_bytes
         else:
             raw = _read_member_bytes(root_fd, rel, max_bytes=limits.max_sdl_bytes)
+        total += len(raw)
+        if total > limits.sdl.max_composed_bytes:
+            raise PackDigestError("pack SDL sources exceed the parse limit")
+        sources[rel] = raw
+    candidates: list[object] = []
+    for rel in sdl_docs:
         try:
-            text = raw.decode("utf-8")
+            text = sources[rel].decode("utf-8")
         except UnicodeDecodeError as exc:
             raise PackDigestError("pack SDL parent is not valid UTF-8") from exc
         try:
-            candidates.append(
-                parse_sdl(text, limits=limits.sdl, migration_policy="accept")
-            )
+            parsed = _parse_consumer_sdl(sources, rel, text, limits)
+            if isinstance(parsed, Scenario):
+                candidates.append(parsed)
+            else:
+                candidates.append(_authored_parent(text, expanded=parsed))
+                candidates.append(parsed)
         except SDLError as exc:
             raise PackDigestError("pack SDL parent is invalid") from exc
     return tuple(candidates)

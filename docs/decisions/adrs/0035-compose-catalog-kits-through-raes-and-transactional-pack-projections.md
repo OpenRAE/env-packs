@@ -2,6 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-08-01
+- Amended by: [ADR 0046](0046-admit-pinned-local-imports-through-raes-supplied-sources.md)
+  admits pinned local imports at the consumer boundary.
 - Extends: [ADR 0009](0009-scenario-packs-subordinate-to-aces.md),
   [ADR 0010](0010-consume-aces-reusable-asset-trust-policy.md),
   [ADR 0012](0012-pack-content-identity-and-trust-boundary.md),

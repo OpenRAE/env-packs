@@ -11,13 +11,22 @@ import json
 import math
 import os
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
-from raes import SDLError, SDLParserLimits, parse_sdl, parse_sdl_file
+from raes import (
+    SDLError,
+    SDLImportError,
+    SDLImportErrorCode,
+    SDLParserLimits,
+    parse_sdl,
+    parse_sdl_file,
+    parse_sdl_sources,
+)
 from raes.external_concept_subjects import external_concept_subjects
+from raes.module_registry import LOCKFILE_NAME
 from raes_contracts.contracts import ExternalConceptBindingDocumentModel
 from raes_contracts.external_concept_bindings import (
     ExternalConceptResolutionOutcome,
@@ -34,6 +43,7 @@ from yaml.events import (
 )
 
 from . import _experiment_set, _pack_fs
+from ._authoring_safety import sensitive_member
 
 CONTENT_SAFETY_FLAGS = (
     "no_real_malware",
@@ -60,6 +70,8 @@ _CHALLENGES_FILE = "challenges/challenges.yaml"
 _KIT_MATERIALIZATIONS_FILE = "kit.materializations.json"
 _FILESYSTEM_CHANGED = "filesystem.changed"
 _SDL_SUFFIX = ".sdl.yaml"
+_SDL_LIMIT = "resource.sdl-limit"
+_IMPORT_POINTER = re.compile(r"/imports(?:/[0-9]{1,4})?")
 _BINDINGS_SUFFIX = ".bindings.json"
 _BINDINGS_INVALID = "sdl.bindings-invalid"
 _SCHEMES_SUFFIX = ".schemes.json"
@@ -1446,6 +1458,104 @@ def _direct_sdl_documents(inventory: frozenset[str]) -> list[str]:
     )
 
 
+def _add_sdl_read_error(
+    errors: _Errors, rel: str, exc: _pack_fs.PackFilesystemError
+) -> None:
+    """Record one bounded SDL member read failure."""
+
+    if str(exc) == _METADATA_LIMIT_MESSAGE:
+        errors.add(_SDL_LIMIT, rel)
+    else:
+        errors.add(_FILESYSTEM_CHANGED, rel)
+
+
+def _consumer_sdl_members(inventory: Iterable[str]) -> list[str]:
+    """Return the SDL and RAES lock members that a consumer parse may read.
+
+    The set holds each direct root, plus each other SDL document and lock that
+    is not a sensitive member. It holds no RAES trust policy (ADR 0046).
+    """
+
+    return sorted(
+        rel
+        for rel in inventory
+        if rel.startswith("sdl/")
+        and (
+            (rel.count("/") == 1 and rel.endswith(_SDL_SUFFIX))
+            or (
+                not sensitive_member(rel)
+                and (
+                    rel.endswith(_SDL_SUFFIX)
+                    or rel.rsplit("/", 1)[-1] == LOCKFILE_NAME
+                )
+            )
+        )
+    )
+
+
+def _read_consumer_sdl_sources(
+    root_fd: int,
+    inventory: frozenset[str],
+    limits: PackValidationLimits,
+    errors: _Errors,
+) -> dict[str, bytes] | None:
+    """Read the consumer source set one time, or record its bounded failure."""
+
+    sources: dict[str, bytes] = {}
+    total = 0
+    for rel in _consumer_sdl_members(inventory):
+        try:
+            raw = _pack_fs.read_member_bytes(
+                root_fd, rel, max_bytes=limits.max_sdl_bytes
+            )
+        except OSError:
+            errors.add(_FILESYSTEM_CHANGED, rel)
+            return None
+        except _pack_fs.PackFilesystemError as exc:
+            _add_sdl_read_error(errors, rel, exc)
+            return None
+        total += len(raw)
+        if total > limits.sdl.max_composed_bytes:
+            errors.add(_SDL_LIMIT, "sdl")
+            return None
+        sources[rel] = raw
+    return sources
+
+
+def _parse_consumer_sdl(
+    sources: Mapping[str, bytes], rel: str, text: str, limits: PackValidationLimits
+) -> object:
+    """Parse one direct root from supplied bytes through RAES (ADR 0046).
+
+    RAES refuses a materialized root, which has no imports to compose. The
+    content-only parser admits it, as before.
+    """
+
+    try:
+        return parse_sdl_sources(
+            sources, rel, migration_policy="accept", limits=limits.sdl
+        )
+    except SDLImportError as exc:
+        if exc.code is not SDLImportErrorCode.PHASE_REFUSED or exc.located:
+            raise
+    return parse_sdl(text, limits=limits.sdl, migration_policy="accept")
+
+
+def _import_refusal_location(
+    exc: SDLImportError, sources: Mapping[str, bytes], rel: str
+) -> tuple[str, str | None]:
+    """Return the importing pack member and import pointer of one refusal."""
+
+    diagnostic = exc.diagnostics[0] if exc.diagnostics else None
+    source = diagnostic.source if diagnostic is not None else None
+    member = source[1:] if source and source.startswith("/") else None
+    pointer = diagnostic.pointer if diagnostic is not None else ""
+    return (
+        member if member in sources else rel,
+        pointer if _IMPORT_POINTER.fullmatch(pointer) else None,
+    )
+
+
 def _parse_sdl_document(
     root_fd: int,
     root: str,
@@ -1453,40 +1563,41 @@ def _parse_sdl_document(
     limits: PackValidationLimits,
     errors: _Errors,
     *,
-    author_sdl: bool,
+    sources: Mapping[str, bytes] | None,
 ) -> object | None:
-    """Parse one bounded SDL document through the selected RAES entry point."""
+    """Parse one bounded SDL document through the selected RAES entry point.
+
+    ``sources`` is the consumer source set; ``None`` selects the author parser.
+    """
 
     scenario: object | None = None
     try:
-        raw = _pack_fs.read_member_bytes(
-            root_fd, rel, max_bytes=limits.max_sdl_bytes
-        )
-        text = raw.decode("utf-8", errors="strict")
-        if author_sdl:
+        if sources is None:
+            raw = _pack_fs.read_member_bytes(
+                root_fd, rel, max_bytes=limits.max_sdl_bytes
+            )
+            raw.decode("utf-8", errors="strict")
             scenario = parse_sdl_file(
                 Path(root, *rel.split("/")),
                 limits=limits.sdl,
                 migration_policy="accept",
             )
         else:
-            scenario = parse_sdl(
-                text, limits=limits.sdl, migration_policy="accept"
-            )
+            text = sources[rel].decode("utf-8", errors="strict")
+            scenario = _parse_consumer_sdl(sources, rel, text, limits)
     except UnicodeDecodeError:
         errors.add("sdl.invalid-utf8", rel)
-    except SDLError as exc:
-        if not author_sdl and "imports require file-backed parsing" in str(exc):
-            errors.add("sdl.imports-denied", rel)
-        else:
+    except SDLImportError as exc:
+        if sources is None:
             errors.add("sdl.invalid", rel)
+        else:
+            errors.add("sdl.imports-denied", *_import_refusal_location(exc, sources, rel))
+    except SDLError:
+        errors.add("sdl.invalid", rel)
     except OSError:
         errors.add(_FILESYSTEM_CHANGED, rel)
     except _pack_fs.PackFilesystemError as exc:
-        if str(exc) == _METADATA_LIMIT_MESSAGE:
-            errors.add("resource.sdl-limit", rel)
-        else:
-            errors.add(_FILESYSTEM_CHANGED, rel)
+        _add_sdl_read_error(errors, rel, exc)
     return scenario
 
 
@@ -1595,10 +1706,15 @@ def _validate_sdl_documents(
     documents = _direct_sdl_documents(inventory)
     if not documents:
         errors.add("sdl.missing", "sdl")
+    sources: dict[str, bytes] | None = None
+    if not author_sdl:
+        sources = _read_consumer_sdl_sources(root_fd, inventory, limits, errors)
+        if sources is None:
+            documents = []
     parsed: dict[str, object] = {}
     for rel in documents:
         scenario = _parse_sdl_document(
-            root_fd, root, rel, limits, errors, author_sdl=author_sdl
+            root_fd, root, rel, limits, errors, sources=sources
         )
         if scenario is not None:
             _validate_content_set_inventory(scenario, rel, errors)
@@ -1880,8 +1996,8 @@ def _validate_pack_snapshot(
 
     The catalog read model (ADR 0032) consumes this so it never reopens an
     untrusted tree after validation. ``author_sdl`` stays ``False`` for the
-    untrusted-ingest default: SDL imports remain denied exactly as in
-    :func:`validate_pack`.
+    untrusted-ingest default: SDL imports follow the same supplied-source
+    policy as :func:`validate_pack` (ADR 0046).
     """
 
     return _validate_pack_core(

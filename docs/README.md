@@ -14,6 +14,11 @@ User-facing documentation is under [`public/`](public/index.md).
 
 ## Repository mechanics
 
+- [Pack-local consumer validation design](development/pack-local-consumer-validation-design.md)
+  — RAES supplied-source parsing, lock writing, and threats for issue #412.
+- [Pack-local consumer validation preflight](development/pack-local-consumer-validation-preflight.md)
+  — public import policy, RAES resolver prerequisite, lock coverage, and inert
+  consumer validation guardrails for issue #412.
 - [TechVault case management removal preflight](development/techvault-case-management-removal-preflight.md)
   — complete service retirement, archive preservation, and catalog/distribution
   guardrails for issue #536.

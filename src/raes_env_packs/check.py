@@ -339,9 +339,9 @@ _CATALOG: dict[str, Presentation] = {
         "Re-save the reported SDL document as UTF-8 text.",
     ),
     "sdl.imports-denied": _sdl(
-        "The SDL document uses imports, which the consumer check denies.",
-        "Import resolution can reach the network, so it is refused for untrusted input.",
-        "Inline the imported content, or validate as the trusted author with raes-pack-validate.",
+        "RAES refused an SDL import in the reported document.",
+        "The consumer check admits only local imports with a digest pin and one matching raes.lock.json record, so it never reaches the network.",
+        "Add or update the import with raes-pack-kit so it is pinned and locked, or inline the imported content.",
     ),
     "sdl.bindings-invalid": _sdl(
         "An SDL concept-binding or scheme-snapshot document is malformed.",
