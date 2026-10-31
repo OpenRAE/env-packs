@@ -38,6 +38,8 @@ python3 -m compileall src tests
 make go-check
 make go-lint
 make go-arch
+make go-mutation
+make go-regression
 ```
 
 ## Commits & releases

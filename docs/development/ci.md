@@ -13,13 +13,14 @@ same time:
 
 | Workflow | Checks | Blocks merge? |
 | --- | --- | --- |
-| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `go`, `go-lint`, `go-arch`, **`verify`**, `sonar` | only **`verify`** |
+| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `go`, `go-lint`, `go-arch`, `go-mutation`, `go-regression`, **`verify`**, `sonar` | only **`verify`** |
 | `codeql.yml` | `Analyze (python)`: static security analysis | depends on branch protection |
 | `fuzz.yml` | `Fuzz validate_pack`: bounded fuzzing of the untrusted-pack boundary. `Fuzz Go targets`: every native Go fuzz target | depends on branch protection |
 | `pr-title.yml` | `PR title guard`: the Conventional Commit shape | depends on branch protection |
 
 `scorecard.yml` publishes the supply-chain posture from `main` and on a
-schedule. It does not run on pull requests.
+schedule. `mutation.yml` runs mutation testing on each Go file each week. They
+do not run on pull requests.
 
 `ci.yml` and `fuzz.yml` run on each pull request, whatever its base branch is. A
 pull request of the Go port (ADR 0047) can use an unmerged chunk branch as its
@@ -54,6 +55,14 @@ does not wait for an unrelated job, and the fastest signal arrives first.
 - **`go-arch`**: `make go-arch` checks the Go code, the design records, and the
   C4 view against the architecture model (see
   [the design records](designs/README.md)).
+- **`go-mutation`**: `make go-mutation` runs mutation testing on the Go lines
+  that the change adds or changes. It installs the go-mutesting version that
+  `mise.toml` pins.
+- **`go-regression`**: `make go-regression` proves that each new regression
+  test fails on the merge base.
+
+`go-mutation` and `go-regression` fetch the full history. Their base is the
+base commit of the pull request, or the commit before a push.
 
 The jobs do not share a runner. So a broken test shows on the `tests` check
 without a wait for the `pip-audit` network lookup, and the reverse. The Go test
@@ -115,6 +124,9 @@ Those files stay the authority.
 | `go` | `make go-check` |
 | `go-lint` | `make go-lint` (after `mise install`) |
 | `go-arch` | `make go-arch` (`make go-arch-design` in the design step) |
+| `go-mutation` | `make go-mutation BASE=<base>` (after `mise install`; commit first) |
+| `go-regression` | `make go-regression BASE=<base>` (commit first) |
+| `Mutation testing on each Go file` | `make go-mutation-all` |
 | `Fuzz Go targets` | `make go-fuzz` (set `FUZZTIME` to change the time for each target) |
 | `sonar` | Runs in CI only, because it needs `SONAR_TOKEN`. Its inputs are `coverage.xml` from `tests` and `coverage-go.out` from `go` |
 | `PR title guard` | `python tools/check_pr_title.py` (it reads the pull request title from the event) |

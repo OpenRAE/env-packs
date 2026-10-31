@@ -15,9 +15,11 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
             commands = container "Commands" "The raes-pack commands. They are the composition root." "Go"
             library = container "Go library" "The pack contracts and the pack operations." "Go" {
                 root = component "root" "The root package of the module." "Go"
+                strict_yaml = component "strict-yaml" "Decodes exactly one YAML document, and rejects unknown fields." "Go"
             }
             repository_tools = container "Repository tools" "The tools that check and release this repository." "Go" {
                 architecture = component "architecture" "Checks the code and the design records against this model." "Go"
+                test_gates = component "test-gates" "Runs mutation testing on changed lines and proves regression tests." "Go"
             }
         }
 
@@ -26,6 +28,8 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
         maintainer -> env_packs "Develops and releases"
         env_packs -> raes "Validates SDL and RAES contracts with"
         env_packs -> github "Is built and released on"
+        env_packs.repository_tools.architecture -> env_packs.library.strict_yaml "Depends on"
+        env_packs.repository_tools.test_gates -> env_packs.library.strict_yaml "Depends on"
     }
 
     views {

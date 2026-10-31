@@ -67,15 +67,31 @@ components:
     description: The root package of the module.
     packages:
       - github.com/OpenRAE/env-packs
+  - id: strict-yaml
+    container: library
+    description: Decodes exactly one YAML document, and rejects unknown fields.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/strictyaml
+    modules:
+      - go.yaml.in/yaml/v3
   - id: architecture
     container: repository-tools
     description: Checks the code and the design records against this model.
     packages:
       - github.com/OpenRAE/env-packs/internal/architecture
       - github.com/OpenRAE/env-packs/tools/archcheck
+    depends_on:
+      - strict-yaml
     modules:
       - golang.org/x/tools
-      - go.yaml.in/yaml/v3
+  - id: test-gates
+    container: repository-tools
+    description: Runs mutation testing on changed lines and proves regression tests.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/testgate
+      - github.com/OpenRAE/env-packs/tools/testgate
+    depends_on:
+      - strict-yaml
 
 test_modules:
   - github.com/google/go-cmp

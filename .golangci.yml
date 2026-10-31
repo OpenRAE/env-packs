@@ -119,9 +119,17 @@ linters:
     dupl:
       threshold: 100
 
+    # errchkjson owns the errors of JSON encoding. It requires the check when
+    # the encoding can fail, and it rejects the check when the value is safe.
+    # errcheck would reject the unchecked form of a safe value, so it leaves
+    # these functions to errchkjson.
     errcheck:
       check-type-assertions: true
       check-blank: true
+      exclude-functions:
+        - encoding/json.Marshal
+        - encoding/json.MarshalIndent
+        - (*encoding/json.Encoder).Encode
 
     errchkjson:
       check-error-free-encoding: true

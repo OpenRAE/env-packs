@@ -32,10 +32,17 @@ python -m compileall src tests         # byte-compile
 make go-check                          # Go build, vet, and tests (ADR 0047)
 make go-lint                           # Go lint, formatting, and module tidiness
 make go-arch                           # Go code and design records against the model
+make go-mutation                       # mutation testing on the changed Go lines
+make go-regression                     # each new regression test fails before its fix
 ```
 
 `make go-fuzz` runs every Go fuzz target for 30 seconds each. CI runs it in
 `fuzz.yml`.
+
+`make go-mutation` and `make go-regression` read only committed code, and they
+compare it with `BASE`, which is `origin/go-cutover` by default. Commit the
+work before you run them. See [the Go test
+standard](docs/development/go-test-standard.md).
 
 A Go change starts with a design step. Write a design record and change the
 architecture model before you write the code. See
