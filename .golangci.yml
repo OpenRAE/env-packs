@@ -1,0 +1,331 @@
+# golangci-lint configuration for the Go port (ADR 0047).
+#
+# The gate is strict and has no baseline: the Go code starts with no findings.
+# docs/development/go-style-map.md maps each rule of the Google Go Style Guide
+# to the check below that enforces it, or marks the rule as a review item.
+# mise.toml pins the golangci-lint version, and `make go-lint` runs it.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+  relative-path-mode: gomod
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    # goimports keeps two groups: the standard library, then all other packages.
+    # This is the Google Go Style import grouping, so there is no local-prefixes
+    # group for this module.
+
+linters:
+  default: none
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - containedctx
+    - contextcheck
+    - copyloopvar
+    - depguard
+    - dupl
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - exptostd
+    - fatcontext
+    - forbidigo
+    - forcetypeassert
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - gocritic
+    - godoclint
+    - godot
+    - godox
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - govet
+    - iface
+    - inamedparam
+    - ineffassign
+    - interfacebloat
+    - intrange
+    - makezero
+    - mirror
+    - misspell
+    - modernize
+    - musttag
+    - nakedret
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - nolintlint
+    - nosprintfhostport
+    - perfsprint
+    - predeclared
+    - reassign
+    - recvcheck
+    - revive
+    - staticcheck
+    - testableexamples
+    - thelper
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - usetesting
+    - wastedassign
+
+  settings:
+    depguard:
+      rules:
+        everywhere:
+          files:
+            - $all
+          deny:
+            - pkg: github.com/stretchr/testify
+              desc: Google Go Style forbids assertion libraries. Use the testing package with go-cmp.
+            - pkg: github.com/onsi/gomega
+              desc: Google Go Style forbids assertion libraries. Use the testing package with go-cmp.
+            - pkg: github.com/onsi/ginkgo
+              desc: Use the testing package (Google Go Style, Use package testing).
+            - pkg: gotest.tools
+              desc: Google Go Style forbids assertion libraries. Use the testing package with go-cmp.
+            - pkg: github.com/matryer/is
+              desc: Google Go Style forbids assertion libraries. Use the testing package with go-cmp.
+            - pkg: github.com/pkg/errors
+              desc: Use the standard errors package, and fmt.Errorf with %w.
+            - pkg: io/ioutil
+              desc: io/ioutil is deprecated. Use the io and os packages.
+            - pkg: math/rand$
+              desc: Use math/rand/v2, or crypto/rand for any secret value (Google Go Style, crypto/rand).
+            - pkg: golang.org/x/exp/slices
+              desc: Use the standard slices package.
+            - pkg: golang.org/x/exp/maps
+              desc: Use the standard maps package.
+        libraries:
+          files:
+            - $all
+            - "!$test"
+            - "!**/cmd/**"
+            - "!**/tools/**"
+          deny:
+            - pkg: log
+              desc: Libraries do not log. Return the error or the result, and let the command in cmd/ report it (ADR 0047).
+            - pkg: log/slog
+              desc: Libraries do not log. Return the error or the result, and let the command in cmd/ report it (ADR 0047).
+            - pkg: flag
+              desc: Only commands define flags (Google Go Style, Flags). Take the value as a parameter.
+
+    dupl:
+      threshold: 100
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+
+    errchkjson:
+      check-error-free-encoding: true
+      report-no-exported: true
+
+    exhaustive:
+      check:
+        - switch
+        - mapliteral
+        - typeswitch
+      default-signifies-exhaustive: false
+
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^fmt\.Print(f|ln)?$
+          msg: Libraries do not print. Return the value, and let the command in cmd/ write output (ADR 0047).
+        - pattern: ^print(ln)?$
+          msg: Libraries do not print. Return the value, and let the command in cmd/ write output (ADR 0047).
+        - pattern: ^os\.(Getenv|LookupEnv|Environ|ExpandEnv|Setenv|Unsetenv|Clearenv)$
+          msg: Libraries do not read the environment. Take the value as a parameter from the command in cmd/ (ADR 0047).
+        - pattern: ^time\.(Now|Since|Until)$
+          msg: Libraries do not read the clock. Take the time, or a function that returns it, as a parameter (ADR 0047).
+        - pattern: ^os\.Exit$
+          msg: Libraries do not exit. Return an error, and let the command in cmd/ choose the exit code (ADR 0047).
+        - pattern: ^reflect\.DeepEqual$
+          msg: Use cmp.Diff or cmp.Equal from go-cmp (Google Go Style, Equality comparison and diffs).
+
+    gocognit:
+      min-complexity: 15
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        # Google Go Style, Pass values: do not pass pointers only to save bytes.
+        - hugeParam
+        - rangeValCopy
+        # nolintlint enforces the same rule with a fixed format.
+        - whyNoLint
+
+    godoclint:
+      default: basic
+      # revive's exported rule requires doc comments on exported names.
+      enable:
+        - require-pkg-doc
+        - no-unused-link
+
+    godot:
+      scope: declarations
+      capital: true
+      period: true
+
+    godox:
+      keywords:
+        - TODO
+        - FIXME
+        - BUG
+        - HACK
+        - XXX
+
+    gomoddirectives:
+      replace-local: false
+      retract-allow-no-explanation: false
+      exclude-forbidden: true
+
+    govet:
+      enable-all: true
+      disable:
+        # Struct field order follows meaning, not memory layout.
+        - fieldalignment
+      settings:
+        shadow:
+          strict: false
+
+    interfacebloat:
+      max: 8
+
+    misspell:
+      locale: US
+
+    nakedret:
+      max-func-lines: 0
+
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+
+    perfsprint:
+      strconcat: true
+
+    revive:
+      severity: error
+      enable-all-rules: false
+      rules:
+        - name: atomic
+        - name: blank-imports
+        - name: bool-literal-in-expr
+        - name: comment-spacings
+        - name: constant-logical-expr
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: datarace
+        - name: deep-exit
+        - name: defer
+        - name: dot-imports
+        - name: duplicated-imports
+        - name: early-return
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+          arguments:
+            - check-private-receivers
+            - check-public-interface
+        - name: identical-branches
+        - name: if-return
+        - name: import-alias-naming
+        - name: import-shadowing
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: modifies-value-receiver
+        - name: package-comments
+        - name: package-directory-mismatch
+        - name: package-naming
+          arguments:
+            - check-extra-bad-name: true
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: redundant-build-tag
+        - name: redundant-import-alias
+        - name: string-of-int
+        - name: struct-tag
+        - name: superfluous-else
+        - name: time-equal
+        - name: time-naming
+        - name: unchecked-type-assertion
+        - name: unconditional-recursion
+        - name: unexported-return
+        - name: unnecessary-stmt
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: unused-receiver
+        - name: use-any
+        - name: use-errors-new
+        - name: useless-break
+        - name: var-declaration
+        - name: var-naming
+        - name: waitgroup-by-value
+
+    staticcheck:
+      checks:
+        - all
+
+    thelper:
+      test:
+        first: true
+        name: true
+        begin: true
+      benchmark:
+        first: true
+        name: true
+        begin: true
+      fuzz:
+        first: true
+        name: true
+        begin: true
+      tb:
+        first: true
+        name: true
+        begin: true
+
+  exclusions:
+    generated: strict
+    rules:
+      # Commands are the composition root: they may print, read the
+      # environment, read the clock, and exit.
+      - path: ^(cmd|tools)/
+        linters:
+          - forbidigo
+        text: Libraries do not
+      # Test flags and test tables are package-level variables by design.
+      - path: _test\.go$
+        linters:
+          - gochecknoglobals
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false

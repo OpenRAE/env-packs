@@ -36,6 +36,7 @@ raes-pack-validate --packs-root packs
 raes-pack-release check --packs-root packs
 python3 -m compileall src tests
 make go-check
+make go-lint
 ```
 
 ## Commits & releases

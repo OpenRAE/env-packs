@@ -14,6 +14,9 @@ python3 -m venv .venv
 pip install -e ".[test]"
 ```
 
+The Go checks also need [mise](https://mise.jdx.dev). `mise install` installs
+the tool versions that `mise.toml` pins and verifies them against `mise.lock`.
+
 ## Run the checks
 
 Run these from the repository root before you open a pull request. They are the
@@ -27,6 +30,7 @@ raes-pack-validate --packs-root packs  # hosted first-party packs
 raes-pack-release check --packs-root packs
 python -m compileall src tests         # byte-compile
 make go-check                          # Go build, vet, and tests (ADR 0047)
+make go-lint                           # Go lint, formatting, and module tidiness
 ```
 
 ## Stay inside the boundary

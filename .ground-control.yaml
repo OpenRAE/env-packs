@@ -16,7 +16,7 @@ workflow:
   # anything. Prefer a local .venv when one exists, and fall back to `python3`
   # otherwise, which is the CI case where the package is already installed.
   test_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); "$PY" -m unittest discover -s tests && make go-check'
-  completion_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); export PATH=".venv/bin:$PATH"; "$PY" -m unittest discover -s tests && raes-pack-validate --repo . && raes-pack-release check --all && raes-pack-validate --packs-root packs && raes-pack-release check --packs-root packs && make go-check'
+  completion_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); export PATH=".venv/bin:$PATH"; "$PY" -m unittest discover -s tests && raes-pack-validate --repo . && raes-pack-release check --all && raes-pack-validate --packs-root packs && raes-pack-release check --packs-root packs && make go-check && make go-lint'
   # This repository has no separate policy tool -- no bin/policy, no rule engine.
   # Its repository policy is written as contract tests that assert the governance
   # invariants the ADRs commit to: supply-chain pinning (ADR 0004), least-privilege
@@ -27,8 +27,8 @@ workflow:
   # assumes a convention this repo does not follow. A new governance invariant
   # belongs in this list as well as in the suite.
   policy_command: 'PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); "$PY" -m unittest tests.test_dependency_pinning tests.test_workflow_permissions tests.test_codeql_workflow tests.test_scorecard_workflow tests.test_release_workflow_attestation tests.test_release_workflow_tag_signing tests.test_pr_title_guard tests.test_readthedocs_config tests.test_makefile tests.test_ground_control_review_config'
-  lint_command: python3 -m compileall src tests
-  format_command: python3 -m compileall src tests
+  lint_command: python3 -m compileall src tests && make go-lint
+  format_command: python3 -m compileall src tests && mise exec -- golangci-lint fmt ./...
   # There is no pre-commit framework here -- no .pre-commit-config.yaml and no
   # installed hooks -- so the default `pre-commit run --all-files` has nothing to
   # run and fails. These are the checks this repo actually wants before a commit:
