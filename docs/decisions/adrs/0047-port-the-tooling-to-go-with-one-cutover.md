@@ -95,14 +95,25 @@ The Go code passes these gates before it merges:
 - The Google Go Style Guide rules that a tool can check deterministically. A
   map in the developer documents names the check for each rule, or marks the
   rule as a review item.
-- Architecture as code. A committed model defines the components and their
-  permitted dependencies. CI fails when the code and the model disagree.
+- Architecture as code. One architecture model for the repository defines the
+  components, the Go packages that each component owns, the permitted
+  dependencies, and the rules for each component. A checker compiles the model
+  into checks over the whole repository. Each finding names the broken rule and
+  tells how to fix it.
+- A design step before code. Each change starts with a design record and any
+  change to the architecture model. The checker validates the design against
+  the model before the code exists.
 - The test standard: the standard `testing` package with `go-cmp`, the race
   detector, shuffled test order, golden files, and a fuzz target for each parser
   of untrusted input.
-- Mutation testing, with a threshold that the repository records.
+- Mutation testing on the lines that a change touches, with a threshold that
+  the repository records.
+- Regression proof. CI runs each new regression test against the code before
+  the fix, and the test must fail there.
 - Security gates: `govulncheck`, CodeQL, Dependabot, and module checksum
   verification.
+
+The Go code starts with no findings, so these checks have no baselines.
 
 These standards stay as they are today:
 
