@@ -77,13 +77,30 @@ releases still require a virtual machine. Releases are immutable, so 1.0.0
 stays published. Select the newer release to leave the choice to the backend.
 The examples on this page pin 1.0.0 releases.
 
-Five open kits run software that needs more access to the host than many
+Six open kits run software that needs more access to the host than many
 containers get: `infrastructure.container-orchestration` (k3s),
 `infrastructure.firewall-nat` (nftables),
 `infrastructure.suricata-network-intrusion-detection-sensor` (packet capture),
 `infrastructure.samba-active-directory-domain-controller` (Samba domain
-services), and `infrastructure.linux-domain-member` (domain join). They stay
+services), `infrastructure.linux-domain-member` (domain join), and
+`infrastructure.owlbear-protected-target` (kernel module and BPF LSM). They stay
 open, so the backend decides whether it can realize them.
+
+## Owlbear protected target
+
+`infrastructure.owlbear-protected-target` version `1.0.0` exports one ARM64 Ubuntu target and four Owlbear input-file declarations.
+It also exports a benign seed inventory.
+The `daemon_active_state` parameter selects `active` or `inactive` typed service state.
+The backend supplies the service binding, kernel-compatible artifacts, target PID, and enforcement arguments.
+No upstream service unit or executable is bundled.
+Service activity alone does not establish effective protection.
+
+The compute substrate remains open.
+Kernel access, BTF, BPF LSM, and module compatibility require backend admission.
+The kit grants no host privileges and configures no network listener or external telemetry destination.
+The two deployment profile labels use the same resource requirements.
+Copied seed assets describe defaults; parameters do not render those files.
+See the release's [integration material](https://github.com/OpenRAE/env-packs/blob/dev/kits/infrastructure.owlbear-protected-target/1.0.0/assets/integration.md) and [provenance](https://github.com/OpenRAE/env-packs/blob/dev/kits/infrastructure.owlbear-protected-target/1.0.0/assets/provenance.md).
 
 ## Discover and inspect
 

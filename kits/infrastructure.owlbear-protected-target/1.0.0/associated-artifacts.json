@@ -1,0 +1,129 @@
+{
+  "schema_version": "associated-artifact-manifest/v1",
+  "manifest_id": "infrastructure.owlbear-protected-target-associated-artifacts",
+  "manifest_version": "1.0.0",
+  "canonicalization_profile": "associated-artifact-set/v1",
+  "scope": "scenario",
+  "parent_ref": {
+    "ref_kind": "scenario-snapshot",
+    "ref_id": "owlbear-protected-target",
+    "ref_version": null,
+    "ref_digest": "sha256:93a820a428e22007cbc9db0b0210819bcbc4ef21b089c5ffafa511ff07e6d9ea",
+    "ref_path": null
+  },
+  "artifacts": {
+    "kit-manifest": {
+      "artifact_id": "kit-manifest",
+      "role": "manifest",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/kit.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "770e1224401ea4558139d721254c383de6d75d5ab0c54489cc849c91f00cdbe2"
+      },
+      "size_bytes": 4324,
+      "created_at": "2026-10-31T00:00:00Z",
+      "source": "infrastructure.owlbear-protected-target@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "module": {
+      "artifact_id": "module",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/module.sdl.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "0d3013c915c45e51411bfdba35a20a2602aacc61619bc5e983ff7a9837ea528c"
+      },
+      "size_bytes": 5607,
+      "created_at": "2026-10-31T00:00:00Z",
+      "source": "infrastructure.owlbear-protected-target@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "readme": {
+      "artifact_id": "readme",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/README.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "663647cd3ed070e8aa6fa3f9c20783fabb80b05d0004283eebc6805879c1c93d"
+      },
+      "size_bytes": 686,
+      "created_at": "2026-10-31T00:00:00Z",
+      "source": "infrastructure.owlbear-protected-target@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "integration-material": {
+      "artifact_id": "integration-material",
+      "role": "operator-guide",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/integration.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "90dd05e2e4afbbe4d213d82d2199127367008e355f646e66728b2b14afe46bbf"
+      },
+      "size_bytes": 2822,
+      "created_at": "2026-10-31T00:00:00Z",
+      "source": "infrastructure.owlbear-protected-target@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "source-provenance": {
+      "artifact_id": "source-provenance",
+      "role": "documentation",
+      "media_type": "text/markdown",
+      "uri": "raes-environment-kit:/assets/provenance.md",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "c037f89f88acc6f0e4fa2b38e7fc45aeb861ecf83e101a79d168b585bfc122cf"
+      },
+      "size_bytes": 1837,
+      "created_at": "2026-10-31T00:00:00Z",
+      "source": "infrastructure.owlbear-protected-target@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "seed-profile": {
+      "artifact_id": "seed-profile",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/assets/seed.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "6108726120e8ad4a516d3033def33e623835c905e4c900d4022e6316810d3a16"
+      },
+      "size_bytes": 711,
+      "created_at": "2026-10-31T00:00:00Z",
+      "source": "infrastructure.owlbear-protected-target@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    },
+    "composition-tests": {
+      "artifact_id": "composition-tests",
+      "role": "configuration",
+      "media_type": "application/yaml",
+      "uri": "raes-environment-kit:/tests/composition.yaml",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "08bd047cd79e0a4f6d161c94fc6d26c860248afe6447d2b84df690478f5cf1a9"
+      },
+      "size_bytes": 249,
+      "created_at": "2026-10-31T00:00:00Z",
+      "source": "infrastructure.owlbear-protected-target@1.0.0",
+      "satisfies_refs": [],
+      "sensitivity": "public",
+      "description": null
+    }
+  },
+  "set_digest": "sha256:ffc445d4b8f5f63957229025c97522701ad9d8ac4b9bb807d1c34195a4da5609"
+}

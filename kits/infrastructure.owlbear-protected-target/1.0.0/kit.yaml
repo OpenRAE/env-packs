@@ -1,0 +1,101 @@
+schema_version: environment-pack-kit/v1
+id: infrastructure.owlbear-protected-target
+version: 1.0.0
+title: Owlbear protected target
+summary: ARM64 Linux target with Owlbear artifact inputs and configurable daemon activity.
+  Static authoring content only.
+concern: security-operations
+released_at: '2026-10-31T00:00:00Z'
+module:
+  path: module.sdl.yaml
+assets:
+- source: assets/integration.md
+  target: assets/kits/owlbear-protected-target/integration.md
+  visibility: operator
+  artifact_id: integration-material
+- source: assets/seed.yaml
+  target: assets/kits/owlbear-protected-target/seed.yaml
+  visibility: operator
+  artifact_id: seed-profile
+- source: assets/provenance.md
+  target: assets/kits/owlbear-protected-target/provenance.md
+  visibility: operator
+  artifact_id: source-provenance
+resources:
+  cpu_cores: 2
+  memory_mib: 4096
+  storage_mib: 8192
+  notes: Planning estimate for the reference workload, not a measured minimum. Both
+    profile labels use these estimates.
+prerequisites:
+- kind: external
+  id: owlbear-kernel-compatible-artifacts
+  version: fa4497f3273517611e2d62f5fb32c620a00a9681
+  description: 'Admit ARM64 Owlbear build outputs for the selected Linux kernel. Reference
+    platform: Ubuntu 24.04, kernel 6.17, BTF, BPF LSM, and module support.'
+- kind: external
+  id: owlbear-service-binding
+  version: '1'
+  description: Backend preparation must bind the portable service unit to owlbeard,
+    select the workload PID, supply runtime libraries and admit privileged kernel
+    operations.
+limitations:
+- Static authoring content only; no launch, readiness, runtime protection, or backend
+  qualification claim.
+- Binary inputs are not bundled. Source selectors name required outputs from the reference
+  revision; their immutable binary digests and trust remain unresolved until admission.
+- The daemon embeds the eBPF skeletons. Kernel compatibility and BPF LSM availability
+  require backend verification.
+- Daemon activity is configurable; enforcement mode and protected PID remain backend
+  preparation concerns. Inactive daemon state does not prove absent kernel protection.
+- No upstream service-manager unit is bundled. The backend must provide an admitted
+  binding for unit_id owlbear_protection.
+- No network listener, external telemetry service, cloud account, or attacker program
+  is declared.
+- Profile labels do not resize the target. Copied assets describe reference defaults
+  and are not parameter-rendered.
+- Fixed asset paths permit one materialization per pack. A different namespace does
+  not avoid asset collisions.
+license:
+  expression: MIT
+  redistribution: open
+  attribution: 'OpenRAE contributors. Upstream Owlbear: Copyright (c) 2026 Brad Edwards;
+    MIT. No upstream code is bundled.'
+tests:
+- path: tests/composition.yaml
+  kind: validate
+- path: tests/composition.yaml
+  kind: parameter-variation
+- path: tests/composition.yaml
+  kind: multi-kit
+component_inventory:
+- scope: unresolved
+  authority: raes-source
+  ref: /nodes/target/source
+  description: Ubuntu base artifact is selected and admitted by the backend.
+- scope: unresolved
+  authority: raes-source
+  ref: /content/kernel_module/source
+  description: Kernel-specific Owlbear loadable module. Binary identity and dependency
+    inventory require admitted build provenance.
+- scope: unresolved
+  authority: raes-source
+  ref: /content/daemon_binary/source
+  description: Owlbear daemon with embedded eBPF skeletons. Binary identity and dependency
+    inventory require admitted build provenance.
+- scope: unresolved
+  authority: raes-source
+  ref: /content/game_binary/source
+  description: Benign ncurses workload protected by Owlbear. Binary identity and dependency
+    inventory require admitted build provenance.
+- scope: unresolved
+  authority: raes-source
+  ref: /content/signature_database/source
+  description: Reference signature data for the Owlbear scanner. Binary identity and
+    dependency inventory require admitted build provenance.
+- scope: external
+  authority: author-declared-external
+  ref: https://github.com/Brad-Edwards/owlbear/tree/fa4497f3273517611e2d62f5fb32c620a00a9681
+  description: Kernel, libbpf, libelf, zlib and ncurses compatibility require backend
+    admission. This is not a complete dependency SBOM.
+associated_artifact_manifest: associated-artifacts.json

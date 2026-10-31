@@ -36,6 +36,7 @@ import yaml
 from packaging.version import Version
 from raes import parse_sdl_file
 from raes_backend_protocols.capabilities import BackendManifest
+from raes_backend_protocols.provisioner_capabilities import OperatingSystemCompatibility
 from raes_backend_stubs.stubs import create_stub_manifest
 from raes_contracts.apparatus import RealizationObservationCapability
 from raes_contracts.vocabulary import ObservationStrength, RealizationVerificationScope
@@ -87,6 +88,15 @@ def _declaring_manifest() -> BackendManifest:
     )
     return replace(
         stub,
+        capabilities=replace(
+            stub.capabilities,
+            provisioner=replace(
+                stub.provisioner,
+                operating_systems=(OperatingSystemCompatibility(
+                    family="linux", distribution="ubuntu", versions=frozenset({"24.04"}),
+                ),),
+            ),
+        ),
         realization_support=tuple(
             replace(
                 declaration,
@@ -97,6 +107,8 @@ def _declaring_manifest() -> BackendManifest:
                 observation_capabilities={
                     **declaration.observation_capabilities,
                     **dict.fromkeys(kinds, observed),
+                    # RAES groups the three OS fields under one observation kind.
+                    "operating-system": observed,
                 },
             )
             for declaration in stub.realization_support
