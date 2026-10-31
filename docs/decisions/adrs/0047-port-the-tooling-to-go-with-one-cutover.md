@@ -1,4 +1,4 @@
-# ADR 0046 — Port the tooling to Go with one cutover
+# ADR 0047 — Port the tooling to Go with one cutover
 
 - Status: Accepted
 - Date: 2026-10-31

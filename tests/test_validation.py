@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -13,6 +14,8 @@ from pathlib import Path
 from unittest import mock
 
 import yaml
+from raes import SDLParserLimits
+from raes.module_registry import TrustPolicy, resolve_lock_records
 
 from raes_env_packs import PackValidationLimits, ValidationResult, validate_pack
 from raes_env_packs import validation as _validation
@@ -442,16 +445,162 @@ class SdlValidationTests(PackValidationFixture):
     def test_imports_fail_closed_without_network_or_cache(self) -> None:
         path = self.root / "sdl" / "example.sdl.yaml"
         path.write_text(
-            "name: example-pack\nimports:\n  - oci://registry.invalid/module:latest\nnodes: {}\n",
+            "name: example-pack\nimports:\n  - source: oci://registry.invalid/module:latest\n"
+            "    namespace: module\nnodes: {}\n",
             encoding="utf-8",
         )
         with mock.patch("urllib.request.urlopen") as urlopen, mock.patch(
             "socket.create_connection", side_effect=AssertionError("network reached")
         ):
             result = self.validate()
-        self.assertIn("sdl.imports-denied: sdl/example.sdl.yaml", result.errors)
+        self.assertIn("sdl.imports-denied: sdl/example.sdl.yaml:/imports/0", result.errors)
         urlopen.assert_not_called()
         self.assertFalse((self.root / "sdl" / ".raes").exists())
+
+
+_MODULE_SDL = (
+    "name: base\nmodule:\n  id: fixture/base\n  version: 1.0.0\n"
+    "  exports:\n    nodes: [anchor]\nnodes:\n  anchor:\n    type: compute\n"
+    "    os: linux\n    resources: {ram: 1 gib, cpu: 1}\n"
+)
+_DENIED = "sdl.imports-denied: sdl/example.sdl.yaml:/imports/0"
+
+
+class _GuardedEnvironment(dict):
+    """An environment mapping that fails the test on any read."""
+
+    def __getitem__(self, key: object) -> str:
+        raise AssertionError("environment read")
+
+    def get(self, key: object, default: object = None) -> str:
+        raise AssertionError("environment read")
+
+    def __contains__(self, key: object) -> bool:
+        raise AssertionError("environment read")
+
+
+@contextlib.contextmanager
+def _inert() -> object:
+    """Fail the test on network, process, or environment access."""
+
+    with mock.patch("socket.socket.connect", side_effect=AssertionError("network")), \
+            mock.patch("socket.create_connection", side_effect=AssertionError("network")), \
+            mock.patch("urllib.request.urlopen", side_effect=AssertionError("network")), \
+            mock.patch("subprocess.Popen", side_effect=AssertionError("process")), \
+            mock.patch("os.getenv", side_effect=AssertionError("environment")), \
+            mock.patch("os.environ", _GuardedEnvironment()):
+        yield
+
+
+class LocalImportTests(PackValidationFixture):
+    """Pinned, locked local imports through RAES supplied sources (issue #412)."""
+
+    def _compose(
+        self,
+        *,
+        module_rel: str = "sdl/modules/base.sdl.yaml",
+        pinned: bool = True,
+        locked: bool = True,
+    ) -> Path:
+        module = self.root / module_rel
+        module.parent.mkdir(parents=True, exist_ok=True)
+        module.write_text(_MODULE_SDL, encoding="utf-8")
+        entry: dict[str, object] = {
+            "source": "local:" + module_rel.removeprefix("sdl/"),
+            "namespace": "base",
+            "version": "1.0.0",
+        }
+        if pinned:
+            entry["digest"] = "sha256:" + hashlib.sha256(module.read_bytes()).hexdigest()
+        root = self.root / "sdl" / "example.sdl.yaml"
+        root.write_text(
+            yaml.safe_dump(
+                {"name": "example-pack", "imports": [entry], "nodes": {}},
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        if locked:
+            lock = resolve_lock_records(root, trust_policy=TrustPolicy())
+            (self.root / "sdl" / "raes.lock.json").write_text(
+                json.dumps(lock.model_dump(mode="python"), indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+        return module
+
+    def test_pinned_locked_local_import_is_admitted_inertly(self) -> None:
+        self._compose()
+        # Pydantic reads its plugin setting from the environment one time, when
+        # it first builds a lazy model. Warm that process cache first.
+        self.validate()
+        with _inert():
+            result = self.validate()
+            _result, snapshot = _validation._validate_pack_snapshot(self.root)
+        self.assertTrue(result.ok, result.errors)
+        (scenario,) = snapshot.scenarios
+        (record,) = scenario.expansion_provenance.imports
+        self.assertEqual(record.requested_source, "local:modules/base.sdl.yaml")
+        self.assertFalse((self.root / "sdl" / ".raes").exists())
+
+    def test_unpinned_local_import_is_denied(self) -> None:
+        self._compose(pinned=False)
+        self.assertIn(_DENIED, self.validate().errors)
+
+    def test_unlocked_local_import_is_denied(self) -> None:
+        self._compose(locked=False)
+        self.assertIn(_DENIED, self.validate().errors)
+
+    def test_changed_module_bytes_are_denied(self) -> None:
+        module = self._compose()
+        module.write_text(_MODULE_SDL + "description: changed\n", encoding="utf-8")
+        self.assertIn(_DENIED, self.validate().errors)
+
+    def test_registry_and_locked_imports_ignore_a_pack_trust_policy(self) -> None:
+        (self.root / "sdl" / "raes-trust.yaml").write_text(
+            "registries:\n  registry.invalid:\n    allow_insecure_http: true\n",
+            encoding="utf-8",
+        )
+        root = self.root / "sdl" / "example.sdl.yaml"
+        for source in (
+            "oci://registry.invalid/module:latest",
+            "locked:oci://registry.invalid/module",
+        ):
+            with self.subTest(source=source):
+                root.write_text(
+                    yaml.safe_dump(
+                        {
+                            "name": "example-pack",
+                            "imports": [{"source": source, "namespace": "base"}],
+                            "nodes": {},
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                with _inert():
+                    result = self.validate()
+                self.assertIn(_DENIED, result.errors)
+                self.assertFalse((self.root / "sdl" / ".raes").exists())
+
+    def test_sensitive_import_target_is_never_read(self) -> None:
+        self._compose(module_rel="sdl/credentials/base.sdl.yaml")
+        reads: list[str] = []
+        original = _validation._pack_fs.read_member_bytes
+
+        def record(root_fd: int, rel: str, **kwargs: object) -> bytes:
+            reads.append(rel)
+            return original(root_fd, rel, **kwargs)
+
+        with mock.patch.object(_validation._pack_fs, "read_member_bytes", record):
+            result = self.validate()
+        self.assertIn(_DENIED, result.errors)
+        self.assertNotIn("sdl/credentials/base.sdl.yaml", reads)
+
+    def test_source_set_beyond_the_composition_budget_is_refused(self) -> None:
+        self._compose()
+        result = self.validate(
+            limits=PackValidationLimits(sdl=SDLParserLimits(max_composed_bytes=64))
+        )
+        self.assertIn("resource.sdl-limit: sdl", result.errors)
 
 
 _BOUND_SDL = "name: example-pack\nnodes:\n  target:\n    type: compute\n    os: linux\n"
