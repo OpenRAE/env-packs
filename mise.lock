@@ -48,3 +48,8 @@ checksum = "sha256:cd7ea6063c95de245e17e5246e42bdc14bb221792c429dbd239ab3a6ade6c
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-windows-amd64.zip"
 url_api = "https://api.github.com/repos/golangci/golangci-lint/releases/assets/647132900"
 provenance = "github-attestations"
+
+[[tools."go:github.com/avito-tech/go-mutesting/cmd/go-mutesting"]]
+version = "0.0.0-20261002081621-9ce5f731e321"
+backend = "go:github.com/avito-tech/go-mutesting/cmd/go-mutesting"
+specifiers = ["v0.0.0-20261002081621-9ce5f731e321"]

@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/OpenRAE/env-packs/internal/strictyaml"
 )
 
 // DesignReadme is the file in the design directory that is not a record.
@@ -119,7 +121,7 @@ func ParseDesign(data []byte) (Design, error) {
 		return Design{}, errors.New("has no line that ends the YAML front matter")
 	}
 	var d Design
-	if err := decodeStrict(front, &d); err != nil {
+	if err := strictyaml.Decode(front, &d); err != nil {
 		return Design{}, fmt.Errorf("has invalid front matter: %w", err)
 	}
 	return d, nil

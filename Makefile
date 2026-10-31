@@ -27,7 +27,8 @@ MISE ?= mise
 
 .DEFAULT_GOAL := help
 
-.PHONY: help devmain go-check go-lint go-fuzz go-arch go-arch-design go-arch-dsl
+.PHONY: help devmain go-check go-lint go-fuzz go-arch go-arch-design go-arch-dsl \
+	go-mutation go-mutation-all go-regression
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -104,3 +105,23 @@ go-arch-design: ## Check the design records against the architecture model
 # Renders architecture/workspace.dsl from the architecture model.
 go-arch-dsl: ## Render the C4 view of the architecture model
 	$(GO) run ./tools/archcheck dsl -write
+
+# The base commit of the gates on the changed lines: the integration branch of
+# the Go port (ADR 0047). The cutover changes it to origin/dev. The gates read
+# only committed code, so commit the work before you run them.
+BASE ?= origin/go-cutover
+
+# Mutation testing on the Go lines that HEAD changes since BASE, with the
+# go-mutesting version that mise.toml pins
+# (docs/development/go-test-standard.md).
+go-mutation: ## Mutation testing on the Go lines changed since BASE
+	$(MISE) exec -- $(GO) run ./tools/testgate mutation -base "$(BASE)"
+
+# Mutation testing on each Go file. A weekly workflow runs it.
+go-mutation-all: ## Mutation testing on each Go file
+	$(MISE) exec -- $(GO) run ./tools/testgate mutation -all
+
+# Proves that each regression test that HEAD adds or changes since BASE fails
+# on the merge base.
+go-regression: ## Prove that each new regression test fails before its fix
+	$(GO) run ./tools/testgate regression -base "$(BASE)"
