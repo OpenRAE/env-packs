@@ -25,6 +25,8 @@ Release Please can replace version text, but it cannot recompute checksums.
 - The `sync-pack-versions` job in `.github/workflows/release-please.yml` runs the tool on the open release PR.
   It runs after each Release Please update and pushes one `chore:` commit to the release PR branch.
 - A repository test requires every pack to carry the package version.
+- The `verify-pack-versions` job runs `tools/sync_pack_versions.py --check` on the release target.
+  The `publish` job needs it, so a release whose packs do not carry the package version does not publish.
 - Do not edit a pack version by hand.
 - The pack format keeps its required `version` field.
   A pack outside this repository keeps its own version.
