@@ -569,7 +569,7 @@ def _consumer_sdl_sources(
 
 def _consumer_parents(
     sources: Mapping[str, bytes], rel: str, limits: PackValidationLimits
-) -> tuple[object, ...]:
+) -> list[object]:
     """Return the parent candidates of one direct root, as the author lane does."""
 
     try:
@@ -579,8 +579,8 @@ def _consumer_parents(
     try:
         parsed = _parse_consumer_sdl(sources, rel, text, limits)
         if isinstance(parsed, Scenario):
-            return (parsed,)
-        return (_authored_parent(text, expanded=parsed), parsed)
+            return [parsed]
+        return [_authored_parent(text, expanded=parsed), parsed]
     except SDLError as exc:
         raise PackDigestError("pack SDL parent is invalid") from exc
 
