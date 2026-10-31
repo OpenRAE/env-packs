@@ -27,7 +27,7 @@ MISE ?= mise
 
 .DEFAULT_GOAL := help
 
-.PHONY: help devmain go-check go-lint
+.PHONY: help devmain go-check go-lint go-fuzz
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -59,10 +59,12 @@ devmain: ## Open the dev -> main promotion PR
 	  --body "$$DEVMAIN_BODY"
 
 # Builds, vets, and tests every Go package with the toolchain that go.mod pins.
+# The tests run with the race detector and in shuffled order, and write the
+# coverage profile that CI sends to SonarCloud (docs/development/go-test-standard.md).
 go-check: ## Build, vet, and test the Go code
 	$(GO) build ./...
 	$(GO) vet ./...
-	$(GO) test ./...
+	$(GO) test -race -shuffle=on -coverprofile=coverage-go.out ./...
 
 # Lints the Go code with the pinned golangci-lint, checks the formatting, and
 # checks that go.mod and go.sum are tidy (docs/development/go-style-map.md).
@@ -70,3 +72,21 @@ go-lint: ## Lint the Go code and check formatting and tidiness
 	$(MISE) exec -- golangci-lint run ./...
 	$(MISE) exec -- golangci-lint fmt --diff ./...
 	$(GO) mod tidy -diff
+
+# The fuzz time for each target. The weekly CI schedule raises it.
+FUZZTIME ?= 30s
+
+# Runs every native fuzz target in the module, one target at a time, for
+# FUZZTIME each (docs/development/go-test-standard.md). The package list and
+# each target list are captured first, so a failed command stops the run
+# instead of leaving a loop with nothing to fuzz.
+go-fuzz: ## Run every Go fuzz target for FUZZTIME (default 30s)
+	@set -eu; \
+	pkgs=$$($(GO) list ./...); \
+	for pkg in $$pkgs; do \
+	  listing=$$($(GO) test -list '^Fuzz' "$$pkg"); \
+	  for target in $$(printf '%s\n' "$$listing" | grep '^Fuzz' || true); do \
+	    echo "go-fuzz: $$pkg $$target"; \
+	    $(GO) test -run '^$$' -fuzz "^$$target$$" -fuzztime "$(FUZZTIME)" "$$pkg"; \
+	  done; \
+	done

@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 coverage.xml
+coverage-go.out
 dist/
 build/
 _build/

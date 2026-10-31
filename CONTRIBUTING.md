@@ -1,10 +1,10 @@
 # Contributing
 
-Thanks for helping improve the RAES environment-pack format and tooling.
+Thank you for your help with the RAES environment-pack format and tooling.
 
-For a small fix — a typo, a broken link, a clear bug — open a pull request. For
-anything that changes the pack contract, a schema, the template, or tool
-behavior, open an issue first so the design can be agreed before you build it.
+For a small fix, such as a typo, a broken link, or a clear bug, open a pull
+request. For a change to the pack contract, a schema, the template, or tool
+behavior, open an issue first. Agree on the design before you build it.
 
 ## Set up
 
@@ -19,8 +19,8 @@ the tool versions that `mise.toml` pins and verifies them against `mise.lock`.
 
 ## Run the checks
 
-Run these from the repository root before you open a pull request. They are the
-same checks CI runs:
+Run these commands from the repository root before you open a pull request. CI
+runs the same checks:
 
 ```sh
 python -m unittest discover -s tests   # unit tests
@@ -33,49 +33,58 @@ make go-check                          # Go build, vet, and tests (ADR 0047)
 make go-lint                           # Go lint, formatting, and module tidiness
 ```
 
+`make go-fuzz` runs every Go fuzz target for 30 seconds each. CI runs it in
+`fuzz.yml`.
+
 ## Stay inside the boundary
 
-This repository defines and validates the pack format and hosts selected
-first-party packs under `packs/`; it does not define RAES semantics. Keep
-changes within that boundary — see
-[what a pack is](docs/public/concepts.md) and the
-[ownership boundary](docs/public/ownership-boundary.md). Where RAES owns a concept,
-consume it from RAES rather than restating it here.
+This repository defines and validates the pack format, and it hosts selected
+first-party packs in `packs/`. It does not define RAES semantics. Keep each
+change inside that boundary. See [what a pack is](docs/public/concepts.md) and
+the [ownership boundary](docs/public/ownership-boundary.md). When RAES owns a
+concept, use it from RAES. Do not state it again here.
 
 ## Documentation changes
 
-Public documentation lives in `docs/public/` and is the only tree published to the
-site. Maintainer records — decision records, CI, release mechanics — live
-elsewhere under `docs/` and are indexed in [docs/README.md](docs/README.md).
-Adding a page under `docs/public/` publishes it; a record anywhere else does not.
-Follow the [style guide](docs/development/documentation-style-guide.md), and note
-that the docs build is warning-strict and part of the merge gate.
+The public documentation is in `docs/public/`. It is the only tree that the
+site publishes. The maintainer records, such as decision records, CI, and
+release mechanics, are in other directories under `docs/`.
+[docs/README.md](docs/README.md) lists them. A new page in `docs/public/`
+becomes public, and a record in any other place does not. Follow the
+[style guide](docs/development/documentation-style-guide.md). The docs build
+treats warnings as errors and is part of the merge gate.
 
 ## Open the pull request
 
-- Target the `dev` branch. Changes reach `main` through a `dev` → `main`
-  promotion.
-- The PR title must be a [Conventional Commit](https://www.conventionalcommits.org)
-  (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, `ci:`, `build:`). A
-  required check enforces this and bans tool-branding prefixes. Feature PRs are
-  squash-merged, so the title becomes the commit — get it right.
-- For a change to the contract or a schema, include the rationale, the
-  compatibility impact, and how you validated it.
+- Target the `dev` branch. Changes reach `main` through a promotion from `dev`
+  to `main`. A pull request for the Go port targets the `go-cutover` branch
+  instead (ADR 0047).
+- The pull request title must be a
+  [Conventional Commit](https://www.conventionalcommits.org) (`feat:`, `fix:`,
+  `docs:`, `chore:`, `refactor:`, `test:`, `ci:`, or `build:`). A required check
+  enforces this and rejects tool-branding prefixes. Feature pull requests are
+  squash-merged, so the title becomes the commit message. Write it with care.
+- For a change to the contract or a schema, give the reason, the compatibility
+  effect, and how you validated the change.
 
 ## Releases
 
-Releases are managed by [release-please](https://github.com/googleapis/release-please)
-(see [ADR 0008](docs/decisions/adrs/0008-adopt-release-please.md)): merge-driven,
-nothing hand-run. Your **Conventional Commit PR title** decides the version:
-`feat:` → minor, `fix:`/`perf:` → patch, `feat!:`/`BREAKING CHANGE:` → major
-(before 1.0, a major demotes to minor); `docs`/`chore`/`refactor`/`test`/`ci`/`build`
-do not release.
+[release-please](https://github.com/googleapis/release-please) manages the
+releases ([ADR 0008](docs/decisions/adrs/0008-adopt-release-please.md)). A
+merge starts each release, and no one runs a release script. The
+**Conventional Commit title of your pull request** sets the version:
 
-You never bump a version or edit `CHANGELOG.md`. As PRs land on `main`,
-release-please maintains a `chore(main): release X.Y.Z` pull request; merging that
-one tags and publishes.
+- `feat:` gives a minor release.
+- `fix:` and `perf:` give a patch release.
+- `feat!:` and `BREAKING CHANGE:` give a major release. Before version 1.0, a
+  major release becomes a minor release.
+- `docs`, `chore`, `refactor`, `test`, `ci`, and `build` do not release.
 
-Promote `dev` to `main` with `make devmain`, and merge that promotion with a
-**merge commit** — never squash or rebase it, or release-please loses the
-individual commit subjects it reads to build the changelog (see
-[ADR 0019](docs/decisions/adrs/0019-preserve-history-in-dev-main-promotions.md)).
+Do not change a version or edit `CHANGELOG.md`. When pull requests reach
+`main`, release-please keeps a `chore(main): release X.Y.Z` pull request up to
+date. A merge of that pull request tags and publishes the release.
+
+Promote `dev` to `main` with `make devmain`. Merge that promotion with a
+**merge commit**. Do not squash or rebase it, because release-please then loses
+the commit subjects that it reads to build the changelog
+([ADR 0019](docs/decisions/adrs/0019-preserve-history-in-dev-main-promotions.md)).
