@@ -116,8 +116,6 @@ _PACK_ARTIFACT_CONTENT_IDS = frozenset(
         "misp-suricata-sync-readme",
         "misp-suricata-sync-hatch-build",
         "misp-suricata-sync-src",
-        "cortex-analyzer-executable",
-        "cortex-analyzer-definition",
         "mcp-red-sources",
         "mcp-blue-sources",
         "suricata-config",
@@ -152,8 +150,6 @@ _GENERATED_SSH_CONTENT_IDS = frozenset(
 
 _UNDERDECLARED_RUNTIME_NODES = frozenset(
     {
-        "thehive",
-        "cortex",
         "misp",
         "misp-db",
         "misp-redis",
@@ -460,16 +456,15 @@ class TechVaultPackTests(unittest.TestCase):
         sdl = _load_sdl()
         self.assertEqual(sdl["name"], "techvault")
         expected_counts = {
-            "nodes": 29,
-            "infrastructure": 29,
-            "persistent_volumes": 27,
-            "propositions": 5,
-            "assertions": 5,
-            "observation_boundaries": 1,
-            "evidence_requirements": 6,
+            "nodes": 25,
+            "infrastructure": 25,
+            "persistent_volumes": 22,
+            "propositions": 4,
+            "assertions": 4,
+            "evidence_requirements": 5,
             "identity_domains": 1,
-            "relationships": 3,
-            "accounts": 22,
+            "relationships": 2,
+            "accounts": 20,
             "variables": 10,
             "entities": 2,
             "agents": 2,
@@ -479,6 +474,7 @@ class TechVaultPackTests(unittest.TestCase):
                 self.assertEqual(len(sdl[section]), expected)
 
         self.assertNotIn("features", sdl)
+        self.assertNotIn("observation_boundaries", sdl)
         self.assertNotIn("source", sdl["nodes"]["kali"])
 
     def test_realization_is_open_below_the_declared_contract(self) -> None:
@@ -701,10 +697,10 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(inline & materialized, set())
         self.assertEqual(sourced & materialized, set())
         self.assertEqual(inline | sourced | materialized, set(content))
-        self.assertEqual(len(inline), 16)
+        self.assertEqual(len(inline), 15)
         self.assertEqual(sourced, _PACK_ARTIFACT_CONTENT_IDS)
         self.assertEqual(materialized, set())
-        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 54)
+        self.assertEqual(len(content) + len(_GENERATED_SSH_CONTENT_IDS), 51)
 
     def test_loaded_wazuh_content_sets_have_real_placements(self) -> None:
         sdl = _load_sdl()
@@ -1617,8 +1613,6 @@ class TechVaultPackTests(unittest.TestCase):
     def test_underdeclared_nodes_have_complete_runtime_contracts(self) -> None:
         nodes = _load_sdl()["nodes"]
         expected_runtime_keys = {
-            "thehive": {"applications", "platform_applications", "service_listeners"},
-            "cortex": {"applications", "platform_applications", "service_listeners"},
             "misp": {"applications", "platform_applications", "service_listeners"},
             "misp-db": {"database_services", "service_listeners"},
             "misp-redis": {"datastore_services", "service_listeners"},
@@ -1665,8 +1659,6 @@ class TechVaultPackTests(unittest.TestCase):
         infrastructure = sdl["infrastructure"]
 
         expected_application_services = {
-            "thehive": "thehive-api",
-            "cortex": "cortex-api",
             "misp": "https",
             "wazuh-dashboard": "dashboard",
             "shuffle-backend": "shuffle-api",
@@ -1677,25 +1669,6 @@ class TechVaultPackTests(unittest.TestCase):
                 (application,) = nodes[node_name]["runtime"]["applications"]
                 self.assertEqual(application["service"], service)
                 self.assertTrue(application["routes"])
-
-        thehive_bindings = {
-            item["role"]: (item["target_node_ref"], item["target_service_ref"])
-            for item in nodes["thehive"]["runtime"]["platform_applications"][0][
-                "upstream_bindings"
-            ]
-        }
-        self.assertEqual(
-            thehive_bindings,
-            {
-                "cql_backend": ("thehive-cassandra", "cassandra"),
-                "index_backend": ("thehive-es", "elasticsearch"),
-                "backend_api": ("cortex", "cortex-api"),
-            },
-        )
-        self.assertEqual(
-            infrastructure["thehive"]["dependencies"],
-            ["thehive-cassandra", "thehive-es", "cortex"],
-        )
 
         misp_runtime = nodes["misp"]["runtime"]
         self.assertEqual(
@@ -1728,8 +1701,6 @@ class TechVaultPackTests(unittest.TestCase):
         )
 
         mount_owned_nodes = {
-            "thehive",
-            "cortex",
             "misp",
             "misp-suricata-sync",
             "misp-db",
@@ -1756,8 +1727,6 @@ class TechVaultPackTests(unittest.TestCase):
                     consumer["mount_destination"]
                 )
         expected_destinations = {
-            "thehive": "/opt/thp/thehive/data",
-            "cortex": "/opt/cortex/jobs",
             "misp": "/var/www/MISP/app/Config",
             "misp-suricata-sync": "/opt/techvault/soc-certs",
             "misp-db": "/var/lib/mysql",
@@ -1986,8 +1955,6 @@ class TechVaultPackTests(unittest.TestCase):
             "wazuh-indexer": {("indexer-api", 9200, "tcp")},
             "wazuh-dashboard": {("dashboard", 5601, "tcp")},
             "misp": {("https", 443, "tcp")},
-            "thehive": {("thehive-api", 9000, "tcp")},
-            "cortex": {("cortex-api", 9001, "tcp")},
             "shuffle-frontend": {
                 ("https", 443, "tcp"),
                 ("http", 80, "tcp"),
@@ -2015,191 +1982,6 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(
             _PACK_VALIDATOR.validate_realization_method_contract(candidate),
             [],
-        )
-
-    def test_cortex_provides_case_driven_offline_enrichment(self) -> None:
-        sdl = _load_sdl()
-        thehive = sdl["nodes"]["thehive"]
-        thehive_app = thehive["runtime"]["platform_applications"][0]
-        cortex_binding = next(
-            item
-            for item in thehive_app["upstream_bindings"]
-            if item["role"] == "backend_api"
-        )
-        self.assertEqual(cortex_binding["target_node_ref"], "cortex")
-        self.assertEqual(cortex_binding["target_service_ref"], "cortex-api")
-        (connector_declaration,) = thehive_app["connectors"]
-        self.assertEqual(connector_declaration["kind"], "analyzer_engine")
-        self.assertEqual(
-            connector_declaration["credential_classification"], "redacted"
-        )
-
-        cortex = sdl["nodes"]["cortex"]
-        self.assertEqual(
-            cortex["services"],
-            [{"name": "cortex-api", "port": 9001, "protocol": "tcp"}],
-        )
-        cortex_config = sdl["content"]["cortex-app-config"]["text"]
-        self.assertIn('job.runners = ["process"]', cortex_config)
-        self.assertIn(
-            'analyzer.urls = ["/opt/techvault/cortex-analyzers"]', cortex_config
-        )
-        self.assertNotIn("docker.sock", yaml.safe_dump(cortex))
-        cortex_app = cortex["runtime"]["platform_applications"][0]
-        self.assertEqual(cortex_app["platform_application_id"], "cortex-enrichment")
-        self.assertEqual(cortex_app["authorization_ref"], "cortex-rbac")
-        self.assertEqual(
-            {item["kind"] for item in cortex_app["capabilities"]},
-            {"analysis_execution"},
-        )
-        analyzers = {
-            item["content_object_id"]: item
-            for item in cortex_app["content_objects"]
-            if item["kind"] == "analyzer"
-        }
-        self.assertIn("techvault-scenario-context", analyzers)
-        self.assertEqual(
-            analyzers["techvault-scenario-context"]["attributes"]["data_types"],
-            ["ip"],
-        )
-
-        authorization = cortex["runtime"]["app_authorizations"][0]
-        self.assertEqual(authorization["app_authorization_id"], "cortex-rbac")
-        principals = {
-            item["principal_id"]: item for item in authorization["principals"]
-        }
-        connector = principals["thehive-cortex-connector"]
-        self.assertEqual(connector["kind"], "service_account")
-        self.assertEqual(connector["credential_classification"], "redacted")
-        self.assertEqual(connector["backend_roles"], ["read", "analyze"])
-        self.assertNotIn("orgadmin", connector["backend_roles"])
-        self.assertEqual(set(principals), {"thehive-cortex-connector"})
-        self.assertNotIn("cortex-initializer", sdl["nodes"])
-        self.assertNotIn("cortex-initializer", sdl["infrastructure"])
-
-        integrations = [
-            relationship["service_integration"]
-            for relationship in sdl["relationships"].values()
-            if relationship.get("service_integration", {}).get("engine_ref")
-            == "cortex-enrichment"
-        ]
-        self.assertEqual(len(integrations), 1)
-        integration = integrations[0]
-        self.assertEqual(integration["consumer_ref"], "thehive-case-management")
-        self.assertEqual(integration["integration_kind"], "enrichment")
-        self.assertEqual(integration["auth_principal_ref"], "thehive-cortex-connector")
-        self.assertTrue(integration["enabled"])
-
-        for content_id in (
-            "cortex-analyzer-definition",
-            "cortex-analyzer-executable",
-        ):
-            content = sdl["content"][content_id]
-            requirement = content["source"]["artifact_requirement"]
-            self.assertEqual(requirement["explicitness"], "exact")
-            self.assertEqual(
-                resolve_pack_artifact(_PACK, content["source"]["name"]).identity.digest,
-                requirement["exact_artifact"]["digest"],
-            )
-
-        proposition = sdl["propositions"]["cortex-enrichment-ready"]
-        self.assertEqual(proposition["basis"], "observed_state")
-        self.assertIn("cortex-enrichment-readback", proposition["evidence_requirements"])
-        evidence = sdl["evidence_requirements"]["cortex-enrichment-readback"]
-        self.assertIn("nodes.cortex", evidence["scope_refs"])
-        self.assertIn("nodes.thehive", evidence["scope_refs"])
-
-    def test_cortex_owns_its_native_job_index_schema(self) -> None:
-        sdl = _load_sdl()
-
-        self.assertNotIn("cortex-index-init", sdl["nodes"])
-        self.assertNotIn("cortex-index-init", sdl["infrastructure"])
-        self.assertNotIn("cortex-index-init-script", sdl["content"])
-        self.assertNotIn("cortex-job-index-schema", sdl["content"])
-
-        (datastore,) = sdl["nodes"]["thehive-es"]["runtime"]["datastore_services"]
-        self.assertEqual(datastore["engine"], "elasticsearch")
-        self.assertEqual(datastore["version"], "7.17.28")
-
-        self.assertFalse(
-            (_PACK / "assets" / "content" / "cortex-initializer.py").exists()
-        )
-
-    def test_cortex_pack_validator_rejects_contract_mutations(self) -> None:
-        original = _load_sdl()
-        self.assertEqual(
-            _PACK_VALIDATOR.validate_cortex_contract(_PACK, original), []
-        )
-
-        def principals(candidate):
-            return {
-                item["principal_id"]: item
-                for item in candidate["nodes"]["cortex"]["runtime"]
-                ["app_authorizations"][0]["principals"]
-            }
-
-        def mutate(candidate, code):
-            cortex_runtime = candidate["nodes"]["cortex"]["runtime"]
-            if code == "connector-key-mismatch":
-                candidate["nodes"]["thehive"]["runtime"]["platform_applications"][
-                    0
-                ]["connectors"][0]["credential_classification"] = "plain"
-            elif code == "connector-binding-invalid":
-                candidate["nodes"]["thehive"]["runtime"]["platform_applications"][0]["upstream_bindings"] = []
-            elif code == "application-missing":
-                cortex_runtime["platform_applications"][0]["platform_application_id"] = "other"
-            elif code == "capability-missing":
-                cortex_runtime["platform_applications"][0]["capabilities"] = []
-            elif code == "connector-principal-invalid":
-                principals(candidate)["thehive-cortex-connector"]["backend_roles"].append("orgadmin")
-            elif code == "unexpected-principal":
-                cortex_runtime["app_authorizations"][0]["principals"].append(
-                    {"principal_id": "initializer", "kind": "service_account"}
-                )
-            elif code == "native-schema-leaked":
-                candidate["content"]["cortex-job-index-schema"] = {}
-            elif code == "content-placement-mismatch":
-                candidate["content"]["cortex-analyzer-definition"]["path"] = "/tmp/analyzer.json"
-            elif code == "content-identity-mismatch":
-                candidate["content"]["cortex-analyzer-definition"]["source"][
-                    "artifact_requirement"
-                ]["exact_artifact"]["digest"] = "sha256:" + "0" * 64
-
-        codes = (
-            "connector-key-mismatch",
-            "connector-binding-invalid",
-            "application-missing",
-            "capability-missing",
-            "connector-principal-invalid",
-            "unexpected-principal",
-            "native-schema-leaked",
-            "content-placement-mismatch",
-            "content-identity-mismatch",
-        )
-        for code in codes:
-            with self.subTest(code=code):
-                candidate = copy.deepcopy(original)
-                mutate(candidate, code)
-                errors = _PACK_VALIDATOR.validate_cortex_contract(_PACK, candidate)
-                self.assertTrue(
-                    any(f"cortex.{code}" in error for error in errors), errors
-                )
-
-        real_resolve = _PACK_VALIDATOR.resolve_pack_artifact
-
-        def invalid_definition(pack_root, artifact_id):
-            artifact = real_resolve(pack_root, artifact_id)
-            if artifact_id == "techvault-cortex-analyzer-definition":
-                return types.SimpleNamespace(identity=artifact.identity, data=b"{}")
-            return artifact
-
-        with mock.patch.object(
-            _PACK_VALIDATOR, "resolve_pack_artifact", side_effect=invalid_definition
-        ):
-            errors = _PACK_VALIDATOR.validate_cortex_contract(_PACK, original)
-        self.assertTrue(
-            any("cortex.analyzer-definition-invalid" in error for error in errors),
-            errors,
         )
 
     def test_content_sources_are_exact_resolvable_pack_artifacts(self) -> None:
@@ -2304,20 +2086,20 @@ class TechVaultPackTests(unittest.TestCase):
 class TechVaultIntegrationEndpointTests(unittest.TestCase):
     """TLS is an authored outcome, independent of backend host transport."""
 
-    def test_thehive_https_outcome_survives_compilation_and_rejects_downgrade(self) -> None:
+    def test_https_application_outcome_survives_compilation_and_rejects_downgrade(self) -> None:
         sdl = _load_sdl()
-        (application,) = sdl["nodes"]["thehive"]["runtime"]["applications"]
+        (application,) = sdl["nodes"]["misp"]["runtime"]["applications"]
         self.assertEqual(application["protocol"], "https")
-        self.assertEqual(application["service"], "thehive-api")
+        self.assertEqual(application["service"], "https")
         model = compile_scenario_runtime_model(
             parse_sdl_file(_SDL),
             parameters={name: f"test-{name}" for name in sdl["variables"]},
         )
         requirement = next(
             item for item in model.realization_requirements
-            if item.field_path == "nodes.thehive.runtime.applications"
+            if item.field_path == "nodes.misp.runtime.applications"
         )
-        observed = copy.deepcopy(sdl["nodes"]["thehive"]["runtime"]["applications"])
+        observed = copy.deepcopy(sdl["nodes"]["misp"]["runtime"]["applications"])
         self.assertTrue(
             evaluate_realization_constraint(
                 requirement.constraint_document, observed
@@ -2335,9 +2117,6 @@ class TechVaultIntegrationEndpointTests(unittest.TestCase):
         consumers = {item["node"]: item for item in soc["consumers"]}
         expected = {
             "misp": {"ca-certificate", "misp-certificate", "misp-private-key"},
-            "thehive": {
-                "ca-certificate", "thehive-keystore", "thehive-keystore-password"
-            },
             "shuffle-frontend": {
                 "ca-certificate", "shuffle-certificate", "shuffle-private-key"
             },
@@ -2377,8 +2156,6 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
             "wazuh-indexer-admin": ("wazuh-indexer", "admin"),
             "wazuh-indexer-kibanaserver": ("wazuh-indexer", "kibanaserver"),
             "wazuh-manager-api": ("wazuh-manager", "wazuh-wui"),
-            "thehive-administrator": ("thehive", "admin@techvault.local"),
-            "cortex-administrator": ("cortex", "admin@techvault.local"),
             "shuffle-administrator": ("shuffle-backend", "admin@techvault.local"),
             "misp-administrator": ("misp", "admin@admin.test"),
             "misp-suricata-sync-api-key": ("misp", "techvault-suricata-sync"),
@@ -2692,10 +2469,6 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
             "misp": ("platform_applications", "2.5.50"),
             "misp-db": ("database_services", "10.11"),
             "misp-redis": ("datastore_services", "7"),
-            "thehive": ("platform_applications", "5.4"),
-            "thehive-cassandra": ("datastore_services", "4.1"),
-            "thehive-es": ("datastore_services", "7.17.28"),
-            "cortex": ("platform_applications", "3.1.8"),
             "shuffle-backend": ("platform_applications", "unversioned"),
             "shuffle-opensearch": ("datastore_services", "2.14.0"),
         }
@@ -2825,7 +2598,6 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
                 "soc-workstation",
                 {
                     "aptl-mcp-common",
-                    "mcp-casemgmt",
                     "mcp-indexer",
                     "mcp-network",
                     "mcp-reverse",
@@ -3105,6 +2877,52 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
                 duplicate_replacement,
             )
 
+    def test_mcp_builder_reproduces_shipped_rule_schema_and_metadata(self) -> None:
+        archives = {
+            "mcp-red-sources.tar": mcp_builder.RED_PACKAGES,
+            "mcp-blue-sources.tar": mcp_builder.BLUE_PACKAGES,
+        }
+        for archive_name, packages in archives.items():
+            with self.subTest(archive=archive_name), tarfile.open(
+                _PACK / "assets" / "content" / archive_name, mode="r:"
+            ) as archive:
+                shipped = archive.extractfile(
+                    f"{mcp_builder.COMMON_PACKAGE}/{mcp_builder._RULE_SCHEMA_PATH}"
+                ).read()
+                metadata = archive.extractfile("SOURCE.json").read()
+
+                upstream = shipped.decode("utf-8")
+                for before, after in reversed(mcp_builder._RULE_SCHEMA_REPLACEMENTS):
+                    self.assertEqual(upstream.count(after), 1)
+                    upstream = upstream.replace(after, before)
+                reviewed = upstream.encode("utf-8")
+                self.assertEqual(
+                    hashlib.sha256(reviewed).hexdigest(),
+                    mcp_builder._RULE_SCHEMA_SOURCE_SHA256,
+                )
+                self.assertEqual(
+                    mcp_builder._adapt_source(
+                        mcp_builder.COMMON_PACKAGE,
+                        mcp_builder._RULE_SCHEMA_PATH,
+                        reviewed,
+                    ),
+                    shipped,
+                )
+                self.assertEqual(
+                    mcp_builder._source_metadata(
+                        mcp_builder.SOURCE_REVISION, packages, archive_name
+                    ),
+                    metadata,
+                )
+
+    def test_mcp_builder_rejects_rule_schema_adaptation_drift(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "source changed unexpectedly"):
+            mcp_builder._adapt_source(
+                mcp_builder.COMMON_PACKAGE,
+                mcp_builder._RULE_SCHEMA_PATH,
+                b"changed rule schema source\n",
+            )
+
     def test_red_and_blue_agents_have_separate_workstations(self) -> None:
         scenario = parse_sdl_file(_SDL)
         self.assertEqual(scenario.entities["red-team"].role.value, "red")
@@ -3126,7 +2944,6 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
             "kali": {"aptl-mcp-common", "aptl-kali-mcp-server"},
             "soc-workstation": {
                 "aptl-mcp-common",
-                "aptl-casemgmt-mcp-server",
                 "aptl-indexer-mcp-server",
                 "aptl-network-mcp-server",
                 "aptl-reverse-mcp-server",
@@ -3928,6 +3745,43 @@ class TechVaultValidatorEntrypointTests(unittest.TestCase):
                 self.assertTrue(
                     any(error.startswith(code) for error in errors), errors
                 )
+
+
+_RETIRED_CASE_MANAGEMENT = re.compile(rb"thehive|cortex|casemgmt", re.IGNORECASE)
+# Pinned upstream aptl bytes. They mention the retired products, but they
+# declare no TechVault service.
+_UPSTREAM_CAPTURES = frozenset(
+    {"assets/content/misp-sync-readme.md", "assets/content/misp-sync-src.tar"}
+)
+
+
+class TechVaultCaseManagementRemovalTests(unittest.TestCase):
+    """Neither TechVault pack declares TheHive case management or Cortex."""
+
+    def test_pack_files_and_archive_members_name_no_retired_service(self) -> None:
+        for pack in (_PACK, _ROOT / "packs" / "techvault-participant-study"):
+            for path in sorted(pack.rglob("*")):
+                relative = path.relative_to(pack).as_posix()
+                if (
+                    not path.is_file()
+                    or "__pycache__" in path.parts
+                    or relative in _UPSTREAM_CAPTURES
+                ):
+                    continue
+                members = {relative: path.read_bytes()}
+                if path.suffix == ".tar":
+                    with tarfile.open(path, mode="r:") as archive:
+                        members = {
+                            f"{relative}:{member.name}": archive.extractfile(member).read()
+                            for member in archive.getmembers()
+                            if member.isfile()
+                        }
+                for name, data in members.items():
+                    with self.subTest(pack=pack.name, member=name):
+                        self.assertIsNone(
+                            _RETIRED_CASE_MANAGEMENT.search(name.encode("utf-8"))
+                        )
+                        self.assertIsNone(_RETIRED_CASE_MANAGEMENT.search(data))
 
 
 class TechVaultCiContractTests(unittest.TestCase):

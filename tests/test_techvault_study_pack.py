@@ -13,6 +13,7 @@ from raes_processor.compiler.time_model import time_model_contract_model
 
 from raes_env_packs import validate_pack
 from raes_env_packs.digest import pack_content_digest
+from tools.sync_pack_versions import package_version
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1] / "packs"
 _BASE = _ROOT / "techvault"
@@ -27,7 +28,7 @@ class StudyPackTests(unittest.TestCase):
         for pack in (_BASE, _STUDY):
             with self.subTest(pack=pack.name):
                 metadata = yaml.safe_load((pack / "pack.yaml").read_text())
-                self.assertEqual(metadata["version"], "0.1.3")
+                self.assertEqual(metadata["version"], package_version())
 
     def test_study_preserves_techvault_and_adds_participant_sequence(self) -> None:
         base = yaml.safe_load((_BASE / "sdl/techvault.sdl.yaml").read_text())
@@ -60,6 +61,8 @@ class StudyPackTests(unittest.TestCase):
             for name in names:
                 self.assertIn(name, study[section])
                 study[section].pop(name)
+            if not study[section] and section not in base:
+                study.pop(section)
 
         study_agents = study.pop("agents")
         base_agents = base.pop("agents")

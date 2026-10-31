@@ -50,6 +50,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0042](0042-carry-raes-experiment-artifact-sets-in-packs.md) | Carry RAES experiment artifact sets in packs | Accepted |
 | [0043](0043-require-a-minimum-raes-version.md) | Require a minimum RAES version | Accepted |
 | [0044](0044-restore-breaking-changes-to-major-releases.md) | Restore breaking changes to major releases (supersedes 0039) | Accepted |
+| [0045](0045-version-packs-with-the-package.md) | Version packs with the package (extends 0008) | Accepted |
 
 ```{toctree}
 :hidden:

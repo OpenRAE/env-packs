@@ -11,6 +11,9 @@ the generic workflow. Ground Control injects this file into planning via
   `__version__` derives from installed metadata. Do **not** edit `[project].version`,
   `__version__`, or `CHANGELOG.md` in a feature PR — release-please owns them. A PR
   that does is wrong; drop that change.
+- **Never hand-edit a pack version.** Every pack under `packs/` carries the
+  package version. The `sync-pack-versions` release job writes it and refreshes
+  the pack digests (ADR 0045).
 - **The PR title (Conventional Commit) is the release decision** — there are no
   changelog fragments and no scripts to run. Rubric: `feat:`→minor,
   `fix:`/`perf:`→patch, `feat!:`/`BREAKING CHANGE:`→major (pre-1.0 → minor);

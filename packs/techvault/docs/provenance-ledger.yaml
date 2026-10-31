@@ -25,8 +25,8 @@ sources:
     attribution: Copyright (c) 2025 APTL Contributors
     used: >-
       Source and build manifests for aptl-mcp-common, mcp-red, mcp-wazuh,
-      mcp-indexer, mcp-network, mcp-casemgmt, mcp-soar, mcp-threatintel, and
-      mcp-reverse. Generated builds, dependencies, tests, and backend
+      mcp-indexer, mcp-network, mcp-soar, mcp-threatintel, and mcp-reverse.
+      Generated builds, dependencies, tests, and backend
       configuration are excluded. The shared telemetry wrapper is adapted to
       export only tool identity and status metadata, never request, response,
       or error content.
@@ -53,7 +53,7 @@ artifacts:
     path: assets/
     classification: open
     sources: [aptl-techvault, environment-pack-authorship]
-    description: Synthetic lab content and pack-authored offline Cortex analyzer bound to exact SDL artifact requirements.
+    description: Synthetic lab content bound to exact SDL artifact requirements.
   - artifact_id: pack-contract
     path: profiles/
     classification: open
