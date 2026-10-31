@@ -71,8 +71,6 @@ backend environment variable or secret-store lookup supplies these values.
 | Wazuh indexer / dashboard interactive login / Filebeat | `accounts.wazuh-indexer-admin` | `admin` |
 | Wazuh dashboard service login to the indexer | `accounts.wazuh-indexer-kibanaserver` | `kibanaserver` |
 | Wazuh manager API | `accounts.wazuh-manager-api` | `wazuh-wui` |
-| TheHive console | `accounts.thehive-administrator` | `admin@techvault.local` |
-| Cortex console | `accounts.cortex-administrator` | `admin@techvault.local` |
 | Shuffle console | `accounts.shuffle-administrator` | `admin@techvault.local` |
 | MISP console | `accounts.misp-administrator` | `admin@admin.test` |
 | MISP synchronization API | `accounts.misp-suricata-sync-api-key` | `techvault-suricata-sync` |
@@ -81,8 +79,7 @@ Each primary binding is named `<account-id>-primary`. These intentionally public
 synthetic values belong to the scenario. The existing runtime MISP principal
 and API setting carry `redacted` posture because those RAES surfaces omit raw
 material; their account bindings carry the `secret_fixture` values. This does
-not make either identity an operator credential. TheHive's Cortex connector
-remains a separate service identity from the Cortex console administrator.
+not make either identity an operator credential.
 
 The MISP synchronization key is exactly 40 ASCII alphanumeric characters, as
 required by [MISP’s authentication-key provisioning](https://github.com/MISP/MISP/blob/2.5/app/Console/Command/UserShell.php).
@@ -126,7 +123,7 @@ declarations; TechVault does not duplicate them in a flag placement map.
 TechVault ships immutable source bundles for the participant tools based on APTL
 commit `7c673a19f9fb6a3eb1d17305104196b600bd59cc`. The Kali workstation receives
 `aptl-mcp-common` and `mcp-red`; the separate SOC workstation receives the
-common package plus the seven defensive MCP packages. Each host declares a
+common package plus the six defensive MCP packages. Each host declares a
 Node.js 22 runtime. The archives contain only source, package/build manifests,
 the upstream MIT license, and source metadata—no dependencies, generated build
 output, tests, backend configuration, or launch wrapper.
@@ -138,15 +135,6 @@ Runtime Wazuh MCP configuration must send custom-rule writes to
 The shared telemetry wrapper is adapted to emit only tool identity and status metadata; it never
 exports request, response, or error content. The SDL selects no installation or
 process-management method.
-
-## Cortex enrichment contract
-
-TechVault ships one exact, dependency-free offline analyzer for scenario IP
-context. Typed application state declares Cortex's analysis capability, the
-least-privilege TheHive service identity, and TheHive's Cortex connector. The
-backend realizes that state without an initializer node or credential-delivery
-recipe. Cortex owns its internal index schema; the portable scenario does not
-reproduce vendor-internal state.
 
 ## Suricata content contract
 

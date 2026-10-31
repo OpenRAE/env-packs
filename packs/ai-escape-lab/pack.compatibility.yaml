@@ -2,7 +2,7 @@ schema_version: "environment-pack-compatibility/v2"
 pack:
   name: ai-escape-lab
   title: AI Escape Lab
-  version: 0.1.0
+  version: 6.5.1
   status: draft
   provenance_ledger: docs/provenance-ledger.yaml
   source:

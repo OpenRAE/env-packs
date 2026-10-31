@@ -1,5 +1,8 @@
 # Defensive-tooling composition preflight
 
+Issue #536 withdraws the TheHive kit. The [removal preflight](techvault-case-management-removal-preflight.md)
+governs the proposed two-kit example; the three-kit design below is historical.
+
 Issue #378 is a documentation and static-authoring example over three existing
 kit releases. It does not add a kit, schema, composer, runtime integration, or
 backend promise. ADRs

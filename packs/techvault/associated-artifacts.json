@@ -1,7 +1,7 @@
 {
   "schema_version": "associated-artifact-manifest/v1",
   "manifest_id": "techvault-associated-artifacts",
-  "manifest_version": "0.1.3",
+  "manifest_version": "6.5.1",
   "canonicalization_profile": "associated-artifact-set/v1",
   "scope": "scenario",
   "parent_ref": {
@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "aea3667ed4286c60c0d475fa907c993a1f66a6c81f81098652e709c35f60a913"
+        "value": "1f0f67641239909453f5a1ecba306c3cd0ca9e6730e10b644b59cdd2d7b5a731"
       },
-      "size_bytes": 9717,
+      "size_bytes": 9001,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -83,10 +83,10 @@
       "uri": "raes-environment-pack:/assets/content/dns-zone-172.20.rev",
       "checksum": {
         "algorithm": "sha256",
-        "value": "ceb577f74bf3841ee10dae1a35e07afb921f9136bd4f9dbbd60d4afd1a4f0a02"
+        "value": "efea4b1320d6fa363a165a0d433596f298043e64973677502430fbd8cc3696de"
       },
-      "size_bytes": 883,
-      "created_at": "2026-08-02T00:00:00Z",
+      "size_bytes": 842,
+      "created_at": "2026-10-30T00:00:00Z",
       "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
       "satisfies_refs": [],
       "sensitivity": "internal",
@@ -99,10 +99,10 @@
       "uri": "raes-environment-pack:/assets/content/dns-zone-techvault.local.zone",
       "checksum": {
         "algorithm": "sha256",
-        "value": "d12de977f09275e342454a58ca004f7909ff808c29143b4c6d4ecb14db611a82"
+        "value": "9efd88205b775d0d483664c0d20d54594ba4452f0c66f90411416860b9fb054c"
       },
-      "size_bytes": 1539,
-      "created_at": "2026-08-02T00:00:00Z",
+      "size_bytes": 1475,
+      "created_at": "2026-10-30T00:00:00Z",
       "source": "aptl@3db5171f3e4add842efd1d81fa0d4fe078511b7e",
       "satisfies_refs": [],
       "sensitivity": "internal",
@@ -483,9 +483,9 @@
       "uri": "raes-environment-pack:/docs/concepts.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "02d717fe2ce04e8dd9994b55bd526109fdcc5fa2d09e73d3565ee2d0981fccb0"
+        "value": "e635d617df79a0ac2b75d7495d3a0fa2e009f6131613a43ea668d94dc9528022"
       },
-      "size_bytes": 2215,
+      "size_bytes": 1864,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -531,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/provenance-ledger.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "38cbe50ef08f5e5972c388215e494c2932f9e6f4498f73221cf6383bd82f2e3d"
+        "value": "37ca94839680eeb4cd2a7c6bf8d4f3c74f8974c19cffb74ab2e9911a362b5a31"
       },
-      "size_bytes": 3828,
+      "size_bytes": 3772,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -547,7 +547,7 @@
       "uri": "raes-environment-pack:/pack.compatibility.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "ab45f4647d4ef4c1a00f3d80297560796fb807f0f4c9caa4bc344814ad89c080"
+        "value": "3afe8e48cf3a7f79fa152892d6f0947090cf50ccb52e33b987d61bf158eecba4"
       },
       "size_bytes": 1571,
       "created_at": "2026-08-02T00:00:00Z",
@@ -563,7 +563,7 @@
       "uri": "raes-environment-pack:/pack.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "27e9b4db98dfb8ea0f5d51c7b993aa0f1e904ecf935cf726ba3c04f87d4f6a03"
+        "value": "17e674c075200e4990aaafe01b7fe5f6d1ce1ef64a011ba1dc72451c0a15b176"
       },
       "size_bytes": 542,
       "created_at": "2026-08-02T00:00:00Z",
@@ -595,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "96130481e4a615e098b3052042624b514ac11cd2ffad15e3c4f295e0d455332e"
+        "value": "b513539c0eb5c9fd0dd3252f5d9298f8aff4d8442374205ee7776e92ac749921"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -627,9 +627,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "d97222b295df4adb76bd33ce1c796b3813663ebba44a12964c681ec6edcdc932"
+        "value": "222d3889669fde7d3be59ee9c4e6c4bc2e674641b095313c0bb85d69517cdae3"
       },
-      "size_bytes": 147568,
+      "size_bytes": 135233,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -659,46 +659,14 @@
       "uri": "raes-environment-pack:/validation/validate_techvault.py",
       "checksum": {
         "algorithm": "sha256",
-        "value": "0cdd4e0b3c5c85a03f5cb18550ea77b013634c203739fff6f582c114dd31b5b5"
+        "value": "0b52ae7efd82a0f293548cca13492256ada72fc6748c44e0bff0f8266e302726"
       },
-      "size_bytes": 68176,
+      "size_bytes": 63064,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
       "sensitivity": "public",
       "description": null
-    },
-    "techvault-cortex-analyzer-definition": {
-      "artifact_id": "techvault-cortex-analyzer-definition",
-      "role": "other",
-      "media_type": "application/json",
-      "uri": "raes-environment-pack:/assets/content/cortex-techvault-analyzer.json",
-      "checksum": {
-        "algorithm": "sha256",
-        "value": "9c8bfce7a9b41ed10f549e1d841879ec350a3ea1b4b03b6658313255ef435970"
-      },
-      "size_bytes": 458,
-      "created_at": "2026-08-02T00:00:00Z",
-      "source": "environment-pack-author",
-      "satisfies_refs": [],
-      "sensitivity": "internal",
-      "description": "Exact offline Cortex analyzer definition for TechVault scenario IP context."
-    },
-    "techvault-cortex-analyzer-executable": {
-      "artifact_id": "techvault-cortex-analyzer-executable",
-      "role": "other",
-      "media_type": "text/x-python",
-      "uri": "raes-environment-pack:/assets/content/cortex-techvault-analyzer.py",
-      "checksum": {
-        "algorithm": "sha256",
-        "value": "ce6962465bc7bdd6394b4df3785685a8cf32f22689671dfda644540ffc51f152"
-      },
-      "size_bytes": 1953,
-      "created_at": "2026-08-02T00:00:00Z",
-      "source": "environment-pack-author",
-      "satisfies_refs": [],
-      "sensitivity": "internal",
-      "description": "Exact dependency-free offline Cortex analyzer executable."
     },
     "techvault-red-mcp-sources": {
       "artifact_id": "techvault-red-mcp-sources",
@@ -707,10 +675,10 @@
       "uri": "raes-environment-pack:/assets/content/mcp-red-sources.tar",
       "checksum": {
         "algorithm": "sha256",
-        "value": "ec849aba9d33c5079e5db5f960fa9e827f71f90c6794d22d9c36388800c1f529"
+        "value": "8cefa8d3b2f874b6bf2f031b05e1795ba3b6877601a6dc073be2357d5b4855ce"
       },
       "size_bytes": 604160,
-      "created_at": "2026-10-08T00:00:00Z",
+      "created_at": "2026-10-30T00:00:00Z",
       "source": "environment-pack-author adapted from aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc and aptl@1838b7fd",
       "satisfies_refs": [],
       "sensitivity": "internal",
@@ -723,15 +691,15 @@
       "uri": "raes-environment-pack:/assets/content/mcp-blue-sources.tar",
       "checksum": {
         "algorithm": "sha256",
-        "value": "19bbf9548af0e91f60e1dea2fd1d13626403ec6098b89e45365db09ae5a86bd7"
+        "value": "1176d40061d1721cad006c2ff2230f98338efd807f1770db8c69351f758f037a"
       },
-      "size_bytes": 1116160,
-      "created_at": "2026-10-08T00:00:00Z",
+      "size_bytes": 1024000,
+      "created_at": "2026-10-30T00:00:00Z",
       "source": "environment-pack-author adapted from aptl@7c673a19f9fb6a3eb1d17305104196b600bd59cc and aptl@1838b7fd",
       "satisfies_refs": [],
       "sensitivity": "internal",
       "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:530ca558c02c6c4dd80f1d5e45ea0ceaa799ba687a3bf8294be0aade5116d0eb"
+  "set_digest": "sha256:a1abd4a382e048e4f74ce343c1b544626fe0633739dfe473c79f1b5fa3aded2f"
 }

@@ -203,7 +203,7 @@ conflicts are blocking diagnostics.
 
 For a complete security-operations example, follow the verified
 [defensive-tooling composition](defensive-tooling-composition.md) walkthrough.
-It composes the published Wazuh, Suricata, and TheHive releases, declares one
+It composes the published Wazuh and Suricata releases, declares one
 supported relationship at the pack root, and keeps static environment state
 separate from runtime telemetry and backend realization.
 

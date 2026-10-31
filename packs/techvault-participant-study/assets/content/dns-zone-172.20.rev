@@ -1,6 +1,6 @@
 $TTL 86400
 @   IN  SOA ns1.techvault.local. admin.techvault.local. (
-        2024010101  ; Serial
+        2026103001  ; Serial
         3600        ; Refresh
         900         ; Retry
         604800      ; Expire
@@ -15,7 +15,6 @@ $TTL 86400
 12.0    IN  PTR indexer.techvault.local.
 15.0    IN  PTR suricata.techvault.local.
 16.0    IN  PTR misp.techvault.local.
-18.0    IN  PTR thehive.techvault.local.
 20.0    IN  PTR shuffle.techvault.local.
 
 ; DMZ (172.20.1.x)

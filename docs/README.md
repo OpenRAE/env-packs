@@ -14,6 +14,12 @@ User-facing documentation is under [`public/`](public/index.md).
 
 ## Repository mechanics
 
+- [TechVault case management removal preflight](development/techvault-case-management-removal-preflight.md)
+  — complete service retirement, archive preservation, and catalog/distribution
+  guardrails for issue #536.
+- [TechVault case management removal design](development/techvault-case-management-removal-design.md)
+  — removed declarations, archive rebuild, data flow, and security controls for
+  issue #536.
 - [Dependent-declaration variation preflight](development/dependent-declaration-variation-preflight.md)
   — released RAES dependency, validation, and publication guardrails for issue #526.
 - [RAES 10 dependency design](development/raes-10-dependency-design.md)
