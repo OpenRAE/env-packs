@@ -173,9 +173,41 @@ jobs:
             --merged-pr-labels-file pr-labels.txt \
             --github-output "${GITHUB_OUTPUT}"
 
+  # Every pack carries the package version (ADR 0045). A release target whose
+  # packs do not fails here, before the tag is signed or anything is published
+  # (#544).
+  verify-pack-versions:
+    name: Verify pack versions match the release
+    needs: [detect-release]
+    if: needs.detect-release.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.detect-release.outputs.target }}
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Install hash-locked tooling and the package
+        run: |
+          set -euo pipefail
+          python -m pip install --require-hashes -r requirements/runtime.txt
+          python -m pip install --require-hashes -r requirements/build.txt
+          python -m pip install --no-deps --no-build-isolation -e .
+
+      - name: Check every pack carries the release version
+        run: python tools/sync_pack_versions.py --check
+
   publish:
     name: Sign tag, build, attest, SBOM, and publish
-    needs: [detect-release]
+    needs: [detect-release, verify-pack-versions]
     if: needs.detect-release.outputs.release == 'true'
     runs-on: ubuntu-latest
     environment: pypi
@@ -486,14 +518,19 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Install hash-locked runtime dependencies
+      # The tool imports raes_env_packs, which reads its own distribution
+      # metadata, so the package itself must be installed (#544). Hash-locked
+      # build tooling builds it without an unpinned isolated build.
+      - name: Install hash-locked tooling and the package
         if: steps.release-pr.outputs.open == 'true'
-        run: python -m pip install --require-hashes -r requirements/runtime.txt
+        run: |
+          set -euo pipefail
+          python -m pip install --require-hashes -r requirements/runtime.txt
+          python -m pip install --require-hashes -r requirements/build.txt
+          python -m pip install --no-deps --no-build-isolation -e .
 
       - name: Write the release version into every pack
         if: steps.release-pr.outputs.open == 'true'
-        env:
-          PYTHONPATH: src
         run: python tools/sync_pack_versions.py
 
       - name: Push the pack versions to the release PR

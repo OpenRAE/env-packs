@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import pathlib
 import shutil
@@ -21,25 +23,7 @@ _WORKFLOW = _ROOT / ".github" / "workflows" / "release-please.yml"
 _RELEASE_BRANCH = "release-please--branches--main--components--raes-env-packs"
 
 
-def _versions(pack: pathlib.Path) -> dict[str, str]:
-    manifest = json.loads((pack / "associated-artifacts.json").read_text(encoding="utf-8"))
-    compatibility = yaml.safe_load(
-        (pack / "pack.compatibility.yaml").read_text(encoding="utf-8")
-    )
-    versions = {
-        "pack.yaml": yaml.safe_load((pack / "pack.yaml").read_text(encoding="utf-8"))["version"],
-        "pack.compatibility.yaml": compatibility["pack"]["version"],
-        "manifest_version": manifest["manifest_version"],
-    }
-    (sdl,) = sorted((pack / "sdl").glob("*.sdl.yaml"))
-    content = yaml.safe_load(sdl.read_text(encoding="utf-8")).get("content") or {}
-    for content_id, item in content.items():
-        source = item.get("source") or {}
-        exact = (source.get("artifact_requirement") or {}).get("exact_artifact") or {}
-        if exact.get("artifact_id") in manifest["artifacts"]:
-            versions[f"content.{content_id}.source"] = source["version"]
-            versions[f"content.{content_id}.exact_artifact"] = exact["version"]
-    return versions
+_versions = sync.declared_versions
 
 
 class PackVersionTests(unittest.TestCase):
@@ -83,6 +67,33 @@ class PackVersionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing or duplicated"):
             sync.set_yaml_scalars(text, [("a", "absent")], "2.0.0")
 
+    def test_check_passes_for_this_repository(self) -> None:
+        self.assertEqual(sync.check(), [])
+        self.assertEqual(sync.main(["--check"]), 0)
+
+    def test_check_reports_a_stale_pack_and_writes_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            shutil.copy(_ROOT / "pyproject.toml", root / "pyproject.toml")
+            pack = root / "packs" / "techvault"
+            shutil.copytree(
+                _ROOT / "packs" / "techvault",
+                pack,
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+            sync.sync_pack(pack, "0.0.1")
+            before = {path: path.read_bytes() for path in pack.rglob("*") if path.is_file()}
+
+            mismatches = sync.check(root)
+
+            self.assertTrue(mismatches)
+            for mismatch in mismatches:
+                self.assertIn("is 0.0.1, not ", mismatch)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(sync.main(["--check"], root), 1)
+            after = {path: path.read_bytes() for path in pack.rglob("*") if path.is_file()}
+            self.assertEqual(before, after)
+
 
 class ReleaseWorkflowPackVersionTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -104,3 +115,38 @@ class ReleaseWorkflowPackVersionTests(unittest.TestCase):
         self.assertIn(_RELEASE_BRANCH, self.text)
         self.assertIn("tools/sync_pack_versions.py", self.text)
         self.assertIn("--require-hashes", self.text)
+
+    def test_installs_the_package_before_the_tool_imports_it(self) -> None:
+        # #544: raes_env_packs reads its own distribution metadata at import.
+        steps = self.job["steps"]
+        names = [step.get("name") for step in steps]
+        install = names.index("Install hash-locked tooling and the package")
+        write = names.index("Write the release version into every pack")
+        self.assertLess(install, write)
+        script = steps[install]["run"]
+        self.assertIn("--require-hashes -r requirements/build.txt", script)
+        self.assertIn("pip install --no-deps --no-build-isolation -e .", script)
+        self.assertNotIn("PYTHONPATH", json.dumps(steps[write]))
+
+
+class ReleaseWorkflowPackVersionGateTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+        self.job = self.jobs["verify-pack-versions"]
+
+    def test_publish_waits_for_the_pack_version_gate(self) -> None:
+        self.assertIn("verify-pack-versions", self.jobs["publish"]["needs"])
+        self.assertNotIn("always()", str(self.jobs["publish"]["if"]))
+
+    def test_gate_checks_the_release_target_read_only(self) -> None:
+        self.assertEqual(self.job["needs"], ["detect-release"])
+        self.assertEqual(self.job["if"], "needs.detect-release.outputs.release == 'true'")
+        self.assertEqual(self.job["permissions"], {"contents": "read"})
+        checkout = self.job["steps"][0]
+        self.assertEqual(
+            checkout["with"]["ref"], "${{ needs.detect-release.outputs.target }}"
+        )
+        self.assertIn(
+            "python tools/sync_pack_versions.py --check",
+            [step.get("run") for step in self.job["steps"]],
+        )
