@@ -11,6 +11,24 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [7.1.0](https://github.com/OpenRAE/env-packs/compare/v7.0.0...v7.1.0) (2026-10-31)
+
+
+### Features
+
+* **kits:** add reusable Owlbear protected-target kit ([#546](https://github.com/OpenRAE/env-packs/issues/546)) ([a5a423b](https://github.com/OpenRAE/env-packs/commit/a5a423bed99215b639ae10a0465ce238f3d35226))
+
+
+### Bug Fixes
+
+* install the package before the pack version sync and gate publication on pack versions ([#545](https://github.com/OpenRAE/env-packs/issues/545)) ([4589b28](https://github.com/OpenRAE/env-packs/commit/4589b28a697a3cf9d60539499a172c9803bf88f9))
+
+
+### Documentation
+
+* **kits:** document Owlbear composition and adapter boundary ([975bd78](https://github.com/OpenRAE/env-packs/commit/975bd78b32f78b4e7aac4892adafb13fe24da50a))
+* **kits:** document Owlbear composition and runtime boundary ([#547](https://github.com/OpenRAE/env-packs/issues/547)) ([975bd78](https://github.com/OpenRAE/env-packs/commit/975bd78b32f78b4e7aac4892adafb13fe24da50a))
+
 ## [7.0.0](https://github.com/OpenRAE/env-packs/compare/v6.5.1...v7.0.0) (2026-10-31)
 
 
