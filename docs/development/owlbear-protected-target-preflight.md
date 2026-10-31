@@ -10,6 +10,7 @@ experiment context belongs to a consuming pack. Existing ADRs
 [0041](../decisions/adrs/0041-distribute-kits-as-package-resources.md)
 already cover this design. No new ADR, kit family contract, or schema is needed.
 This note records guardrails, not an implementation sequence.
+The documentation-specific boundary for issue #541 is recorded below.
 
 ## Facts that must be established
 
@@ -163,6 +164,106 @@ interpretation, paper/trial configuration, or downstream catalog conventions.
 Existing API/model infrastructure may be composed, not copied into an Owlbear
 framework. An absent required upstream contract is an explicit limitation to
 resolve, never permission for a local schema or prose-based runtime protocol.
+
+## Composition documentation boundary (#541)
+
+Issue #541 documents the existing kit lifecycle and the independently installed
+runtime adapter's obligations. It changes no architecture decision. Reuse the
+cross-cutting authorities above; keep author guidance in `docs/public/`, with
+navigation from the existing kit page. The general lifecycle belongs in
+`kits.md`; the Owlbear example needs only its concrete choices and limits.
+Link to the selected release's integration and provenance records using an
+immutable source reference. Do not rewrite the byte-bound `1.0.0` release to
+improve its documentation. A `docs(kits):` change does not publish a new package;
+the `feat(kits):` guidance above applies to the original kit implementation.
+
+### Released tooling and admitted content are separate inputs
+
+At this preflight, the local `v7.0.0` tag has no Owlbear kit. The kit first
+appears in commit `a5a423b` after that tag. The CLI, composer, wizard, validation,
+release command modules, and `pyproject.toml` are unchanged between the tag and
+that commit. This supports documenting released tooling with an explicitly
+admitted checkout containing Owlbear; it does not establish that a published
+package includes Owlbear. Verify command behavior in the selected released
+installation before recording output. A later bundled-package route must first
+verify that the acquired distribution actually contains this exact release.
+Do not infer availability from the working tree, installed editable metadata,
+`released_at`, or a successful local wheel build.
+
+Keep package version, `KitSource(id, revision, root)`, kit version `1.0.0`, kit
+set digest, and upstream Owlbear source revision distinct. Installed resources
+use `bundled_kit_source()`; explicit checkout sources use their admitted immutable
+revision and a root containing `kits/`. Never relabel checkout bytes as a
+released package collection or fall back silently between sources. The current
+tooling requires CPython 3.14; its RAES floor and tested lock are 10.0.0. Pack
+creation and mutation also require Linux `renameat2`, independently of the
+ARM64 requirements of the declared target.
+
+### What composition establishes and what the adapter must realize
+
+| Portable declaration | Independently installed runtime adapter's obligation |
+| --- | --- |
+| ARM64 Ubuntu 24.04 target; open compute substrate; planning resource estimates | Admit a suitably isolated target and its actual kernel/build, hardware and resources. Open substrate is no grant of host privilege and no capability verdict. |
+| Four file exports with logical source selectors and runtime paths | Acquire authorized kernel-module, daemon, game and signature inputs; establish binary identity, build provenance, dependency compatibility and trust. The kit manifest binds shipped declarations, not these external binaries. |
+| Typed `owlbear_protection` unit state, selected by `daemon_active_state` | Supply the native service binding to the actual `owlbeard`, workload PID selection and build-correct native arguments. Enforcement mode is separate from activity. No upstream unit or executable is bundled. |
+| Benign seed inventory and operator-visible supporting assets | Realize admitted content without treating copied default text as a rendered configuration or executable bootstrap. Operator visibility does not make distributed bytes confidential. |
+
+No adapter package, install command, capability declaration or qualified backend
+is established by the kit. Do not invent one in the guide. Preserve the
+provenance record's source-reported prototype status and kernel 6.17 reference;
+other builds have no compatibility claim. Adapter installation and privileged
+preparation are separate authorized operations. State the
+qualification requirements explicitly: ARM64/kernel ABI and build compatibility,
+BTF, BPF LSM, module policy, embedded eBPF support, runtime libraries, actual
+service/process binding, requested state and enforcement behavior, containment,
+and cleanup of both daemon and kernel state. Unsupported targets must be refused
+before privileged operations; a privileged host container is no automatic
+equivalent. Record backend/build identity and observed results outside static
+composition claims. Active does not prove protection; inactive does not prove
+that kernel protection has been removed. Local logs and any external telemetry
+remain backend concerns; credentials, host bindings and log destinations do not
+become kit parameters or portable runtime-install settings.
+
+### Example, validation and maintenance limits
+
+Use a disposable ordinary minimal pack with synthetic study labels and benign
+content. A study example does not require a new pack type, experiment schema,
+trial runner, capture model, scoring rule or evaluation framework. Formal study
+artifacts, if separately needed, use the existing RAES experiment contracts and
+pack `experiments/` carrier under ADR 0042. Include no participant records,
+attack corpus, credentials, private source, cloud access or data transfer.
+
+The discovery, inspection, preview, add, update and validation example must use
+the existing CLI/library operations, not concatenate SDL or reproduce composer
+logic. Parameter JSON uses bounded stdin through `--parameters -`; pass the
+complete intended parameter set on update. Demonstrate the meaningful typed
+`daemon_active_state` variation. Profile labels do not resize the node; assets
+are copied verbatim; fixed asset paths permit only one materialization per pack.
+Keep successful updates before author changes to shared owned SDL. Preserve
+`kit.author-modification.conflict`; never rebaseline ownership or edit locks,
+checksums or manifests by hand to make the example pass. Independent services
+and their RAES relationships belong at the consuming pack root.
+
+Reuse `tests_integration/kit_author_walkthrough.py` and the defensive-tooling
+walkthrough's temporary-pack conventions where executable evidence is useful;
+do not introduce a general tutorial runner. Verify real command output, preview
+non-mutation, typed state variation, exact lock/ledger/artifact joins, and both
+`raes-pack-validate --pack` and `raes-pack-release check --pack`. Include the
+required golden-readiness headings with runtime checks still incomplete.
+Consumer `validate_pack` remains static and import-denying; author content CI
+may execute pack-local checks, so use only the trusted synthetic pack. Neither
+lane admits external binaries or qualifies a backend. Retain the existing
+value-free diagnostics, CLI exit codes and silent libraries; no new error
+envelope, exception hierarchy, logger, or raw subprocess/environment dump.
+
+The extension seam remains explicit source selection, kit id/version, namespace,
+target SDL and bounded RAES parameters. Keep these choices together so the next
+kit release or admitted source can replace them without changing canonical
+tooling. Existing kit, CLI, materialization and distribution tests own their
+general contracts. All repository checks above remain required; public changes
+also pass warning-strict Sphinx and `tools/check_docs_publication_boundary.py`.
+No runtime installation, privileged test, artifact download, schema/tool change,
+new publication destination or release operation belongs to this docs issue.
 
 ## Design Vocabulary That Applies
 

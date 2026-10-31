@@ -19,7 +19,7 @@ User-facing documentation is under [`public/`](public/index.md).
 
 - [Owlbear protected-target preflight](development/owlbear-protected-target-preflight.md)
   — reusable target, runtime/artifact boundaries, composition, and security
-  guardrails for issue #540.
+  guardrails for #540 and the composition documentation boundary for #541.
 - [TechVault case management removal preflight](development/techvault-case-management-removal-preflight.md)
   — complete service retirement, archive preservation, and catalog/distribution
   guardrails for issue #536.

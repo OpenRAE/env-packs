@@ -88,6 +88,10 @@ open, so the backend decides whether it can realize them.
 
 ## Owlbear protected target
 
+Follow the [Owlbear composition guide](owlbear-composition.md) for a synthetic
+study scaffold, a daemon-state update, and the independent runtime-adapter
+qualification boundary.
+
 `infrastructure.owlbear-protected-target` version `1.0.0` exports one ARM64 Ubuntu target and four Owlbear input-file declarations.
 It also exports a benign seed inventory.
 The `daemon_active_state` parameter selects `active` or `inactive` typed service state.
