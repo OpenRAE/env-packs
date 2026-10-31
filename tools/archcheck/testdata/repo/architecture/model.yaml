@@ -1,0 +1,17 @@
+version: 1
+module: example.com/repo
+system:
+  id: repo
+  name: Fixture
+  description: A fixture repository.
+containers:
+  - id: library
+    name: Library
+    technology: Go
+    description: The library.
+components:
+  - id: root
+    container: library
+    description: The root package.
+    packages:
+      - example.com/repo

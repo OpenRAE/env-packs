@@ -41,6 +41,11 @@ See [ADR 0008](../docs/decisions/adrs/0008-adopt-release-please.md).
 - **A pull request for the port uses a type that does not release:** `build`,
   `ci`, `docs`, `refactor`, `test`, or `chore`. Only the chunk that removes the
   Python implementation has a breaking-change title.
+- **Start each Go change with the design step.** Before the code, write a design
+  record in `docs/development/designs/`, change `architecture/model.yaml` to
+  match, and pass `make go-arch-design`. The plan names the design record, the
+  component that owns each new package, and each new dependency. Then write the
+  code and pass `make go-arch`.
 - **Python changes on `dev` are limited to fixes, security updates, and RAES
   dependency updates.** A sync pull request brings `dev` into `go-cutover`. When
   a `dev` change alters a contract, the sync pull request also changes the

@@ -14,6 +14,13 @@ User-facing documentation is under [`public/`](public/index.md).
 
 ## Repository mechanics
 
+- [Design records](development/designs/README.md) — the design step of each Go
+  change and the records that the architecture checker validates.
+- [Go style map](development/go-style-map.md) — each Google Go Style Guide rule
+  and the check that enforces it.
+- [Go test standard](development/go-test-standard.md) — the test rules for every
+  Go package.
+
 - [Pack-local consumer validation design](development/pack-local-consumer-validation-design.md)
   — RAES supplied-source parsing, lock writing, and threats for issue #412.
 - [Pack-local consumer validation preflight](development/pack-local-consumer-validation-preflight.md)
