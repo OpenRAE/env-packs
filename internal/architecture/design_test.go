@@ -1,6 +1,7 @@
 package architecture
 
 import (
+	"io/fs"
 	"strconv"
 	"testing"
 	"testing/fstest"
@@ -65,15 +66,17 @@ func TestLoadDesigns(t *testing.T) {
 		return &fstest.MapFile{Data: []byte("---\ndesign: " + strconv.Itoa(number) + "\nissue: " + strconv.Itoa(issue) + "\ntitle: " + title + "\n---\n")}
 	}
 	fsys := fstest.MapFS{
-		"designs/README.md":        {Data: []byte("# Records\n")},
-		"designs/0002-second.md":   record(2, 7, "Second"),
-		"designs/0001-first.md":    record(1, 5, "First"),
-		"designs/0003-numbers.md":  record(4, 8, "Wrong number"),
-		"designs/0004-no-issue.md": {Data: []byte("---\ndesign: 4\ntitle: No issue\n---\n")},
-		"designs/0005-no-title.md": {Data: []byte("---\ndesign: 5\nissue: 9\n---\n")},
-		"designs/0006-broken.md":   {Data: []byte("no front matter\n")},
-		"designs/notes.md":         {Data: []byte("x")},
-		"designs/0007-Upper.md":    record(7, 1, "Upper"),
+		"designs/README.md":           {Data: []byte("# Records\n")},
+		"designs/0002-second.md":      record(2, 7, "Second"),
+		"designs/0001-first.md":       record(1, 1, "First"),
+		"designs/0003-numbers.md":     record(4, 8, "Wrong number"),
+		"designs/0004-no-issue.md":    {Data: []byte("---\ndesign: 4\ntitle: No issue\n---\n")},
+		"designs/0005-no-title.md":    {Data: []byte("---\ndesign: 5\nissue: 9\n---\n")},
+		"designs/0006-broken.md":      {Data: []byte("no front matter\n")},
+		"designs/notes.md":            {Data: []byte("x")},
+		"designs/0007-Upper.md":       record(7, 1, "Upper"),
+		"designs/0008-directory.md/x": {Data: []byte("x")},
+		"designs/0009-negative.md":    record(-9, 2, "Negative"),
 	}
 	designs, findings, err := LoadDesigns(fsys, "designs")
 	if err != nil {
@@ -83,18 +86,20 @@ func TestLoadDesigns(t *testing.T) {
 	for _, d := range designs {
 		numbers = append(numbers, d.Number)
 	}
-	if diff := cmp.Diff([]int{1, 2, 4, 4, 5}, numbers); diff != "" {
+	if diff := cmp.Diff([]int{-9, 1, 2, 4, 4, 5}, numbers); diff != "" {
 		t.Errorf("LoadDesigns() numbers mismatch (-want +got):\n%s", diff)
 	}
-	if designs[0].Path != "designs/0001-first.md" || designs[0].Title != "First" || designs[0].Issue != 5 {
-		t.Errorf("LoadDesigns() first record = %+v, want the parsed first record", designs[0])
+	if first := designs[1]; first.Path != "designs/0001-first.md" || first.Title != "First" || first.Issue != 1 {
+		t.Errorf("LoadDesigns() record 1 = %+v, want the parsed first record", first)
 	}
 	want := []Finding{
-		designFinding("designs/0003-numbers.md", "has design number 4, but its file name has 3"),
+		designFinding("designs/0003-numbers.md", "has design number 4, but its file name does not start with 0004-"),
 		designFinding("designs/0004-no-issue.md", "names no GitHub issue"),
 		designFinding("designs/0005-no-title.md", "has no title"),
 		designFinding("designs/0006-broken.md", "has no YAML front matter at the first line"),
 		designFinding("designs/0007-Upper.md", "is not a design record file named NNNN-slug.md"),
+		designFinding("designs/0008-directory.md", "is not a design record file named NNNN-slug.md"),
+		designFinding("designs/0009-negative.md", "has design number -9, but its file name does not start with -009-"),
 		designFinding("designs/notes.md", "is not a design record file named NNNN-slug.md"),
 	}
 	if diff := cmp.Diff(want, SortFindings(findings)); diff != "" {
@@ -108,27 +113,27 @@ func TestLoadDesignsMissingDirectory(t *testing.T) {
 	}
 }
 
-func TestDesignNumber(t *testing.T) {
-	tests := []struct {
-		name   string
-		number int
-		ok     bool
-	}{
-		{"0001-a.md", 1, true},
-		{"0042-pack-fs.md", 42, true},
-		{"0000-zero.md", 0, false},
-		{"1-a.md", 0, false},
-		{"0001-.md", 0, false},
-		{"0001_a.md", 0, false},
-		{"0001-a.txt", 0, false},
-		{"00a1-a.md", 0, false},
-		{"+001-a.md", 0, false},
-		{"0001-A.md", 0, false},
+// unreadable is a file system that lists its files but cannot read them.
+type unreadable struct{ fstest.MapFS }
+
+func (unreadable) ReadFile(string) ([]byte, error) { return nil, fs.ErrPermission }
+
+func TestLoadDesignsUnreadableRecord(t *testing.T) {
+	fsys := unreadable{fstest.MapFS{"designs/0001-a.md": {Data: []byte("---\n")}}}
+	if _, _, err := LoadDesigns(fsys, "designs"); err == nil {
+		t.Error("LoadDesigns() of an unreadable record: error = nil, want an error")
 	}
-	for _, tt := range tests {
-		number, ok := designNumber(tt.name)
-		if number != tt.number || ok != tt.ok {
-			t.Errorf("designNumber(%q) = %d, %v, want %d, %v", tt.name, number, ok, tt.number, tt.ok)
+}
+
+func TestDesignName(t *testing.T) {
+	tests := map[string]bool{
+		"0001-a.md": true, "0042-pack-fs.md": true, "0000-zero.md": true, "9999-z9.md": true,
+		"1-a.md": false, "00001-a.md": false, "0001-.md": false, "0001_a.md": false, "0001-a": false,
+		"0001-a.txt": false, "00a1-a.md": false, "+001-a.md": false, "0001-A.md": false,
+	}
+	for name, want := range tests {
+		if got := designName.MatchString(name); got != want {
+			t.Errorf("designName.MatchString(%q) = %v, want %v", name, got, want)
 		}
 	}
 }

@@ -13,3 +13,8 @@ func A() string {
 	println("debug")
 	return os.Getenv("HOME") + b.B() + string(rune(dep.Value()))
 }
+
+// Message calls a method of the predeclared error type, which has no package.
+func Message(err error) string {
+	return err.Error()
+}

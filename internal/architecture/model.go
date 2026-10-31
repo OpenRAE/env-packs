@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/token"
 	"io"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -289,35 +290,32 @@ func (v *modelValidator) checkModuleList(kind string, modules []string) {
 // checkCycles reports each component that can reach itself through the
 // dependencies. The model keeps the components in layers.
 func (v *modelValidator) checkCycles() {
-	const (
-		unvisited = iota
-		visiting
-		done
-	)
-	state := make(map[string]int)
-	var visit func(id string) bool
-	visit = func(id string) bool {
-		switch state[id] {
-		case visiting:
-			return true
-		case done:
-			return false
-		}
-		state[id] = visiting
-		cycle := false
-		if c, ok := v.model.Component(id); ok {
-			for _, d := range c.DependsOn {
-				cycle = visit(d) || cycle
-			}
-		}
-		state[id] = done
-		return cycle
-	}
 	for _, c := range v.model.Components {
-		if state[c.ID] == unvisited && visit(c.ID) {
+		if v.reaches(c.ID, c.ID, make(map[string]bool)) {
 			v.addf("the dependencies of component %q form a cycle", c.ID)
 		}
 	}
+}
+
+// reaches reports whether component target is reachable from component from
+// through one or more dependencies. The seen map stops a second visit.
+func (v *modelValidator) reaches(from, target string, seen map[string]bool) bool {
+	c, ok := v.model.Component(from)
+	if !ok {
+		return false
+	}
+	for _, d := range c.DependsOn {
+		if d == target {
+			return true
+		}
+		if !seen[d] {
+			seen[d] = true
+			if v.reaches(d, target, seen) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (v *modelValidator) checkRules() {
@@ -362,20 +360,23 @@ func (v *modelValidator) checkRuleScope(r Rule) {
 	}
 }
 
-// validID reports whether id is lowercase ASCII words joined by single
-// hyphens, starting with a letter.
+// idExpr matches an identifier: lowercase ASCII words of letters and digits,
+// joined by single hyphens. The first word starts with a letter.
+const idExpr = `[a-z][a-z0-9]*(?:-[a-z0-9]+)*`
+
+// idPattern matches an identifier and nothing else.
+var idPattern = regexp.MustCompile(`^` + idExpr + `$`)
+
+// validID reports whether id is an identifier.
 func validID(id string) bool {
-	if id == "" || id[0] < 'a' || id[0] > 'z' || strings.HasSuffix(id, "-") || strings.Contains(id, "--") {
-		return false
-	}
-	return strings.Trim(id, "abcdefghijklmnopqrstuvwxyz0123456789-") == ""
+	return idPattern.MatchString(id)
 }
 
 // validModulePath reports whether path looks like a module path: no spaces,
 // and a first element with a dot.
 func validModulePath(path string) bool {
 	first, _, _ := strings.Cut(path, "/")
-	return path != "" && strings.Contains(first, ".") && !strings.ContainsAny(path, " \t\n\\")
+	return strings.Contains(first, ".") && !strings.ContainsAny(path, " \t\n\\")
 }
 
 // validImportPattern reports whether p is an import path, or an import path

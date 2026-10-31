@@ -78,22 +78,36 @@ func (w *dslWriter) writeSystem(m *Model) {
 }
 
 func (w *dslWriter) writeRelationships(m *Model) {
-	if len(m.Relationships) == 0 && !hasDependencies(m) {
+	edges := edgesOf(m)
+	if len(edges) == 0 {
 		return
 	}
 	w.blank()
+	for _, e := range edges {
+		w.linef("%s -> %s %s", e.from, e.to, quote(e.description))
+	}
+}
+
+// An edge is one relationship of the DSL workspace.
+type edge struct {
+	from, to, description string
+}
+
+// edgesOf returns the relationships of the model and the dependencies between
+// known components, in the order of the model.
+func edgesOf(m *Model) []edge {
+	var edges []edge
 	for _, r := range m.Relationships {
-		w.linef("%s -> %s %s", dslID(r.From), dslID(r.To), quote(r.Description))
+		edges = append(edges, edge{from: dslID(r.From), to: dslID(r.To), description: r.Description})
 	}
 	for _, c := range m.Components {
 		for _, d := range c.DependsOn {
-			to, ok := m.Component(d)
-			if !ok {
-				continue
+			if to, ok := m.Component(d); ok {
+				edges = append(edges, edge{from: componentRef(m, c), to: componentRef(m, *to), description: "Depends on"})
 			}
-			w.linef("%s -> %s %s", componentRef(m, c), componentRef(m, *to), quote("Depends on"))
 		}
 	}
+	return edges
 }
 
 func (w *dslWriter) writeViews(m *Model) {
@@ -128,15 +142,6 @@ func componentsOf(m *Model, container string) []Component {
 		}
 	}
 	return components
-}
-
-func hasDependencies(m *Model) bool {
-	for _, c := range m.Components {
-		if len(c.DependsOn) > 0 {
-			return true
-		}
-	}
-	return false
 }
 
 // componentRef returns the hierarchical DSL identifier of a component.

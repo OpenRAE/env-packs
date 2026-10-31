@@ -13,6 +13,14 @@ func CheckCode(m *Model, modelPath string, g Graph) []Finding {
 	c := codeChecker{model: m, owners: m.Owners(), graph: g}
 	c.checkModule(modelPath)
 	c.checkOwnership(modelPath)
+	for _, name := range g.Unread {
+		c.add(Finding{
+			Location: name,
+			Rule:     RuleUnreadPath,
+			Message:  "the check cannot read this path, so the rules of the model do not apply to it",
+			Fix:      "Remove the build constraint or the cgo code, or make the directory readable. If the code needs them, change tools/archcheck in a design step so that the check reads the path.",
+		})
+	}
 	for _, p := range g.Packages {
 		owner, ok := c.owners[p.Path]
 		if !ok {
@@ -79,11 +87,10 @@ func (c *codeChecker) checkOwnership(modelPath string) {
 func (c *codeChecker) checkFile(owner *Component, p Package, f File) {
 	rules := c.applicableRules(owner, p.Main, f.Test)
 	for _, imp := range f.Imports {
-		switch imp.Module {
-		case c.graph.Module:
+		switch {
+		case imp.Module == c.graph.Module:
 			c.checkComponentImport(owner, f, imp)
-		case "":
-		default:
+		case imp.Module != "":
 			c.checkModuleImport(owner, f, imp)
 		}
 		for _, r := range rules {

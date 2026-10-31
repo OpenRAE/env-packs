@@ -4,10 +4,61 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// mainEnv is the environment variable that makes the test binary run the
+// command instead of the tests.
+const mainEnv = "ARCHCHECK_TEST_MAIN"
+
+// TestMain runs the command, not the tests, when TestMainProcess starts the
+// test binary as a child process.
+func TestMain(m *testing.M) {
+	if os.Getenv(mainEnv) == "1" {
+		main()
+		return
+	}
+	m.Run()
+}
+
+// TestMainProcess runs the main function in a child process, to check that
+// it passes the command line, the streams, and the exit status.
+func TestMainProcess(t *testing.T) {
+	dir := fixtureRepo(t)
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatalf("locate the test binary: %v", err)
+	}
+	tests := []struct {
+		args       []string
+		wantStatus int
+		wantStderr string
+	}{
+		{args: []string{"-root", dir, "design"}, wantStatus: 0, wantStderr: "archcheck: 0 findings\n"},
+		{args: []string{"lint"}, wantStatus: 2, wantStderr: "archcheck: unknown mode \"lint\"; give design, check, or dsl\n"},
+	}
+	for _, tt := range tests {
+		//nolint:gosec // G204 false positive: the command is this test binary, and the test sets each argument.
+		cmd := exec.CommandContext(t.Context(), binary, tt.args...)
+		cmd.Env = append(os.Environ(), mainEnv+"=1")
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		err := cmd.Run()
+		status := 0
+		if exitErr := (*exec.ExitError)(nil); errors.As(err, &exitErr) {
+			status = exitErr.ExitCode()
+		} else if err != nil {
+			t.Fatalf("run the child process: %v", err)
+		}
+		if status != tt.wantStatus || stdout.String() != "" || stderr.String() != tt.wantStderr {
+			t.Errorf("main(%q) = %d, stdout %q, stderr %q; want %d, no stdout, and stderr %q",
+				tt.args, status, stdout.String(), stderr.String(), tt.wantStatus, tt.wantStderr)
+		}
+	}
+}
 
 // fixtureRepo copies the fixture repository to a new temporary directory and
 // returns that directory.
@@ -20,11 +71,11 @@ func fixtureRepo(t *testing.T) string {
 	return dir
 }
 
-// runCommand runs the command with args and returns the exit status and the
-// output streams.
+// runCommand runs the command with args after the program name, and returns
+// the exit status and the output streams.
 func runCommand(args ...string) (status int, stdout, stderr string) {
 	var out, errOut bytes.Buffer
-	status = run(args, &out, &errOut)
+	status = run(append([]string{"archcheck"}, args...), &out, &errOut)
 	return status, out.String(), errOut.String()
 }
 
@@ -42,8 +93,8 @@ func TestRunUsage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			status, stdout, stderr := runCommand(tt.args...)
-			if status != exitUsage {
-				t.Errorf("run(%q) status = %d, want %d", tt.args, status, exitUsage)
+			if status != 2 {
+				t.Errorf("run(%q) status = %d, want 2", tt.args, status)
 			}
 			if stdout != "" || !strings.Contains(stderr, tt.wantStderr) {
 				t.Errorf("run(%q) stdout = %q, stderr = %q, want no stdout and stderr with %q", tt.args, stdout, stderr, tt.wantStderr)
@@ -56,8 +107,8 @@ func TestRunCleanRepository(t *testing.T) {
 	dir := fixtureRepo(t)
 	for _, mode := range []string{"design", "check"} {
 		status, stdout, stderr := runCommand("-root", dir, mode)
-		if status != exitOK || stdout != "" || stderr != "archcheck: 0 findings\n" {
-			t.Errorf("run(%s) = %d, stdout %q, stderr %q; want %d, no stdout, and a zero count", mode, status, stdout, stderr, exitOK)
+		if status != 0 || stdout != "" || stderr != "archcheck: 0 findings\n" {
+			t.Errorf("run(%s) = %d, stdout %q, stderr %q; want 0, no stdout, and a zero count", mode, status, stdout, stderr)
 		}
 	}
 }
@@ -72,6 +123,18 @@ func TestRunFindings(t *testing.T) {
 		{
 			name:       "model that does not decode",
 			mode:       "design",
+			change:     writeFile("architecture/model.yaml", "version: 1\nmodul: x\n"),
+			wantStdout: "architecture/model.yaml: model: decode model: yaml: unmarshal errors:\n  line 2: field modul not found in type architecture.Model\n\tfix: Correct the YAML of the model.",
+		},
+		{
+			name:       "model that does not decode, in the check mode",
+			mode:       "check",
+			change:     writeFile("architecture/model.yaml", "version: 1\nmodul: x\n"),
+			wantStdout: "architecture/model.yaml: model: decode model: yaml: unmarshal errors:\n  line 2: field modul not found in type architecture.Model\n\tfix: Correct the YAML of the model.",
+		},
+		{
+			name:       "model that does not decode, in the dsl mode",
+			mode:       "dsl",
 			change:     writeFile("architecture/model.yaml", "version: 1\nmodul: x\n"),
 			wantStdout: "architecture/model.yaml: model: decode model: yaml: unmarshal errors:\n  line 2: field modul not found in type architecture.Model\n\tfix: Correct the YAML of the model.",
 		},
@@ -117,8 +180,8 @@ func TestRunFindings(t *testing.T) {
 			dir := fixtureRepo(t)
 			tt.change(t, dir)
 			status, stdout, stderr := runCommand("-root", dir, tt.mode)
-			if status != exitFindings {
-				t.Errorf("run(%s) status = %d, want %d; stdout %q, stderr %q", tt.mode, status, exitFindings, stdout, stderr)
+			if status != 1 {
+				t.Errorf("run(%s) status = %d, want 1; stdout %q, stderr %q", tt.mode, status, stdout, stderr)
 			}
 			if !strings.Contains(stdout, tt.wantStdout) {
 				t.Errorf("run(%s) stdout = %q, want it to contain %q", tt.mode, stdout, tt.wantStdout)
@@ -137,7 +200,13 @@ func TestRunFailures(t *testing.T) {
 		{
 			name:       "missing root",
 			args:       func(dir string) []string { return []string{"-root", filepath.Join(dir, "missing"), "design"} },
-			wantStderr: "archcheck: open the repository root:",
+			wantStderr: "archcheck: read the model:",
+		},
+		{
+			name:       "C4 view that cannot be read",
+			args:       func(dir string) []string { return []string{"-root", dir, "check"} },
+			change:     both(removeFile(dslFile), writeFile(dslFile+"/x", "x")),
+			wantStderr: "archcheck: read the C4 view:",
 		},
 		{
 			name:       "missing model",
@@ -155,7 +224,7 @@ func TestRunFailures(t *testing.T) {
 			name:       "code that does not compile",
 			args:       func(dir string) []string { return []string{"-root", dir, "check"} },
 			change:     writeFile("doc.go", "package repo\n\nvar x int = \"text\"\n"),
-			wantStderr: "archcheck: load packages:",
+			wantStderr: "archcheck: load the packages in ",
 		},
 		{
 			name:       "missing model for dsl",
@@ -171,8 +240,8 @@ func TestRunFailures(t *testing.T) {
 				tt.change(t, dir)
 			}
 			status, _, stderr := runCommand(tt.args(dir)...)
-			if status != exitFailure || !strings.Contains(stderr, tt.wantStderr) {
-				t.Errorf("run() = %d, stderr %q; want %d and stderr with %q", status, stderr, exitFailure, tt.wantStderr)
+			if status != 3 || !strings.Contains(stderr, tt.wantStderr) {
+				t.Errorf("run() = %d, stderr %q; want 3 and stderr with %q", status, stderr, tt.wantStderr)
 			}
 		})
 	}
@@ -186,12 +255,12 @@ func TestRunDSL(t *testing.T) {
 		t.Fatalf("read the fixture view: %v", err)
 	}
 	status, stdout, _ := runCommand("-root", dir, "dsl")
-	if status != exitOK || stdout != string(want) {
-		t.Errorf("run(dsl) = %d, stdout %q; want %d and the committed view", status, stdout, exitOK)
+	if status != 0 || stdout != string(want) {
+		t.Errorf("run(dsl) = %d, stdout %q; want 0 and the committed view", status, stdout)
 	}
 	removeFile(dslFile)(t, dir)
-	if status, _, stderr := runCommand("-root", dir, "dsl", "-write"); status != exitOK {
-		t.Fatalf("run(dsl -write) = %d, stderr %q; want %d", status, stderr, exitOK)
+	if status, _, stderr := runCommand("-root", dir, "dsl", "-write"); status != 0 {
+		t.Fatalf("run(dsl -write) = %d, stderr %q; want 0", status, stderr)
 	}
 	got, err := root.ReadFile(dslFile)
 	if err != nil || !bytes.Equal(got, want) {
@@ -203,8 +272,8 @@ func TestRunDSLInvalidModel(t *testing.T) {
 	dir := fixtureRepo(t)
 	replaceIn("architecture/model.yaml", "version: 1", "version: 3")(t, dir)
 	status, stdout, _ := runCommand("-root", dir, "dsl")
-	if status != exitFindings || !strings.Contains(stdout, "version is 3") {
-		t.Errorf("run(dsl) = %d, stdout %q; want %d and the version finding", status, stdout, exitFindings)
+	if status != 1 || !strings.Contains(stdout, "version is 3") {
+		t.Errorf("run(dsl) = %d, stdout %q; want 1 and the version finding", status, stdout)
 	}
 }
 
@@ -221,8 +290,8 @@ func TestRunDSLWriteFailure(t *testing.T) {
 		}
 	})
 	status, _, stderr := runCommand("-root", dir, "dsl", "-write")
-	if status != exitFailure || !strings.Contains(stderr, "archcheck: write the C4 view:") {
-		t.Errorf("run(dsl -write) = %d, stderr %q; want %d and a write error", status, stderr, exitFailure)
+	if status != 3 || !strings.Contains(stderr, "archcheck: write the C4 view:") {
+		t.Errorf("run(dsl -write) = %d, stderr %q; want 3 and a write error", status, stderr)
 	}
 }
 
@@ -239,14 +308,14 @@ func TestRunOutputFailure(t *testing.T) {
 		name string
 		args []string
 	}{
-		{name: "report", args: []string{"-root", dir, "design"}},
-		{name: "dsl", args: []string{"-root", dir, "dsl"}},
-		{name: "usage", args: nil},
+		{name: "report", args: []string{"archcheck", "-root", dir, "design"}},
+		{name: "dsl", args: []string{"archcheck", "-root", dir, "dsl"}},
+		{name: "usage", args: []string{"archcheck"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if status := run(tt.args, failingWriter{}, failingWriter{}); status != exitFailure {
-				t.Errorf("run(%q) with failing output = %d, want %d", tt.args, status, exitFailure)
+			if status := run(tt.args, failingWriter{}, failingWriter{}); status != 3 {
+				t.Errorf("run(%q) with failing output = %d, want 3", tt.args, status)
 			}
 		})
 	}
@@ -265,6 +334,15 @@ func openRoot(t *testing.T, dir string) *os.Root {
 		}
 	})
 	return root
+}
+
+// both applies two changes to the repository in dir, in order.
+func both(first, second func(t *testing.T, dir string)) func(t *testing.T, dir string) {
+	return func(t *testing.T, dir string) {
+		t.Helper()
+		first(t, dir)
+		second(t, dir)
+	}
 }
 
 func writeFile(name, content string) func(t *testing.T, dir string) {

@@ -19,6 +19,8 @@ const (
 	RuleComponentDependency = "component-dependency"
 	// RuleExternalModule marks an import of a module that a component may not use.
 	RuleExternalModule = "external-module"
+	// RuleUnreadPath marks a path of the module that the checks cannot read.
+	RuleUnreadPath = "unread-path"
 	// RuleC4View marks a C4 view file that differs from the rendered model.
 	RuleC4View = "c4-view"
 )

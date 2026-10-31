@@ -25,6 +25,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/OpenRAE/env-packs/internal/architecture"
 )
@@ -44,15 +45,17 @@ const (
 )
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(run(os.Args, os.Stdout, os.Stderr))
 }
 
+// run runs the command and returns the exit status. Like os.Args, args starts
+// with the program name.
 func run(args []string, stdout, stderr io.Writer) int {
 	out := &output{stdout: stdout, stderr: stderr}
 	flags := flag.NewFlagSet("archcheck", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	dir := flags.String("root", ".", "repository `directory`")
-	if err := flags.Parse(args); err != nil {
+	if err := flags.Parse(args[1:]); err != nil {
 		return exitUsage
 	}
 	if flags.NArg() == 0 {
@@ -64,28 +67,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		out.printf(out.stderr, "archcheck: unknown mode %q; give design, check, or dsl\n", mode)
 		return out.status(exitUsage)
 	}
-	root, err := os.OpenRoot(*dir)
-	if err != nil {
-		out.printf(out.stderr, "archcheck: open the repository root: %v\n", err)
-		return out.status(exitFailure)
-	}
-	status := runMode(mode, rest, root, *dir, out)
-	if err := root.Close(); err != nil {
-		out.printf(out.stderr, "archcheck: close the repository root: %v\n", err)
-		return out.status(exitFailure)
-	}
-	return status
-}
-
-// runMode runs one mode of the command and returns the exit status.
-func runMode(mode string, args []string, root *os.Root, dir string, out *output) int {
+	repo := os.DirFS(*dir)
 	switch mode {
 	case "design":
-		return out.report(designResult(root))
+		return out.report(designResult(repo))
 	case "check":
-		return out.report(checkResult(root, dir))
+		return out.report(checkResult(repo, *dir))
 	default:
-		return runDSL(root, args, out)
+		return runDSL(repo, *dir, rest, out)
 	}
 }
 
@@ -96,14 +85,15 @@ type result struct {
 	err      error
 }
 
-// designResult checks the model and the design records.
-func designResult(root *os.Root) result {
-	m, findings, err := loadModel(root)
-	if err != nil || m == nil {
+// designResult checks the model and the design records of the repository.
+// The model of the result is nil when the model cannot be read or decoded.
+func designResult(repo fs.FS) result {
+	m, findings, err := loadModel(repo)
+	if m == nil {
 		return result{findings: findings, err: err}
 	}
 	findings = append(findings, architecture.ValidateModel(m, modelFile)...)
-	designs, recordFindings, err := architecture.LoadDesigns(root.FS(), designDir)
+	designs, recordFindings, err := architecture.LoadDesigns(repo, designDir)
 	if err != nil {
 		return result{err: err}
 	}
@@ -113,10 +103,10 @@ func designResult(root *os.Root) result {
 }
 
 // checkResult adds the code checks and the C4 view check to designResult.
-// The directory dir is the same as root, for the Go package loader.
-func checkResult(root *os.Root, dir string) result {
-	r := designResult(root)
-	if r.err != nil || r.model == nil {
+// The directory dir holds the repository, for the Go package loader.
+func checkResult(repo fs.FS, dir string) result {
+	r := designResult(repo)
+	if r.model == nil {
 		return r
 	}
 	graph, err := architecture.LoadGraph(dir)
@@ -124,7 +114,7 @@ func checkResult(root *os.Root, dir string) result {
 		return result{err: err}
 	}
 	r.findings = append(r.findings, architecture.CheckCode(r.model, modelFile, graph)...)
-	view, err := root.ReadFile(dslFile)
+	view, err := fs.ReadFile(repo, dslFile)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return result{err: fmt.Errorf("read the C4 view: %w", err)}
 	}
@@ -140,9 +130,10 @@ func checkResult(root *os.Root, dir string) result {
 }
 
 // loadModel reads and decodes the model. A file that cannot be read is an
-// error, and a model that does not decode is a finding.
-func loadModel(root *os.Root) (*architecture.Model, []architecture.Finding, error) {
-	data, err := root.ReadFile(modelFile)
+// error, and a model that does not decode is a finding. The model is nil in
+// both cases.
+func loadModel(repo fs.FS) (*architecture.Model, []architecture.Finding, error) {
+	data, err := fs.ReadFile(repo, modelFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read the model: %w", err)
 	}
@@ -164,16 +155,17 @@ func parseModel(data []byte) (*architecture.Model, []architecture.Finding) {
 	return m, nil
 }
 
-// runDSL renders the C4 view. With -write, it writes the view file.
-func runDSL(root *os.Root, args []string, out *output) int {
+// runDSL renders the C4 view. With -write, it writes the view file into the
+// repository in directory dir.
+func runDSL(repo fs.FS, dir string, args []string, out *output) int {
 	flags := flag.NewFlagSet("archcheck dsl", flag.ContinueOnError)
 	flags.SetOutput(out.stderr)
 	write := flags.Bool("write", false, "write "+dslFile+" instead of standard output")
 	if err := flags.Parse(args); err != nil {
 		return exitUsage
 	}
-	m, findings, err := loadModel(root)
-	if err == nil && m != nil {
+	m, findings, err := loadModel(repo)
+	if m != nil {
 		findings = architecture.ValidateModel(m, modelFile)
 	}
 	if err != nil || len(findings) > 0 {
@@ -184,7 +176,7 @@ func runDSL(root *os.Root, args []string, out *output) int {
 		out.write(out.stdout, view)
 		return out.status(exitOK)
 	}
-	if err := root.WriteFile(dslFile, view, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, dslFile), view, 0o600); err != nil {
 		out.printf(out.stderr, "archcheck: write the C4 view: %v\n", err)
 		return out.status(exitFailure)
 	}

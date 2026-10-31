@@ -14,9 +14,10 @@ func pkg(dir string, main bool, file File) Package {
 func TestCheckCode(t *testing.T) {
 	core := testModule + "/internal/core"
 	tests := []struct {
-		name  string
-		graph Graph
-		want  []Finding
+		name   string
+		change func(m *Model)
+		graph  Graph
+		want   []Finding
 	}{
 		{
 			name: "clean code",
@@ -51,6 +52,68 @@ func TestCheckCode(t *testing.T) {
 					Fix:     "Write the package, or remove it from the model in a design step.",
 				},
 			},
+		},
+		{
+			name: "unowned package with files before an owned package",
+			graph: Graph{Module: testModule, Packages: []Package{
+				{Path: testModule + "/internal/aaa", Dir: "internal/aaa", Files: []File{{Name: "internal/aaa/a.go"}}},
+				pkg("internal/core", false, File{Name: "internal/core/core.go", Symbols: []Symbol{{Name: "println", Line: 2}}}),
+				pkg("internal/feature", false, File{Name: "internal/feature/f.go"}),
+			}},
+			want: []Finding{
+				{
+					Location: "internal/aaa", Rule: RulePackageOwner,
+					Message: `package "example.com/repo/internal/aaa" has no component`,
+					Fix:     "Add the package to the packages of a component in architecture/model.yaml, in a design step (docs/development/designs/README.md).",
+				},
+				quietFinding("internal/core/core.go:2", "use of println"),
+			},
+		},
+		{
+			name: "unread paths",
+			graph: Graph{
+				Module: testModule,
+				Packages: []Package{
+					pkg("internal/core", false, File{Name: "internal/core/core.go"}),
+					pkg("internal/feature", false, File{Name: "internal/feature/f.go"}),
+				},
+				Unread: []string{"internal/core/gen.go", "locked"},
+			},
+			want: []Finding{unreadFinding("internal/core/gen.go"), unreadFinding("locked")},
+		},
+		{
+			name: "import inside one component",
+			change: func(m *Model) {
+				m.Components[0].Packages = append(m.Components[0].Packages, testModule+"/internal/core/sub")
+			},
+			graph: Graph{Module: testModule, Packages: []Package{
+				pkg("internal/core", false, File{Name: "internal/core/core.go", Imports: []Import{
+					{Path: testModule + "/internal/core/sub", Module: testModule, Line: 3},
+				}}),
+				pkg("internal/core/sub", false, File{Name: "internal/core/sub/sub.go"}),
+				pkg("internal/feature", false, File{Name: "internal/feature/f.go"}),
+			}},
+		},
+		{
+			name: "dependency of a component with one permitted dependency",
+			change: func(m *Model) {
+				m.Components = append(m.Components, Component{
+					ID: "extra", Container: "library", Description: "Extra.",
+					Packages: []string{testModule + "/internal/extra"},
+				})
+			},
+			graph: Graph{Module: testModule, Packages: []Package{
+				pkg("internal/core", false, File{Name: "internal/core/core.go"}),
+				pkg("internal/extra", false, File{Name: "internal/extra/e.go"}),
+				pkg("internal/feature", false, File{Name: "internal/feature/f.go", Imports: []Import{
+					{Path: testModule + "/internal/extra", Module: testModule, Line: 5},
+				}}),
+			}},
+			want: []Finding{{
+				Location: "internal/feature/f.go:5", Rule: RuleComponentDependency,
+				Message: `component "feature" imports "example.com/repo/internal/extra" of component "extra", but the model does not permit this dependency`,
+				Fix:     `Use a component that "feature" may depend on (core), or add the dependency "feature" -> "extra" to the model in a design step.`,
+			}},
 		},
 		{
 			name: "import of a package without an owner",
@@ -137,11 +200,24 @@ func TestCheckCode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := SortFindings(CheckCode(validModel(), "model.yaml", tt.graph))
+			m := validModel()
+			if tt.change != nil {
+				tt.change(m)
+			}
+			got := SortFindings(CheckCode(m, "model.yaml", tt.graph))
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("CheckCode() mismatch (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func unreadFinding(location string) Finding {
+	return Finding{
+		Location: location,
+		Rule:     RuleUnreadPath,
+		Message:  "the check cannot read this path, so the rules of the model do not apply to it",
+		Fix:      "Remove the build constraint or the cgo code, or make the directory readable. If the code needs them, change tools/archcheck in a design step so that the check reads the path.",
 	}
 }
 

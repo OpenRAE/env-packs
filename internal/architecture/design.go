@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -85,8 +86,7 @@ func LoadDesigns(fsys fs.FS, dir string) ([]Design, []Finding, error) {
 			continue
 		}
 		file := path.Join(dir, e.Name())
-		number, ok := designNumber(e.Name())
-		if !ok || !e.Type().IsRegular() {
+		if !e.Type().IsRegular() || !designName.MatchString(e.Name()) {
 			findings = append(findings, designFinding(file, "is not a design record file named NNNN-slug.md"))
 			continue
 		}
@@ -100,7 +100,7 @@ func LoadDesigns(fsys fs.FS, dir string) ([]Design, []Finding, error) {
 			continue
 		}
 		d.Path = file
-		findings = append(findings, checkDesignHeader(d, number)...)
+		findings = append(findings, checkDesignHeader(d)...)
 		designs = append(designs, d)
 	}
 	slices.SortFunc(designs, func(a, b Design) int { return cmp.Compare(a.Number, b.Number) })
@@ -125,23 +125,16 @@ func ParseDesign(data []byte) (Design, error) {
 	return d, nil
 }
 
-// designNumber returns the number of a design record file named NNNN-slug.md.
-func designNumber(name string) (int, bool) {
-	stem, ok := strings.CutSuffix(name, ".md")
-	if !ok || len(stem) < 6 || stem[4] != '-' || !validID(stem[5:]) {
-		return 0, false
-	}
-	n, err := strconv.Atoi(stem[:4])
-	if err != nil || n < 1 || strings.Trim(stem[:4], "0123456789") != "" {
-		return 0, false
-	}
-	return n, true
-}
+// designName matches the file name of a design record, NNNN-slug.md: four
+// digits, a hyphen, an identifier, and the extension.
+var designName = regexp.MustCompile(`^\d{4}-` + idExpr + `\.md$`)
 
-func checkDesignHeader(d Design, number int) []Finding {
+// checkDesignHeader checks the front matter of a record. The number must
+// agree with the file name; CheckDesigns checks the sequence of the numbers.
+func checkDesignHeader(d Design) []Finding {
 	var findings []Finding
-	if d.Number != number {
-		findings = append(findings, designFinding(d.Path, fmt.Sprintf("has design number %d, but its file name has %d", d.Number, number)))
+	if prefix := fmt.Sprintf("%04d-", d.Number); !strings.HasPrefix(path.Base(d.Path), prefix) {
+		findings = append(findings, designFinding(d.Path, fmt.Sprintf("has design number %d, but its file name does not start with %s", d.Number, prefix)))
 	}
 	if d.Issue <= 0 {
 		findings = append(findings, designFinding(d.Path, "names no GitHub issue"))

@@ -138,6 +138,23 @@ func TestValidateModel(t *testing.T) {
 			want:   []string{"the system has no name"},
 		},
 		{
+			name:   "system identifier",
+			change: func(m *Model) { m.System.ID = "System" },
+			want: []string{
+				`system identifier "System" must be lowercase words joined by hyphens`,
+				`relationship "author" -> "system" must connect the system, people, or external systems`,
+				`relationship "system" -> "upstream" must connect the system, people, or external systems`,
+			},
+		},
+		{
+			name:   "external system identifier",
+			change: func(m *Model) { m.ExternalSystems[0].ID = "author" },
+			want: []string{
+				`identifier "author" is used more than once`,
+				`relationship "system" -> "upstream" must connect the system, people, or external systems`,
+			},
+		},
+		{
 			name:   "identifier format",
 			change: func(m *Model) { m.People[0].ID = "Author" },
 			want: []string{
@@ -217,7 +234,50 @@ func TestValidateModel(t *testing.T) {
 		{
 			name:   "cycle",
 			change: func(m *Model) { m.Components[0].DependsOn = []string{"feature"} },
-			want:   []string{`the dependencies of component "core" form a cycle`},
+			want: []string{
+				`the dependencies of component "core" form a cycle`,
+				`the dependencies of component "feature" form a cycle`,
+			},
+		},
+		{
+			name: "cycle of three components",
+			change: func(m *Model) {
+				m.Components = append(m.Components,
+					Component{ID: "c1", Container: "tools", Description: "C1.", DependsOn: []string{"c2"}},
+					Component{ID: "c2", Container: "tools", Description: "C2.", DependsOn: []string{"c3"}},
+					Component{ID: "c3", Container: "tools", Description: "C3.", DependsOn: []string{"c1"}},
+				)
+			},
+			want: []string{
+				`the dependencies of component "c1" form a cycle`,
+				`the dependencies of component "c2" form a cycle`,
+				`the dependencies of component "c3" form a cycle`,
+			},
+		},
+		{
+			name: "dependency on a cycle",
+			change: func(m *Model) {
+				m.Components = append(m.Components,
+					Component{ID: "top", Container: "tools", Description: "Top.", DependsOn: []string{"c1"}},
+					Component{ID: "c1", Container: "tools", Description: "C1.", DependsOn: []string{"c2"}},
+					Component{ID: "c2", Container: "tools", Description: "C2.", DependsOn: []string{"c1"}},
+				)
+			},
+			want: []string{
+				`the dependencies of component "c1" form a cycle`,
+				`the dependencies of component "c2" form a cycle`,
+			},
+		},
+		{
+			name: "diamond",
+			change: func(m *Model) {
+				m.Components = append(m.Components,
+					Component{ID: "top", Container: "tools", Description: "Top.", DependsOn: []string{"left", "right"}},
+					Component{ID: "left", Container: "tools", Description: "Left.", DependsOn: []string{"base"}},
+					Component{ID: "right", Container: "tools", Description: "Right.", DependsOn: []string{"base"}},
+					Component{ID: "base", Container: "tools", Description: "Base."},
+				)
+			},
 		},
 		{
 			name:   "invalid module",
@@ -243,6 +303,14 @@ func TestValidateModel(t *testing.T) {
 			name:   "rule with unknown exception",
 			change: func(m *Model) { m.Rules[0].ExceptComponents = []string{"missing"} },
 			want:   []string{`rule "quiet" names unknown component "missing"`},
+		},
+		{
+			name:   "rule that forbids only imports",
+			change: func(m *Model) { m.Rules[0].ForbidSymbols = nil },
+		},
+		{
+			name:   "rule that forbids only symbols",
+			change: func(m *Model) { m.Rules[0].ForbidImports = nil },
 		},
 		{
 			name: "rule that forbids nothing",
@@ -318,8 +386,9 @@ func TestModelOwnersAndComponent(t *testing.T) {
 
 func TestValidID(t *testing.T) {
 	tests := map[string]bool{
-		"a": true, "pack-fs": true, "a1-b2": true, "": false, "1a": false, "A": false,
-		"a-": false, "a--b": false, "a_b": false, "-a": false, "a.b": false,
+		"a": true, "z": true, "pack-fs": true, "a1-b2": true, "z9": true, "a-1": true, "a0-9z": true,
+		"": false, "1a": false, "A": false, "aB": false, "a-": false, "a--b": false, "a_b": false,
+		"-a": false, "a.b": false, "a\n": false,
 	}
 	for id, want := range tests {
 		if got := validID(id); got != want {
@@ -336,6 +405,27 @@ func TestValidModulePath(t *testing.T) {
 	for path, want := range tests {
 		if got := validModulePath(path); got != want {
 			t.Errorf("validModulePath(%q) = %v, want %v", path, got, want)
+		}
+	}
+}
+
+func TestCutLast(t *testing.T) {
+	tests := []struct {
+		s, sep        string
+		before, after string
+		found         bool
+	}{
+		{s: "a.b.c", sep: ".", before: "a.b", after: "c", found: true},
+		{s: ".a", sep: ".", before: "", after: "a", found: true},
+		{s: "a.", sep: ".", before: "a", after: "", found: true},
+		{s: "a::b", sep: "::", before: "a", after: "b", found: true},
+		{s: "abc", sep: ".", before: "abc", after: "", found: false},
+	}
+	for _, tt := range tests {
+		before, after, found := cutLast(tt.s, tt.sep)
+		if before != tt.before || after != tt.after || found != tt.found {
+			t.Errorf("cutLast(%q, %q) = %q, %q, %v, want %q, %q, %v",
+				tt.s, tt.sep, before, after, found, tt.before, tt.after, tt.found)
 		}
 	}
 }

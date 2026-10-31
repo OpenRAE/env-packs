@@ -88,7 +88,15 @@ The code checks report these findings:
 - a package that the model names but the code does not have;
 - an import of another component that the model does not permit;
 - an import of an external module that the component may not use;
-- an import or a symbol that a rule forbids.
+- an import or a symbol that a rule forbids;
+- a path that matches `./...` but that the checker cannot read: a Go file
+  that build constraints exclude or that uses cgo, or a directory that it
+  cannot list.
+
+`go/packages` reads one build configuration, and it does not return a
+directory whose files the build constraints all exclude. So the checker also
+walks the module tree with the skip rules of the go command. Each Go file that
+it finds must be in the loaded packages, or the check fails.
 
 Each finding gives the file and line, the rule, and a fix-it message. The
 checker reports every finding and exits with status 1 when there is one. It has

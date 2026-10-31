@@ -3,7 +3,6 @@ package architecture
 import (
 	"flag"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -31,17 +30,33 @@ func TestRenderDSL(t *testing.T) {
 	}
 }
 
-func TestRenderDSLWithoutRelationships(t *testing.T) {
-	m := &Model{
-		System:     Element{ID: "system", Name: "System", Description: "The system."},
-		Containers: []Container{{ID: "app", Name: "App", Technology: "Go", Description: "The app."}},
-	}
-	want := `workspace "System" "The system." {
+func TestRenderDSLSmallModels(t *testing.T) {
+	system := Element{ID: "system", Name: "System", Description: "The system."}
+	app := Container{ID: "app", Name: "App", Technology: "Go", Description: "The app."}
+	tests := []struct {
+		name  string
+		model *Model
+		want  string
+	}{
+		{
+			name: "no relationships",
+			model: &Model{
+				System: system,
+				Containers: []Container{
+					{ID: "docs", Name: "Docs", Technology: "Markdown", Description: "The docs."},
+					app,
+				},
+				Components: []Component{{ID: "core", Container: "app", Description: "The core."}},
+			},
+			want: `workspace "System" "The system." {
     !identifiers hierarchical
 
     model {
         system = softwareSystem "System" "The system." {
-            app = container "App" "The app." "Go"
+            docs = container "Docs" "The docs." "Markdown"
+            app = container "App" "The app." "Go" {
+                core = component "core" "The core." "Go"
+            }
         }
     }
 
@@ -54,29 +69,61 @@ func TestRenderDSLWithoutRelationships(t *testing.T) {
             include *
             autoLayout lr
         }
+        component system.app "components-app" {
+            include *
+            autoLayout lr
+        }
     }
 }
-`
-	if diff := cmp.Diff(want, string(RenderDSL(m))); diff != "" {
-		t.Errorf("RenderDSL() mismatch (-want +got):\n%s", diff)
-	}
-}
+`,
+		},
+		{
+			name: "dependencies only",
+			model: &Model{
+				System:     system,
+				Containers: []Container{app},
+				Components: []Component{
+					{ID: "a", Container: "app", Description: "A.", DependsOn: []string{"missing", "b"}},
+					{ID: "b", Container: "app", Description: "B."},
+				},
+			},
+			want: `workspace "System" "The system." {
+    !identifiers hierarchical
 
-func TestRenderDSLDependenciesOnly(t *testing.T) {
-	m := &Model{
-		System:     Element{ID: "system", Name: "System", Description: "The system."},
-		Containers: []Container{{ID: "app", Name: "App", Technology: "Go", Description: "The app."}},
-		Components: []Component{
-			{ID: "a", Container: "app", Description: "A.", DependsOn: []string{"b", "missing"}},
-			{ID: "b", Container: "app", Description: "B."},
+    model {
+        system = softwareSystem "System" "The system." {
+            app = container "App" "The app." "Go" {
+                a = component "a" "A." "Go"
+                b = component "b" "B." "Go"
+            }
+        }
+
+        system.app.a -> system.app.b "Depends on"
+    }
+
+    views {
+        systemContext system "context" {
+            include *
+            autoLayout lr
+        }
+        container system "containers" {
+            include *
+            autoLayout lr
+        }
+        component system.app "components-app" {
+            include *
+            autoLayout lr
+        }
+    }
+}
+`,
 		},
 	}
-	got := string(RenderDSL(m))
-	want := "        }\n\n        system.app.a -> system.app.b \"Depends on\"\n    }\n"
-	if !strings.Contains(got, want) {
-		t.Errorf("RenderDSL() = %q, want it to contain %q", got, want)
-	}
-	if strings.Contains(got, "missing") {
-		t.Errorf("RenderDSL() = %q, want no relationship to the unknown component", got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := cmp.Diff(tt.want, string(RenderDSL(tt.model))); diff != "" {
+				t.Errorf("RenderDSL() mismatch (-want +got):\n%s", diff)
+			}
+		})
 	}
 }

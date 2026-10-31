@@ -6,6 +6,10 @@ type Graph struct {
 	Module string
 	// Packages are the packages of the module, each with its test files.
 	Packages []Package
+	// Unread are the paths that match the pattern ./..., but that the checks
+	// cannot read: the Go files that build constraints exclude or that use
+	// cgo, and the directories that cannot be listed.
+	Unread []string
 }
 
 // A Package is one package of the module.
