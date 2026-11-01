@@ -16,7 +16,7 @@ from urllib.parse import quote
 from raes_contracts.associated_artifacts import AssociatedArtifactValidationLimits
 from raes_contracts.contracts import AssociatedArtifactManifestModel, ExperimentArtifactRefModel
 from raes_contracts.associated_artifacts import associated_artifact_set_digest
-from raes.artifact_requirements import ArtifactIdentity
+from raes_contracts.artifact_identity import ArtifactIdentity
 
 from raes_env_packs import (
     PackDigestError,

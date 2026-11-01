@@ -24,7 +24,7 @@ classifiers = [
 # restatement, and the gate is fail-closed, so RAES cannot be optional. The
 # floor is the oldest RAES release that supplies every RAES API this package
 # uses. requirements/runtime.txt and uv.lock record the exact version CI tests.
-dependencies = ["PyYAML>=6", "raes>=10.2.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
+dependencies = ["PyYAML>=6", "raes>=11.0.0,<12", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
 
 [project.optional-dependencies]
 test = ["bcrypt==5.0.0"]

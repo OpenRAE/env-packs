@@ -29,12 +29,11 @@ from typing import get_args
 from urllib.parse import parse_qsl, urlsplit
 
 from raes.artifact_requirements import (
-    ArtifactIdentity,
-    ArtifactMechanismProfile,
     ArtifactRequirement,
     ArtifactSatisfactionRoute,
     Source,
 )
+from raes_contracts.artifact_identity import ArtifactIdentity, ArtifactMechanismProfile
 from raes_contracts.addressing import (
     PLAN_ADDRESS_ROOT_BY_DOMAIN,
     render_compiled_address,
