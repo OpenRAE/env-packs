@@ -3124,6 +3124,39 @@ assertions:
   suricata-login-sqli-detected:
     proposition: suricata-login-sqli-detected
     role: postcondition
+action_contracts:
+  red-mcp-tool-call:
+    semantic_version: 1.0.0
+    lifecycle_state: active
+    behavioral_granularity: atomic
+    procedure_basis: One call to an operator-approved red-team MCP tool from the Kali workstation.
+    realization_profile: backend-declared
+    fidelity_claim: Records one admitted red participant tool call and its terminal outcome. It does not interpret the call's arguments or effects.
+    preconditions:
+      - precondition_id: authority-in-scope
+        precondition_class: authority
+        description: The red participant acts within its authority scope.
+    effects:
+      - effect_id: tool-call-effect
+        effect_class: unknown_effect
+        description: The effects of one red-team MCP tool call. The backend does not classify them.
+    failure_classes: [backend_error, unknown]
+  blue-mcp-tool-call:
+    semantic_version: 1.0.0
+    lifecycle_state: active
+    behavioral_granularity: atomic
+    procedure_basis: One call to an operator-approved blue-team MCP tool from the SOC workstation.
+    realization_profile: backend-declared
+    fidelity_claim: Records one admitted blue participant tool call and its terminal outcome. It does not interpret the call's arguments or effects.
+    preconditions:
+      - precondition_id: authority-in-scope
+        precondition_class: authority
+        description: The blue participant acts within its authority scope.
+    effects:
+      - effect_id: tool-call-effect
+        effect_class: unknown_effect
+        description: The effects of one blue-team MCP tool call. The backend does not classify them.
+    failure_classes: [backend_error, unknown]
 observation_boundaries:
   red-participant-study-view:
     projection_basis: governed study instructions delivered to the red participant
@@ -3374,6 +3407,7 @@ agents:
     description: Claude Code red-team participant working from the Kali host.
     authority_anchors: [entities.red-team]
     operating_scope: [nodes.kali, nodes.webapp]
+    actions: [red-mcp-tool-call]
     observation_boundaries: [red-participant-study-view]
     interactive_access:
       kali-ssh:
@@ -3384,6 +3418,7 @@ agents:
     description: Claude Code blue-team participant using the defensive stdio MCP tools from the SOC workstation.
     authority_anchors: [entities.blue-team]
     operating_scope: [nodes.soc-workstation, nodes.wazuh-manager, nodes.suricata, nodes.webapp]
+    actions: [blue-mcp-tool-call]
     observation_boundaries: [blue-participant-study-view]
     interactive_access:
       soc-workstation-ssh:
@@ -3498,6 +3533,7 @@ behavior_specifications:
     lifecycle_state: active
     participant_refs: [red-team-operator]
     participant_role_refs: [red]
+    action_contract_refs: [red-mcp-tool-call]
     observation_boundary_refs: [red-participant-study-view]
     authority_scope_refs: [nodes.kali, nodes.webapp]
     behavior_mode: mixed-control
@@ -3676,6 +3712,7 @@ behavior_specifications:
     lifecycle_state: active
     participant_refs: [blue-team-operator]
     participant_role_refs: [blue]
+    action_contract_refs: [blue-mcp-tool-call]
     observation_boundary_refs: [blue-participant-study-view]
     authority_scope_refs: [nodes.soc-workstation, nodes.wazuh-manager, nodes.suricata, nodes.webapp]
     behavior_mode: mixed-control
