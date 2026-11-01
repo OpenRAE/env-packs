@@ -11,6 +11,18 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [7.2.0](https://github.com/OpenRAE/env-packs/compare/v7.1.0...v7.2.0) (2026-11-01)
+
+
+### Features
+
+* **packs:** declare red and blue tool action contracts in the participant study ([#598](https://github.com/OpenRAE/env-packs/issues/598)) ([bcd0745](https://github.com/OpenRAE/env-packs/commit/bcd0745cf5031cc32ec9aee0c7b80d2dabba65af)), closes [#597](https://github.com/OpenRAE/env-packs/issues/597)
+
+
+### Bug Fixes
+
+* admit pinned local imports in the public consumer check ([#550](https://github.com/OpenRAE/env-packs/issues/550)) ([4529679](https://github.com/OpenRAE/env-packs/commit/45296794fc2dff9a79229db32e5e644f80cc6745))
+
 ## [7.1.0](https://github.com/OpenRAE/env-packs/compare/v7.0.0...v7.1.0) (2026-10-31)
 
 
