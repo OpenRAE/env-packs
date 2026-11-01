@@ -38,7 +38,7 @@ func TestMainProcess(t *testing.T) {
 		wantStderr string
 	}{
 		{args: []string{"-root", dir, "design"}, wantStatus: 0, wantStderr: "archcheck: 0 findings\n"},
-		{args: []string{"lint"}, wantStatus: 2, wantStderr: "archcheck: unknown mode \"lint\"; give design, check, or dsl\n"},
+		{args: []string{"lint"}, wantStatus: 2, wantStderr: "archcheck: unknown mode \"lint\"; give design, check, dsl, or platforms\n"},
 	}
 	for _, tt := range tests {
 		//nolint:gosec // G204 false positive: the command is this test binary, and the test sets each argument.
@@ -75,7 +75,7 @@ func fixtureRepo(t *testing.T) string {
 // the exit status and the output streams.
 func runCommand(args ...string) (status int, stdout, stderr string) {
 	var out, errOut bytes.Buffer
-	status = run(append([]string{"archcheck"}, args...), &out, &errOut)
+	status = run(append([]string{"archcheck"}, args...), os.Environ(), &out, &errOut)
 	return status, out.String(), errOut.String()
 }
 
@@ -85,8 +85,9 @@ func TestRunUsage(t *testing.T) {
 		args       []string
 		wantStderr string
 	}{
-		{name: "no mode", args: nil, wantStderr: "archcheck: give a mode: design, check, or dsl\n"},
-		{name: "unknown mode", args: []string{"lint"}, wantStderr: "archcheck: unknown mode \"lint\"; give design, check, or dsl\n"},
+		{name: "no mode", args: nil, wantStderr: "archcheck: give a mode: design, check, dsl, or platforms\n"},
+		{name: "unknown mode", args: []string{"lint"}, wantStderr: "archcheck: unknown mode \"lint\"; give design, check, dsl, or platforms\n"},
+		{name: "platforms with an argument", args: []string{"-root", "testdata/repo", "platforms", "x"}, wantStderr: "archcheck: platforms takes no arguments\n"},
 		{name: "unknown flag", args: []string{"-color", "check"}, wantStderr: "flag provided but not defined: -color"},
 		{name: "unknown dsl flag", args: []string{"-root", "testdata/repo", "dsl", "-force"}, wantStderr: "flag provided but not defined: -force"},
 	}
@@ -141,13 +142,13 @@ func TestRunFindings(t *testing.T) {
 		{
 			name:       "invalid model",
 			mode:       "design",
-			change:     replaceIn("architecture/model.yaml", "version: 1", "version: 2"),
+			change:     replaceInModel("version: 1", "version: 2"),
 			wantStdout: "architecture/model.yaml: model: version is 2; the only supported version is 1\n",
 		},
 		{
 			name:       "model change without a design record",
 			mode:       "design",
-			change:     replaceIn("architecture/model.yaml", "components:", "test_modules: [example.com/mock]\ncomponents:"),
+			change:     replaceInModel("components:", "test_modules: [example.com/mock]\ncomponents:"),
 			wantStdout: "architecture/model.yaml: design: the model has test module \"example.com/mock\", but no design record adds it\n",
 		},
 		{
@@ -190,6 +191,36 @@ func TestRunFindings(t *testing.T) {
 	}
 }
 
+// TestRunPlatforms checks that the code check reads the code of each platform
+// of the model.
+func TestRunPlatforms(t *testing.T) {
+	dir := fixtureRepo(t)
+	writeFile("doc_linux.go", "//go:build linux\n\npackage repo\n")(t, dir)
+	writeFile("doc_darwin.go", "//go:build darwin\n\npackage repo\n")(t, dir)
+	if status, stdout, stderr := runCommand("-root", dir, "check"); status != 0 || stdout != "" {
+		t.Errorf("run(check) = %d, stdout %q, stderr %q; want 0 and no finding", status, stdout, stderr)
+	}
+	replaceInModel("platforms: [linux/amd64, darwin/arm64]", "platforms: [linux/amd64]")(t, dir)
+	status, stdout, _ := runCommand("-root", dir, "check")
+	want := "doc_darwin.go: unread-path: the check cannot read this path, so the rules of the model do not apply to it\n"
+	if status != 1 || !strings.Contains(stdout, want) {
+		t.Errorf("run(check) for linux only = %d, stdout %q; want 1 and %q", status, stdout, want)
+	}
+}
+
+func TestRunPlatformsMode(t *testing.T) {
+	dir := fixtureRepo(t)
+	status, stdout, stderr := runCommand("-root", dir, "platforms")
+	if status != 0 || stdout != "linux/amd64\ndarwin/arm64\n" || stderr != "" {
+		t.Errorf("run(platforms) = %d, stdout %q, stderr %q; want 0 and the two platforms", status, stdout, stderr)
+	}
+	replaceInModel("version: 1", "version: 3")(t, dir)
+	status, stdout, _ = runCommand("-root", dir, "platforms")
+	if status != 1 || !strings.Contains(stdout, "version is 3") {
+		t.Errorf("run(platforms) with an invalid model = %d, stdout %q; want 1 and the version finding", status, stdout)
+	}
+}
+
 func TestRunFailures(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -224,7 +255,7 @@ func TestRunFailures(t *testing.T) {
 			name:       "code that does not compile",
 			args:       func(dir string) []string { return []string{"-root", dir, "check"} },
 			change:     writeFile("doc.go", "package repo\n\nvar x int = \"text\"\n"),
-			wantStderr: "archcheck: load the packages in ",
+			wantStderr: "archcheck: build linux/amd64: load the packages in ",
 		},
 		{
 			name:       "missing model for dsl",
@@ -270,7 +301,7 @@ func TestRunDSL(t *testing.T) {
 
 func TestRunDSLInvalidModel(t *testing.T) {
 	dir := fixtureRepo(t)
-	replaceIn("architecture/model.yaml", "version: 1", "version: 3")(t, dir)
+	replaceInModel("version: 1", "version: 3")(t, dir)
 	status, stdout, _ := runCommand("-root", dir, "dsl")
 	if status != 1 || !strings.Contains(stdout, "version is 3") {
 		t.Errorf("run(dsl) = %d, stdout %q; want 1 and the version finding", status, stdout)
@@ -314,7 +345,7 @@ func TestRunOutputFailure(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if status := run(tt.args, failingWriter{}, failingWriter{}); status != 3 {
+			if status := run(tt.args, os.Environ(), failingWriter{}, failingWriter{}); status != 3 {
 				t.Errorf("run(%q) with failing output = %d, want 3", tt.args, status)
 			}
 		})
@@ -358,7 +389,10 @@ func writeFile(name, content string) func(t *testing.T, dir string) {
 	}
 }
 
-func replaceIn(name, old, replacement string) func(t *testing.T, dir string) {
+// replaceInModel replaces the first occurrence of old in the model of the
+// repository.
+func replaceInModel(old, replacement string) func(t *testing.T, dir string) {
+	const name = modelFile
 	return func(t *testing.T, dir string) {
 		t.Helper()
 		root := openRoot(t, dir)

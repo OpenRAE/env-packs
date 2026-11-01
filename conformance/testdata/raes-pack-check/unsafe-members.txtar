@@ -1,0 +1,39 @@
+# Each unsafe member is a blocking problem. The JSON envelope names the
+# diagnostic code.
+
+# A symlink.
+mkdir symlink
+symlink symlink/link -> pack.yaml
+exits 1 raes-pack-check --json symlink
+stdout '"code": "filesystem\.unsafe-member"'
+
+# A file with two links.
+mkdir hardlink
+cp file hardlink/a
+exec ln hardlink/a hardlink/b
+exits 1 raes-pack-check --json hardlink
+stdout '"code": "filesystem\.unsafe-member"'
+
+# A special file.
+mkdir special
+exec mkfifo special/pipe
+exits 1 raes-pack-check --json special
+stdout '"code": "filesystem\.unsafe-member"'
+
+# A name that is not NFC.
+exits 1 raes-pack-check --json nfd
+stdout '"code": "filesystem\.unsafe-member"'
+
+# Two names that are equal after case folding. The file systems of macOS fold
+# case by default, so they cannot hold both names.
+[darwin] skip 'macOS file systems fold case by default'
+mkdir case
+cp file case/A
+cp file case/a
+exits 1 raes-pack-check --json case
+stdout '"code": "filesystem\.unsafe-member"'
+
+-- file --
+x
+-- nfd/café --
+x

@@ -19,6 +19,9 @@ type Model struct {
 	Version int `yaml:"version"`
 	// Module is the path of the Go module that the model describes.
 	Module string `yaml:"module"`
+	// Platforms are the release targets, each as "GOOS/GOARCH". The code
+	// check reads the code that each platform builds.
+	Platforms []string `yaml:"platforms"`
 	// System is the software system of the repository.
 	System Element `yaml:"system"`
 	// People are the people who use the system.
@@ -167,6 +170,16 @@ func (v *modelValidator) checkHeader() {
 	}
 	if v.model.System.Name == "" {
 		v.addf("the system has no name")
+	}
+	if len(v.model.Platforms) == 0 {
+		v.addf("the model names no platform")
+	}
+	seen := make(map[string]bool)
+	for _, p := range v.model.Platforms {
+		if !platformPattern.MatchString(p) || seen[p] {
+			v.addf("platform %q is not GOOS/GOARCH or is listed more than once", p)
+		}
+		seen[p] = true
 	}
 }
 
@@ -351,6 +364,9 @@ func (v *modelValidator) checkRuleScope(r Rule) {
 // idExpr matches an identifier: lowercase ASCII words of letters and digits,
 // joined by single hyphens. The first word starts with a letter.
 const idExpr = `[a-z][a-z0-9]*(?:-[a-z0-9]+)*`
+
+// platformPattern matches a platform, "GOOS/GOARCH".
+var platformPattern = regexp.MustCompile(`^[a-z0-9]+/[a-z0-9]+$`)
 
 // idPattern matches an identifier and nothing else.
 var idPattern = regexp.MustCompile(`^` + idExpr + `$`)

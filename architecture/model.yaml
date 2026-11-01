@@ -6,6 +6,15 @@
 version: 1
 module: github.com/OpenRAE/env-packs
 
+# The release targets (ADR 0047). The code check reads the code that each
+# platform builds, so a file that build constraints exclude on one platform is
+# still checked.
+platforms:
+  - linux/amd64
+  - linux/arm64
+  - darwin/amd64
+  - darwin/arm64
+
 system:
   id: env-packs
   name: RAES environment-pack tooling
@@ -67,6 +76,14 @@ components:
     description: The root package of the module.
     packages:
       - github.com/OpenRAE/env-packs
+  - id: packfs
+    container: library
+    description: Reads pack trees through root descriptors, and commits staged trees atomically.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/packfs
+    modules:
+      - golang.org/x/sys
+      - golang.org/x/text
   - id: strict-yaml
     container: library
     description: Decodes exactly one YAML document, and rejects unknown fields.
@@ -191,6 +208,8 @@ rules:
       containers: [library]
       main_packages: true
       test_files: false
+    except_components: [packfs]
+    forbid_imports: [golang.org/x/sys/unix, syscall]
     forbid_symbols:
       - os.Chmod
       - os.Chown

@@ -8,3 +8,38 @@ equivalents:
     reason: >-
       Execute fails only for a defect in the fixed template, and the golden
       test of the view checks the template. No input reaches the panic.
+  - file: internal/packfs/root.go
+    function: ""
+    mutator: numbers/incrementer
+    line: "const noMode = 0"
+    mutated: "const noMode = 1"
+    reason: >-
+      An open without O_CREAT ignores the mode argument, and each open that
+      uses noMode is without O_CREAT.
+  - file: internal/packfs/inventory.go
+    function: walker.names
+    mutator: numbers/incrementer
+    line: "batch, err := dir.Readdirnames(w.maxMembers - w.members + 1)"
+    mutated: "batch, err := dir.Readdirnames(w.maxMembers - w.members + 2)"
+    reason: >-
+      A larger batch only reads more names before the budget check. The check
+      fails the walk after the same number of names, and a walk within the
+      budget lists the same names.
+  - file: internal/packfs/inventory.go
+    function: walker.names
+    mutator: arithmetic/base
+    line: "batch, err := dir.Readdirnames(w.maxMembers - w.members + 1)"
+    mutated: "batch, err := dir.Readdirnames(w.maxMembers + w.members + 1)"
+    reason: >-
+      A larger batch only reads more names before the budget check. The check
+      fails the walk after the same number of names, and a walk within the
+      budget lists the same names.
+  - file: internal/packfs/member.go
+    function: Root.ReadMember
+    mutator: numbers/incrementer
+    line: "data, err := io.ReadAll(io.LimitReader(f, int64(maxBytes)+1))"
+    mutated: "data, err := io.ReadAll(io.LimitReader(f, int64(maxBytes)+2))"
+    reason: >-
+      A read of two bytes past the budget gives the same result as a read of
+      one byte past it: a member within the budget reads in full, and a
+      larger member fails the length check.
