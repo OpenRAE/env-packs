@@ -1,8 +1,9 @@
 // Package schema validates pack documents against the packaged JSON Schemas
 // in full, with a JSON Schema 2020-12 validator (design 0005).
 //
-// Each failure is a [Violation] with a stable code and a field path. A
-// violation never holds a message of the validator or text of the document.
+// Each failure is a diagnostic with the code "schema.<keyword>" and the path
+// of the value as its field (design 0006). A diagnostic never holds a message
+// of the validator or text of the document.
 package schema
 
 import (
@@ -20,6 +21,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 
 	envpacks "github.com/OpenRAE/env-packs"
+	"github.com/OpenRAE/env-packs/internal/diagnostic"
 	"github.com/OpenRAE/env-packs/internal/document"
 )
 
@@ -33,19 +35,6 @@ var errNoID = errors.New("the schema has no $id")
 // its file without ".schema.yaml", for example "provenance".
 type Set struct {
 	schemas map[string]*jsonschema.Schema
-}
-
-// A Violation is one failure of a document against a schema.
-type Violation struct {
-	// Code is the code of the failed keyword: "required" and "unknown" for
-	// a missing and an unknown field, the keyword in lower case words joined
-	// by hyphens for the other keywords, such as "min-length", and "schema"
-	// for a value that a subschema rejects as a whole.
-	Code string
-	// Path is the field of the failure, such as "$.pack.name" or
-	// "$.files[2]". For "required" and "unknown", it ends with the name of
-	// the missing or the unknown field.
-	Path string
 }
 
 // Compile compiles each packaged schema.
@@ -104,10 +93,17 @@ func schemaID(doc any) (string, error) {
 	return "", errNoID
 }
 
-// Validate returns the violations of value against the schema name, sorted by
-// path and code. The value must come from the document package. The error
-// reports an unknown schema or a failure of the validator.
-func (s *Set) Validate(name string, value any) ([]Violation, error) {
+// Validate returns the failures of value against the schema name, sorted by
+// field and code. The value must come from the document package. The code of
+// a failure is "schema.<keyword>": "schema.required" and "schema.unknown" for
+// a missing and an unknown field, the keyword in lower case words joined by
+// hyphens for the other keywords, such as "schema.min-length", and
+// "schema.schema" for a value that a subschema rejects as a whole. The field
+// is the path of the value, such as "$.pack.name" or "$.files[2]", and it
+// ends with the name of a missing or an unknown field. A failure has no file:
+// the caller adds it, and the prefix of its code, such as "provenance". The
+// error reports an unknown schema or a failure of the validator.
+func (s *Set) Validate(name string, value any) ([]diagnostic.Diagnostic, error) {
 	compiled, ok := s.schemas[name]
 	if !ok {
 		return nil, fmt.Errorf("no schema %q", name)
@@ -119,19 +115,19 @@ func (s *Set) Validate(name string, value any) ([]Violation, error) {
 		// the validator.
 		return nil, err
 	}
-	var violations []Violation
-	collect(verr, value, &violations)
-	slices.SortFunc(violations, func(a, b Violation) int {
-		return cmp.Or(strings.Compare(a.Path, b.Path), strings.Compare(a.Code, b.Code))
+	var failures []diagnostic.Diagnostic
+	collect(verr, value, &failures)
+	slices.SortFunc(failures, func(a, b diagnostic.Diagnostic) int {
+		return cmp.Or(strings.Compare(a.Field(), b.Field()), strings.Compare(a.Code(), b.Code()))
 	})
-	return violations, nil
+	return failures, nil
 }
 
-// collect adds the violations of the leaves of the error tree e.
-func collect(e *jsonschema.ValidationError, value any, violations *[]Violation) {
+// collect adds the failures of the leaves of the error tree e.
+func collect(e *jsonschema.ValidationError, value any, failures *[]diagnostic.Diagnostic) {
 	if len(e.Causes) > 0 {
 		for _, cause := range e.Causes {
-			collect(cause, value, violations)
+			collect(cause, value, failures)
 		}
 		return
 	}
@@ -139,14 +135,14 @@ func collect(e *jsonschema.ValidationError, value any, violations *[]Violation) 
 	switch k := e.ErrorKind.(type) {
 	case *kind.Required:
 		for _, name := range k.Missing {
-			*violations = append(*violations, Violation{Code: "required", Path: at + "." + name})
+			*failures = append(*failures, diagnostic.New("schema.required", "", at+"."+name))
 		}
 	case *kind.AdditionalProperties:
 		for _, name := range k.Properties {
-			*violations = append(*violations, Violation{Code: "unknown", Path: at + "." + name})
+			*failures = append(*failures, diagnostic.New("schema.unknown", "", at+"."+name))
 		}
 	default:
-		*violations = append(*violations, Violation{Code: keywordCode(e.ErrorKind.KeywordPath()), Path: at})
+		*failures = append(*failures, diagnostic.New("schema."+keywordCode(e.ErrorKind.KeywordPath()), "", at))
 	}
 }
 
