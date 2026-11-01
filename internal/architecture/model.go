@@ -379,11 +379,10 @@ func validID(id string) bool {
 // validSymbol reports whether s is a builtin function, or "importpath.Name"
 // with an exported Name.
 func validSymbol(s string) bool {
-	i := strings.LastIndex(s, ".")
-	if i == -1 {
+	importPath, name, found := strings.CutLast(s, ".")
+	if !found {
 		_, ok := types.Universe.Lookup(s).(*types.Builtin)
 		return ok
 	}
-	name := s[i+1:]
-	return module.CheckImportPath(s[:i]) == nil && token.IsIdentifier(name) && token.IsExported(name)
+	return module.CheckImportPath(importPath) == nil && token.IsIdentifier(name) && token.IsExported(name)
 }

@@ -43,3 +43,28 @@ equivalents:
       A read of two bytes past the budget gives the same result as a read of
       one byte past it: a member within the budget reads in full, and a
       larger member fails the length check.
+  - file: internal/document/pyyaml.go
+    function: pyFloatValue
+    mutator: numbers/decrementer
+    line: "digit, _ := strconv.ParseFloat(part, 64) //nolint:errcheck // See the comment above: the result is right for each admitted input."
+    mutated: "digit, _ := strconv.ParseFloat(part, 63) //nolint:errcheck // See the comment above: the result is right for each admitted input."
+    reason: >-
+      ParseFloat reads each bit size other than 32 as 64, so a bit size of 63
+      gives the same result.
+  - file: internal/document/pyyaml.go
+    function: pyFloatValue
+    mutator: numbers/incrementer
+    line: "digit, _ := strconv.ParseFloat(part, 64) //nolint:errcheck // See the comment above: the result is right for each admitted input."
+    mutated: "digit, _ := strconv.ParseFloat(part, 65) //nolint:errcheck // See the comment above: the result is right for each admitted input."
+    reason: >-
+      ParseFloat reads each bit size other than 32 as 64, so a bit size of 65
+      gives the same result.
+  - file: internal/document/yaml.go
+    function: checkScalar
+    mutator: branch/if
+    line: "return nil, fail(CodeSyntax, n.Line)"
+    mutated: "_, _, _ = fail, CodeSyntax, n.Line"
+    reason: >-
+      The walk rejects a scalar with an explicit tag before this decode, and
+      yaml.v3 resolves each scalar without a tag to a value. No input reaches
+      the error.
