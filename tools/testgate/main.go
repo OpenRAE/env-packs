@@ -31,6 +31,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -69,7 +70,7 @@ func main() {
 		exe:         exe,
 		exeErr:      exeErr,
 		tempDir:     os.TempDir(),
-		runner:      testgate.ExecRunner{Env: os.Environ()},
+		runner:      testgate.ExecRunner{Env: withoutMutation(os.Environ())},
 		limitMemory: limitAddressSpace,
 		stdout:      os.Stdout,
 		stderr:      os.Stderr,
@@ -206,6 +207,19 @@ func runExec(ctx context.Context, p process, args []string, out report.Streams) 
 		return fail(out, err)
 	}
 	return status
+}
+
+// mutationPrefix starts the names of the variables that go-mutesting sets for
+// the exec step.
+const mutationPrefix = "MUTATE_"
+
+// withoutMutation returns environ without the variables of go-mutesting. The
+// processes that the gates start do not get them, so a test that starts a
+// process sees the same environment with and without go-mutesting.
+func withoutMutation(environ []string) []string {
+	return slices.DeleteFunc(slices.Clone(environ), func(kv string) bool {
+		return strings.HasPrefix(kv, mutationPrefix)
+	})
 }
 
 // lookup returns the value of the last entry for key in environ, or the empty

@@ -25,6 +25,8 @@ const (
 	ExecEscaped = 1
 	// ExecNotCompiled reports a mutant that does not compile.
 	ExecNotCompiled = 2
+	// ExecFailed reports an exec step that could not complete.
+	ExecFailed = 3
 )
 
 // A Mutant is the input of the exec step for one mutant.
@@ -43,39 +45,39 @@ type Mutant struct {
 // ExecMutant tests one mutant for go-mutesting. It puts the mutated file in
 // the place of the original file, runs go test -json on the package in
 // directory dir, and restores the original file. It returns one of the exec
-// statuses.
+// statuses, and ExecFailed with each error.
 //
 // A mutant that does not change the source, or that changes no line in the
 // changed lines file of dir, is out of scope. ExecMutant reports it as killed
 // without a test run, and the gate counts it as skipped.
 func ExecMutant(ctx context.Context, r Runner, dir string, m Mutant) (status int, err error) {
 	if strings.HasPrefix(m.Package, "-") {
-		return 0, fmt.Errorf("package %q is not a package path", m.Package)
+		return ExecFailed, fmt.Errorf("package %q is not a package path", m.Package)
 	}
 	original, err := readFile(m.Original)
 	if err != nil {
-		return 0, fmt.Errorf("read the original file: %w", err)
+		return ExecFailed, fmt.Errorf("read the original file: %w", err)
 	}
 	mutated, err := readFile(m.Mutated)
 	if err != nil {
-		return 0, fmt.Errorf("read the mutant: %w", err)
+		return ExecFailed, fmt.Errorf("read the mutant: %w", err)
 	}
 	scope, err := inScope(dir, m.Original, string(original), string(mutated))
 	if err != nil {
-		return 0, err
+		return ExecFailed, err
 	}
 	if !scope {
 		return ExecKilled, nil
 	}
 	if writeErr := os.WriteFile(m.Original, mutated, 0o600); writeErr != nil {
-		return 0, fmt.Errorf("put the mutant in place: %w", writeErr)
+		return ExecFailed, fmt.Errorf("put the mutant in place: %w", writeErr)
 	}
 	defer func() { err = errors.Join(err, os.WriteFile(m.Original, original, 0o600)) }()
 	res, err := r.Run(ctx, Command{Dir: dir, Name: "go", Args: []string{
 		"test", "-json", "-count=1", "-timeout=" + m.Timeout.String(), m.Package,
 	}})
 	if err != nil {
-		return 0, err
+		return ExecFailed, err
 	}
 	return execStatus(res, m.Package)
 }
@@ -107,7 +109,7 @@ func inScope(dir, file, original, mutated string) (bool, error) {
 func execStatus(res Result, pkg string) (int, error) {
 	events, err := parseEvents(res.Stdout)
 	if err != nil {
-		return 0, err
+		return ExecFailed, err
 	}
 	if buildFailed(events) {
 		return ExecNotCompiled, nil
@@ -118,5 +120,5 @@ func execStatus(res Result, pkg string) (int, error) {
 	case "pass", "skip":
 		return ExecEscaped, nil
 	}
-	return 0, fmt.Errorf("go test reported no result for %s: exit status %d: %s", pkg, res.ExitCode, bytes.TrimSpace(res.Stderr))
+	return ExecFailed, fmt.Errorf("go test reported no result for %s: exit status %d: %s", pkg, res.ExitCode, bytes.TrimSpace(res.Stderr))
 }

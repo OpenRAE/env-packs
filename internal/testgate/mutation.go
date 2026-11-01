@@ -63,8 +63,7 @@ type MutationResult struct {
 	// NotCompiled counts the tested mutants that do not compile.
 	NotCompiled int
 	// Escaped counts the tested mutants that each test passes with, and
-	// Equivalent counts those of them that a record matches, or that only
-	// change a result beside a non-nil error.
+	// Equivalent counts those of them that a record matches.
 	Escaped, Equivalent int
 	// Packages are the scores of the package directories, sorted by
 	// directory.
@@ -247,7 +246,8 @@ func evaluate(rep mutestingReport, targets []string, changes Changes, records Re
 			return MutationResult{}, err
 		}
 		res.Escaped++
-		if equivalent(m, s, records, matched) {
+		if i := records.match(s, matched); i >= 0 {
+			matched[i] = true
 			res.Equivalent++
 			pkgs.of(s.File).Equivalent++
 			continue
@@ -260,17 +260,6 @@ func evaluate(rep mutestingReport, targets []string, changes Changes, records Re
 		res.Findings = append(res.Findings, staleRecords(records, matched)...)
 	}
 	return res, nil
-}
-
-// equivalent reports whether a record matches the survivor s of mutant m, or
-// whether m only changes a result beside a non-nil error. It marks the
-// matched record.
-func equivalent(m mutant, s Survivor, records Records, matched []bool) bool {
-	if i := records.match(s); i >= 0 {
-		matched[i] = true
-		return true
-	}
-	return errorContract(m, s.Start)
 }
 
 // inGate reports whether the gate tests the mutant: it changes the source,

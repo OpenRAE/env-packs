@@ -133,21 +133,21 @@ has no test file with the same name, also when other test files cover it.
 
 ### Equivalent mutants
 
-An equivalent mutant changes no behavior that a test can observe. The gate
-knows one kind of equivalent mutant by a rule, and `mutation.yaml` records the
-others.
+An equivalent mutant changes no behavior that a test can observe.
+`mutation.yaml` records each one with six values: the file, the function, the
+mutator, the first changed line, that line in the mutant, and the reason.
 
-- The rule: a numbers mutant that changes only a result before the last
-  result of a `return` statement, where the last result is not `nil`, and the
-  function has the last result type `error`. Go leaves the other results
-  unspecified when the error is not nil, so a test that checks them would
-  rely on unspecified behavior. In the first run of the gate on its own code,
-  40 of 66 survivors were of this kind.
-- `mutation.yaml` records each other equivalent mutant: the file, the
-  function, the mutator, the text of the first changed line, and the reason.
-  The gate matches a record by these values and not by the line number, so a
-  record stays valid when lines move. The reason must tell why no test can
-  observe the change.
+- The gate matches a record by these values and not by the line number, so a
+  record stays valid when lines move.
+- A record covers one mutant, so a second identical mutant needs its own
+  record. A record that names the mutated text cannot hide another mutation
+  of the same line.
+- The reason must tell why no test can observe the change.
+- The gate has no automatic rule. An earlier rule took each numbers mutant of
+  a result beside a non-nil error as equivalent. A review found it unsound: a
+  variable such as `err` can be nil, and a function can document a partial
+  result. The gate code returns `ExecFailed` with each error instead of a
+  number.
 
 ### The regression proof
 
@@ -218,7 +218,8 @@ with `go test`, as the other CI jobs do.
 | A malformed diff makes the gate skip changed lines. | git to gate | `go-gitdiff` rejects a diff whose hunk headers or line counts do not agree. | `TestParseDiffErrors`. |
 | A mutant allocates memory without end and stops the machine. | Mutant to host | Each test process of a mutant has an address space limit, and the tests of a mutant have a time limit. | `TestRunExecMemory`. |
 | A mutant that does not compile counts as killed and hides an untested statement. | go-mutesting to gate | The exec step reads the `build-fail` event of `go test -json` and reports the mutant as not compiled. | `TestExecStatus`. |
-| A record in `mutation.yaml` hides a real survivor. | Change to gate | Each record needs a reason, and review checks it. The weekly run reports each record that matches no mutant. | `TestRecordsCheck`, `TestMutationAll`. |
+| A record in `mutation.yaml` hides a real survivor. | Change to gate | A record names the mutated text and covers one mutant. It needs a reason, and review checks it. The weekly run reports each record that matches no mutant. | `TestRecordsMatch`, `TestEvaluateOneRecordPerMutant`, `TestMutationAll`. |
+| A test that starts a process reads the variables of go-mutesting and fails for a reason other than the mutant, which counts as a kill. | Exec step to tests | The gates start each process without the `MUTATE_` variables. | `TestWithoutMutation`, `TestMainProcess`. |
 | A regression test that skips, or does not compile, passes the proof. | Change to gate | Only a test failure on the merge base proves the test. | `TestRegression`, `TestRegressionBuildFailure`. |
 
 Residual risk: the gates run the tests of the pull request, as the `go` job

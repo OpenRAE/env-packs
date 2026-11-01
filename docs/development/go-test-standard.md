@@ -96,15 +96,8 @@ before you run it.
 
 ## Equivalent mutants
 
-An equivalent mutant changes no behavior that a test can observe.
-
-The gate knows one kind by a rule. A numbers mutant that changes only a result
-beside a non-nil error is equivalent: Go leaves the other results unspecified
-when a function returns an error. The rule applies to a `return` statement in
-a function whose last result has the type `error`, when the last result is not
-`nil`. Do not write tests for those results.
-
-Record each other equivalent mutant in `mutation.yaml`:
+An equivalent mutant changes no behavior that a test can observe. Record each
+equivalent mutant in `mutation.yaml`:
 
 ```yaml
 version: 1
@@ -113,6 +106,7 @@ equivalents:
     function: Parse
     mutator: expression/comparison
     line: if i < 0 {
+    mutated: if i <= 0 {
     reason: >-
       A leading separator is invalid on both paths, so the result is the
       same when i is 0.
@@ -121,9 +115,14 @@ equivalents:
 - `function` is the name of the function, `Type.Method` for a method, or
   empty outside a function.
 - `line` is the text of the first changed line, without leading and trailing
-  space. The finding of the gate shows it.
+  space. `mutated` is the text of that line in the mutant. The finding of the
+  gate shows both.
+- A record covers one mutant. Two identical mutants need two records.
 - `reason` tells why no test can observe the change. "The test is hard to
   write" is not a reason.
+- A result beside a non-nil error is not equivalent by default, because a
+  function can document a partial result. Return a named value with the
+  error, such as `ExecFailed`, when no caller reads the result.
 - The weekly run reports each record that matches no mutant. Remove such a
   record.
 

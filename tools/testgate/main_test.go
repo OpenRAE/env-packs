@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/OpenRAE/env-packs/internal/testgate"
+	"github.com/google/go-cmp/cmp"
 )
 
 // mainEnv is the environment variable that makes the test binary run the
@@ -54,7 +55,7 @@ func TestMainProcess(t *testing.T) {
 	for _, tt := range tests {
 		//nolint:gosec // G204 false positive: the command is this test binary, and the test sets each argument.
 		cmd := exec.CommandContext(t.Context(), binary, tt.args...)
-		cmd.Env = append(append(os.Environ(), mainEnv+"=1"), tt.env...)
+		cmd.Env = append(append(withoutMutation(os.Environ()), mainEnv+"=1"), tt.env...)
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		err := cmd.Run()
@@ -320,7 +321,7 @@ func newScoreRepo(t *testing.T) fakeRunner {
 		return fmt.Sprintf(`{"mutator":{"mutatorName":"numbers/incrementer","originalFilePath":%q,"originalSourceCode":%q,"mutatedSourceCode":%q}}`, file, source, mutated)
 	}
 	report := `{"stats":{"totalMutantsCount":2},"killed":[` + mutantJSON("a/a.go") + `],"escaped":[` + mutantJSON("b/b.go") + `]}`
-	records := "version: 1\nequivalents:\n  - file: b/b.go\n    function: F\n    mutator: numbers/incrementer\n    line: return 1\n    reason: R.\n"
+	records := "version: 1\nequivalents:\n  - file: b/b.go\n    function: F\n    mutator: numbers/incrementer\n    line: return 1\n    mutated: return 2\n    reason: R.\n"
 	return fakeRunner{answer: func(c testgate.Command) (testgate.Result, error) {
 		line := c.String()
 		switch {
@@ -359,5 +360,16 @@ func TestRunOutputFailure(t *testing.T) {
 		if status != 3 {
 			t.Errorf("run(%q) with failing output = %d, want 3", args, status)
 		}
+	}
+}
+
+func TestWithoutMutation(t *testing.T) {
+	environ := []string{"PATH=/bin", "MUTATE_TIMEOUT=10", "HOME=/home/u", "MUTATE_PACKAGE=x"}
+	got := withoutMutation(environ)
+	if diff := cmp.Diff([]string{"PATH=/bin", "HOME=/home/u"}, got); diff != "" {
+		t.Errorf("withoutMutation() mismatch (-want +got):\n%s", diff)
+	}
+	if environ[1] != "MUTATE_TIMEOUT=10" {
+		t.Errorf("withoutMutation() changed its input: %q", environ)
 	}
 }

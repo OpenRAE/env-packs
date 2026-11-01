@@ -40,6 +40,7 @@ equivalents:
     function: F
     mutator: numbers/incrementer
     line: return 1
+    mutated: return 2
     reason: The caller ignores the value.
 `
 
@@ -249,6 +250,7 @@ func TestMutationAll(t *testing.T) {
     function: G
     mutator: branch/if
     line: if y {
+    mutated: if y {}
     reason: Stale.
 `
 	r := g.runner()
@@ -482,5 +484,29 @@ func TestEvaluatePackages(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, got.Packages); diff != "" {
 		t.Errorf("evaluate() packages mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// TestEvaluateOneRecordPerMutant checks that a record covers one mutant, so
+// that a second identical mutant needs its own record.
+func TestEvaluateOneRecordPerMutant(t *testing.T) {
+	m := escapedMutant("numbers/incrementer", "return 1", "return 2")
+	records, err := ParseRecords([]byte(gateRecords))
+	if err != nil {
+		t.Fatalf("ParseRecords() error = %v", err)
+	}
+	got, err := evaluate(mutestingReport{Escaped: []mutant{m, m}}, []string{"a.go"}, nil, records, true)
+	if err != nil {
+		t.Fatalf("evaluate() error = %v", err)
+	}
+	if got.Equivalent != 1 || len(got.Findings) != 1 || got.Findings[0].Location != "a.go:5" {
+		t.Errorf("evaluate() of two identical mutants with one record = %d equivalent, findings %v; want 1 and one finding at a.go:5",
+			got.Equivalent, got.Findings)
+	}
+	records.Equivalents = append(records.Equivalents, records.Equivalents[0])
+	got, err = evaluate(mutestingReport{Escaped: []mutant{m, m}}, []string{"a.go"}, nil, records, true)
+	if err != nil || got.Equivalent != 2 || len(got.Findings) != 0 {
+		t.Errorf("evaluate() of two identical mutants with two records = %d equivalent, findings %v, %v; want 2 and none",
+			got.Equivalent, got.Findings, err)
 	}
 }

@@ -2,7 +2,6 @@ package testgate
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/OpenRAE/env-packs/internal/strictyaml"
@@ -22,7 +21,8 @@ type Records struct {
 }
 
 // An Equivalent records one equivalent mutant. The gate matches a record by
-// all values except Reason.
+// all values except Reason, and each record covers one mutant. Two identical
+// mutants need two records.
 type Equivalent struct {
 	// File is the path of the file, relative to the repository root.
 	File string `yaml:"file"`
@@ -33,6 +33,9 @@ type Equivalent struct {
 	// Line is the text of the first changed line, without leading and
 	// trailing space.
 	Line string `yaml:"line"`
+	// Mutated is the text of that line in the mutant, without leading and
+	// trailing space.
+	Mutated string `yaml:"mutated"`
 	// Reason tells why no test can observe the change.
 	Reason string `yaml:"reason"`
 }
@@ -47,33 +50,31 @@ func ParseRecords(data []byte) (Records, error) {
 }
 
 // Check returns a finding for each defect of the records: a version other
-// than 1, a record without a file, a mutator, a line, or a reason, and a
-// record that repeats an earlier record.
+// than 1, and a record without a file, a mutator, a line, the mutated line,
+// or a reason.
 func (r Records) Check() []report.Finding {
 	var findings []report.Finding
 	if r.Version != 1 {
 		findings = append(findings, recordFinding(fmt.Sprintf("version is %d; the only supported version is 1", r.Version)))
 	}
-	seen := make(map[Equivalent]bool)
 	for i, e := range r.Equivalents {
-		if e.File == "" || e.Mutator == "" || e.Line == "" || e.Reason == "" {
-			findings = append(findings, recordFinding(fmt.Sprintf("record %d needs a file, a mutator, a line, and a reason", i+1)))
+		if e.File == "" || e.Mutator == "" || e.Line == "" || e.Mutated == "" || e.Reason == "" {
+			findings = append(findings, recordFinding(fmt.Sprintf("record %d needs a file, a mutator, a line, the mutated line, and a reason", i+1)))
 		}
-		key := e
-		key.Reason = ""
-		if seen[key] {
-			findings = append(findings, recordFinding(fmt.Sprintf("record %d repeats an earlier record", i+1)))
-		}
-		seen[key] = true
 	}
 	return findings
 }
 
-// match returns the index of the record of survivor s, or -1.
-func (r Records) match(s Survivor) int {
-	return slices.IndexFunc(r.Equivalents, func(e Equivalent) bool {
-		return e.File == s.File && e.Function == s.Function && e.Mutator == s.Mutator && e.Line == s.Line
-	})
+// match returns the index of the first record of survivor s that no earlier
+// survivor used, or -1.
+func (r Records) match(s Survivor, used []bool) int {
+	for i, e := range r.Equivalents {
+		if !used[i] && e.File == s.File && e.Function == s.Function && e.Mutator == s.Mutator &&
+			e.Line == s.Line && e.Mutated == s.Mutated {
+			return i
+		}
+	}
+	return -1
 }
 
 func recordFinding(message string) report.Finding {
