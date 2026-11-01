@@ -1,0 +1,4 @@
+# The server stops without output when its input ends.
+exits 0 raes-pack-mcp
+! stdout .
+! stderr .

@@ -18,7 +18,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"flag"
@@ -29,13 +28,7 @@ import (
 	"path/filepath"
 
 	"github.com/OpenRAE/env-packs/internal/architecture"
-)
-
-const (
-	exitOK       = 0
-	exitFindings = 1
-	exitUsage    = 2
-	exitFailure  = 3
+	"github.com/OpenRAE/env-packs/internal/report"
 )
 
 // The architecture files, relative to the repository root.
@@ -51,44 +44,34 @@ func main() {
 
 // run runs the command and returns the exit status. Like os.Args, args starts
 // with the program name. A failed write to stdout or stderr changes the
-// status to exitFailure.
+// status to report.StatusFailure.
 func run(args []string, stdout, stderr io.Writer) int {
-	out := output{stdout: bufio.NewWriter(stdout), stderr: bufio.NewWriter(stderr)}
-	status := runMode(args, out)
-	// A bufio.Writer keeps its first write error, and Flush returns it.
-	if err := errors.Join(out.stdout.Flush(), out.stderr.Flush()); err != nil {
-		return exitFailure
-	}
-	return status
+	out := report.NewStreams(stdout, stderr)
+	return out.Flush(runMode(args, out))
 }
 
-// output holds the buffered standard streams.
-type output struct {
-	stdout, stderr *bufio.Writer
-}
-
-func runMode(args []string, out output) int {
+func runMode(args []string, out report.Streams) int {
 	flags := flag.NewFlagSet("archcheck", flag.ContinueOnError)
-	flags.SetOutput(out.stderr)
+	flags.SetOutput(out.Stderr)
 	dir := flags.String("root", ".", "repository `directory`")
 	if err := flags.Parse(args[1:]); err != nil {
-		return exitUsage
+		return report.StatusUsage
 	}
 	if flags.NArg() == 0 {
-		fmt.Fprintf(out.stderr, "archcheck: give a mode: design, check, or dsl\n")
-		return exitUsage
+		fmt.Fprintf(out.Stderr, "archcheck: give a mode: design, check, or dsl\n")
+		return report.StatusUsage
 	}
 	mode, rest := flags.Arg(0), flags.Args()[1:]
 	if mode != "design" && mode != "check" && mode != "dsl" {
-		fmt.Fprintf(out.stderr, "archcheck: unknown mode %q; give design, check, or dsl\n", mode)
-		return exitUsage
+		fmt.Fprintf(out.Stderr, "archcheck: unknown mode %q; give design, check, or dsl\n", mode)
+		return report.StatusUsage
 	}
 	repo := os.DirFS(*dir)
 	switch mode {
 	case "design":
-		return report(out, designResult(repo))
+		return writeResult(out, designResult(repo))
 	case "check":
-		return report(out, checkResult(repo, *dir))
+		return writeResult(out, checkResult(repo, *dir))
 	default:
 		return runDSL(repo, *dir, rest, out)
 	}
@@ -97,7 +80,7 @@ func runMode(args []string, out output) int {
 // result is the outcome of one check run.
 type result struct {
 	model    *architecture.Model
-	findings []architecture.Finding
+	findings []report.Finding
 	err      error
 }
 
@@ -135,7 +118,7 @@ func checkResult(repo fs.FS, dir string) result {
 		return result{err: fmt.Errorf("read the C4 view: %w", err)}
 	}
 	if !bytes.Equal(view, architecture.RenderDSL(r.model)) {
-		r.findings = append(r.findings, architecture.Finding{
+		r.findings = append(r.findings, report.Finding{
 			Location: dslFile,
 			Rule:     architecture.RuleC4View,
 			Message:  "the C4 view differs from the rendered architecture model",
@@ -148,7 +131,7 @@ func checkResult(repo fs.FS, dir string) result {
 // loadModel reads and decodes the model. A file that cannot be read is an
 // error, and a model that does not decode is a finding. The model is nil in
 // both cases.
-func loadModel(repo fs.FS) (*architecture.Model, []architecture.Finding, error) {
+func loadModel(repo fs.FS) (*architecture.Model, []report.Finding, error) {
 	data, err := fs.ReadFile(repo, modelFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read the model: %w", err)
@@ -158,10 +141,10 @@ func loadModel(repo fs.FS) (*architecture.Model, []architecture.Finding, error) 
 }
 
 // parseModel decodes the model. A decode failure is a finding about the model.
-func parseModel(data []byte) (*architecture.Model, []architecture.Finding) {
+func parseModel(data []byte) (*architecture.Model, []report.Finding) {
 	m, err := architecture.ParseModel(data)
 	if err != nil {
-		return nil, []architecture.Finding{{
+		return nil, []report.Finding{{
 			Location: modelFile,
 			Rule:     architecture.RuleModel,
 			Message:  err.Error(),
@@ -173,45 +156,38 @@ func parseModel(data []byte) (*architecture.Model, []architecture.Finding) {
 
 // runDSL renders the C4 view. With -write, it writes the view file into the
 // repository in directory dir.
-func runDSL(repo fs.FS, dir string, args []string, out output) int {
+func runDSL(repo fs.FS, dir string, args []string, out report.Streams) int {
 	flags := flag.NewFlagSet("archcheck dsl", flag.ContinueOnError)
-	flags.SetOutput(out.stderr)
+	flags.SetOutput(out.Stderr)
 	write := flags.Bool("write", false, "write "+dslFile+" instead of standard output")
 	if err := flags.Parse(args); err != nil {
-		return exitUsage
+		return report.StatusUsage
 	}
 	m, findings, err := loadModel(repo)
 	if m != nil {
 		findings = architecture.ValidateModel(m, modelFile)
 	}
 	if err != nil || len(findings) > 0 {
-		return report(out, result{findings: findings, err: err})
+		return writeResult(out, result{findings: findings, err: err})
 	}
 	view := architecture.RenderDSL(m)
 	if !*write {
-		fmt.Fprintf(out.stdout, "%s", view)
-		return exitOK
+		fmt.Fprintf(out.Stdout, "%s", view)
+		return report.StatusOK
 	}
 	if err := os.WriteFile(filepath.Join(dir, dslFile), view, 0o600); err != nil {
-		fmt.Fprintf(out.stderr, "archcheck: write the C4 view: %v\n", err)
-		return exitFailure
+		fmt.Fprintf(out.Stderr, "archcheck: write the C4 view: %v\n", err)
+		return report.StatusFailure
 	}
-	return exitOK
+	return report.StatusOK
 }
 
-// report writes the findings and returns the exit status.
-func report(out output, r result) int {
+// writeResult writes the error or the findings of a run, and returns the exit
+// status.
+func writeResult(out report.Streams, r result) int {
 	if r.err != nil {
-		fmt.Fprintf(out.stderr, "archcheck: %v\n", r.err)
-		return exitFailure
+		fmt.Fprintf(out.Stderr, "archcheck: %v\n", r.err)
+		return report.StatusFailure
 	}
-	findings := architecture.SortFindings(r.findings)
-	for _, f := range findings {
-		fmt.Fprintf(out.stdout, "%s\n", f)
-	}
-	fmt.Fprintf(out.stderr, "archcheck: %d findings\n", len(findings))
-	if len(findings) > 0 {
-		return exitFindings
-	}
-	return exitOK
+	return out.Findings("archcheck", r.findings)
 }

@@ -1,14 +1,18 @@
-# GitHub-native CodeQL static analysis (SAST) for this repository's Python
-# tooling. Complements — does not replace — the SonarCloud scan in ci.yml, and
+# GitHub-native CodeQL static analysis (SAST) for this repository's Python and
+# Go tooling. Complements — does not replace — the SonarCloud scan in ci.yml, and
 # fits the repo's supply-chain posture (SHA-pinned actions; ADR 0004 and
 # ADRs 0015–0017). Results are uploaded to the repository Security tab.
 name: CodeQL
 
+# Pull requests into go-cutover get the Go analysis while the Go port lands
+# there (ADR 0047). The scheduled run analyzes the default branch, which has no
+# Go code until the cutover.
 on:
   pull_request:
     branches:
       - main
       - dev
+      - go-cutover
   schedule:
     # Weekly, Monday 07:23 UTC. Off the top of the hour: GitHub delays
     # scheduled runs queued at :00. Scheduled runs analyze the default
@@ -38,13 +42,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # build-mode: none — Python needs no build to analyze. Add another
-          # entry here to extend CodeQL to a second language.
+          # build-mode: none — Python needs no build to analyze.
           - language: python
             build-mode: none
+          # Go needs a build. The analyze step builds the module with the
+          # toolchain that go.mod pins.
+          - language: go
+            build-mode: autobuild
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1

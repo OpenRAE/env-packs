@@ -29,13 +29,23 @@ raes-pack-release check --all          # pack release gate
 raes-pack-validate --packs-root packs  # hosted first-party packs
 raes-pack-release check --packs-root packs
 python -m compileall src tests         # byte-compile
+make conformance                       # the conformance corpus against Python
 make go-check                          # Go build, vet, and tests (ADR 0047)
 make go-lint                           # Go lint, formatting, and module tidiness
+make go-audit                          # Go module checksums and known vulnerabilities
 make go-arch                           # Go code and design records against the model
+make go-mutation                       # mutation testing on the changed Go lines
+make go-regression                     # each new regression test fails before its fix
+make prose                             # prose of the changed Markdown files
 ```
 
 `make go-fuzz` runs every Go fuzz target for 30 seconds each. CI runs it in
 `fuzz.yml`.
+
+`make go-mutation` and `make go-regression` read only committed code, and they
+compare it with `BASE`, which is `origin/go-cutover` by default. Commit the
+work before you run them. See [the Go test
+standard](docs/development/go-test-standard.md).
 
 A Go change starts with a design step. Write a design record and change the
 architecture model before you write the code. See
@@ -55,9 +65,11 @@ The public documentation is in `docs/public/`. It is the only tree that the
 site publishes. The maintainer records, such as decision records, CI, and
 release mechanics, are in other directories under `docs/`.
 [docs/README.md](docs/README.md) lists them. A new page in `docs/public/`
-becomes public, and a record in any other place does not. Follow the
-[style guide](docs/development/documentation-style-guide.md). The docs build
-treats warnings as errors and is part of the merge gate.
+becomes public, and a record in any other place does not.
+
+Follow the [style guide](docs/development/documentation-style-guide.md). The
+docs build treats warnings as errors and is part of the merge gate. `make
+prose` checks the prose of the changed Markdown files.
 
 ## Open the pull request
 

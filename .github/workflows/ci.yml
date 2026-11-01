@@ -192,8 +192,13 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
+      # The prose gate compares the change with its base, so it needs the full
+      # history.
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -211,6 +216,57 @@ jobs:
 
       - name: Assert the publication boundary
         run: python tools/check_docs_publication_boundary.py docs/public/_build/html
+
+      # Checks the changed Markdown files against the ASD-STE100 rules that a
+      # tool can check (docs/development/documentation-style-guide.md).
+      - name: Install the pinned Vale
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          version: 2026.10.2
+          install_args: aqua:errata-ai/vale
+          cache: false
+
+      - name: Check the prose of the changed Markdown files
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: make prose BASE="$BASE"
+
+  # Runs the conformance corpus against the Python implementation with
+  # `make conformance` (docs/development/designs/0003-conformance-corpus.md).
+  # The corpus starts the installed console scripts.
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            requirements/runtime.txt
+            requirements/build.txt
+
+      - name: Install package
+        run: |
+          # Hash-locked dependency closure and build backend first, then the
+          # package itself, so nothing unpinned can enter the environment (#142).
+          python -m pip install --require-hashes \
+            -r requirements/runtime.txt -r requirements/build.txt
+          python -m pip install --no-deps --no-build-isolation -e .
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Run the conformance corpus against Python
+        run: make conformance
 
   # Builds, vets, and tests the Go code of the port (ADR 0047) with the toolchain
   # that go.mod pins. It runs the same `make go-check` target as a local run, so
@@ -242,6 +298,41 @@ jobs:
           # sonar job never scans stale or absent coverage.
           if-no-files-found: error
           retention-days: 1
+
+  # Verifies the Go modules against go.sum and runs govulncheck with the
+  # version that mise.toml pins, with `make go-audit`. A reachable known
+  # vulnerability fails the job. It retries, because govulncheck reads the
+  # vulnerability database on the network. A real finding fails each attempt.
+  go-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install the pinned govulncheck
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          version: 2026.10.2
+          install_args: go:golang.org/x/vuln/cmd/govulncheck
+          cache: false
+
+      - name: Verify the modules and check for vulnerabilities
+        run: |
+          for i in 1 2 3; do
+            if make go-audit; then exit 0; fi
+            echo "go-audit attempt $i failed; retrying in 10s..."
+            sleep 10
+          done
+          echo "go-audit failed after 3 attempts"
+          exit 1
 
   # Lints the Go code with the golangci-lint version that mise.toml pins and
   # mise.lock verifies, and checks formatting and module tidiness. The action
@@ -289,6 +380,61 @@ jobs:
 
       - name: Check the architecture
         run: make go-arch
+
+  # Mutation testing on the Go lines that the change adds or changes, with
+  # `make go-mutation` (docs/development/go-test-standard.md). The gate needs
+  # the full history for the merge base, and the go-mutesting version that
+  # mise.toml pins. The base is the base commit of the pull request, or the
+  # commit before a push.
+  go-mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install the pinned go-mutesting
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          version: 2026.10.2
+          install_args: go:github.com/avito-tech/go-mutesting/cmd/go-mutesting
+          cache: false
+
+      - name: Run mutation testing on the changed lines
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: make go-mutation BASE="$BASE"
+
+  # Proves that each new regression test fails on the merge base, with
+  # `make go-regression` (docs/development/go-test-standard.md).
+  go-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Prove the regression tests
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: make go-regression BASE="$BASE"
 
   sonar:
     runs-on: ubuntu-latest
@@ -339,7 +485,7 @@ jobs:
   # adding it to `needs` and to the check below (ADR 0029).
   verify:
     runs-on: ubuntu-latest
-    needs: [compile, tests, audit, content, docs, go, go-lint, go-arch]
+    needs: [compile, tests, audit, content, docs, conformance, go, go-lint, go-audit, go-arch, go-mutation, go-regression]
     if: always()
     steps:
       - name: Require every mandatory verification job to pass
@@ -349,12 +495,16 @@ jobs:
           AUDIT: ${{ needs.audit.result }}
           CONTENT: ${{ needs.content.result }}
           DOCS: ${{ needs.docs.result }}
+          CONFORMANCE: ${{ needs.conformance.result }}
           GO: ${{ needs.go.result }}
           GO_LINT: ${{ needs.go-lint.result }}
+          GO_AUDIT: ${{ needs.go-audit.result }}
           GO_ARCH: ${{ needs.go-arch.result }}
+          GO_MUTATION: ${{ needs.go-mutation.result }}
+          GO_REGRESSION: ${{ needs.go-regression.result }}
         run: |
-          echo "compile=$COMPILE tests=$TESTS audit=$AUDIT content=$CONTENT docs=$DOCS go=$GO go-lint=$GO_LINT go-arch=$GO_ARCH"
-          for result in "$COMPILE" "$TESTS" "$AUDIT" "$CONTENT" "$DOCS" "$GO" "$GO_LINT" "$GO_ARCH"; do
+          echo "compile=$COMPILE tests=$TESTS audit=$AUDIT content=$CONTENT docs=$DOCS conformance=$CONFORMANCE go=$GO go-lint=$GO_LINT go-audit=$GO_AUDIT go-arch=$GO_ARCH go-mutation=$GO_MUTATION go-regression=$GO_REGRESSION"
+          for result in "$COMPILE" "$TESTS" "$AUDIT" "$CONTENT" "$DOCS" "$CONFORMANCE" "$GO" "$GO_LINT" "$GO_AUDIT" "$GO_ARCH" "$GO_MUTATION" "$GO_REGRESSION"; do
             if [ "$result" != "success" ]; then
               echo "::error::A mandatory verification job did not succeed; blocking merge."
               exit 1

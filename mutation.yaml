@@ -1,0 +1,10 @@
+version: 1
+equivalents:
+  - file: internal/architecture/c4.go
+    function: RenderDSL
+    mutator: branch/if
+    line: "panic(err)"
+    mutated: "_ = err"
+    reason: >-
+      Execute fails only for a defect in the fixed template, and the golden
+      test of the view checks the template. No input reaches the panic.

@@ -67,16 +67,48 @@ components:
     description: The root package of the module.
     packages:
       - github.com/OpenRAE/env-packs
+  - id: strict-yaml
+    container: library
+    description: Decodes exactly one YAML document, and rejects unknown fields.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/strictyaml
+    modules:
+      - go.yaml.in/yaml/v3
+  - id: report
+    container: repository-tools
+    description: Holds the findings of the repository tools, writes them, and defines the exit statuses of the tools.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/report
   - id: architecture
     container: repository-tools
     description: Checks the code and the design records against this model.
     packages:
       - github.com/OpenRAE/env-packs/internal/architecture
       - github.com/OpenRAE/env-packs/tools/archcheck
+    depends_on:
+      - strict-yaml
+      - report
     modules:
       - golang.org/x/tools
       - golang.org/x/mod
-      - go.yaml.in/yaml/v3
+  - id: test-gates
+    container: repository-tools
+    description: Runs mutation testing on changed lines and proves regression tests.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/testgate
+      - github.com/OpenRAE/env-packs/tools/testgate
+    depends_on:
+      - strict-yaml
+      - report
+    modules:
+      - github.com/bluekeyes/go-gitdiff
+  - id: conformance
+    container: repository-tools
+    description: Runs the conformance corpus against the Python or the Go implementation.
+    packages:
+      - github.com/OpenRAE/env-packs/conformance
+    modules:
+      - github.com/rogpeppe/go-internal
 
 test_modules:
   - github.com/google/go-cmp

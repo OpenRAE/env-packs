@@ -1,0 +1,6 @@
+# The wizard does not write over an existing pack.
+mkdir repo/environments
+exits 0 raes-pack-new demo --repo repo --yes
+exits 1 raes-pack-new demo --repo repo --yes
+! stdout .
+stderr '^error: target already exists: environments/demo$'

@@ -1,0 +1,9 @@
+# An unknown option is an invalid invocation.
+exits 2 raes-pack-issue-skeleton --bogus
+! stdout .
+stderr '^usage: raes-pack-issue-skeleton'
+
+# The command needs the catalog repository. It stops before it reads GitHub.
+exits 1 raes-pack-issue-skeleton
+! stdout .
+stderr '^--repo OWNER/REPOSITORY is required'

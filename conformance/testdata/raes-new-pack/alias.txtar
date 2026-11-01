@@ -1,0 +1,8 @@
+# raes-new-pack is the same command as raes-pack-new.
+exits 0 raes-new-pack demo --preview
+stdout '^pack: demo$'
+! stderr .
+
+exits 2 raes-new-pack
+! stdout .
+stderr 'a pack id is required'

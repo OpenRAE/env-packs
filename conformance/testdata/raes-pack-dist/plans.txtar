@@ -1,0 +1,20 @@
+exits 0 raes-pack-release build --pack $REPO/packs/techvault --out published --publish
+glob REL published/techvault-*
+
+# Verification and publication give applicable plans.
+exits 0 raes-pack-dist verify --pack $REPO/packs/techvault --release $REL
+stdout '^operation: verify  route: repository$'
+! stderr .
+
+exits 0 raes-pack-dist publish --release $REL --repository example/catalog --reference v1
+stdout '^operation: publish  route: oci$'
+! stderr .
+
+# An install without a signature verifier is not applicable, and --apply refuses it.
+exits 1 raes-pack-dist install --pack $REPO/packs/techvault --release $REL --target target
+stdout '^operation: install  route: repository$'
+! stderr .
+
+exits 1 raes-pack-dist install --pack $REPO/packs/techvault --release $REL --target target --apply
+stderr '^raes-pack-dist: plan is not applicable; refusing to apply$'
+! exists target

@@ -11,6 +11,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/OpenRAE/env-packs/internal/report"
+	"github.com/OpenRAE/env-packs/internal/strictyaml"
 )
 
 // DesignReadme is the file in the design directory that is not a record.
@@ -74,13 +77,13 @@ type ModuleRef struct {
 
 // LoadDesigns reads the design records in directory dir of fsys, sorted by
 // number. The findings report files that are not well-formed records.
-func LoadDesigns(fsys fs.FS, dir string) ([]Design, []Finding, error) {
+func LoadDesigns(fsys fs.FS, dir string) ([]Design, []report.Finding, error) {
 	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read design records: %w", err)
 	}
 	var designs []Design
-	var findings []Finding
+	var findings []report.Finding
 	for _, e := range entries {
 		if e.Name() == DesignReadme {
 			continue
@@ -119,7 +122,7 @@ func ParseDesign(data []byte) (Design, error) {
 		return Design{}, errors.New("has no line that ends the YAML front matter")
 	}
 	var d Design
-	if err := decodeStrict(front, &d); err != nil {
+	if err := strictyaml.Decode(front, &d); err != nil {
 		return Design{}, fmt.Errorf("has invalid front matter: %w", err)
 	}
 	return d, nil
@@ -131,8 +134,8 @@ var designName = regexp.MustCompile(`^\d{4}-` + idExpr + `\.md$`)
 
 // checkDesignHeader checks the front matter of a record. The number must
 // agree with the file name; CheckDesigns checks the sequence of the numbers.
-func checkDesignHeader(d Design) []Finding {
-	var findings []Finding
+func checkDesignHeader(d Design) []report.Finding {
+	var findings []report.Finding
 	if prefix := fmt.Sprintf("%04d-", d.Number); !strings.HasPrefix(path.Base(d.Path), prefix) {
 		findings = append(findings, designFinding(d.Path, fmt.Sprintf("has design number %d, but its file name does not start with %s", d.Number, prefix)))
 	}
@@ -145,8 +148,8 @@ func checkDesignHeader(d Design) []Finding {
 	return findings
 }
 
-func designFinding(file, message string) Finding {
-	return Finding{
+func designFinding(file, message string) report.Finding {
+	return report.Finding{
 		Location: file,
 		Rule:     RuleDesign,
 		Message:  "the design record " + message,
@@ -208,8 +211,8 @@ func structureOf(m *Model) structure {
 // CheckDesigns applies the design records, in number order, to an empty
 // structure and compares the result with the structure of the model. The
 // findings about the model name modelPath as their location.
-func CheckDesigns(m *Model, modelPath string, designs []Design) []Finding {
-	var findings []Finding
+func CheckDesigns(m *Model, modelPath string, designs []Design) []report.Finding {
+	var findings []report.Finding
 	built := newStructure()
 	for i, d := range designs {
 		if d.Number != i+1 {
@@ -220,7 +223,7 @@ func CheckDesigns(m *Model, modelPath string, designs []Design) []Finding {
 	return append(findings, compareStructures(structureOf(m), built, modelPath)...)
 }
 
-func applyDesign(s structure, d Design) []Finding {
+func applyDesign(s structure, d Design) []report.Finding {
 	a := applier{design: d}
 	applyChange(&a, s.containers, d.Changes.Containers, "container", showString)
 	applyChange(&a, s.components, d.Changes.Components, "component", showComponent)
@@ -235,7 +238,7 @@ func applyDesign(s structure, d Design) []Finding {
 // applier collects the findings of one design record while it is applied.
 type applier struct {
 	design   Design
-	findings []Finding
+	findings []report.Finding
 }
 
 func applyChange[T comparable](a *applier, s set[T], c Change[T], kind string, show func(T) string) {
@@ -253,7 +256,7 @@ func applyChange[T comparable](a *applier, s set[T], c Change[T], kind string, s
 	}
 }
 
-func compareStructures(model, built structure, modelPath string) []Finding {
+func compareStructures(model, built structure, modelPath string) []report.Finding {
 	return slices.Concat(
 		diffSets(model.containers, built.containers, "container", showString, modelPath),
 		diffSets(model.components, built.components, "component", showComponent, modelPath),
@@ -265,11 +268,11 @@ func compareStructures(model, built structure, modelPath string) []Finding {
 	)
 }
 
-func diffSets[T comparable](model, built set[T], kind string, show func(T) string, modelPath string) []Finding {
-	var findings []Finding
+func diffSets[T comparable](model, built set[T], kind string, show func(T) string, modelPath string) []report.Finding {
+	var findings []report.Finding
 	for x := range model {
 		if _, ok := built[x]; !ok {
-			findings = append(findings, Finding{
+			findings = append(findings, report.Finding{
 				Location: modelPath,
 				Rule:     RuleDesign,
 				Message:  fmt.Sprintf("the model has %s %s, but no design record adds it", kind, show(x)),
@@ -279,7 +282,7 @@ func diffSets[T comparable](model, built set[T], kind string, show func(T) strin
 	}
 	for x := range built {
 		if _, ok := model[x]; !ok {
-			findings = append(findings, Finding{
+			findings = append(findings, report.Finding{
 				Location: modelPath,
 				Rule:     RuleDesign,
 				Message:  fmt.Sprintf("the design records add %s %s, but the model does not have it", kind, show(x)),

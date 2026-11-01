@@ -1,17 +1,15 @@
 package architecture
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"go/token"
 	"go/types"
-	"io"
 	"regexp"
 	"slices"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
+	"github.com/OpenRAE/env-packs/internal/report"
+	"github.com/OpenRAE/env-packs/internal/strictyaml"
 	"golang.org/x/mod/module"
 )
 
@@ -104,25 +102,10 @@ type RuleScope struct {
 // YAML document.
 func ParseModel(data []byte) (*Model, error) {
 	var m Model
-	if err := decodeStrict(data, &m); err != nil {
+	if err := strictyaml.Decode(data, &m); err != nil {
 		return nil, fmt.Errorf("decode model: %w", err)
 	}
 	return &m, nil
-}
-
-// decodeStrict decodes exactly one YAML document into v and rejects fields
-// that v does not declare.
-func decodeStrict(data []byte, v any) error {
-	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true)
-	if err := dec.Decode(v); err != nil {
-		return err
-	}
-	var extra yaml.Node
-	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
-		return errors.New("more than one YAML document")
-	}
-	return nil
 }
 
 // Component returns the component with the given identifier.
@@ -147,7 +130,7 @@ func (m *Model) Owners() map[string]*Component {
 
 // ValidateModel returns the defects of the model. The findings name path as
 // their location.
-func ValidateModel(m *Model, path string) []Finding {
+func ValidateModel(m *Model, path string) []report.Finding {
 	v := modelValidator{path: path, model: m}
 	v.checkHeader()
 	v.checkIDs()
@@ -163,11 +146,11 @@ func ValidateModel(m *Model, path string) []Finding {
 type modelValidator struct {
 	path     string
 	model    *Model
-	findings []Finding
+	findings []report.Finding
 }
 
 func (v *modelValidator) addf(format string, args ...any) {
-	v.findings = append(v.findings, Finding{
+	v.findings = append(v.findings, report.Finding{
 		Location: v.path,
 		Rule:     RuleModel,
 		Message:  fmt.Sprintf(format, args...),

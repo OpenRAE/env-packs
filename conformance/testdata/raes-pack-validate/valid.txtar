@@ -1,0 +1,4 @@
+# A hosted pack passes the author gate, with its own validators and tests.
+exits 0 raes-pack-validate --pack $REPO/packs/techvault
+stdout '^== static pack contract ==$'
+! stderr .
