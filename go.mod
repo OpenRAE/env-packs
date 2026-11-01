@@ -8,6 +8,7 @@ require (
 	github.com/bluekeyes/go-gitdiff v0.9.0
 	github.com/google/go-cmp v0.7.0
 	github.com/rogpeppe/go-internal v1.16.0
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/mod v0.42.0
 	golang.org/x/sys v0.49.0
