@@ -18,7 +18,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0010](0010-consume-aces-reusable-asset-trust-policy.md) | Consume ACES reusable-asset trust policy for pack provenance | Accepted |
 | [0011](0011-require-pinned-aces-sdl-validation.md) | Require pinned ACES SDL validation for scenario packs | Exact pin superseded by 0043 |
 | [0012](0012-pack-content-identity-and-trust-boundary.md) | Pack content identity consumes RAES associated-artifact manifests | Accepted |
-| [0013](0013-separate-consumer-static-validation-from-author-ci.md) | Separate consumer static validation from author CI | Accepted |
+| [0013](0013-separate-consumer-static-validation-from-author-ci.md) | Separate consumer static validation from author CI | Import denial amended by 0046 |
 | [0014](0014-consume-aces-concept-authority.md) | Keep governed concept references in ACES concept-authority | Accepted |
 | [0015](0015-attest-python-distribution-build-provenance.md) | Attest Python distribution build provenance | Accepted |
 | [0016](0016-automate-dependency-updates.md) | Automate dependency updates and ship RAES bumps as releases | Auto-merge superseded by 0020 |
@@ -40,7 +40,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0032](0032-derive-catalog-projection-from-existing-authorities.md) | Derive one catalog projection from existing authorities | Accepted |
 | [0033](0033-resolve-pack-artifacts-through-one-bounded-open.md) | Resolve pack artifacts through one bounded open | Accepted |
 | [0034](0034-compose-progressive-scaffolding-from-pack-and-raes-authorities.md) | Compose progressive scaffolding from pack and RAES authorities | Accepted |
-| [0035](0035-compose-catalog-kits-through-raes-and-transactional-pack-projections.md) | Compose catalog kits through RAES and transactional pack projections | Content location superseded by 0036 |
+| [0035](0035-compose-catalog-kits-through-raes-and-transactional-pack-projections.md) | Compose catalog kits through RAES and transactional pack projections | Content location superseded by 0036; consumer import denial amended by 0046 |
 | [0036](0036-publish-first-party-content-with-env-packs.md) | Publish first-party content with env-packs | Installed source revision extended by 0041 |
 | [0037](0037-compose-verified-pack-distribution-from-existing-authorities.md) | Compose verified pack distribution from existing authorities | Accepted |
 | [0038](0038-ship-raes-concept-bindings-beside-pack-sdl.md) | Ship RAES concept bindings beside pack SDL | Accepted |
@@ -51,6 +51,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0043](0043-require-a-minimum-raes-version.md) | Require a minimum RAES version | Accepted |
 | [0044](0044-restore-breaking-changes-to-major-releases.md) | Restore breaking changes to major releases (supersedes 0039) | Accepted |
 | [0045](0045-version-packs-with-the-package.md) | Version packs with the package (extends 0008) | Accepted |
+| [0046](0046-admit-pinned-local-imports-through-raes-supplied-sources.md) | Admit pinned local imports through RAES supplied sources (amends 0013, 0035) | Accepted |
 
 ```{toctree}
 :hidden:

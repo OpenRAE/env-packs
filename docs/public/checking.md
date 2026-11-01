@@ -120,8 +120,9 @@ declaration without contacting or starting any backend.
 
 `sdl` codes. Every `sdl/*.sdl.yaml` start-state document, parsed through the
 installed `raes`. Owned by **RAES**: it is the sole authority for SDL syntax and
-meaning. By default the check denies SDL imports (`sdl.imports-denied`) because
-resolving them can reach the network.
+meaning. The check admits a local import only with a digest pin and one
+matching `raes.lock.json` record. It refuses every other import
+(`sdl.imports-denied`), so it never reaches the network.
 
 The other `experiment` codes are also owned by **RAES**. They report an
 experiment, task, or capture specification that fails its RAES contract, or an
