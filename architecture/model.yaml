@@ -84,6 +84,30 @@ components:
     modules:
       - golang.org/x/sys
       - golang.org/x/text
+  - id: document
+    container: library
+    description: Decodes pack-owned YAML and JSON strictly, within the validation limits.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/document
+    modules:
+      - go.yaml.in/yaml/v3
+  - id: schema
+    container: library
+    description: Holds the packaged schemas and validates a document against them in full.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/schema
+    depends_on:
+      - document
+      - root
+    modules:
+      - github.com/santhosh-tekuri/jsonschema/v6
+  - id: secret-shape
+    container: library
+    description: The one policy for secret-shaped keys and values.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/secretshape
+    modules:
+      - golang.org/x/text
   - id: strict-yaml
     container: library
     description: Decodes exactly one YAML document, and rejects unknown fields.

@@ -16,6 +16,9 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
             library = container "Go library" "The pack contracts and the pack operations." "Go" {
                 root = component "root" "The root package of the module." "Go"
                 packfs = component "packfs" "Reads pack trees through root descriptors, and commits staged trees atomically." "Go"
+                document = component "document" "Decodes pack-owned YAML and JSON strictly, within the validation limits." "Go"
+                schema = component "schema" "Holds the packaged schemas and validates a document against them in full." "Go"
+                secret_shape = component "secret-shape" "The one policy for secret-shaped keys and values." "Go"
                 strict_yaml = component "strict-yaml" "Decodes exactly one YAML document, and rejects unknown fields." "Go"
             }
             repository_tools = container "Repository tools" "The tools that check and release this repository." "Go" {
@@ -31,6 +34,8 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
         maintainer -> env_packs "Develops and releases"
         env_packs -> raes "Validates SDL and RAES contracts with"
         env_packs -> github "Is built and released on"
+        env_packs.library.schema -> env_packs.library.document "Depends on"
+        env_packs.library.schema -> env_packs.library.root "Depends on"
         env_packs.repository_tools.architecture -> env_packs.library.strict_yaml "Depends on"
         env_packs.repository_tools.architecture -> env_packs.repository_tools.report "Depends on"
         env_packs.repository_tools.test_gates -> env_packs.library.strict_yaml "Depends on"
