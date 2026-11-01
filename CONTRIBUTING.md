@@ -35,6 +35,7 @@ make go-audit                          # Go module checksums and known vulnerabi
 make go-arch                           # Go code and design records against the model
 make go-mutation                       # mutation testing on the changed Go lines
 make go-regression                     # each new regression test fails before its fix
+make prose                             # prose of the changed Markdown files
 ```
 
 `make go-fuzz` runs every Go fuzz target for 30 seconds each. CI runs it in
@@ -63,9 +64,11 @@ The public documentation is in `docs/public/`. It is the only tree that the
 site publishes. The maintainer records, such as decision records, CI, and
 release mechanics, are in other directories under `docs/`.
 [docs/README.md](docs/README.md) lists them. A new page in `docs/public/`
-becomes public, and a record in any other place does not. Follow the
-[style guide](docs/development/documentation-style-guide.md). The docs build
-treats warnings as errors and is part of the merge gate.
+becomes public, and a record in any other place does not.
+
+Follow the [style guide](docs/development/documentation-style-guide.md). The
+docs build treats warnings as errors and is part of the merge gate. `make
+prose` checks the prose of the changed Markdown files.
 
 ## Open the pull request
 

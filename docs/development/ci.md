@@ -45,7 +45,9 @@ does not wait for an unrelated job, and the fastest signal arrives first.
   runs `raes-pack-validate --packs-root packs` and
   `raes-pack-release check --packs-root packs` for the first-party packs.
 - **`docs`**: builds `docs/public/` with warnings as errors, and checks the
-  publication boundary of the built site (ADR 0030).
+  publication boundary of the built site (ADR 0030). It then runs `make prose`
+  on the Markdown files that the change adds or changes (see
+  [the style guide](documentation-style-guide.md)).
 - **`go`**: `make go-check` builds, vets, and tests every Go package with the
   race detector and in shuffled order. It uploads `coverage-go.out`. This job is
   the **coverage authority** for Go.
@@ -100,7 +102,7 @@ strict (`sonar.qualitygate.wait=true`).
 
 ## Shard ownership
 
-The Python unit suite is **not sharded**. One job (`tests`) runs one
+The Python unit suite has **no shards**. One job (`tests`) runs one
 `unittest discover -s tests`, so each test runs once in each run. When ADR 0029
 recorded this decision, the suite had 474 tests and took about 14 seconds
 locally. Shards would then add more install and coverage-merge time than they
@@ -125,7 +127,7 @@ Those files stay the authority.
 | `tests` | `python -m unittest discover -s tests` (with coverage: `coverage run -m unittest discover -s tests && coverage xml`) |
 | `audit` | `python -m pip install -r requirements/pip-audit.txt && pip-audit` |
 | `content` | `raes-pack-validate --repo .` and `raes-pack-release check --all`, then the same gates with `--packs-root packs` |
-| `docs` | `python -m sphinx -W -b html docs/public docs/public/_build/html`, then `python tools/check_docs_publication_boundary.py docs/public/_build/html` |
+| `docs` | `python -m sphinx -W -b html docs/public docs/public/_build/html`, then `python tools/check_docs_publication_boundary.py docs/public/_build/html`, then `make prose BASE=<base>` (after `mise install`; commit first) |
 | `go` | `make go-check` |
 | `go-lint` | `make go-lint` (after `mise install`) |
 | `go-audit` | `make go-audit` (after `mise install`) |
@@ -141,7 +143,7 @@ Those files stay the authority.
 
 These numbers give the end-to-end GitHub Actions time, including the queue.
 Each time starts at the event and ends when the job completes. The cohort is a
-fixed set of pull-request `ci.yml` runs that were not cancelled. The tables give
+fixed set of pull-request `ci.yml` runs that ran to the end. The tables give
 the median and the nearest-rank p95. They exclude push, schedule, and rerun
 runs.
 
