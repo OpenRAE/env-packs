@@ -33,8 +33,8 @@ towncrier and `changelog.d/` are removed.
 
 ### 3. Commit contract (what release-please reads)
 Squash-merge feature PRs; the PR title is a Conventional Commit:
-`feat:`→minor, `fix:`/`perf:`→patch, `feat!:`/`BREAKING CHANGE:`→major (pre-1.0
-demotes major→minor); `docs`/`chore`/`refactor`/`test`/`ci`/`build`→no release.
+`feat:`→minor, `fix:`/`perf:`→patch, `feat!:`/`BREAKING CHANGE:`→major;
+`docs`/`chore`/`refactor`/`test`/`ci`/`build`→no release.
 The required PR-title guard keeps this enforced on `dev` and `main`.
 
 ### 4. Config

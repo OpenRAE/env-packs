@@ -62,9 +62,8 @@ that the docs build is warning-strict and part of the merge gate.
 Releases are managed by [release-please](https://github.com/googleapis/release-please)
 (see [ADR 0008](docs/decisions/adrs/0008-adopt-release-please.md)): merge-driven,
 nothing hand-run. Your **Conventional Commit PR title** decides the version:
-`feat:` → minor, `fix:`/`perf:` → patch, `feat!:`/`BREAKING CHANGE:` → major
-(before 1.0, a major demotes to minor); `docs`/`chore`/`refactor`/`test`/`ci`/`build`
-do not release.
+`feat:` → minor, `fix:`/`perf:` → patch, `feat!:`/`BREAKING CHANGE:` → major;
+`docs`/`chore`/`refactor`/`test`/`ci`/`build` do not release.
 
 You never bump a version or edit `CHANGELOG.md`. As PRs land on `main`,
 release-please maintains a `chore(main): release X.Y.Z` pull request; merging that
