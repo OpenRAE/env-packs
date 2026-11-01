@@ -1,0 +1,108 @@
+# Each violation of a packaged schema is a blocking problem. The problem has
+# the code of the failed keyword and the path of the field (#562).
+mkdir repo/environments
+exits 0 raes-pack-new demo --repo repo --yes
+exits 0 raes-pack-check repo/environments/demo
+cp ledger.yaml repo/environments/demo/docs/provenance-ledger.yaml
+exits 1 raes-pack-check repo/environments/demo
+stdout '^\[trust\] provenance\.schema\.const  \(owner: env-packs\)\n  where: docs/provenance-ledger\.yaml:\$\.schema_version$'
+stdout '^\[trust\] provenance\.schema\.enum  \(owner: env-packs\)\n  where: docs/provenance-ledger\.yaml:\$\.sources\[0\]\.usage$'
+stdout '^\[trust\] provenance\.schema\.min-items  \(owner: env-packs\)\n  where: docs/provenance-ledger\.yaml:\$\.review\.gates$'
+stdout '^\[trust\] provenance\.schema\.pattern  \(owner: env-packs\)\n  where: docs/provenance-ledger\.yaml:\$\.artifacts\[0\]\.artifact_id$'
+stdout '^\[trust\] provenance\.schema\.required  \(owner: env-packs\)\n  where: docs/provenance-ledger\.yaml:\$\.sources\[0\]\.license$'
+stdout '^\[trust\] provenance\.schema\.type  \(owner: env-packs\)\n  where: docs/provenance-ledger\.yaml:\$\.sources\[0\]\.attribution_required$'
+stdout '^\[trust\] provenance\.schema\.unknown  \(owner: env-packs\)\n  where: docs/provenance-ledger\.yaml:\$\.pack\.extra$'
+! stderr .
+
+# The packaged schemas apply minLength, maxLength, uniqueItems, and a schema
+# for additional properties. Each violation is a blocking problem with the
+# code of the keyword and the path of the field.
+[python] skip 'deviation: the Python schema subset does not apply minLength, maxLength, uniqueItems, or a schema for additional properties (#562)'
+cp kit.materializations.json repo/environments/demo/kit.materializations.json
+exits 1 raes-pack-check repo/environments/demo
+stdout '^\[pack\] kit-materializations\.schema\.min-length  \(owner: env-packs\)\n  where: kit\.materializations\.json:\$\.materializations\[0\]\.source\.revision$'
+stdout '^\[pack\] kit-materializations\.schema\.max-length  \(owner: env-packs\)\n  where: kit\.materializations\.json:\$\.materializations\[1\]\.source\.revision$'
+stdout '^\[pack\] kit-materializations\.schema\.unique-items  \(owner: env-packs\)\n  where: kit\.materializations\.json:\$\.files\[0\]\.owners$'
+stdout '^\[pack\] kit-materializations\.schema\.type  \(owner: env-packs\)\n  where: kit\.materializations\.json:\$\.materializations\[0\]\.parameters\.x$'
+! stderr .
+
+-- ledger.yaml --
+schema_version: environment-pack-provenance/v2
+pack:
+  name: demo
+  extra: 1
+sources:
+  - source_id: original-design
+    name: RAES original scenario design
+    usage: copied
+    attribution_required: "no"
+artifacts:
+  - artifact_id: Docs
+    path: docs/
+    classification: commercial-only
+    sources: [original-design]
+content_safety:
+  no_real_malware: true
+  no_real_third_party_targets: true
+  no_real_credentials: true
+  no_sensitive_data: true
+  offensive_tooling_boundary: true
+  notes: ""
+review:
+  status: pending
+  gates:
+    - gate_id: licensing
+      status: pending
+    - gate_id: attribution
+      status: pending
+    - gate_id: sensitive-data
+      status: pending
+-- kit.materializations.json --
+{
+  "files": [
+    {
+      "artifact_id": "module",
+      "baseline_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "owners": [
+        "m0",
+        "m0"
+      ],
+      "path": "kits/m0/module.sdl.yaml"
+    }
+  ],
+  "materializations": [
+    {
+      "dependencies": [],
+      "id": "m0",
+      "kit_id": "infrastructure.secrets-store",
+      "kit_version": "1.0.0",
+      "module_path": "kits/m0/module.sdl.yaml",
+      "namespace": "n0",
+      "parameters": {
+        "x": [
+          1
+        ]
+      },
+      "source": {
+        "id": "first-party",
+        "revision": ""
+      },
+      "target_sdl": "sdl/demo.sdl.yaml"
+    },
+    {
+      "dependencies": [],
+      "id": "m1",
+      "kit_id": "infrastructure.secrets-store",
+      "kit_version": "1.0.0",
+      "module_path": "kits/m1/module.sdl.yaml",
+      "namespace": "n1",
+      "parameters": {},
+      "source": {
+        "id": "first-party",
+        "revision": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      },
+      "target_sdl": "sdl/demo.sdl.yaml"
+    }
+  ],
+  "schema_version": "environment-pack-kit-materializations/v1"
+}
