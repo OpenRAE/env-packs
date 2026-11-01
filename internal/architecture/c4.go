@@ -23,9 +23,9 @@ func RenderDSL(m *Model) []byte {
 		Containers:      containersOf(m),
 		Edges:           edgesOf(m),
 	})
+	// Execute fails only for a defect in the fixed template, as Parse does,
+	// so the defect panics as it does in template.Must.
 	if err != nil {
-		// Execute fails only for a defect in the fixed template, as Parse
-		// does, so the defect panics as it does in template.Must.
 		panic(err)
 	}
 	return []byte(b.String())
