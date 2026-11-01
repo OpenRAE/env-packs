@@ -1218,7 +1218,7 @@ nodes:
           name: rsyslog
           description: Forwards the domain controller's local syslog to the Wazuh manager's remote syslog listener.
           sources:
-            - {source_id: local-syslog, kind: socket, selector: "*.*", parse_format: syslog}
+            - {source_id: local-syslog, kind: other, selector: "*.*", parse_format: syslog}
           buffer_policy:
             buffer_policy_id: ad-syslog-forwarder-buffer
             crypto: none
