@@ -117,6 +117,9 @@ equivalents:
 - `line` is the text of the first changed line, without leading and trailing
   space. `mutated` is the text of that line in the mutant. The finding of the
   gate shows both.
+- `occurrence` tells identical lines of one function apart. The value 2
+  selects the second such line in source order. Omit it for the first line.
+  The finding of the gate shows the occurrence when it is not 1.
 - A record covers one mutant. Two identical mutants need two records.
 - `reason` tells why no test can observe the change. "The test is hard to
   write" is not a reason.

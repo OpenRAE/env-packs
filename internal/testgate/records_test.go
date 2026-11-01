@@ -71,8 +71,9 @@ func TestRecordsMatch(t *testing.T) {
 	records := Records{Version: 1, Equivalents: []Equivalent{
 		{File: "x.go", Function: "f", Mutator: "branch/if", Line: "if a {", Mutated: "if a {}", Reason: "R."},
 		{File: "x.go", Function: "g", Mutator: "branch/if", Line: "if a {", Mutated: "if a {}", Reason: "R."},
+		{File: "x.go", Function: "g", Mutator: "branch/if", Line: "if a {", Mutated: "if a {}", Occurrence: 2, Reason: "R."},
 	}}
-	s := Survivor{File: "x.go", Function: "g", Mutator: "branch/if", Line: "if a {", Mutated: "if a {}"}
+	s := Survivor{File: "x.go", Function: "g", Mutator: "branch/if", Line: "if a {", Mutated: "if a {}", Occurrence: 1}
 	used := make([]bool, len(records.Equivalents))
 	if got := records.match(s, used); got != 1 {
 		t.Errorf("match(%+v) = %d, want 1", s, got)
@@ -81,12 +82,18 @@ func TestRecordsMatch(t *testing.T) {
 	if got := records.match(s, used); got != -1 {
 		t.Errorf("match(%+v) after the record was used = %d, want -1", s, got)
 	}
+	second := s
+	second.Occurrence = 2
+	if got := records.match(second, make([]bool, len(records.Equivalents))); got != 2 {
+		t.Errorf("match(%+v) = %d, want 2", second, got)
+	}
 	for _, other := range []Survivor{
-		{File: "y.go", Function: "g", Mutator: "branch/if", Line: "if a {", Mutated: "if a {}"},
-		{File: "x.go", Function: "h", Mutator: "branch/if", Line: "if a {", Mutated: "if a {}"},
-		{File: "x.go", Function: "g", Mutator: "branch/else", Line: "if a {", Mutated: "if a {}"},
-		{File: "x.go", Function: "g", Mutator: "branch/if", Line: "if b {", Mutated: "if a {}"},
-		{File: "x.go", Function: "g", Mutator: "branch/if", Line: "if a {", Mutated: "if b {}"},
+		{File: "y.go", Function: "g", Mutator: "branch/if", Line: "if a {", Mutated: "if a {}", Occurrence: 1},
+		{File: "x.go", Function: "h", Mutator: "branch/if", Line: "if a {", Mutated: "if a {}", Occurrence: 1},
+		{File: "x.go", Function: "g", Mutator: "branch/else", Line: "if a {", Mutated: "if a {}", Occurrence: 1},
+		{File: "x.go", Function: "g", Mutator: "branch/if", Line: "if b {", Mutated: "if a {}", Occurrence: 1},
+		{File: "x.go", Function: "g", Mutator: "branch/if", Line: "if a {", Mutated: "if b {}", Occurrence: 1},
+		{File: "x.go", Function: "g", Mutator: "branch/if", Line: "if a {", Mutated: "if a {}", Occurrence: 3},
 	} {
 		if got := records.match(other, make([]bool, len(records.Equivalents))); got != -1 {
 			t.Errorf("match(%+v) = %d, want -1", other, got)

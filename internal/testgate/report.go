@@ -58,6 +58,10 @@ type Survivor struct {
 	Line string
 	// Mutated is the text of that line in the mutant.
 	Mutated string
+	// Occurrence numbers the lines of the function, or of the file outside a
+	// function, that have the text Line, from 1 in source order. It tells
+	// two identical lines apart.
+	Occurrence int
 }
 
 // span returns the first and the last changed line of the mutant, and false
@@ -75,18 +79,26 @@ func survivor(m mutant) (Survivor, bool, error) {
 	}
 	original := strings.Split(m.Mutator.Original, "\n")
 	mutated := strings.Split(m.Mutator.Mutated, "\n")
-	function, err := functionAt(m.Mutator.Original, start)
+	function, first, err := functionAt(m.Mutator.Original, start)
 	if err != nil {
 		return Survivor{}, false, fmt.Errorf("parse %s: %w", m.Mutator.File, err)
 	}
+	line := lineAt(original, start)
+	occurrence := 0
+	for n := first; n <= start; n++ {
+		if lineAt(original, n) == line {
+			occurrence++
+		}
+	}
 	return Survivor{
-		File:     m.Mutator.File,
-		Function: function,
-		Mutator:  m.Mutator.Name,
-		Start:    start,
-		End:      end,
-		Line:     lineAt(original, start),
-		Mutated:  lineAt(mutated, start),
+		File:       m.Mutator.File,
+		Function:   function,
+		Mutator:    m.Mutator.Name,
+		Start:      start,
+		End:        end,
+		Line:       line,
+		Mutated:    lineAt(mutated, start),
+		Occurrence: occurrence,
 	}, true, nil
 }
 
@@ -120,20 +132,21 @@ func changedRange(original, mutated []string) (start, end int, changed bool) {
 }
 
 // functionAt returns the name of the function that holds line, "Type.Method"
-// for a method, or the empty string outside a function.
-func functionAt(src string, line int) (string, error) {
+// for a method, and the first line of the function. Outside a function, it
+// returns the empty string and line 1.
+func functionAt(src string, line int) (name string, first int, err error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "", src, parser.SkipObjectResolution)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	for _, d := range f.Decls {
 		fn, ok := d.(*ast.FuncDecl)
-		if ok && fset.Position(fn.Pos()).Line <= line && line <= fset.Position(fn.End()).Line {
-			return receiverPrefix(fn) + fn.Name.Name, nil
+		if first := fset.Position(d.Pos()).Line; ok && first <= line && line <= fset.Position(fn.End()).Line {
+			return receiverPrefix(fn) + fn.Name.Name, first, nil
 		}
 	}
-	return "", nil
+	return "", 1, nil
 }
 
 // receiverPrefix returns "Type." for a method, and the empty string for a

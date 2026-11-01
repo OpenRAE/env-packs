@@ -76,19 +76,29 @@ func (g gen[K, V]) generic() {
 func (p (val)) paren() {
 	_ = 4
 }
+
+func twice() {
+	_ = 5
+	_ = 5
+}
 `
 
 func TestFunctionAt(t *testing.T) {
-	tests := map[int]string{
-		3: "", 5: "plain", 6: "plain", 7: "plain", 8: "", 10: "ptr.method", 14: "gen.generic", 18: "val.paren",
+	type want struct {
+		name  string
+		first int
 	}
-	for line, want := range tests {
-		got, err := functionAt(functionSource, line)
-		if err != nil || got != want {
-			t.Errorf("functionAt(line %d) = %q, %v, want %q, nil", line, got, err, want)
+	tests := map[int]want{
+		3: {"", 1}, 5: {"plain", 5}, 6: {"plain", 5}, 7: {"plain", 5}, 8: {"", 1},
+		10: {"ptr.method", 9}, 14: {"gen.generic", 13}, 18: {"val.paren", 17},
+	}
+	for line, w := range tests {
+		name, first, err := functionAt(functionSource, line)
+		if err != nil || name != w.name || first != w.first {
+			t.Errorf("functionAt(line %d) = %q, %d, %v, want %q, %d, nil", line, name, first, err, w.name, w.first)
 		}
 	}
-	if _, err := functionAt("package", 1); err == nil {
+	if _, _, err := functionAt("package", 1); err == nil {
 		t.Error("functionAt() of invalid source: error = nil, want an error")
 	}
 }
@@ -103,9 +113,22 @@ func TestSurvivor(t *testing.T) {
 	if err != nil || !changed {
 		t.Fatalf("survivor() = %+v, %v, %v, want a changed mutant", got, changed, err)
 	}
-	want := Survivor{File: "x.go", Function: "ptr.method", Mutator: "branch/if", Start: 10, End: 10, Line: "_ = 2", Mutated: "_ = 20"}
+	want := Survivor{File: "x.go", Function: "ptr.method", Mutator: "branch/if", Start: 10, End: 10, Line: "_ = 2", Mutated: "_ = 20", Occurrence: 1}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("survivor() mismatch (-want +got):\n%s", diff)
+	}
+	for i, wantOccurrence := range []int{1, 2} {
+		lines := strings.Split(functionSource, "\n")
+		lines[21+i] = "\t_ = 50"
+		m.Mutator.Mutated = strings.Join(lines, "\n")
+		got, _, err := survivor(m)
+		if err != nil || got.Function != "twice" || got.Occurrence != wantOccurrence {
+			t.Errorf("survivor() of line %d = %+v, %v; want occurrence %d in twice", 22+i, got, err, wantOccurrence)
+		}
+	}
+	m.Mutator.Mutated = strings.Replace(functionSource, "const limit = 3", "const limit = 4", 1)
+	if got, _, err := survivor(m); err != nil || got.Function != "" || got.Occurrence != 1 {
+		t.Errorf("survivor() outside a function = %+v, %v; want occurrence 1 and no function", got, err)
 	}
 	m.Mutator.Mutated = functionSource
 	if _, changed, err := survivor(m); changed || err != nil {

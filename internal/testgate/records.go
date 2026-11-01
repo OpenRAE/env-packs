@@ -36,6 +36,9 @@ type Equivalent struct {
 	// Mutated is the text of that line in the mutant, without leading and
 	// trailing space.
 	Mutated string `yaml:"mutated"`
+	// Occurrence selects one of the identical lines Line of the function,
+	// as in Survivor. Zero selects the first.
+	Occurrence int `yaml:"occurrence"`
 	// Reason tells why no test can observe the change.
 	Reason string `yaml:"reason"`
 }
@@ -70,7 +73,7 @@ func (r Records) Check() []report.Finding {
 func (r Records) match(s Survivor, used []bool) int {
 	for i, e := range r.Equivalents {
 		if !used[i] && e.File == s.File && e.Function == s.Function && e.Mutator == s.Mutator &&
-			e.Line == s.Line && e.Mutated == s.Mutated {
+			e.Line == s.Line && e.Mutated == s.Mutated && max(e.Occurrence, 1) == s.Occurrence {
 			return i
 		}
 	}

@@ -274,6 +274,9 @@ func survivorFinding(s Survivor) report.Finding {
 	if s.Function != "" {
 		where = "in " + s.Function
 	}
+	if s.Occurrence > 1 {
+		where += fmt.Sprintf(" (occurrence %d of the line)", s.Occurrence)
+	}
 	return report.Finding{
 		Location: s.File + ":" + strconv.Itoa(s.Start),
 		Rule:     RuleMutant,

@@ -510,3 +510,11 @@ func TestEvaluateOneRecordPerMutant(t *testing.T) {
 			got.Equivalent, got.Findings, err)
 	}
 }
+
+func TestSurvivorFindingOccurrence(t *testing.T) {
+	s := Survivor{File: "a.go", Function: "F", Mutator: "numbers/incrementer", Start: 9, Line: "n = 1", Mutated: "n = 2", Occurrence: 2}
+	want := `no test kills the numbers/incrementer mutant in F (occurrence 2 of the line): "n = 1" becomes "n = 2"`
+	if got := survivorFinding(s).Message; got != want {
+		t.Errorf("survivorFinding() message = %q, want %q", got, want)
+	}
+}

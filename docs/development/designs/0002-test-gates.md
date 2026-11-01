@@ -134,14 +134,16 @@ has no test file with the same name, also when other test files cover it.
 ### Equivalent mutants
 
 An equivalent mutant changes no behavior that a test can observe.
-`mutation.yaml` records each one with six values: the file, the function, the
-mutator, the first changed line, that line in the mutant, and the reason.
+`mutation.yaml` records each one: the file, the function, the mutator, the
+first changed line, that line in the mutant, and the reason. A seventh value,
+the occurrence, tells identical lines of one function apart.
 
 - The gate matches a record by these values and not by the line number, so a
   record stays valid when lines move.
 - A record covers one mutant, so a second identical mutant needs its own
   record. A record that names the mutated text cannot hide another mutation
-  of the same line.
+  of the same line, and a record that names the occurrence cannot hide a
+  second identical line.
 - The reason must tell why no test can observe the change.
 - The gate has no automatic rule. An earlier rule took each numbers mutant of
   a result beside a non-nil error as equivalent. A review found it unsound: a
