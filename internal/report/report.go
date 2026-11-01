@@ -1,26 +1,13 @@
-// Package report holds the findings of the repository tools and writes them,
-// with the exit statuses that the tools share.
+// Package report holds the findings of the repository tools and writes them.
+// The tools use the exit statuses and the streams of package outcome.
 package report
 
 import (
-	"bufio"
 	"cmp"
-	"errors"
 	"fmt"
-	"io"
 	"slices"
-)
 
-// The exit statuses of the repository tools.
-const (
-	// StatusOK reports a run without findings.
-	StatusOK = 0
-	// StatusFindings reports a run with findings.
-	StatusFindings = 1
-	// StatusUsage reports invalid usage.
-	StatusUsage = 2
-	// StatusFailure reports a run that could not complete.
-	StatusFailure = 3
+	"github.com/OpenRAE/env-packs/internal/outcome"
 )
 
 // A Finding is one problem that a tool found.
@@ -55,38 +42,17 @@ func Sort(findings []Finding) []Finding {
 	return slices.Compact(findings)
 }
 
-// Streams are the buffered output streams of a tool. A bufio.Writer keeps
-// its first write error, and Flush returns it, so a tool does not check each
-// write.
-type Streams struct {
-	Stdout, Stderr *bufio.Writer
-}
-
-// NewStreams returns buffered streams that write to stdout and stderr.
-func NewStreams(stdout, stderr io.Writer) Streams {
-	return Streams{Stdout: bufio.NewWriter(stdout), Stderr: bufio.NewWriter(stderr)}
-}
-
-// Flush writes the buffered output of both streams. It returns status, or
-// StatusFailure when a write failed.
-func (s Streams) Flush(status int) int {
-	if errors.Join(s.Stdout.Flush(), s.Stderr.Flush()) != nil {
-		return StatusFailure
-	}
-	return status
-}
-
-// Findings writes the sorted findings to Stdout, and their number to Stderr
-// after the name of the tool. It returns StatusFindings when there is a
-// finding, and StatusOK otherwise.
-func (s Streams) Findings(tool string, findings []Finding) int {
+// Write writes the sorted findings to the stdout of s, and their number to
+// its stderr after the name of the tool. It returns outcome.Blocking when
+// there is a finding, and outcome.OK otherwise.
+func Write(s outcome.Streams, tool string, findings []Finding) int {
 	findings = Sort(findings)
 	for _, f := range findings {
 		fmt.Fprintf(s.Stdout, "%s\n", f)
 	}
 	fmt.Fprintf(s.Stderr, "%s: %d findings\n", tool, len(findings))
 	if len(findings) > 0 {
-		return StatusFindings
+		return outcome.Blocking
 	}
-	return StatusOK
+	return outcome.OK
 }

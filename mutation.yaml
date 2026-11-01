@@ -68,3 +68,63 @@ equivalents:
       The walk rejects a scalar with an explicit tag before this decode, and
       yaml.v3 resolves each scalar without a tag to a value. No input reaches
       the error.
+  - file: internal/jsondoc/jsondoc.go
+    function: writeObject
+    mutator: branch/if
+    line: "return err"
+    mutated: "_ = err"
+    reason: >-
+      After a failed token, the encoder fails a later token of the object, so
+      Marshal still returns an error and no bytes. The token sequence is
+      valid and a bytes.Buffer does not fail, so only a token with invalid
+      UTF-8 or past the nesting limit of jsontext fails.
+  - file: internal/jsondoc/jsondoc.go
+    function: writeObject
+    mutator: branch/if
+    line: "return err"
+    occurrence: 2
+    mutated: "_ = err"
+    reason: >-
+      After a name with invalid UTF-8 fails, the object has one token less
+      than its pairs need, so a later token or the end of the object fails,
+      and Marshal still returns an error and no bytes.
+  - file: internal/jsondoc/jsondoc.go
+    function: writeArray
+    mutator: branch/if
+    line: "return err"
+    mutated: "_ = err"
+    reason: >-
+      After a failed start of an array, the end of the array fails, so
+      Marshal still returns an error and no bytes. The start fails only past
+      the nesting limit of jsontext.
+  - file: internal/jsondoc/jsondoc.go
+    function: pythonFloat
+    mutator: numbers/decrementer
+    line: "if a := math.Abs(f); a != 0 && (a < 1e-4 || a >= 1e16) {"
+    mutated: "if a := math.Abs(f); a != 0 && (a < 1e-4 || a >= 10000000000000000) {"
+    reason: >-
+      The literal 10000000000000000 is the same float64 as 1e16.
+  - file: internal/jsondoc/jsondoc.go
+    function: pythonFloat
+    mutator: numbers/incrementer
+    line: "return strconv.FormatFloat(f, 'e', -1, 64), nil"
+    mutated: "return strconv.FormatFloat(f, 'e', -2, 64), nil"
+    reason: >-
+      FormatFloat gives the shortest digits for each negative precision, so
+      -2 gives the same result as -1.
+  - file: internal/jsondoc/jsondoc.go
+    function: pythonFloat
+    mutator: numbers/incrementer
+    line: "s := strconv.FormatFloat(f, 'f', -1, 64)"
+    mutated: "s := strconv.FormatFloat(f, 'f', -2, 64)"
+    reason: >-
+      FormatFloat gives the shortest digits for each negative precision, so
+      -2 gives the same result as -1.
+  - file: internal/terminal/terminal.go
+    function: Escape
+    mutator: expression/comparison
+    line: "case r < 0x100:"
+    mutated: "case r <= 0x100:"
+    reason: >-
+      U+0100 is printable, so it does not reach this case, and the two forms
+      give the same result.

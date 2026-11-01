@@ -99,6 +99,7 @@ components:
     depends_on:
       - document
       - root
+      - diagnostic
     modules:
       - github.com/santhosh-tekuri/jsonschema/v6
   - id: secret-shape
@@ -108,6 +109,26 @@ components:
       - github.com/OpenRAE/env-packs/internal/secretshape
     modules:
       - golang.org/x/text
+  - id: diagnostic
+    container: library
+    description: The one diagnostic type of the product, its presentation catalog, and the list of the diagnostics of one operation.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/diagnostic
+  - id: outcome
+    container: library
+    description: The exit statuses and the output streams of the commands and the repository tools, and the handling of defects.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/outcome
+  - id: jsondoc
+    container: library
+    description: Writes JSON envelopes and documents with the bytes of the Python implementation.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/jsondoc
+  - id: terminal
+    container: library
+    description: Escapes labels from packs, file names, and arguments for a terminal.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/terminal
   - id: strict-yaml
     container: library
     description: Decodes exactly one YAML document, and rejects unknown fields.
@@ -117,9 +138,11 @@ components:
       - go.yaml.in/yaml/v3
   - id: report
     container: repository-tools
-    description: Holds the findings of the repository tools, writes them, and defines the exit statuses of the tools.
+    description: Holds the findings of the repository tools and writes them.
     packages:
       - github.com/OpenRAE/env-packs/internal/report
+    depends_on:
+      - outcome
   - id: architecture
     container: repository-tools
     description: Checks the code and the design records against this model.
@@ -129,6 +152,7 @@ components:
     depends_on:
       - strict-yaml
       - report
+      - outcome
     modules:
       - golang.org/x/tools
       - golang.org/x/mod
@@ -141,6 +165,7 @@ components:
     depends_on:
       - strict-yaml
       - report
+      - outcome
     modules:
       - github.com/bluekeyes/go-gitdiff
   - id: conformance

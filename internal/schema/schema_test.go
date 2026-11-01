@@ -8,12 +8,14 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"testing/fstest"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
+	"github.com/OpenRAE/env-packs/internal/diagnostic"
 	"github.com/OpenRAE/env-packs/internal/document"
 )
 
@@ -71,6 +73,16 @@ func decode(t *testing.T, text string) any {
 	return value
 }
 
+// strs returns the code and the field of each diagnostic, for a readable
+// diff. A failure of a schema has no file.
+func strs(diagnostics []diagnostic.Diagnostic) []string {
+	var out []string
+	for _, d := range diagnostics {
+		out = append(out, d.Code()+" "+d.Field()+" "+d.File())
+	}
+	return out
+}
+
 func TestCompile(t *testing.T) {
 	s, err := Compile()
 	if err != nil {
@@ -89,36 +101,36 @@ func TestValidate(t *testing.T) {
 	s := testSet(t, map[string]string{"schemas/test.schema.yaml": testSchema})
 	tests := []struct {
 		doc  string
-		want []Violation
+		want []diagnostic.Diagnostic
 	}{
 		{doc: "name: abc\nkind: pack\nmode: a\ncount: 1\nwhen: '2026-11-01T10:00:00Z'\ntags: [x]\nrows: [{id: r}]\nmap: {k: v}\nnone: []\n"},
-		{doc: "{}", want: []Violation{{Code: "required", Path: "$.name"}}},
-		{doc: "[]", want: []Violation{{Code: "type", Path: "$"}}},
+		{doc: "{}", want: []diagnostic.Diagnostic{diagnostic.New("schema.required", "", "$.name")}},
+		{doc: "[]", want: []diagnostic.Diagnostic{diagnostic.New("schema.type", "", "$")}},
 		{
 			doc: "name: A\nkind: x\nmode: c\ncount: 0\nwhen: yesterday\ntags: []\nother: 1\n",
-			want: []Violation{
-				{Code: "minimum", Path: "$.count"},
-				{Code: "const", Path: "$.kind"},
-				{Code: "enum", Path: "$.mode"},
-				{Code: "min-length", Path: "$.name"},
-				{Code: "pattern", Path: "$.name"},
-				{Code: "unknown", Path: "$.other"},
-				{Code: "min-items", Path: "$.tags"},
-				{Code: "format", Path: "$.when"},
+			want: []diagnostic.Diagnostic{
+				diagnostic.New("schema.minimum", "", "$.count"),
+				diagnostic.New("schema.const", "", "$.kind"),
+				diagnostic.New("schema.enum", "", "$.mode"),
+				diagnostic.New("schema.min-length", "", "$.name"),
+				diagnostic.New("schema.pattern", "", "$.name"),
+				diagnostic.New("schema.unknown", "", "$.other"),
+				diagnostic.New("schema.min-items", "", "$.tags"),
+				diagnostic.New("schema.format", "", "$.when"),
 			},
 		},
 		{
 			doc:  "name: abcd\ntags: [a, a]\n",
-			want: []Violation{{Code: "max-length", Path: "$.name"}, {Code: "unique-items", Path: "$.tags"}},
+			want: []diagnostic.Diagnostic{diagnostic.New("schema.max-length", "", "$.name"), diagnostic.New("schema.unique-items", "", "$.tags")},
 		},
 		{
 			doc: "name: abc\nrows: [{id: r}, {id: 1, extra: true}, {}]\nmap: {'0': 1}\nnone: [1]\n",
-			want: []Violation{
-				{Code: "type", Path: "$.map.0"},
-				{Code: "schema", Path: "$.none[0]"},
-				{Code: "unknown", Path: "$.rows[1].extra"},
-				{Code: "type", Path: "$.rows[1].id"},
-				{Code: "required", Path: "$.rows[2].id"},
+			want: []diagnostic.Diagnostic{
+				diagnostic.New("schema.type", "", "$.map.0"),
+				diagnostic.New("schema.schema", "", "$.none[0]"),
+				diagnostic.New("schema.unknown", "", "$.rows[1].extra"),
+				diagnostic.New("schema.type", "", "$.rows[1].id"),
+				diagnostic.New("schema.required", "", "$.rows[2].id"),
 			},
 		},
 	}
@@ -128,7 +140,7 @@ func TestValidate(t *testing.T) {
 			t.Errorf("Validate(%q) error = %v", tt.doc, err)
 			continue
 		}
-		if diff := cmp.Diff(tt.want, got); diff != "" {
+		if diff := cmp.Diff(strs(tt.want), strs(got)); diff != "" {
 			t.Errorf("Validate(%q) violations mismatch (-want +got):\n%s", tt.doc, diff)
 		}
 	}
@@ -144,16 +156,16 @@ func TestValidatePackaged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
-	want := []Violation{
-		{Code: "required", Path: "$.artifacts"},
-		{Code: "required", Path: "$.content_safety"},
-		{Code: "unknown", Path: "$.pack.extra"},
-		{Code: "pattern", Path: "$.pack.name"},
-		{Code: "required", Path: "$.review"},
-		{Code: "const", Path: "$.schema_version"},
-		{Code: "required", Path: "$.sources"},
+	want := []diagnostic.Diagnostic{
+		diagnostic.New("schema.required", "", "$.artifacts"),
+		diagnostic.New("schema.required", "", "$.content_safety"),
+		diagnostic.New("schema.unknown", "", "$.pack.extra"),
+		diagnostic.New("schema.pattern", "", "$.pack.name"),
+		diagnostic.New("schema.required", "", "$.review"),
+		diagnostic.New("schema.const", "", "$.schema_version"),
+		diagnostic.New("schema.required", "", "$.sources"),
 	}
-	if diff := cmp.Diff(want, got); diff != "" {
+	if diff := cmp.Diff(strs(want), strs(got)); diff != "" {
 		t.Errorf("Validate() violations mismatch (-want +got):\n%s", diff)
 	}
 }
@@ -298,5 +310,22 @@ func checkHosted(t *testing.T, s *Set, name, file string) {
 	}
 	if got, err := s.Validate(name, doc); err != nil || got != nil {
 		t.Errorf("Validate(%q, %s) = %v, %v; want no violation", name, file, got, err)
+	}
+}
+
+// TestValidateHoldsNoValue checks that a failure holds codes and the paths of
+// values, and never a value of the document.
+func TestValidateHoldsNoValue(t *testing.T) {
+	s := testSet(t, map[string]string{"schemas/test.schema.yaml": testSchema})
+	const authored = "AUTHORED-VALUE-7"
+	doc := decode(t, strings.ReplaceAll("name: V\nkind: V\nmode: V\nwhen: V\ntags: [V, V]\nmap: {k: [V]}\nrows: [{id: r, extra: V}]\n", "V", authored))
+	got, err := s.Validate("test", doc)
+	if err != nil || len(got) < 7 {
+		t.Fatalf("Validate() = %v, %v; want a failure for each field", strs(got), err)
+	}
+	for _, d := range got {
+		if strings.Contains(d.Code()+d.Field()+d.File(), authored) {
+			t.Errorf("Validate() gave %q, which holds a value of the document", d.Code()+" "+d.Field())
+		}
 	}
 }

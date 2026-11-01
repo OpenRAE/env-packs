@@ -37,6 +37,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/OpenRAE/env-packs/internal/outcome"
 	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/OpenRAE/env-packs/internal/testgate"
 )
@@ -91,22 +92,22 @@ func limitAddressSpace(bytes uint64) error {
 }
 
 // run runs the command and returns the exit status. A failed write to stdout
-// or stderr changes the status to report.StatusFailure.
+// or stderr changes the status to outcome.ToolFailure.
 func run(ctx context.Context, p process) int {
-	out := report.NewStreams(p.stdout, p.stderr)
+	out := outcome.NewStreams(p.stdout, p.stderr)
 	return out.Flush(runMode(ctx, p, out))
 }
 
-func runMode(ctx context.Context, p process, out report.Streams) int {
+func runMode(ctx context.Context, p process, out outcome.Streams) int {
 	flags := flag.NewFlagSet("testgate", flag.ContinueOnError)
 	flags.SetOutput(out.Stderr)
 	root := flags.String("root", ".", "repository `directory`")
 	if err := flags.Parse(p.args[1:]); err != nil {
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	if flags.NArg() == 0 {
 		fmt.Fprintf(out.Stderr, "testgate: give a mode: mutation, regression, or exec\n")
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	mode, rest := flags.Arg(0), flags.Args()[1:]
 	switch mode {
@@ -118,11 +119,11 @@ func runMode(ctx context.Context, p process, out report.Streams) int {
 		return runExec(ctx, p, rest, out)
 	}
 	fmt.Fprintf(out.Stderr, "testgate: unknown mode %q; give mutation, regression, or exec\n", mode)
-	return report.StatusUsage
+	return outcome.Usage
 }
 
 // runMutation runs the mutation gate.
-func runMutation(ctx context.Context, p process, root string, args []string, out report.Streams) int {
+func runMutation(ctx context.Context, p process, root string, args []string, out outcome.Streams) int {
 	flags := flag.NewFlagSet("testgate mutation", flag.ContinueOnError)
 	flags.SetOutput(out.Stderr)
 	base := flags.String("base", "", "base `commit` of the changed lines")
@@ -130,11 +131,11 @@ func runMutation(ctx context.Context, p process, root string, args []string, out
 	timeout := flags.Duration("timeout", time.Minute, "time limit of the tests of one mutant")
 	memory := flags.Uint64("memory", defaultMemoryMiB, "address space `limit` in MiB of each process of the tests of one mutant")
 	if err := flags.Parse(args); err != nil {
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	if (*base == "") == !*all || flags.NArg() > 0 {
 		fmt.Fprintf(out.Stderr, "testgate: mutation takes -base or -all, and no arguments\n")
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	if p.exeErr != nil {
 		return fail(out, fmt.Errorf("locate testgate for the exec step: %w", p.exeErr))
@@ -154,27 +155,27 @@ func runMutation(ctx context.Context, p process, root string, args []string, out
 		}
 		fmt.Fprintf(out.Stderr, "testgate: %s: %d killed, %d survived, %d equivalent, %s\n", p.Dir, p.Killed, p.Survived, p.Equivalent, score)
 	}
-	return out.Findings("testgate", res.Findings)
+	return report.Write(out, "testgate", res.Findings)
 }
 
 // runRegression runs the regression gate.
-func runRegression(ctx context.Context, p process, root string, args []string, out report.Streams) int {
+func runRegression(ctx context.Context, p process, root string, args []string, out outcome.Streams) int {
 	flags := flag.NewFlagSet("testgate regression", flag.ContinueOnError)
 	flags.SetOutput(out.Stderr)
 	base := flags.String("base", "", "base `commit` of the change")
 	if err := flags.Parse(args); err != nil {
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	if *base == "" || flags.NArg() > 0 {
 		fmt.Fprintf(out.Stderr, "testgate: regression takes -base, and no arguments\n")
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	res, err := testgate.Regression(ctx, p.runner, testgate.RegressionOptions{Repo: root, Base: *base, TempDir: p.tempDir})
 	if err != nil {
 		return fail(out, err)
 	}
 	fmt.Fprintf(out.Stderr, "testgate: %d regression tests, %d fail on the merge base\n", res.Tests, res.Proven)
-	return out.Findings("testgate", res.Findings)
+	return report.Write(out, "testgate", res.Findings)
 }
 
 // defaultMemoryMiB is the default address space limit of each process of the
@@ -182,16 +183,16 @@ func runRegression(ctx context.Context, p process, root string, args []string, o
 const defaultMemoryMiB = 4096
 
 // runExec runs the exec step for the mutant that the environment names.
-func runExec(ctx context.Context, p process, args []string, out report.Streams) int {
+func runExec(ctx context.Context, p process, args []string, out outcome.Streams) int {
 	flags := flag.NewFlagSet("testgate exec", flag.ContinueOnError)
 	flags.SetOutput(out.Stderr)
 	memory := flags.Uint64("memory", 0, "address space `limit` in MiB of each process of the tests, or 0 for no limit")
 	if err := flags.Parse(args); err != nil {
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	if flags.NArg() > 0 {
 		fmt.Fprintf(out.Stderr, "testgate: exec takes no arguments\n")
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	seconds, err := strconv.Atoi(lookup(p.environ, "MUTATE_TIMEOUT"))
 	if err != nil {
@@ -239,8 +240,8 @@ func lookup(environ []string, key string) string {
 	return value
 }
 
-// fail writes err and returns report.StatusFailure.
-func fail(out report.Streams, err error) int {
+// fail writes err and returns outcome.ToolFailure.
+func fail(out outcome.Streams, err error) int {
 	fmt.Fprintf(out.Stderr, "testgate: %v\n", err)
-	return report.StatusFailure
+	return outcome.ToolFailure
 }

@@ -33,6 +33,7 @@ import (
 	"strings"
 
 	"github.com/OpenRAE/env-packs/internal/architecture"
+	"github.com/OpenRAE/env-packs/internal/outcome"
 	"github.com/OpenRAE/env-packs/internal/report"
 )
 
@@ -50,27 +51,27 @@ func main() {
 // run runs the command and returns the exit status. Like os.Args, args starts
 // with the program name. The go command that loads the code runs with the
 // environment environ, in the form of os.Environ. A failed write to stdout or
-// stderr changes the status to report.StatusFailure.
+// stderr changes the status to outcome.ToolFailure.
 func run(args, environ []string, stdout, stderr io.Writer) int {
-	out := report.NewStreams(stdout, stderr)
+	out := outcome.NewStreams(stdout, stderr)
 	return out.Flush(runMode(args, environ, out))
 }
 
-func runMode(args, environ []string, out report.Streams) int {
+func runMode(args, environ []string, out outcome.Streams) int {
 	flags := flag.NewFlagSet("archcheck", flag.ContinueOnError)
 	flags.SetOutput(out.Stderr)
 	dir := flags.String("root", ".", "repository `directory`")
 	if err := flags.Parse(args[1:]); err != nil {
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	if flags.NArg() == 0 {
 		fmt.Fprintf(out.Stderr, "archcheck: give a mode: design, check, dsl, or platforms\n")
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	mode, rest := flags.Arg(0), flags.Args()[1:]
 	if mode != "design" && mode != "check" && mode != "dsl" && mode != "platforms" {
 		fmt.Fprintf(out.Stderr, "archcheck: unknown mode %q; give design, check, dsl, or platforms\n", mode)
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	repo := os.DirFS(*dir)
 	switch mode {
@@ -189,10 +190,10 @@ func validModel(repo fs.FS) (*architecture.Model, result) {
 }
 
 // runPlatforms writes the release platforms of the model, one on each line.
-func runPlatforms(repo fs.FS, args []string, out report.Streams) int {
+func runPlatforms(repo fs.FS, args []string, out outcome.Streams) int {
 	if len(args) > 0 {
 		fmt.Fprintf(out.Stderr, "archcheck: platforms takes no arguments\n")
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	m, r := validModel(repo)
 	if m == nil {
@@ -201,17 +202,17 @@ func runPlatforms(repo fs.FS, args []string, out report.Streams) int {
 	for _, p := range m.Platforms {
 		fmt.Fprintf(out.Stdout, "%s\n", p)
 	}
-	return report.StatusOK
+	return outcome.OK
 }
 
 // runDSL renders the C4 view. With -write, it writes the view file into the
 // repository in directory dir.
-func runDSL(repo fs.FS, dir string, args []string, out report.Streams) int {
+func runDSL(repo fs.FS, dir string, args []string, out outcome.Streams) int {
 	flags := flag.NewFlagSet("archcheck dsl", flag.ContinueOnError)
 	flags.SetOutput(out.Stderr)
 	write := flags.Bool("write", false, "write "+dslFile+" instead of standard output")
 	if err := flags.Parse(args); err != nil {
-		return report.StatusUsage
+		return outcome.Usage
 	}
 	m, r := validModel(repo)
 	if m == nil {
@@ -220,21 +221,21 @@ func runDSL(repo fs.FS, dir string, args []string, out report.Streams) int {
 	view := architecture.RenderDSL(m)
 	if !*write {
 		fmt.Fprintf(out.Stdout, "%s", view)
-		return report.StatusOK
+		return outcome.OK
 	}
 	if err := os.WriteFile(filepath.Join(dir, dslFile), view, 0o600); err != nil {
 		fmt.Fprintf(out.Stderr, "archcheck: write the C4 view: %v\n", err)
-		return report.StatusFailure
+		return outcome.ToolFailure
 	}
-	return report.StatusOK
+	return outcome.OK
 }
 
 // writeResult writes the error or the findings of a run, and returns the exit
 // status.
-func writeResult(out report.Streams, r result) int {
+func writeResult(out outcome.Streams, r result) int {
 	if r.err != nil {
 		fmt.Fprintf(out.Stderr, "archcheck: %v\n", r.err)
-		return report.StatusFailure
+		return outcome.ToolFailure
 	}
-	return out.Findings("archcheck", r.findings)
+	return report.Write(out, "archcheck", r.findings)
 }
