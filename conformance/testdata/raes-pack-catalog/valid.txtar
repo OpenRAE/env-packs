@@ -1,0 +1,4 @@
+# A hosted pack gives a catalog document.
+exits 0 raes-pack-catalog $REPO/packs/techvault
+stdout '"schema_version": "environment-pack-catalog/v1"'
+! stderr .

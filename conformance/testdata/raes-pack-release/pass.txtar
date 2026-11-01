@@ -1,0 +1,10 @@
+# A hosted pack passes the lint and builds a release.
+exits 0 raes-pack-release lint --pack $REPO/packs/techvault
+stdout '^PACK LINT: PASS$'
+! stderr .
+
+exits 0 raes-pack-release build --pack $REPO/packs/techvault --out out
+stdout '^PACK BUILD: PASS$'
+! stderr .
+glob REL out/techvault-*
+exists $REL/release.yaml

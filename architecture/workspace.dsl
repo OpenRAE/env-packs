@@ -20,6 +20,7 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
             repository_tools = container "Repository tools" "The tools that check and release this repository." "Go" {
                 architecture = component "architecture" "Checks the code and the design records against this model." "Go"
                 test_gates = component "test-gates" "Runs mutation testing on changed lines and proves regression tests." "Go"
+                conformance = component "conformance" "Runs the conformance corpus against the Python or the Go implementation." "Go"
             }
         }
 

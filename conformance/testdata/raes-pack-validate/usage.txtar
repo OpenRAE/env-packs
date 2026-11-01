@@ -1,0 +1,9 @@
+# An unknown option is an invalid invocation.
+exits 2 raes-pack-validate --bogus
+! stdout .
+stderr '^usage: raes-pack-validate'
+
+# A pack directory that does not exist is an invalid invocation.
+exits 2 raes-pack-validate --pack missing
+! stdout .
+stderr 'pack directory not found: missing'
