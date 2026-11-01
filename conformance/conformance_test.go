@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,26 +37,31 @@ func TestCorpus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("locate the repository root: %v", err)
 	}
+	goBin := ""
+	if *impl == "go" {
+		if goBin, err = filepath.Abs(*bin); err != nil {
+			t.Fatalf("locate the Go commands: %v", err)
+		}
+	}
 	dirs, err := filepath.Glob("testdata/*")
 	if err != nil {
 		t.Fatalf("list the commands: %v", err)
 	}
 	for _, dir := range dirs {
 		t.Run(filepath.Base(dir), func(t *testing.T) {
-			testscript.Run(t, params(dir, repo))
+			testscript.Run(t, params(dir, repo, goBin))
 		})
 	}
 }
 
 // params returns the testscript parameters for the cases in directory dir.
-func params(dir, repo string) testscript.Params {
+// For the Go implementation, goBin is the absolute directory of the Go
+// commands; it is empty for the Python implementation.
+func params(dir, repo, goBin string) testscript.Params {
 	return testscript.Params{
 		Dir: dir,
 		Setup: func(env *testscript.Env) error {
 			env.Setenv("REPO", repo)
-			if *impl == "go" {
-				env.Setenv("PATH", *bin+string(os.PathListSeparator)+env.Getenv("PATH"))
-			}
 			return nil
 		},
 		Condition: func(cond string) (bool, error) {
@@ -65,26 +71,31 @@ func params(dir, repo string) testscript.Params {
 			return cond == *impl, nil
 		},
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"exits":   exits,
+			"exits": func(ts *testscript.TestScript, neg bool, args []string) {
+				exits(ts, neg, args, goBin)
+			},
 			"cmpjson": cmpjson,
 			"glob":    glob,
 		},
 	}
 }
 
-// exits runs a command and checks its exit status:
+// exits runs a command of the implementation under test and checks its exit
+// status:
 //
 //	exits <status> <command> [<argument>...]
 //
 // The stdout and stderr commands then check the output of the command.
-func exits(ts *testscript.TestScript, neg bool, args []string) {
+func exits(ts *testscript.TestScript, neg bool, args []string, goBin string) {
 	if neg || len(args) < 2 {
 		ts.Fatalf("usage: exits <status> <command> [<argument>...]")
 	}
 	want, err := strconv.Atoi(args[0])
 	ts.Check(err)
+	command, err := commandPath(goBin, args[1])
+	ts.Check(err)
 	got := 0
-	if err := ts.Exec(args[1], args[2:]...); err != nil {
+	if err := ts.Exec(command, args[2:]...); err != nil {
 		exitErr, ok := errors.AsType[*exec.ExitError](err)
 		if !ok {
 			ts.Fatalf("run %s: %v", args[1], err)
@@ -94,6 +105,21 @@ func exits(ts *testscript.TestScript, neg bool, args []string) {
 	if got != want {
 		ts.Fatalf("%s: exit status %d, want %d", args[1], got, want)
 	}
+}
+
+// commandPath returns the command to run for name. For the Go
+// implementation, it is the executable name in the directory goBin, so that a
+// missing Go command never falls back to a Python command on PATH. For the
+// Python implementation, goBin is empty, and PATH finds name.
+func commandPath(goBin, name string) (string, error) {
+	if goBin == "" {
+		return name, nil
+	}
+	path := filepath.Join(goBin, name)
+	if _, err := exec.LookPath(path); err != nil {
+		return "", fmt.Errorf("the Go command %s is not in -bin: %w", name, err)
+	}
+	return path, nil
 }
 
 // cmpjson compares two JSON documents by their decoded content:
@@ -161,6 +187,49 @@ func TestPythonSkipsNameAnIssue(t *testing.T) {
 			if !deviation.MatchString(m[1]) {
 				t.Errorf("%s: %q, want [python] skip 'deviation: <reason> (#<issue>)'", file, m[0])
 			}
+		}
+	}
+}
+
+// TestCommandPath checks that a Go command must be in -bin, also when PATH
+// has a command with the same name.
+func TestCommandPath(t *testing.T) {
+	goBin, other := t.TempDir(), t.TempDir()
+	for _, file := range []string{filepath.Join(goBin, "raes-pack-check"), filepath.Join(other, "raes-pack-kit")} {
+		if err := os.WriteFile(file, []byte("#!/bin/sh\n"), 0o700); err != nil { //nolint:gosec // G306 false positive: the test makes an executable script in its own directory.
+			t.Fatalf("write %s: %v", file, err)
+		}
+	}
+	t.Setenv("PATH", other)
+	if got, err := commandPath(goBin, "raes-pack-check"); err != nil || got != filepath.Join(goBin, "raes-pack-check") {
+		t.Errorf("commandPath(raes-pack-check) = %q, %v; want the command in -bin", got, err)
+	}
+	if got, err := commandPath(goBin, "raes-pack-kit"); err == nil {
+		t.Errorf("commandPath(raes-pack-kit) = %q, nil; want an error for a command that is only on PATH", got)
+	}
+	if got, err := commandPath("", "raes-pack-kit"); err != nil || got != "raes-pack-kit" {
+		t.Errorf("commandPath() for Python = %q, %v; want the bare name", got, err)
+	}
+}
+
+// directExec matches a line of a script that runs a command of the
+// implementation without exits.
+var directExec = regexp.MustCompile(`(?m)^\s*!?\s*\??\s*exec\s+raes-`)
+
+// TestCasesRunCommandsThroughExits checks that each case runs the commands of
+// the implementation through exits, which selects the implementation.
+func TestCasesRunCommandsThroughExits(t *testing.T) {
+	files, err := filepath.Glob("testdata/*/*.txtar")
+	if err != nil || len(files) == 0 {
+		t.Fatalf("list the cases: %v, %d files", err, len(files))
+	}
+	for _, file := range files {
+		archive, err := txtar.ParseFile(file)
+		if err != nil {
+			t.Fatalf("parse %s: %v", file, err)
+		}
+		if m := directExec.Find(archive.Comment); m != nil {
+			t.Errorf("%s: %q runs a command of the implementation without exits", file, m)
 		}
 	}
 }

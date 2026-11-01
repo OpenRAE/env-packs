@@ -49,8 +49,9 @@ nothing shows that a Go command behaves as the Python command does.
 
 - `go test ./conformance -args -impl=python` runs the corpus against the
   Python console scripts on `PATH`.
-- `-impl=go -bin <dir>` runs the corpus against the Go commands in `<dir>`. The
-  runner puts `<dir>` first on `PATH`.
+- `-impl=go -bin <dir>` runs the corpus against the Go commands in `<dir>`.
+  `exits` runs each command from `<dir>`, so a missing Go command fails the
+  case instead of running the Python command on `PATH`.
 - Without `-impl`, the corpus test skips. So `make go-check` passes without the
   Python implementation.
 
@@ -102,7 +103,7 @@ implementation under test runs as a child process of `go test`.
 | A skip for Python hides a break of the contract. | Case to runner | Each `[python] skip` must give a reason and the issue that resolves the deviation. | `TestPythonSkipsNameAnIssue`. |
 | A case passes for the wrong reason, for example with a loose match of the output. | Case to runner | `exits` checks the exact exit status. A case compares the output with `cmp` for exact bytes or with `cmpjson` for decoded content, as the contract requires. | Review of each case. |
 | A case changes the hosted packs or kits that other cases read. | Case to checkout | testscript runs each case in its own temporary work directory. A case only reads `$REPO`. | Review of each case. |
-| The wrong implementation runs, for example a stale binary on `PATH`. | Runner to command | `-impl=go` needs `-bin`, and the runner puts that directory first on `PATH`. The CI job installs the hash-locked Python package. | The runner fails for an unknown `-impl` and for `-impl=go` without `-bin`. |
+| The wrong implementation runs, for example a Python command when a Go command is missing. | Runner to command | `-impl=go` needs `-bin`. `exits` runs each command of the implementation from that directory, and it fails when the command is not there. A test rejects a case that runs such a command without `exits`. | `TestCommandPath`, `TestCasesRunCommandsThroughExits`. |
 
 Residual risk: no tool stops a case from a write to `$REPO`. Review and the
 clean checkout of each CI job limit the effect.
