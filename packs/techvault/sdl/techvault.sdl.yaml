@@ -745,7 +745,6 @@ nodes:
           settings:
             - setting_id: misp-api-authentication
               name: MISP API credential
-              provenance: unknown
               classification: redacted
               description: Uses the secret_fixture key at accounts.misp-suricata-sync-api-key.credential_bindings; this setting records value-free posture.
             - setting_id: misp-tls-verification
@@ -756,7 +755,6 @@ nodes:
             - setting_id: misp-ca-trust-anchor
               name: MISP trusted CA certificate
               value: /opt/techvault/soc-certs/lab-ca.pem
-              provenance: unknown
               classification: plain
           reload_channels:
             - reload_channel_id: suricata-command-socket

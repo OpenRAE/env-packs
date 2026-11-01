@@ -43,7 +43,7 @@ from raes_contracts.experiment_bindings import (
     validate_experiment_binding_targets,
 )
 from raes_contracts.experiment_spec import ExperimentSpecValidationError, parse_experiment_spec
-from raes_contracts.participant_configuration import ParticipantConfigurationValidator
+from raes_contracts.contracts.participant_configuration import ParticipantConfigurationValidator
 from raes_contracts.realization_envelope import BackendRealizationEnvelopeModel
 from raes_processor.trial_compiler import TrialCompilationRequest
 
