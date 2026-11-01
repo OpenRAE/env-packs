@@ -163,10 +163,11 @@ func mutationTargets(ctx context.Context, r Runner, opts MutationOptions) ([]str
 	if err != nil {
 		return nil, nil, err
 	}
-	changes, err := changedLines(ctx, r, opts.Repo, base, "*.go")
+	diff, err := changedLines(ctx, r, opts.Repo, base, "*.go")
 	if err != nil {
 		return nil, nil, err
 	}
+	changes := diff.Added
 	var targets []string
 	for name := range changes {
 		if mutable(name) {

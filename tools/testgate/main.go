@@ -62,9 +62,16 @@ type process struct {
 }
 
 func main() {
+	os.Exit(runMain())
+}
+
+// runMain runs the command with the state of the process, and returns the
+// exit status.
+func runMain() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 	exe, exeErr := os.Executable()
-	status := run(ctx, process{
+	return run(ctx, process{
 		args:        os.Args,
 		environ:     os.Environ(),
 		exe:         exe,
@@ -75,8 +82,6 @@ func main() {
 		stdout:      os.Stdout,
 		stderr:      os.Stderr,
 	})
-	stop()
-	os.Exit(status)
 }
 
 // limitAddressSpace limits the address space of the process to bytes. The
@@ -204,7 +209,7 @@ func runExec(ctx context.Context, p process, args []string, out report.Streams) 
 		Timeout:  time.Duration(seconds) * time.Second,
 	})
 	if err != nil {
-		return fail(out, err)
+		fmt.Fprintf(out.Stderr, "testgate: %v\n", err)
 	}
 	return status
 }

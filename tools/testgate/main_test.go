@@ -143,6 +143,9 @@ func TestRunUsage(t *testing.T) {
 			if status != 2 || stdout != "" || !strings.Contains(stderr, tt.wantStderr) {
 				t.Errorf("run(%q) = %d, stdout %q, stderr %q; want 2, no stdout, and stderr with %q", tt.args, status, stdout, stderr, tt.wantStderr)
 			}
+			if strings.Count(stderr, "testgate: ") > 1 {
+				t.Errorf("run(%q) stderr %q, want one message of testgate", tt.args, stderr)
+			}
 		})
 	}
 }
@@ -257,8 +260,11 @@ func TestRunExecMemory(t *testing.T) {
 	if status, _ := p("-memory", "0"); status != 3 {
 		t.Errorf("run(exec -memory 0) = %d, want 3", status)
 	}
-	if want := []uint64{16 << 20}; len(limits) != 1 || limits[0] != want[0] {
-		t.Errorf("run(exec) limits = %v, want %v and no limit for 0", limits, want)
+	if status, _ := p("-memory", "1"); status != 3 {
+		t.Errorf("run(exec -memory 1) = %d, want 3", status)
+	}
+	if diff := cmp.Diff([]uint64{16 << 20, 1 << 20}, limits); diff != "" {
+		t.Errorf("run(exec) limits mismatch (-want +got), want no limit for 0:\n%s", diff)
 	}
 	limitErr = errors.New("no limit")
 	if status, stderr := p("-memory", "16"); status != 3 || stderr != "testgate: limit the memory of the tests: no limit\n" {

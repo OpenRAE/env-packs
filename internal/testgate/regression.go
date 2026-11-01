@@ -81,12 +81,9 @@ func Regression(ctx context.Context, r Runner, opts RegressionOptions) (Regressi
 			return copyErr
 		}
 		for _, dir := range dirs {
-			findings, proven, proveErr := proveDir(ctx, r, tree, dir, byDir[dir], mergeBase)
-			if proveErr != nil {
+			if proveErr := proveDir(ctx, r, tree, dir, byDir[dir], mergeBase, &res); proveErr != nil {
 				return proveErr
 			}
-			res.Findings = append(res.Findings, findings...)
-			res.Proven += proven
 		}
 		return nil
 	})
@@ -94,15 +91,18 @@ func Regression(ctx context.Context, r Runner, opts RegressionOptions) (Regressi
 }
 
 // changedRegressionTests returns the regression tests that HEAD adds or
-// changes since the merge base of base and HEAD. It reads the test files of
-// HEAD, and it skips the files in testdata directories.
+// changes since the merge base of base and HEAD. A change that only removes
+// lines of a test changes it too. It reads the test files of HEAD, and it
+// skips the files in testdata directories.
 func changedRegressionTests(ctx context.Context, r Runner, repo, base string) ([]regressionTest, error) {
-	changes, err := changedLines(ctx, r, repo, base, "*_test.go")
+	diff, err := changedLines(ctx, r, repo, base, "*_test.go")
 	if err != nil {
 		return nil, err
 	}
+	files := slices.Concat(slices.Collect(maps.Keys(diff.Added)), slices.Collect(maps.Keys(diff.Removed)))
+	slices.Sort(files)
 	var tests []regressionTest
-	for _, file := range slices.Sorted(maps.Keys(changes)) {
+	for _, file := range slices.Compact(files) {
 		if slices.Contains(strings.Split(file, "/"), "testdata") {
 			continue
 		}
@@ -110,7 +110,7 @@ func changedRegressionTests(ctx context.Context, r Runner, repo, base string) ([
 		if err != nil {
 			return nil, err
 		}
-		found, err := regressionTests(file, src, changes[file])
+		found, err := regressionTests(file, src, diff.Added[file], diff.Removed[file])
 		if err != nil {
 			return nil, err
 		}
@@ -120,8 +120,9 @@ func changedRegressionTests(ctx context.Context, r Runner, repo, base string) ([
 }
 
 // regressionTests returns the regression tests of a test file whose
-// declaration, with its doc comment, has a changed line.
-func regressionTests(file string, src []byte, changed Lines) ([]regressionTest, error) {
+// declaration, with its doc comment, has a changed line, or has a place
+// inside it where the change removes lines.
+func regressionTests(file string, src []byte, changed Lines, removed []int) ([]regressionTest, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, file, src, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
@@ -134,7 +135,8 @@ func regressionTests(file string, src []byte, changed Lines) ([]regressionTest, 
 			continue
 		}
 		start, end := fset.Position(fn.Doc.Pos()).Line, fset.Position(fn.End()).Line
-		if changed.Intersects(start, end) {
+		inside := func(place int) bool { return start <= place && place < end }
+		if changed.Intersects(start, end) || slices.ContainsFunc(removed, inside) {
 			tests = append(tests, regressionTest{file: file, name: fn.Name.Name, line: fset.Position(fn.Pos()).Line})
 		}
 	}
@@ -194,39 +196,38 @@ func copyTestFile(ctx context.Context, r Runner, repo, tree string, deleted bool
 }
 
 // proveDir runs the regression tests of the package in directory dir of the
-// worktree tree, and returns a finding for each test that does not fail.
-func proveDir(ctx context.Context, r Runner, tree, dir string, tests []regressionTest, mergeBase string) ([]report.Finding, int, error) {
+// worktree tree. It adds to res a finding for each test that does not fail,
+// and counts each test that fails.
+func proveDir(ctx context.Context, r Runner, tree, dir string, tests []regressionTest, mergeBase string, res *RegressionResult) error {
 	names := make([]string, 0, len(tests))
 	for _, t := range tests {
 		names = append(names, t.name)
 	}
-	res, err := r.Run(ctx, Command{Dir: tree, Name: "go", Args: []string{
+	out, err := r.Run(ctx, Command{Dir: tree, Name: "go", Args: []string{
 		"test", "-json", "-count=1", "-run", "^(" + strings.Join(names, "|") + ")$", "./" + dir,
 	}})
 	if err != nil {
-		return nil, 0, err
+		return err
 	}
-	events, err := parseEvents(res.Stdout)
+	events, err := parseEvents(out.Stdout)
 	if err != nil {
-		return nil, 0, err
+		return err
 	}
 	pkg := packageOf(events)
-	var findings []report.Finding
-	proven := 0
 	for _, t := range tests {
 		problem := regressionProblem(events, pkg, t.name)
 		if problem == "" {
-			proven++
+			res.Proven++
 			continue
 		}
-		findings = append(findings, report.Finding{
+		res.Findings = append(res.Findings, report.Finding{
 			Location: t.file + ":" + strconv.Itoa(t.line),
 			Rule:     RuleRegression,
 			Message:  fmt.Sprintf("regression test %s %s on the merge base %.12s", t.name, problem, mergeBase),
 			Fix:      "Make the test fail without the fix. Write it against the API of the merge base, and do not skip it.",
 		})
 	}
-	return findings, proven, nil
+	return nil
 }
 
 // regressionProblem returns why a regression test does not prove the defect,

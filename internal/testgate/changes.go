@@ -26,31 +26,52 @@ func (l Lines) Intersects(start, end int) bool {
 // root, to its added and changed lines.
 type Changes map[string]Lines
 
-// ParseDiff reads the output of git diff. It returns the lines that the diff
-// adds or changes in each file. A file without added lines, such as a deleted
-// file, has no entry.
-func ParseDiff(diff string) (Changes, error) {
+// A Diff holds the changes of the output of git diff -U0 to each file.
+type Diff struct {
+	// Added maps each file to the lines that the diff adds or changes. A file
+	// without added lines, such as a deleted file, has no entry.
+	Added Changes
+	// Removed maps each file to the places of the hunks that only remove
+	// lines. A place is the line of the new file before the removed lines, as
+	// in the hunk header. A deleted file has no entry.
+	Removed map[string][]int
+}
+
+// ParseDiff reads the output of git diff -U0.
+func ParseDiff(diff string) (Diff, error) {
 	files, _, err := gitdiff.Parse(strings.NewReader(diff))
 	if err != nil {
-		return nil, fmt.Errorf("parse the diff: %w", err)
+		return Diff{}, fmt.Errorf("parse the diff: %w", err)
 	}
-	changes := make(Changes)
+	d := Diff{Added: make(Changes), Removed: make(map[string][]int)}
 	for _, f := range files {
 		for _, frag := range f.TextFragments {
-			line := int(frag.NewPosition)
-			for _, l := range frag.Lines {
-				switch l.Op {
-				case gitdiff.OpAdd:
-					changes.add(f.NewName, line)
-					line++
-				case gitdiff.OpContext:
-					line++
-				case gitdiff.OpDelete:
-				}
-			}
+			d.addFragment(f, frag)
 		}
 	}
-	return changes, nil
+	return d, nil
+}
+
+// addFragment adds the added lines of a fragment of the file f, or the place
+// of the fragment when it only removes lines.
+func (d Diff) addFragment(f *gitdiff.File, frag *gitdiff.TextFragment) {
+	if frag.LinesAdded == 0 {
+		if !f.IsDelete {
+			d.Removed[f.NewName] = append(d.Removed[f.NewName], int(frag.NewPosition))
+		}
+		return
+	}
+	line := int(frag.NewPosition)
+	for _, l := range frag.Lines {
+		switch l.Op {
+		case gitdiff.OpAdd:
+			d.Added.add(f.NewName, line)
+			line++
+		case gitdiff.OpContext:
+			line++
+		case gitdiff.OpDelete:
+		}
+	}
 }
 
 // add adds line to the lines of file.
@@ -73,10 +94,10 @@ func revParse(ctx context.Context, r Runner, repo, rev string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// changedLines returns the lines that HEAD adds or changes since the merge
-// base of commit base and HEAD, in the files that the pathspecs match. The
-// options make the output the same for each git configuration.
-func changedLines(ctx context.Context, r Runner, repo, base string, pathspecs ...string) (Changes, error) {
+// changedLines returns the changes of HEAD since the merge base of commit base
+// and HEAD, in the files that the pathspecs match. The options make the output
+// the same for each git configuration.
+func changedLines(ctx context.Context, r Runner, repo, base string, pathspecs ...string) (Diff, error) {
 	args := append([]string{
 		"diff", "-U0", "--no-color", "--no-ext-diff", "--no-textconv", "--find-renames",
 		"--diff-algorithm=myers", "--src-prefix=a/", "--dst-prefix=b/",
@@ -84,7 +105,7 @@ func changedLines(ctx context.Context, r Runner, repo, base string, pathspecs ..
 	}, pathspecs...)
 	out, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: args})
 	if err != nil {
-		return nil, err
+		return Diff{}, err
 	}
 	return ParseDiff(string(out))
 }

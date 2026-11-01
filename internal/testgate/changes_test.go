@@ -80,12 +80,15 @@ func TestParseDiff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseDiff() error = %v", err)
 	}
-	want := Changes{
-		"x.go":       {3: true, 4: true, 12: true, 13: true},
-		"new.go":     {1: true, 2: true, 3: true},
-		`q"uote.go`:  {5: true},
-		"sp ace.go":  {8: true},
-		"context.go": {2: true, 4: true},
+	want := Diff{
+		Added: Changes{
+			"x.go":       {3: true, 4: true, 12: true, 13: true},
+			"new.go":     {1: true, 2: true, 3: true},
+			`q"uote.go`:  {5: true},
+			"sp ace.go":  {8: true},
+			"context.go": {2: true, 4: true},
+		},
+		Removed: map[string][]int{"x.go": {23}},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("ParseDiff() mismatch (-want +got):\n%s", diff)
@@ -156,7 +159,7 @@ func TestRevParse(t *testing.T) {
 func TestChangedLines(t *testing.T) {
 	r := &fakeRunner{answer: func(Command) (Result, error) { return ok(sampleDiff) }}
 	got, err := changedLines(context.Background(), r, "repo", "0123abc", "*.go")
-	if err != nil || len(got["x.go"]) != 4 {
+	if err != nil || len(got.Added["x.go"]) != 4 {
 		t.Fatalf("changedLines() = %v, %v, want the lines of the sample diff", got, err)
 	}
 	want := []Command{{Dir: "repo", Name: "git", Args: []string{

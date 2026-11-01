@@ -354,3 +354,46 @@ func TestTestFileOf(t *testing.T) {
 		}
 	}
 }
+
+// TestRegressionRemovedLines checks that a change that only removes lines of a
+// marked test selects the test, so that the gate proves it again.
+func TestRegressionRemovedLines(t *testing.T) {
+	g := newRegressionRepo(t)
+	g.source = `package pkg
+
+import "testing"
+
+// Regression test for #20.
+func TestShortened(t *testing.T) {
+	if false {
+		t.Error("never")
+	}
+}
+`
+	g.diff = fileDiff("pkg/a_test.go", "@@ -7,1 +6,0 @@\n-\tt.Fatal(\"the defect\")\n")
+	g.events = `{"Action":"run","Package":"example.com/m/pkg","Test":"TestShortened"}
+{"Action":"pass","Package":"example.com/m/pkg","Test":"TestShortened"}
+{"Action":"pass","Package":"example.com/m/pkg"}
+`
+	got, err := Regression(context.Background(), g.runner(), regressionOptions(t))
+	if err != nil {
+		t.Fatalf("Regression() error = %v", err)
+	}
+	if got.Tests != 1 || got.Proven != 0 || len(got.Findings) != 1 || !strings.Contains(got.Findings[0].Message, "TestShortened passes") {
+		t.Errorf("Regression() of a test without its assertion = %+v, want one finding that TestShortened passes", got)
+	}
+}
+
+// TestRegressionTestsRemovalPlaces checks which places of removed lines
+// select a test: a place from the first line of its doc comment to the line
+// before its last line.
+func TestRegressionTestsRemovalPlaces(t *testing.T) {
+	src := []byte("package pkg\n\nimport \"testing\"\n\n// Regression test for #21.\nfunc TestX(t *testing.T) {\n\tt.Log()\n}\n")
+	tests := map[int]bool{4: false, 5: true, 7: true, 8: false}
+	for place, want := range tests {
+		found, err := regressionTests("pkg/a_test.go", src, nil, []int{place})
+		if err != nil || (len(found) == 1) != want {
+			t.Errorf("regressionTests() with lines removed after line %d = %v, %v; want selected %v", place, found, err, want)
+		}
+	}
+}
