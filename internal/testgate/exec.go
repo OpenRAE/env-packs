@@ -72,7 +72,13 @@ func ExecMutant(ctx context.Context, r Runner, dir string, m Mutant) (status int
 	if writeErr := os.WriteFile(m.Original, mutated, 0o600); writeErr != nil {
 		return ExecFailed, fmt.Errorf("put the mutant in place: %w", writeErr)
 	}
-	defer func() { err = errors.Join(err, os.WriteFile(m.Original, original, 0o600)) }()
+	defer func() {
+		// A file that keeps the mutant spoils each later result, so a failed
+		// restore fails the exec step whatever the tests reported.
+		if restoreErr := os.WriteFile(m.Original, original, 0o600); restoreErr != nil {
+			status, err = ExecFailed, errors.Join(err, restoreErr)
+		}
+	}()
 	res, err := r.Run(ctx, Command{Dir: dir, Name: "go", Args: []string{
 		"test", "-json", "-count=1", "-timeout=" + m.Timeout.String(), m.Package,
 	}})

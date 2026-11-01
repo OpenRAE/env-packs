@@ -120,16 +120,18 @@ func TestExecMutantPlacementFailure(t *testing.T) {
 }
 
 func TestExecMutantRestoreFailure(t *testing.T) {
-	original, mutated := mutantFiles(t)
-	r := &fakeRunner{answer: func(Command) (Result, error) {
-		if err := os.Chmod(original, 0o400); err != nil {
-			t.Fatalf("make the original file read-only: %v", err)
+	for name, output := range map[string]string{"killed": testFailOutput, "escaped": passOutput} {
+		original, mutated := mutantFiles(t)
+		r := &fakeRunner{answer: func(Command) (Result, error) {
+			if err := os.Chmod(original, 0o400); err != nil {
+				t.Fatalf("make the original file read-only: %v", err)
+			}
+			return ok(output)
+		}}
+		status, err := ExecMutant(context.Background(), r, ".", Mutant{Original: original, Mutated: mutated, Package: "p"})
+		if status != 3 || !errors.Is(err, os.ErrPermission) {
+			t.Errorf("ExecMutant() of a %s mutant with a failed restore = %d, %v; want 3 and a permission error", name, status, err)
 		}
-		return ok(passOutput)
-	}}
-	_, err := ExecMutant(context.Background(), r, ".", Mutant{Original: original, Mutated: mutated, Package: "p"})
-	if err == nil || !errors.Is(err, os.ErrPermission) {
-		t.Errorf("ExecMutant() with a failed restore: error = %v, want a permission error", err)
 	}
 }
 
