@@ -1,0 +1,9 @@
+# The hosted kit collection lists each kit release.
+exits 0 raes-pack-kit list $REPO --source-id first-party --source-revision r1
+stdout '^infrastructure\.secrets-store@1\.2\.0 — '
+! stderr .
+
+# A kit release that does not exist is a failure.
+exits 1 raes-pack-kit inspect $REPO --source-id first-party --source-revision r1 infrastructure.secrets-store 9.9.9
+! stdout .
+stderr '^error: '

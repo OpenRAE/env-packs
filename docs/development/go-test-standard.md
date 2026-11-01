@@ -152,5 +152,10 @@ Python coverage report.
 
 ## Contracts
 
-The conformance corpus (chunk 09) tests the external contracts of the commands
-and library operations. Package tests cover the behavior inside a package.
+The conformance corpus in `conformance/` tests the external contracts of the
+commands and library operations
+([design 0003](designs/0003-conformance-corpus.md)). Package tests cover the
+behavior inside a package.
+
+- `make conformance` runs the corpus against the Python implementation.
+- A port chunk adds the cases for its surface before its Go code merges.

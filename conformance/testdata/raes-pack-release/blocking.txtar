@@ -1,0 +1,10 @@
+# A directory without pack.yaml does not build.
+mkdir empty
+exits 1 raes-pack-release build --pack empty --out out
+stdout '^PACK BUILD: FAIL \(1 issue\(s\)\)$'
+! stderr .
+
+# A pack that does not exist is a failure, not an invalid invocation.
+exits 1 raes-pack-release lint --pack missing
+! stdout .
+stderr '^pack not found: missing$'

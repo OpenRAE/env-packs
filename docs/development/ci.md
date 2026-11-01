@@ -13,7 +13,7 @@ same time:
 
 | Workflow | Checks | Blocks merge? |
 | --- | --- | --- |
-| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `go`, `go-lint`, `go-audit`, `go-arch`, `go-mutation`, `go-regression`, **`verify`**, `sonar` | only **`verify`** |
+| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `conformance`, `go`, `go-lint`, `go-audit`, `go-arch`, `go-mutation`, `go-regression`, **`verify`**, `sonar` | only **`verify`** |
 | `codeql.yml` | `Analyze (python)` and `Analyze (go)`: static security analysis | depends on branch protection |
 | `fuzz.yml` | `Fuzz validate_pack`: bounded fuzzing of the untrusted-pack boundary. `Fuzz Go targets`: every native Go fuzz target | depends on branch protection |
 | `pr-title.yml` | `PR title guard`: the Conventional Commit shape | depends on branch protection |
@@ -48,6 +48,10 @@ does not wait for an unrelated job, and the fastest signal arrives first.
   publication boundary of the built site (ADR 0030). It then runs `make prose`
   on the Markdown files that the change adds or changes (see
   [the style guide](documentation-style-guide.md)).
+- **`conformance`**: installs the hash-locked Python package and runs `make
+  conformance`. The conformance corpus checks the exit statuses and the output
+  streams of each command
+  ([design 0003](designs/0003-conformance-corpus.md)).
 - **`go`**: `make go-check` builds, vets, and tests every Go package with the
   race detector and in shuffled order. It uploads `coverage-go.out`. This job is
   the **coverage authority** for Go.
@@ -128,6 +132,7 @@ Those files stay the authority.
 | `audit` | `python -m pip install -r requirements/pip-audit.txt && pip-audit` |
 | `content` | `raes-pack-validate --repo .` and `raes-pack-release check --all`, then the same gates with `--packs-root packs` |
 | `docs` | `python -m sphinx -W -b html docs/public docs/public/_build/html`, then `python tools/check_docs_publication_boundary.py docs/public/_build/html`, then `make prose BASE=<base>` (after `mise install`; commit first) |
+| `conformance` | `make conformance` (with the package installed in the active environment) |
 | `go` | `make go-check` |
 | `go-lint` | `make go-lint` (after `mise install`) |
 | `go-audit` | `make go-audit` (after `mise install`) |

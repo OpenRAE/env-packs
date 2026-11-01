@@ -102,6 +102,13 @@ components:
       - report
     modules:
       - github.com/bluekeyes/go-gitdiff
+  - id: conformance
+    container: repository-tools
+    description: Runs the conformance corpus against the Python or the Go implementation.
+    packages:
+      - github.com/OpenRAE/env-packs/conformance
+    modules:
+      - github.com/rogpeppe/go-internal
 
 test_modules:
   - github.com/google/go-cmp
