@@ -1,7 +1,7 @@
 package architecture
 
 import (
-	_ "embed"
+	_ "embed" // The go:embed directive below needs the embed package.
 	"strings"
 	"text/template"
 )
