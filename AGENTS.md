@@ -37,6 +37,7 @@ raes-pack-release check --packs-root packs
 python3 -m compileall src tests
 make go-check
 make go-lint
+make go-audit
 make go-arch
 make go-mutation
 make go-regression

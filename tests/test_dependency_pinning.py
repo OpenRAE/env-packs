@@ -455,6 +455,17 @@ class LockMatchesProjectMetadataTests(unittest.TestCase):
         self.assertEqual(allowed, declared, 'the "/" entry must allow exactly the declared dependencies')
         self.assertLessEqual(declared, ignored, 'the "/requirements" entry must ignore the declared dependencies')
 
+    def test_dependabot_updates_go_modules(self) -> None:
+        # The Go binary embeds its modules, so a module bump ships and cuts a
+        # patch release, as for the runtime Python dependencies (ADR 0047).
+        config = yaml.safe_load((_ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8"))
+        entries = [u for u in config["updates"] if u["package-ecosystem"] == "gomod"]
+        self.assertEqual(len(entries), 1, "dependabot.yml must have one gomod entry")
+        entry = entries[0]
+        self.assertEqual(entry["directory"], "/")
+        self.assertEqual(entry["target-branch"], "dev")
+        self.assertEqual(entry["commit-message"]["prefix"], "fix")
+
     def test_declared_floor_is_not_rewritten_as_a_lock(self) -> None:
         # Guardrail from the #142 architecture preflight: this package is a
         # library. Its published metadata must keep compatibility ranges so

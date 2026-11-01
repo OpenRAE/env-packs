@@ -15,6 +15,7 @@
 - [ ] `raes-pack-release check --packs-root packs`
 - [ ] `make go-check`
 - [ ] `make go-lint`
+- [ ] `make go-audit`
 - [ ] `make go-arch`
 - [ ] `make go-mutation`
 - [ ] `make go-regression`

@@ -68,6 +68,22 @@ updates:
       # bump re-resolves runtime.txt.
       - dependency-name: "z3-solver"
 
+  # Go modules (ADR 0047). Dependabot reads this file on the default branch, so
+  # this entry starts when the Go port reaches main. The Go binary embeds its
+  # modules, so a bump is `fix(deps)` and cuts a patch release, as for the
+  # runtime Python dependencies below. Each bump is its own PR.
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+    target-branch: dev
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: fix
+      include: scope
+
   # Runtime Python dependencies, as pyproject.toml declares them. They ship
   # inside the installed package, so a bump is `fix(deps)`. It cuts a patch
   # release (ADR 0016), so consumers get the new floor. Each bump is its own
