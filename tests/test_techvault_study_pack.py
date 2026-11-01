@@ -56,6 +56,7 @@ class StudyPackTests(unittest.TestCase):
                 "blue-participant-stop-delivery",
             },
             "entities": {"study-control"},
+            "action_contracts": {"red-mcp-tool-call", "blue-mcp-tool-call"},
         }
         for section, names in additive.items():
             for name in names:
@@ -118,6 +119,39 @@ class StudyPackTests(unittest.TestCase):
         for name, entity in expected.items():
             with self.subTest(agent=name):
                 self.assertEqual(scenario.agents[name].affiliations, [entity])
+
+    def test_each_participant_compiles_its_own_tool_action_contract(self) -> None:
+        params = {
+            name: "FLAG{study}"
+            for name in yaml.safe_load(
+                (_STUDY / "sdl/techvault-participant-study.sdl.yaml").read_text()
+            )["variables"]
+            if name.startswith("flag_")
+        }
+        model = compile_runtime_model(
+            instantiate_scenario(
+                parse_sdl_file(_STUDY / "sdl/techvault-participant-study.sdl.yaml"),
+                parameters=params,
+            )
+        )
+        self.assertFalse(model.diagnostics)
+        for role in ("red", "blue"):
+            with self.subTest(role=role):
+                contract = f"participant.action-contract.{role}-mcp-tool-call"
+                participant = model.participant_behaviors[
+                    f"participant.behavior.{role}-team-operator"
+                ]
+                self.assertEqual(participant.action_contract_addresses, (contract,))
+                spec = model.behavior_specifications[
+                    f"participant.behavior-specification.{role}-participant-study"
+                ]
+                self.assertEqual(spec.action_contract_addresses, (contract,))
+        self.assertEqual(
+            model.participant_behaviors[
+                "participant.behavior.study-controller"
+            ].action_contract_addresses,
+            (),
+        )
 
     def test_participant_injects_compile_in_authored_order_for_claude(self) -> None:
         scenario = parse_sdl_file(
