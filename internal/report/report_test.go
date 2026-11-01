@@ -1,21 +1,13 @@
 package report
 
 import (
-	"errors"
-	"io"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-)
 
-// TestStatuses pins the exit statuses, which are a contract of the tools.
-func TestStatuses(t *testing.T) {
-	got := []int{StatusOK, StatusFindings, StatusUsage, StatusFailure}
-	if diff := cmp.Diff([]int{0, 1, 2, 3}, got); diff != "" {
-		t.Errorf("statuses mismatch (-want +got):\n%s", diff)
-	}
-}
+	"github.com/OpenRAE/env-packs/internal/outcome"
+)
 
 func TestSort(t *testing.T) {
 	a := Finding{Location: "a.go:1", Rule: "r", Message: "m", Fix: "f"}
@@ -37,7 +29,7 @@ func TestFindingString(t *testing.T) {
 	}
 }
 
-func TestStreamsFindings(t *testing.T) {
+func TestWrite(t *testing.T) {
 	a := Finding{Location: "a.go:1", Rule: "r", Message: "m", Fix: "f"}
 	b := Finding{Location: "b.go:2", Rule: "r", Message: "m", Fix: "f"}
 	tests := []struct {
@@ -47,18 +39,18 @@ func TestStreamsFindings(t *testing.T) {
 		wantStdout string
 		wantStderr string
 	}{
-		{name: "none", wantStatus: StatusOK, wantStderr: "tool: 0 findings\n"},
+		{name: "none", wantStatus: outcome.OK, wantStderr: "tool: 0 findings\n"},
 		{
 			name:       "one",
 			findings:   []Finding{a},
-			wantStatus: StatusFindings,
+			wantStatus: outcome.Blocking,
 			wantStdout: a.String() + "\n",
 			wantStderr: "tool: 1 findings\n",
 		},
 		{
 			name:       "sorted and unique",
 			findings:   []Finding{b, a, b},
-			wantStatus: StatusFindings,
+			wantStatus: outcome.Blocking,
 			wantStdout: a.String() + "\n" + b.String() + "\n",
 			wantStderr: "tool: 2 findings\n",
 		},
@@ -66,38 +58,11 @@ func TestStreamsFindings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var stdout, stderr strings.Builder
-			s := NewStreams(&stdout, &stderr)
-			status := s.Flush(s.Findings("tool", tt.findings))
+			s := outcome.NewStreams(&stdout, &stderr)
+			status := s.Flush(Write(s, "tool", tt.findings))
 			if status != tt.wantStatus || stdout.String() != tt.wantStdout || stderr.String() != tt.wantStderr {
-				t.Errorf("Findings() = %d, stdout %q, stderr %q; want %d, %q, %q",
+				t.Errorf("Write() = %d, stdout %q, stderr %q; want %d, %q, %q",
 					status, stdout.String(), stderr.String(), tt.wantStatus, tt.wantStdout, tt.wantStderr)
-			}
-		})
-	}
-}
-
-// failingWriter fails each write.
-type failingWriter struct{}
-
-func (failingWriter) Write([]byte) (int, error) {
-	return 0, errors.New("write failed")
-}
-
-func TestStreamsFlushFailure(t *testing.T) {
-	var ok strings.Builder
-	tests := []struct {
-		name           string
-		stdout, stderr io.Writer
-	}{
-		{name: "stdout", stdout: failingWriter{}, stderr: &ok},
-		{name: "stderr", stdout: &ok, stderr: failingWriter{}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := NewStreams(tt.stdout, tt.stderr)
-			s.Findings("tool", []Finding{{Location: "a.go:1"}})
-			if got := s.Flush(StatusFindings); got != StatusFailure {
-				t.Errorf("Flush() after a failed write = %d, want %d", got, StatusFailure)
 			}
 		})
 	}
