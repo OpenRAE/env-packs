@@ -15,6 +15,7 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
             commands = container "Commands" "The raes-pack commands. They are the composition root." "Go"
             library = container "Go library" "The pack contracts and the pack operations." "Go" {
                 root = component "root" "The root package of the module." "Go"
+                packfs = component "packfs" "Reads pack trees through root descriptors, and commits staged trees atomically." "Go"
                 strict_yaml = component "strict-yaml" "Decodes exactly one YAML document, and rejects unknown fields." "Go"
             }
             repository_tools = container "Repository tools" "The tools that check and release this repository." "Go" {

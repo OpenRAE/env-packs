@@ -67,10 +67,17 @@ go-check: ## Build, vet, and test the Go code
 	$(GO) vet ./...
 	$(GO) test -race -shuffle=on -coverprofile=coverage-go.out ./...
 
-# Lints the Go code with the pinned golangci-lint, checks the formatting, and
-# checks that go.mod and go.sum are tidy (docs/development/go-style-map.md).
+# Lints the Go code with the pinned golangci-lint once for each release
+# platform of the architecture model, so that each build-constrained file is
+# linted. Then it checks the formatting, and checks that go.mod and go.sum are
+# tidy (docs/development/go-style-map.md).
 go-lint: ## Lint the Go code and check formatting and tidiness
-	$(MISE) exec -- golangci-lint run ./...
+	@set -eu; \
+	for platform in $$($(GO) run ./tools/archcheck platforms); do \
+	  echo "go-lint: $$platform"; \
+	  GOOS=$${platform%/*} GOARCH=$${platform#*/} CGO_ENABLED=0 \
+	    $(MISE) exec -- golangci-lint run ./...; \
+	done
 	$(MISE) exec -- golangci-lint fmt --diff ./...
 	$(GO) mod tidy -diff
 

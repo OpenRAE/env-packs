@@ -1,5 +1,6 @@
 version: 1
 module: example.com/repo
+platforms: [linux/amd64, darwin/arm64]
 system:
   id: repo
   name: Fixture
