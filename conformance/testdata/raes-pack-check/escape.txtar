@@ -1,0 +1,46 @@
+# A field name with a terminal control sequence prints in a visible form, so it
+# cannot move the cursor or erase the screen (#563).
+mkdir repo/environments
+exits 0 raes-pack-new demo --repo repo --yes
+cp ledger.yaml repo/environments/demo/docs/provenance-ledger.yaml
+exits 1 raes-pack-check repo/environments/demo
+stdout '^\[trust\] provenance\.schema\.unknown  \(owner: env-packs\)\n  where: docs/provenance-ledger\.yaml:\$\.x\\x1b\[2Jy$'
+! stdout '\x1b'
+! stderr .
+
+-- ledger.yaml --
+schema_version: "environment-pack-provenance/v3"
+pack:
+  name: demo
+sources:
+  - source_id: original-design
+    name: "RAES original scenario design"
+    license: "proprietary"
+    usage: reused
+    attribution_required: false
+    used: "All bespoke pack content."
+artifacts:
+  - artifact_id: docs
+    path: docs/
+    classification: commercial-only
+    sources: [original-design]
+    description: "Pack documentation."
+content_safety:
+  no_real_malware: true
+  no_real_third_party_targets: true
+  no_real_credentials: true
+  no_sensitive_data: true
+  offensive_tooling_boundary: true
+  notes: ""
+review:
+  status: pending
+  gates:
+    - gate_id: licensing
+      status: pending
+    - gate_id: attribution
+      status: pending
+    - gate_id: sensitive-data
+      status: pending
+    - gate_id: offensive-tooling
+      status: pending
+"x\e[2Jy": 1
