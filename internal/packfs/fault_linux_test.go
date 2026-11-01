@@ -1,7 +1,9 @@
 package packfs
 
 import (
+	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"golang.org/x/sys/unix"
@@ -33,4 +35,19 @@ func TestWriteMemberDirectoryModeFault(t *testing.T) {
 			t.Errorf("writeMember() with a failed directory mode = %v, want ReasonWriteFailed with EBADF", err)
 		}
 	})
+}
+
+func TestReplaceRollbackFault(t *testing.T) {
+	staged, target := staging(t)
+	f := newFault("Renameat2", 2, failCall)
+	f.err = unix.EIO
+	changed := errors.New("pack changed")
+	err := replace(f, staged, target, func(string) error { return changed })
+	e, ok := errors.AsType[*Error](err)
+	if !ok || e.Reason != ReasonRecovery || e.Path != staged || !errors.Is(err, unix.EIO) {
+		t.Errorf("replace() with a failed rollback = %v, want ReasonRecovery at %s", err, staged)
+	}
+	if got := readFile(t, filepath.Join(staged, "file")); got != "old" {
+		t.Errorf("the recovery path has %q, want the original tree", got)
+	}
 }

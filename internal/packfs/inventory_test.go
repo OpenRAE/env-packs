@@ -1,6 +1,7 @@
 package packfs
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -72,7 +73,11 @@ func TestInventoryRejections(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := openRoot(t, tree(t, tt.entries...))
+			dir := tree(t, tt.entries...)
+			if tt.want == ReasonCaseCollision && regularFiles(t, dir) < len(tt.entries) {
+				t.Skip("the file system holds one file for names that differ only in case")
+			}
+			r := openRoot(t, dir)
 			if tt.opts.MaxMembers == 0 {
 				tt.opts.MaxMembers = 100
 			}
@@ -119,4 +124,20 @@ func TestInventoryInaccessibleDirectories(t *testing.T) {
 	wantReason(t, err, ReasonUninspectable)
 	_, err = r.Inventory(InventoryOptions{MaxMembers: 100, ExcludeDirs: []string{"listonly"}})
 	wantReason(t, err, ReasonDirectoryUnopenable)
+}
+
+// regularFiles returns the number of regular files below dir.
+func regularFiles(t *testing.T, dir string) int {
+	t.Helper()
+	n := 0
+	err := filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
+		if err == nil && d.Type().IsRegular() {
+			n++
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatalf("count the files of %s: %v", dir, err)
+	}
+	return n
 }

@@ -29,6 +29,7 @@ func FuzzInventory(f *testing.F) {
 	f.Add([]byte("fA\x00fa\x00"))
 	f.Add([]byte("lx\x00"))
 	f.Add([]byte("pq\x00"))
+	f.Add([]byte("sx\x00dx"))
 	f.Add([]byte("fcafé\x00"))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		root := fuzzTree(t, data)
@@ -61,7 +62,14 @@ func fuzzTree(t *testing.T, data []byte) string {
 		}
 		switch spec[0] % 4 {
 		case 0:
-			_ = os.WriteFile(path, nil, 0o600) //nolint:errcheck // A member that the system cannot make is not part of the tree.
+			// O_EXCL never opens an existing member, such as a FIFO, which
+			// would block the open for writing.
+			//nolint:gosec // G304 false positive: the path stays inside the test directory, as checked above.
+			if f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600); err == nil {
+				if err := f.Close(); err != nil {
+					t.Fatalf("close %s: %v", name, err)
+				}
+			}
 		case 1:
 			_ = os.Mkdir(path, 0o750) //nolint:errcheck // A member that the system cannot make is not part of the tree.
 		case 2:
