@@ -27,8 +27,8 @@ MISE ?= mise
 
 .DEFAULT_GOAL := help
 
-.PHONY: help devmain go-check go-lint go-audit go-fuzz go-arch go-arch-design go-arch-dsl \
-	go-mutation go-mutation-all go-regression
+.PHONY: help devmain prose go-check go-lint go-audit go-fuzz go-arch go-arch-design \
+	go-arch-dsl go-mutation go-mutation-all go-regression
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -118,6 +118,18 @@ go-arch-dsl: ## Render the C4 view of the architecture model
 # the Go port (ADR 0047). The cutover changes it to origin/dev. The gates read
 # only committed code, so commit the work before you run them.
 BASE ?= origin/go-cutover
+
+# Checks the prose of each Markdown file that HEAD adds or changes since BASE,
+# with the Vale version that mise.toml pins and the rules in .vale/styles/STE
+# (docs/development/documentation-style-guide.md). It skips CHANGELOG.md, test
+# fixtures, and the assets of packs and kits.
+prose: ## Check the prose of the Markdown files changed since BASE
+	@set -eu; \
+	files=$$(git diff --name-only --diff-filter=d --merge-base "$(BASE)" HEAD -- '*.md' \
+	  ':(exclude)CHANGELOG.md' ':(exclude,glob)**/testdata/**' ':(exclude)tests/fixtures' \
+	  ':(exclude,glob)packs/*/assets/**' ':(exclude,glob)kits/*/*/assets/**'); \
+	if [ -z "$$files" ]; then echo "prose: no changed Markdown file"; exit 0; fi; \
+	$(MISE) exec -- vale $$files
 
 # Mutation testing on the Go lines that HEAD changes since BASE, with the
 # go-mutesting version that mise.toml pins
