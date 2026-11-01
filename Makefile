@@ -27,7 +27,7 @@ MISE ?= mise
 
 .DEFAULT_GOAL := help
 
-.PHONY: help devmain go-check go-lint go-fuzz go-arch go-arch-design go-arch-dsl \
+.PHONY: help devmain go-check go-lint go-audit go-fuzz go-arch go-arch-design go-arch-dsl \
 	go-mutation go-mutation-all go-regression
 
 help: ## List the available targets
@@ -73,6 +73,14 @@ go-lint: ## Lint the Go code and check formatting and tidiness
 	$(MISE) exec -- golangci-lint run ./...
 	$(MISE) exec -- golangci-lint fmt --diff ./...
 	$(GO) mod tidy -diff
+
+# Checks the downloaded modules against go.sum, and reports each known
+# vulnerability that the code can reach, with the govulncheck version that
+# mise.toml pins. govulncheck reads the Go vulnerability database on the
+# network.
+go-audit: ## Verify the Go modules and check them for known vulnerabilities
+	$(GO) mod verify
+	$(MISE) exec -- govulncheck ./...
 
 # The fuzz time for each target. The weekly CI schedule raises it.
 FUZZTIME ?= 30s

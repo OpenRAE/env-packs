@@ -13,8 +13,8 @@ same time:
 
 | Workflow | Checks | Blocks merge? |
 | --- | --- | --- |
-| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `go`, `go-lint`, `go-arch`, `go-mutation`, `go-regression`, **`verify`**, `sonar` | only **`verify`** |
-| `codeql.yml` | `Analyze (python)`: static security analysis | depends on branch protection |
+| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `go`, `go-lint`, `go-audit`, `go-arch`, `go-mutation`, `go-regression`, **`verify`**, `sonar` | only **`verify`** |
+| `codeql.yml` | `Analyze (python)` and `Analyze (go)`: static security analysis | depends on branch protection |
 | `fuzz.yml` | `Fuzz validate_pack`: bounded fuzzing of the untrusted-pack boundary. `Fuzz Go targets`: every native Go fuzz target | depends on branch protection |
 | `pr-title.yml` | `PR title guard`: the Conventional Commit shape | depends on branch protection |
 
@@ -49,6 +49,11 @@ does not wait for an unrelated job, and the fastest signal arrives first.
 - **`go`**: `make go-check` builds, vets, and tests every Go package with the
   race detector and in shuffled order. It uploads `coverage-go.out`. This job is
   the **coverage authority** for Go.
+- **`go-audit`**: `make go-audit` verifies the downloaded modules against
+  `go.sum` (`go mod verify`). It then runs the govulncheck version that
+  `mise.toml` pins, and a reachable known vulnerability fails it. It retries a
+  bounded number of times, because the vulnerability database is on the
+  network.
 - **`go-lint`**: `make go-lint` runs the golangci-lint version that `mise.toml`
   pins and `mise.lock` verifies. It also checks the formatting and the module
   tidiness (see [the Go style map](go-style-map.md)).
@@ -123,6 +128,7 @@ Those files stay the authority.
 | `docs` | `python -m sphinx -W -b html docs/public docs/public/_build/html`, then `python tools/check_docs_publication_boundary.py docs/public/_build/html` |
 | `go` | `make go-check` |
 | `go-lint` | `make go-lint` (after `mise install`) |
+| `go-audit` | `make go-audit` (after `mise install`) |
 | `go-arch` | `make go-arch` (`make go-arch-design` in the design step) |
 | `go-mutation` | `make go-mutation BASE=<base>` (after `mise install`; commit first) |
 | `go-regression` | `make go-regression BASE=<base>` (commit first) |

@@ -31,6 +31,7 @@ raes-pack-release check --packs-root packs
 python -m compileall src tests         # byte-compile
 make go-check                          # Go build, vet, and tests (ADR 0047)
 make go-lint                           # Go lint, formatting, and module tidiness
+make go-audit                          # Go module checksums and known vulnerabilities
 make go-arch                           # Go code and design records against the model
 make go-mutation                       # mutation testing on the changed Go lines
 make go-regression                     # each new regression test fails before its fix

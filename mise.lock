@@ -53,3 +53,8 @@ provenance = "github-attestations"
 version = "0.0.0-20261002081621-9ce5f731e321"
 backend = "go:github.com/avito-tech/go-mutesting/cmd/go-mutesting"
 specifiers = ["v0.0.0-20261002081621-9ce5f731e321"]
+
+[[tools."go:golang.org/x/vuln/cmd/govulncheck"]]
+version = "1.9.0"
+backend = "go:golang.org/x/vuln/cmd/govulncheck"
+specifiers = ["v1.9.0"]

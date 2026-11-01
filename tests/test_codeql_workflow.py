@@ -87,6 +87,12 @@ class CodeqlWorkflowContractTests(unittest.TestCase):
             # Off the top of the hour — GitHub delays top-of-hour scheduled runs.
             self.assertNotEqual(minute, "0", f"avoid top-of-hour scheduling: {cron!r}")
 
+    def test_pull_request_targets_the_go_port_branch(self) -> None:
+        # The Go port lands on go-cutover (ADR 0047). Its pull requests need the
+        # Go analysis, because the default branch has no Go code until the
+        # cutover.
+        self.assertIn("go-cutover", self.on["pull_request"]["branches"])
+
     def test_trigger_surface_is_pr_and_schedule_only(self) -> None:
         # No push (redundant with PR + schedule) and never pull_request_target,
         # which is unsafe when checking out untrusted PR code.
@@ -119,6 +125,20 @@ class CodeqlWorkflowContractTests(unittest.TestCase):
         entry = next((e for e in include if e.get("language") == "python"), None)
         self.assertIsNotNone(entry, "matrix must analyze the python language")
         self.assertEqual(entry.get("build-mode"), "none")
+
+    def test_go_autobuild_matrix_with_the_pinned_toolchain(self) -> None:
+        # Go needs a build to analyze. A Go setup step for the Go entry only
+        # selects the toolchain that go.mod pins, before CodeQL init.
+        include = self.job["strategy"]["matrix"]["include"]
+        entry = next((e for e in include if e.get("language") == "go"), None)
+        self.assertIsNotNone(entry, "matrix must analyze the go language")
+        self.assertEqual(entry.get("build-mode"), "autobuild")
+        setup = self._index("actions/setup-go@")
+        self.assertGreaterEqual(setup, 0, "the Go entry needs actions/setup-go")
+        self.assertLess(setup, self._index(_INIT_ACTION), "set up Go before CodeQL init")
+        step = self.steps[setup]
+        self.assertEqual(step.get("if"), "matrix.language == 'go'")
+        self.assertEqual(step["with"].get("go-version-file"), "go.mod")
 
     def test_codeql_scans_the_complete_repository(self) -> None:
         init_step = next(
