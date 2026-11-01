@@ -27,11 +27,11 @@ MISE ?= mise
 
 .DEFAULT_GOAL := help
 
-.PHONY: help devmain go-check go-lint go-fuzz
+.PHONY: help devmain go-check go-lint go-fuzz go-arch go-arch-design go-arch-dsl
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-8s %s\n", $$1, $$2}'
+	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
 # The promotion PR body, kept in an exported variable so the recipe passes it as
 # one literal argument: no shell metacharacters, no interpolation, and no editor
@@ -90,3 +90,17 @@ go-fuzz: ## Run every Go fuzz target for FUZZTIME (default 30s)
 	    $(GO) test -run '^$$' -fuzz "^$$target$$" -fuzztime "$(FUZZTIME)" "$$pkg"; \
 	  done; \
 	done
+
+# Checks the code, the design records, and the C4 view against the
+# architecture model (docs/development/designs/README.md).
+go-arch: ## Check the code and design records against the architecture model
+	$(GO) run ./tools/archcheck check
+
+# The design step: checks the model and the design records before the code
+# exists.
+go-arch-design: ## Check the design records against the architecture model
+	$(GO) run ./tools/archcheck design
+
+# Renders architecture/workspace.dsl from the architecture model.
+go-arch-dsl: ## Render the C4 view of the architecture model
+	$(GO) run ./tools/archcheck dsl -write

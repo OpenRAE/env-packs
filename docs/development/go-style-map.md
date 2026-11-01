@@ -19,10 +19,10 @@ The checks are stricter than the guide in two places:
 
 Some checks enforce the rules of this repository, not the guide:
 
-- `forbidigo` and `depguard` keep library packages silent: they do not print,
-  log, read the environment, read the clock, define flags, or exit (ADR 0047).
-  Packages under `cmd/` and `tools/` are the composition root and can do these
-  things.
+- The architecture model, `architecture/model.yaml`, keeps library packages
+  silent: they do not print, log, read the environment, read the clock, or
+  define flags (ADR 0047). `make go-arch` enforces these rules. Main packages
+  are the composition root and can do these things.
 - `gosec`, `bidichk`, `errcheck`, and the `govet` analyzers find defects that
   the guide does not name.
 
@@ -116,8 +116,8 @@ Some checks enforce the rules of this repository, not the guide:
 
 | Rule | Check |
 | --- | --- |
-| Flags | `depguard` (only commands import `flag`); review for flag names |
-| Logging | `depguard` (only commands import `log` and `log/slog`); review |
+| Flags | Architecture rule `flags-in-commands` (only main packages import `flag`); review for flag names |
+| Logging | Architecture rule `silent-libraries` (only main packages import `log` and `log/slog`); review |
 | Contexts | `revive` `context-as-argument`, `containedctx`, `contextcheck` |
 | Custom contexts | Review |
 | crypto/rand | `depguard` (rejects `math/rand`), `gosec` G404; review |
@@ -188,7 +188,7 @@ The guide lists these topics as open choices. No check applies.
 | Error structure | `errname`, `errorlint`; review |
 | Adding information to errors | `errorlint`; review |
 | Placement of %w in errors, and sentinel error placement | Review |
-| Logging errors, and custom verbosity levels | `depguard` (libraries do not log); review |
+| Logging errors, and custom verbosity levels | Architecture rule `silent-libraries` (libraries do not log); review |
 | Program initialization | Review |
 | Program checks and panics | `revive` `deep-exit`; review |
 | When to panic | Review |

@@ -1,0 +1,197 @@
+# The architecture model of the Go implementation (ADR 0047).
+#
+# tools/archcheck checks the code against this model. The design records in
+# docs/development/designs/ record each change to the structure of this model.
+# Change this file only in a design step (docs/development/designs/README.md).
+version: 1
+module: github.com/OpenRAE/env-packs
+
+system:
+  id: env-packs
+  name: RAES environment-pack tooling
+  description: Defines, validates, and releases RAES environment packs.
+
+people:
+  - id: pack-author
+    name: Pack author
+    description: Builds, checks, and releases environment packs.
+  - id: pack-consumer
+    name: Pack consumer
+    description: Validates an environment pack before it uses the pack.
+  - id: maintainer
+    name: Maintainer
+    description: Develops, reviews, and releases this repository.
+
+external_systems:
+  - id: raes
+    name: RAES
+    description: Owns the SDL and the RAES contracts.
+  - id: github
+    name: GitHub
+    description: Hosts the repository, its CI, and its releases.
+
+relationships:
+  - from: pack-author
+    to: env-packs
+    description: Builds, checks, and releases packs with
+  - from: pack-consumer
+    to: env-packs
+    description: Validates packs with
+  - from: maintainer
+    to: env-packs
+    description: Develops and releases
+  - from: env-packs
+    to: raes
+    description: Validates SDL and RAES contracts with
+  - from: env-packs
+    to: github
+    description: Is built and released on
+
+containers:
+  - id: commands
+    name: Commands
+    technology: Go
+    description: The raes-pack commands. They are the composition root.
+  - id: library
+    name: Go library
+    technology: Go
+    description: The pack contracts and the pack operations.
+  - id: repository-tools
+    name: Repository tools
+    technology: Go
+    description: The tools that check and release this repository.
+
+components:
+  - id: root
+    container: library
+    description: The root package of the module.
+    packages:
+      - github.com/OpenRAE/env-packs
+  - id: architecture
+    container: repository-tools
+    description: Checks the code and the design records against this model.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/architecture
+      - github.com/OpenRAE/env-packs/tools/archcheck
+    modules:
+      - golang.org/x/tools
+      - golang.org/x/mod
+      - go.yaml.in/yaml/v3
+
+test_modules:
+  - github.com/google/go-cmp
+
+rules:
+  - id: silent-libraries
+    description: >-
+      A library package does not print, log, read the environment, or read the
+      clock (ADR 0047). Its tests follow the same rule. revive deep-exit
+      rejects exits outside main.
+    scope:
+      containers: [commands, library, repository-tools]
+      main_packages: false
+      test_files: true
+    forbid_imports: [log, log/slog]
+    forbid_symbols:
+      - fmt.Print
+      - fmt.Printf
+      - fmt.Println
+      - print
+      - println
+      - os.Getenv
+      - os.LookupEnv
+      - os.Environ
+      - os.ExpandEnv
+      - os.Setenv
+      - os.Unsetenv
+      - os.Clearenv
+      - time.Now
+      - time.Since
+      - time.Until
+    fix: >-
+      Return the value or the error to the caller. Take environment values and
+      the time as parameters from the main package of the command, which is
+      the composition root.
+
+  - id: flags-in-commands
+    description: Only the main package of a command defines flags (Google Go Style, Flags).
+    scope:
+      containers: [commands, library, repository-tools]
+      main_packages: false
+      test_files: false
+    forbid_imports: [flag]
+    fix: >-
+      Take the value as a parameter. Define the flag in the main package of the
+      command.
+
+  - id: networkless-code
+    description: The commands and the library do not use the network (ADR 0013, ADR 0031).
+    scope:
+      containers: [commands, library]
+      main_packages: true
+      test_files: true
+    forbid_imports: [net, net/http/..., net/rpc/..., net/smtp, crypto/tls]
+    fix: >-
+      Take the data from the caller. A network operation needs its own design
+      record and ADR.
+
+  - id: no-process-execution
+    description: The commands and the library do not start processes (ADR 0013).
+    scope:
+      containers: [commands, library]
+      main_packages: true
+      test_files: true
+    forbid_imports: [os/exec]
+    forbid_symbols:
+      - os.StartProcess
+      - syscall.Exec
+      - syscall.ForkExec
+      - syscall.StartProcess
+    fix: >-
+      Only a component that the model lists in this rule's exceptions may start
+      a process. Its design record must name the commands that it starts.
+
+  - id: files-through-packfs
+    description: >-
+      Library code touches the filesystem only through the pack filesystem
+      component (ADR 0012, ADR 0013). Test files may create fixtures.
+    scope:
+      containers: [library]
+      main_packages: true
+      test_files: false
+    forbid_symbols:
+      - os.Chmod
+      - os.Chown
+      - os.Chtimes
+      - os.CopyFS
+      - os.Create
+      - os.CreateTemp
+      - os.DirFS
+      - os.Link
+      - os.Lchown
+      - os.Lstat
+      - os.Mkdir
+      - os.MkdirAll
+      - os.MkdirTemp
+      - os.Open
+      - os.OpenFile
+      - os.OpenInRoot
+      - os.OpenRoot
+      - os.ReadDir
+      - os.ReadFile
+      - os.Readlink
+      - os.Remove
+      - os.RemoveAll
+      - os.Rename
+      - os.Stat
+      - os.Symlink
+      - os.Truncate
+      - os.WriteFile
+      - path/filepath.EvalSymlinks
+      - path/filepath.Glob
+      - path/filepath.Walk
+      - path/filepath.WalkDir
+    fix: >-
+      Use the pack filesystem component for every file operation. Its
+      descriptor-anchored reads and staged writes are the only file access of
+      the library.

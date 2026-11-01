@@ -2,7 +2,9 @@
 #
 # The gate is strict and has no baseline: the Go code starts with no findings.
 # docs/development/go-style-map.md maps each rule of the Google Go Style Guide
-# to the check below that enforces it, or marks the rule as a review item.
+# to the check below that enforces it, or marks the rule as a review item. The
+# architecture rules, such as silent library packages, are in
+# architecture/model.yaml, and tools/archcheck enforces them.
 # mise.toml pins the golangci-lint version, and `make go-lint` runs it.
 version: "2"
 
@@ -113,51 +115,33 @@ linters:
               desc: Use the standard slices package.
             - pkg: golang.org/x/exp/maps
               desc: Use the standard maps package.
-        libraries:
-          files:
-            - $all
-            - "!$test"
-            - "!**/cmd/**"
-            - "!**/tools/**"
-          deny:
-            - pkg: log
-              desc: Libraries do not log. Return the error or the result, and let the command in cmd/ report it (ADR 0047).
-            - pkg: log/slog
-              desc: Libraries do not log. Return the error or the result, and let the command in cmd/ report it (ADR 0047).
-            - pkg: flag
-              desc: Only commands define flags (Google Go Style, Flags). Take the value as a parameter.
 
     dupl:
       threshold: 100
 
+    # A bufio.Writer keeps its first write error, and Flush returns it. The
+    # commands check the error of Flush, so they do not check each write.
     errcheck:
       check-type-assertions: true
       check-blank: true
+      exclude-functions:
+        - fmt.Fprintf(*bufio.Writer)
 
     errchkjson:
       check-error-free-encoding: true
       report-no-exported: true
 
+    # Type switches are not checked: they would have to list every type of an
+    # open interface such as go/types.Object or go/ast.Node.
     exhaustive:
       check:
         - switch
         - mapliteral
-        - typeswitch
       default-signifies-exhaustive: false
 
     forbidigo:
       analyze-types: true
       forbid:
-        - pattern: ^fmt\.Print(f|ln)?$
-          msg: Libraries do not print. Return the value, and let the command in cmd/ write output (ADR 0047).
-        - pattern: ^print(ln)?$
-          msg: Libraries do not print. Return the value, and let the command in cmd/ write output (ADR 0047).
-        - pattern: ^os\.(Getenv|LookupEnv|Environ|ExpandEnv|Setenv|Unsetenv|Clearenv)$
-          msg: Libraries do not read the environment. Take the value as a parameter from the command in cmd/ (ADR 0047).
-        - pattern: ^time\.(Now|Since|Until)$
-          msg: Libraries do not read the clock. Take the time, or a function that returns it, as a parameter (ADR 0047).
-        - pattern: ^os\.Exit$
-          msg: Libraries do not exit. Return an error, and let the command in cmd/ choose the exit code (ADR 0047).
         - pattern: ^reflect\.DeepEqual$
           msg: Use cmp.Diff or cmp.Equal from go-cmp (Google Go Style, Equality comparison and diffs).
 
@@ -314,12 +298,6 @@ linters:
   exclusions:
     generated: strict
     rules:
-      # Commands are the composition root: they may print, read the
-      # environment, read the clock, and exit.
-      - path: ^(cmd|tools)/
-        linters:
-          - forbidigo
-        text: Libraries do not
       # Test flags and test tables are package-level variables by design.
       - path: _test\.go$
         linters:

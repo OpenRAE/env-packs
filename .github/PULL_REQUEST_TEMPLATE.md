@@ -15,6 +15,7 @@
 - [ ] `raes-pack-release check --packs-root packs`
 - [ ] `make go-check`
 - [ ] `make go-lint`
+- [ ] `make go-arch`
 - [ ] Docs changed: built `docs/public/` warning-free (`sphinx-build -W`).
 
 ## Checklist

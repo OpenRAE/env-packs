@@ -1,0 +1,51 @@
+workspace {{q .System.Name}} {{q .System.Description}} {
+    !identifiers hierarchical
+
+    model {
+{{- range .People}}
+        {{id .ID}} = person {{q .Name}} {{q .Description}}
+{{- end}}
+{{- range .ExternalSystems}}
+        {{id .ID}} = softwareSystem {{q .Name}} {{q .Description}} {
+            tags "External"
+        }
+{{- end}}
+        {{id .System.ID}} = softwareSystem {{q .System.Name}} {{q .System.Description}} {
+{{- range .Containers}}
+{{- if .Components}}
+            {{id .ID}} = container {{q .Name}} {{q .Description}} {{q .Technology}} {
+{{- range .Components}}
+                {{id .ID}} = component {{q .ID}} {{q .Description}} "Go"
+{{- end}}
+            }
+{{- else}}
+            {{id .ID}} = container {{q .Name}} {{q .Description}} {{q .Technology}}
+{{- end}}
+{{- end}}
+        }
+{{- if .Edges}}
+{{range .Edges}}
+        {{.From}} -> {{.To}} {{q .Description}}
+{{- end}}
+{{- end}}
+    }
+
+    views {
+        systemContext {{id .System.ID}} "context" {
+            include *
+            autoLayout lr
+        }
+        container {{id .System.ID}} "containers" {
+            include *
+            autoLayout lr
+        }
+{{- range .Containers}}
+{{- if .Components}}
+        component {{id $.System.ID}}.{{id .ID}} {{q (print "components-" .ID)}} {
+            include *
+            autoLayout lr
+        }
+{{- end}}
+{{- end}}
+    }
+}

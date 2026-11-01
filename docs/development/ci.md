@@ -13,7 +13,7 @@ same time:
 
 | Workflow | Checks | Blocks merge? |
 | --- | --- | --- |
-| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `go`, `go-lint`, **`verify`**, `sonar` | only **`verify`** |
+| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `go`, `go-lint`, `go-arch`, **`verify`**, `sonar` | only **`verify`** |
 | `codeql.yml` | `Analyze (python)`: static security analysis | depends on branch protection |
 | `fuzz.yml` | `Fuzz validate_pack`: bounded fuzzing of the untrusted-pack boundary. `Fuzz Go targets`: every native Go fuzz target | depends on branch protection |
 | `pr-title.yml` | `PR title guard`: the Conventional Commit shape | depends on branch protection |
@@ -51,6 +51,9 @@ does not wait for an unrelated job, and the fastest signal arrives first.
 - **`go-lint`**: `make go-lint` runs the golangci-lint version that `mise.toml`
   pins and `mise.lock` verifies. It also checks the formatting and the module
   tidiness (see [the Go style map](go-style-map.md)).
+- **`go-arch`**: `make go-arch` checks the Go code, the design records, and the
+  C4 view against the architecture model (see
+  [the design records](designs/README.md)).
 
 The jobs do not share a runner. So a broken test shows on the `tests` check
 without a wait for the `pip-audit` network lookup, and the reverse. The Go test
@@ -111,6 +114,7 @@ Those files stay the authority.
 | `docs` | `python -m sphinx -W -b html docs/public docs/public/_build/html`, then `python tools/check_docs_publication_boundary.py docs/public/_build/html` |
 | `go` | `make go-check` |
 | `go-lint` | `make go-lint` (after `mise install`) |
+| `go-arch` | `make go-arch` (`make go-arch-design` in the design step) |
 | `Fuzz Go targets` | `make go-fuzz` (set `FUZZTIME` to change the time for each target) |
 | `sonar` | Runs in CI only, because it needs `SONAR_TOKEN`. Its inputs are `coverage.xml` from `tests` and `coverage-go.out` from `go` |
 | `PR title guard` | `python tools/check_pr_title.py` (it reads the pull request title from the event) |
