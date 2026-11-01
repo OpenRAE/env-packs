@@ -25,7 +25,7 @@ from jsonschema import Draft202012Validator
 from raes import SDLError
 
 from . import _pack_fs, catalog, check, distribution, kits, validation, wizard
-from ._authoring_safety import admit_members, sensitive_member
+from ._authoring_safety import admit_members
 from ._authoring_tools import TOOLS
 from .digest import PackDigestError
 
@@ -95,8 +95,6 @@ def _bounded(value: object, *, max_bytes: int) -> None:
 def _trusted_root(path: str | Path) -> Path:
     """Admit a host-selected root without following symlink ancestors."""
     absolute = Path(os.path.abspath(path))
-    if sensitive_member(absolute.as_posix()):
-        raise _InvalidInput("root not admitted")
     current = Path(absolute.anchor)
     for part in absolute.parts[1:]:
         current /= part
