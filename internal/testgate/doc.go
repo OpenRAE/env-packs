@@ -3,7 +3,7 @@
 // code before its fix.
 //
 // The gates run git, go-mutesting, and go test through a [Runner]. They
-// report problems as [Finding] values, and they do not print, so the command
+// report problems as [report.Finding] values, and they do not print, so the command
 // in tools/testgate decides how to show them. See
 // docs/development/designs/0002-test-gates.md.
 package testgate

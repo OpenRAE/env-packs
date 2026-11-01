@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/OpenRAE/env-packs/internal/strictyaml"
 )
 
@@ -48,8 +49,8 @@ func ParseRecords(data []byte) (Records, error) {
 // Check returns a finding for each defect of the records: a version other
 // than 1, a record without a file, a mutator, a line, or a reason, and a
 // record that repeats an earlier record.
-func (r Records) Check() []Finding {
-	var findings []Finding
+func (r Records) Check() []report.Finding {
+	var findings []report.Finding
 	if r.Version != 1 {
 		findings = append(findings, recordFinding(fmt.Sprintf("version is %d; the only supported version is 1", r.Version)))
 	}
@@ -75,8 +76,8 @@ func (r Records) match(s Survivor) int {
 	})
 }
 
-func recordFinding(message string) Finding {
-	return Finding{
+func recordFinding(message string) report.Finding {
+	return report.Finding{
 		Location: RecordsFile,
 		Rule:     RuleRecord,
 		Message:  message,

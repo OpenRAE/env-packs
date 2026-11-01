@@ -48,7 +48,7 @@ func TestMainProcess(t *testing.T) {
 			args:       []string{"exec", "-memory", "2048"},
 			env:        []string{"MUTATE_TIMEOUT=1", "MUTATE_ORIGINAL=/testgate-missing/x.go"},
 			wantStatus: 3,
-			wantStderr: "testgate: read the original file: open x.go: no such file or directory\n",
+			wantStderr: "testgate: read the original file: open /testgate-missing/x.go: no such file or directory\n",
 		},
 	}
 	for _, tt := range tests {
@@ -59,7 +59,7 @@ func TestMainProcess(t *testing.T) {
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		err := cmd.Run()
 		status := 0
-		if exitErr := (*exec.ExitError)(nil); errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			status = exitErr.ExitCode()
 		} else if err != nil {
 			t.Fatalf("run the child process: %v", err)
@@ -184,7 +184,7 @@ func TestFix(t *testing.T) {}
 func TestRunRegression(t *testing.T) {
 	r := answers(map[string]string{
 		"git rev-parse":               "abc\n",
-		"git diff -U0":                "diff --git a/pkg/a_test.go b/pkg/a_test.go\n--- a/pkg/a_test.go\n+++ b/pkg/a_test.go\n@@ -6 +6 @@\n",
+		"git diff -U0":                "diff --git a/pkg/a_test.go b/pkg/a_test.go\n--- a/pkg/a_test.go\n+++ b/pkg/a_test.go\n@@ -6 +6 @@\n-// Old.\n+// Regression test for #1.\n",
 		"git show HEAD:pkg/a_test.go": regressionTestFile,
 		"git merge-base":              "0123456789abcdef\n",
 		"go test":                     `{"Action":"pass","Package":"example.com/m/pkg","Test":"TestFix"}` + "\n",
@@ -282,7 +282,7 @@ func TestRunMutationLimits(t *testing.T) {
 		var mutesting string
 		r := answers(map[string]string{
 			"git rev-parse": "abc\n",
-			"git diff":      "diff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n",
+			"git diff":      "diff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n-package a\n+package a // A.\n",
 		})
 		recording := fakeRunner{answer: func(c testgate.Command) (testgate.Result, error) {
 			if c.Name == "go-mutesting" {

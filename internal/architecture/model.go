@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/OpenRAE/env-packs/internal/strictyaml"
 	"golang.org/x/mod/module"
 )
@@ -129,7 +130,7 @@ func (m *Model) Owners() map[string]*Component {
 
 // ValidateModel returns the defects of the model. The findings name path as
 // their location.
-func ValidateModel(m *Model, path string) []Finding {
+func ValidateModel(m *Model, path string) []report.Finding {
 	v := modelValidator{path: path, model: m}
 	v.checkHeader()
 	v.checkIDs()
@@ -145,11 +146,11 @@ func ValidateModel(m *Model, path string) []Finding {
 type modelValidator struct {
 	path     string
 	model    *Model
-	findings []Finding
+	findings []report.Finding
 }
 
 func (v *modelValidator) addf(format string, args ...any) {
-	v.findings = append(v.findings, Finding{
+	v.findings = append(v.findings, report.Finding{
 		Location: v.path,
 		Rule:     RuleModel,
 		Message:  fmt.Sprintf(format, args...),

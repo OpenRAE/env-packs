@@ -5,6 +5,7 @@ go 1.26.0
 toolchain go1.27.3
 
 require (
+	github.com/bluekeyes/go-gitdiff v0.9.0
 	github.com/google/go-cmp v0.7.0
 	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/mod v0.42.0

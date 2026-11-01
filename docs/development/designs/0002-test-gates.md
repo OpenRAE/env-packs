@@ -9,10 +9,14 @@ changes:
         container: library
       - id: test-gates
         container: repository-tools
+      - id: report
+        container: repository-tools
   packages:
     add:
       - path: github.com/OpenRAE/env-packs/internal/strictyaml
         component: strict-yaml
+      - path: github.com/OpenRAE/env-packs/internal/report
+        component: report
       - path: github.com/OpenRAE/env-packs/internal/testgate
         component: test-gates
       - path: github.com/OpenRAE/env-packs/tools/testgate
@@ -23,10 +27,16 @@ changes:
         to: strict-yaml
       - from: test-gates
         to: strict-yaml
+      - from: architecture
+        to: report
+      - from: test-gates
+        to: report
   modules:
     add:
       - component: strict-yaml
         module: go.yaml.in/yaml/v3
+      - component: test-gates
+        module: github.com/bluekeyes/go-gitdiff
     remove:
       - component: architecture
         module: go.yaml.in/yaml/v3
@@ -52,7 +62,7 @@ complete, as for `archcheck`.
 ### Changed lines
 
 Both gates use the lines that `git diff -U0 --merge-base <base> HEAD` adds or
-changes. The mutation gate uses the Go files that are not test files and that
+changes. `github.com/bluekeyes/go-gitdiff` parses the diff. The mutation gate uses the Go files that are not test files and that
 are not in a `testdata` directory. The regression gate uses the test files.
 The gates read only committed code, so commit the work before you run them.
 
@@ -165,6 +175,14 @@ The new `strictyaml` package holds that one implementation, and both tools use
 it. Chunk 11 extends the same package with the bounds that pack-owned documents
 need.
 
+### One report of the findings
+
+The architecture checker and the test gates report findings in the same form,
+and their commands use the same exit statuses. The new `report` package holds
+the finding type, its order, and the exit statuses. Its streams buffer the
+output of a command with `bufio.Writer`. A `bufio.Writer` keeps the first
+write error, so a command checks one error when it flushes the output.
+
 ### Effects
 
 The gates run `git`, `go-mutesting`, and `go test`. A small runner interface
@@ -183,11 +201,72 @@ read the environment.
   of the pull request, or the commit before a push.
 - `mutation.yml` runs `make go-mutation-all` each week, and on request.
 
+## Systems security engineering
+
+The gates are merge gates. They run on the content of a pull request in CI:
+its Go code, its tests, `mutation.yaml`, and its history. They run that code
+with `go test`, as the other CI jobs do.
+
+| Asset | Protection need |
+| --- | --- |
+| Merge decision (the exit status of a gate) | Integrity |
+| CI runner and the maintainer machine | Integrity and availability |
+
+| Threat | Boundary | Control | Verification |
+| --- | --- | --- | --- |
+| A revision or a path from the change becomes an option of git. | Change to git | The gate resolves each revision with `git rev-parse --verify --end-of-options`, and it puts each path after `--` or in a position that takes only a path. | `TestRevParse`, `TestChangedLines`. |
+| A malformed diff makes the gate skip changed lines. | git to gate | `go-gitdiff` rejects a diff whose hunk headers or line counts do not agree. | `TestParseDiffErrors`. |
+| A mutant allocates memory without end and stops the machine. | Mutant to host | Each test process of a mutant has an address space limit, and the tests of a mutant have a time limit. | `TestRunExecMemory`. |
+| A mutant that does not compile counts as killed and hides an untested statement. | go-mutesting to gate | The exec step reads the `build-fail` event of `go test -json` and reports the mutant as not compiled. | `TestExecStatus`. |
+| A record in `mutation.yaml` hides a real survivor. | Change to gate | Each record needs a reason, and review checks it. The weekly run reports each record that matches no mutant. | `TestRecordsCheck`, `TestMutationAll`. |
+| A regression test that skips, or does not compile, passes the proof. | Change to gate | Only a test failure on the merge base proves the test. | `TestRegression`, `TestRegressionBuildFailure`. |
+
+Residual risk: the gates run the tests of the pull request, as the `go` job
+does. Branch protection and review control which code runs in CI.
+
+## Data flow
+
+```mermaid
+flowchart LR
+    caller[Maintainer or CI job]
+    subgraph change[Pull request content]
+        history[(git history)]
+        code[(Go code and tests)]
+        records[(mutation.yaml)]
+    end
+    subgraph gate[testgate process]
+        lines[Changed lines]
+        mutation[Mutation gate]
+        regression[Regression gate]
+    end
+    subgraph tree[Temporary worktree]
+        mutesting[go-mutesting]
+        exec[testgate exec]
+        gotest[go test -json]
+    end
+    caller -- base commit --> lines
+    history -- git diff -U0 --> lines
+    lines --> mutation
+    lines --> regression
+    records -- equivalents --> mutation
+    mutation -- targets --> mutesting
+    mutesting -- one mutant --> exec
+    exec -- package --> gotest
+    gotest -- events --> exec
+    exec -- status --> mutesting
+    mutesting -- report.json --> mutation
+    code -- changed tests on the merge base --> regression
+    regression -- go test -run --> gotest
+    mutation -- findings and exit status --> caller
+    regression -- findings and exit status --> caller
+```
+
 ## Packages
 
 | Package | Component | Purpose |
 | --- | --- | --- |
 | `github.com/OpenRAE/env-packs/internal/strictyaml` | `strict-yaml` | Decodes exactly one YAML document, and rejects unknown fields. |
+| `github.com/OpenRAE/env-packs/internal/report` | `report` | The finding type, its order, the output streams, and the exit statuses of the repository tools. |
 | `github.com/OpenRAE/env-packs/internal/testgate` | `test-gates` | The changed lines, the mutation report, the equivalent records, the regression proof, and the runner. |
 | `github.com/OpenRAE/env-packs/tools/testgate` | `test-gates` | The command that runs the gates and the exec step. |
 
@@ -196,6 +275,7 @@ read the environment.
 | Module | Used by | Reason |
 | --- | --- | --- |
 | `go.yaml.in/yaml/v3` | `strict-yaml` | Moves from `architecture` to `strict-yaml`, the one YAML decoder of the tools. |
+| `github.com/bluekeyes/go-gitdiff` | `test-gates` | Parses the output of `git diff`, with quoted paths and checked line counts. It has no dependencies, and gitleaks uses a fork of it. |
 
 `mise.toml` pins go-mutesting. The gate runs it as a command, so it is not a
 module dependency.
@@ -208,3 +288,6 @@ module dependency.
   covered, and it mutated files in `testdata`.
 - A threshold below 100% lets a known survivor merge. With records of the
   equivalent mutants, each other survivor is a missing test.
+- `github.com/golangci/revgrep` finds the changed lines for golangci-lint. Its
+  parser panics on a malformed hunk header, writes to stderr from library
+  code, and does not unquote quoted paths.

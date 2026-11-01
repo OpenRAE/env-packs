@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"maps"
 	"os"
 	"path"
@@ -13,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/OpenRAE/env-packs/internal/report"
 )
 
 // mutestingConfig is the go-mutesting configuration of the gate: a JSON
@@ -49,7 +50,7 @@ type MutationOptions struct {
 type MutationResult struct {
 	// Findings are the surviving mutants and the defects of mutation.yaml.
 	// With All, they also include the stale records.
-	Findings []Finding
+	Findings []report.Finding
 	// Files is the number of files that the gate mutates.
 	Files int
 	// Mutants counts the mutants of the go-mutesting report.
@@ -138,7 +139,7 @@ func mutateTree(ctx context.Context, r Runner, tree string, targets []string, ch
 	if err != nil {
 		return MutationResult{}, err
 	}
-	data, err := fs.ReadFile(os.DirFS(tree), RecordsFile)
+	data, err := readFile(filepath.Join(tree, RecordsFile))
 	if err != nil {
 		return MutationResult{}, fmt.Errorf("read %s: %w", RecordsFile, err)
 	}
@@ -179,15 +180,15 @@ func mutationTargets(ctx context.Context, r Runner, opts MutationOptions) ([]str
 
 // runMutesting runs go-mutesting on the targets in the worktree tree, with
 // the gate as its exec command, and returns the report.
-func runMutesting(ctx context.Context, r Runner, tree string, targets []string, changes Changes, opts MutationOptions) (report, error) {
+func runMutesting(ctx context.Context, r Runner, tree string, targets []string, changes Changes, opts MutationOptions) (mutestingReport, error) {
 	config := filepath.Join(tree, ".testgate-go-mutesting.yaml")
 	if err := os.WriteFile(config, []byte(mutestingConfig), 0o600); err != nil {
-		return report{}, fmt.Errorf("write the go-mutesting configuration: %w", err)
+		return mutestingReport{}, fmt.Errorf("write the go-mutesting configuration: %w", err)
 	}
 	if !opts.All {
 		data, _ := json.Marshal(changes)
 		if err := os.WriteFile(filepath.Join(tree, linesFile), data, 0o600); err != nil {
-			return report{}, fmt.Errorf("write the changed lines: %w", err)
+			return mutestingReport{}, fmt.Errorf("write the changed lines: %w", err)
 		}
 	}
 	args := append([]string{
@@ -197,18 +198,18 @@ func runMutesting(ctx context.Context, r Runner, tree string, targets []string, 
 		"--",
 	}, targets...)
 	if _, err := runOK(ctx, r, Command{Dir: tree, Name: "go-mutesting", Args: args}); err != nil {
-		return report{}, err
+		return mutestingReport{}, err
 	}
-	data, err := fs.ReadFile(os.DirFS(tree), "report.json")
+	data, err := readFile(filepath.Join(tree, "report.json"))
 	if err != nil {
-		return report{}, fmt.Errorf("read the go-mutesting report: %w", err)
+		return mutestingReport{}, fmt.Errorf("read the go-mutesting report: %w", err)
 	}
 	rep, err := parseReport(data)
 	if err != nil {
-		return report{}, err
+		return mutestingReport{}, err
 	}
 	if rep.Stats.Errored > 0 {
-		return report{}, fmt.Errorf("the exec step failed for %d mutants; see the output of go-mutesting", rep.Stats.Errored)
+		return mutestingReport{}, fmt.Errorf("the exec step failed for %d mutants; see the output of go-mutesting", rep.Stats.Errored)
 	}
 	return rep, nil
 }
@@ -216,7 +217,7 @@ func runMutesting(ctx context.Context, r Runner, tree string, targets []string, 
 // evaluate turns the escaped mutants of the report into findings. Without
 // all, it keeps only the mutants on the changed lines. It counts the killed
 // mutants that the exec step skipped.
-func evaluate(rep report, targets []string, changes Changes, records Records, all bool) (MutationResult, error) {
+func evaluate(rep mutestingReport, targets []string, changes Changes, records Records, all bool) (MutationResult, error) {
 	res := MutationResult{
 		Findings:    records.Check(),
 		Files:       len(targets),
@@ -279,12 +280,12 @@ func inGate(m mutant, changes Changes, all bool) bool {
 	return changed && (all || changes[m.Mutator.File].Intersects(start, end))
 }
 
-func survivorFinding(s Survivor) Finding {
+func survivorFinding(s Survivor) report.Finding {
 	where := "outside a function"
 	if s.Function != "" {
 		where = "in " + s.Function
 	}
-	return Finding{
+	return report.Finding{
 		Location: s.File + ":" + strconv.Itoa(s.Start),
 		Rule:     RuleMutant,
 		Message:  fmt.Sprintf("no test kills the %s mutant %s: %q becomes %q", s.Mutator, where, s.Line, s.Mutated),
@@ -293,11 +294,11 @@ func survivorFinding(s Survivor) Finding {
 }
 
 // staleRecords returns a finding for each record that matched no mutant.
-func staleRecords(records Records, matched []bool) []Finding {
-	var findings []Finding
+func staleRecords(records Records, matched []bool) []report.Finding {
+	var findings []report.Finding
 	for i, e := range records.Equivalents {
 		if !matched[i] {
-			findings = append(findings, Finding{
+			findings = append(findings, report.Finding{
 				Location: RecordsFile,
 				Rule:     RuleRecord,
 				Message:  fmt.Sprintf("record %d (%s, %q) matches no surviving mutant", i+1, e.File, e.Line),

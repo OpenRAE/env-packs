@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -87,7 +88,7 @@ func inScope(dir, file, original, mutated string) (bool, error) {
 	if !changed {
 		return false, nil
 	}
-	data, err := fs.ReadFile(os.DirFS(dir), linesFile)
+	data, err := readFile(filepath.Join(dir, linesFile))
 	if errors.Is(err, fs.ErrNotExist) {
 		return true, nil
 	}

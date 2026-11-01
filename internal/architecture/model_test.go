@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -372,7 +373,7 @@ func TestValidateModel(t *testing.T) {
 
 // messages returns the messages of the findings, and checks that each finding
 // has the given location and rule and a fix.
-func messages(t *testing.T, findings []Finding, location, rule string) []string {
+func messages(t *testing.T, findings []report.Finding, location, rule string) []string {
 	t.Helper()
 	var got []string
 	for _, f := range findings {

@@ -36,14 +36,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/OpenRAE/env-packs/internal/testgate"
-)
-
-const (
-	exitOK       = 0
-	exitFindings = 1
-	exitUsage    = 2
-	exitFailure  = 3
 )
 
 // process is what the command takes from the operating system.
@@ -90,18 +84,23 @@ func limitAddressSpace(bytes uint64) error {
 	return syscall.Setrlimit(syscall.RLIMIT_AS, &syscall.Rlimit{Cur: bytes, Max: bytes})
 }
 
-// run runs the command and returns the exit status.
+// run runs the command and returns the exit status. A failed write to stdout
+// or stderr changes the status to report.StatusFailure.
 func run(ctx context.Context, p process) int {
-	out := &output{stdout: p.stdout, stderr: p.stderr}
+	out := report.NewStreams(p.stdout, p.stderr)
+	return out.Flush(runMode(ctx, p, out))
+}
+
+func runMode(ctx context.Context, p process, out report.Streams) int {
 	flags := flag.NewFlagSet("testgate", flag.ContinueOnError)
-	flags.SetOutput(p.stderr)
+	flags.SetOutput(out.Stderr)
 	root := flags.String("root", ".", "repository `directory`")
 	if err := flags.Parse(p.args[1:]); err != nil {
-		return exitUsage
+		return report.StatusUsage
 	}
 	if flags.NArg() == 0 {
-		out.printf(out.stderr, "testgate: give a mode: mutation, regression, or exec\n")
-		return out.status(exitUsage)
+		fmt.Fprintf(out.Stderr, "testgate: give a mode: mutation, regression, or exec\n")
+		return report.StatusUsage
 	}
 	mode, rest := flags.Arg(0), flags.Args()[1:]
 	switch mode {
@@ -112,64 +111,64 @@ func run(ctx context.Context, p process) int {
 	case "exec":
 		return runExec(ctx, p, rest, out)
 	}
-	out.printf(out.stderr, "testgate: unknown mode %q; give mutation, regression, or exec\n", mode)
-	return out.status(exitUsage)
+	fmt.Fprintf(out.Stderr, "testgate: unknown mode %q; give mutation, regression, or exec\n", mode)
+	return report.StatusUsage
 }
 
 // runMutation runs the mutation gate.
-func runMutation(ctx context.Context, p process, root string, args []string, out *output) int {
+func runMutation(ctx context.Context, p process, root string, args []string, out report.Streams) int {
 	flags := flag.NewFlagSet("testgate mutation", flag.ContinueOnError)
-	flags.SetOutput(p.stderr)
+	flags.SetOutput(out.Stderr)
 	base := flags.String("base", "", "base `commit` of the changed lines")
 	all := flags.Bool("all", false, "mutate each Go file, not only the changed lines")
 	timeout := flags.Duration("timeout", time.Minute, "time limit of the tests of one mutant")
 	memory := flags.Uint64("memory", defaultMemoryMiB, "address space `limit` in MiB of each process of the tests of one mutant")
 	if err := flags.Parse(args); err != nil {
-		return exitUsage
+		return report.StatusUsage
 	}
 	if (*base == "") == !*all || flags.NArg() > 0 {
-		out.printf(out.stderr, "testgate: mutation takes -base or -all, and no arguments\n")
-		return out.status(exitUsage)
+		fmt.Fprintf(out.Stderr, "testgate: mutation takes -base or -all, and no arguments\n")
+		return report.StatusUsage
 	}
 	if p.exeErr != nil {
-		return out.fail(fmt.Errorf("locate testgate for the exec step: %w", p.exeErr))
+		return fail(out, fmt.Errorf("locate testgate for the exec step: %w", p.exeErr))
 	}
 	res, err := testgate.Mutation(ctx, p.runner, testgate.MutationOptions{
 		Repo: root, Base: *base, All: *all, Exec: p.exe, TempDir: p.tempDir, Timeout: *timeout, MemoryMiB: *memory,
 	})
 	if err != nil {
-		return out.fail(err)
+		return fail(out, err)
 	}
-	out.printf(out.stderr, "testgate: %d mutants in %d files: %d skipped, %d killed, %d not compiled, %d escaped, %d equivalent\n",
+	fmt.Fprintf(out.Stderr, "testgate: %d mutants in %d files: %d skipped, %d killed, %d not compiled, %d escaped, %d equivalent\n",
 		res.Mutants, res.Files, res.Skipped, res.Killed, res.NotCompiled, res.Escaped, res.Equivalent)
 	for _, p := range res.Packages {
 		score := "no score"
 		if v, ok := p.Score(); ok {
 			score = fmt.Sprintf("score %.1f%%", v)
 		}
-		out.printf(out.stderr, "testgate: %s: %d killed, %d survived, %d equivalent, %s\n", p.Dir, p.Killed, p.Survived, p.Equivalent, score)
+		fmt.Fprintf(out.Stderr, "testgate: %s: %d killed, %d survived, %d equivalent, %s\n", p.Dir, p.Killed, p.Survived, p.Equivalent, score)
 	}
-	return out.report(res.Findings)
+	return out.Findings("testgate", res.Findings)
 }
 
 // runRegression runs the regression gate.
-func runRegression(ctx context.Context, p process, root string, args []string, out *output) int {
+func runRegression(ctx context.Context, p process, root string, args []string, out report.Streams) int {
 	flags := flag.NewFlagSet("testgate regression", flag.ContinueOnError)
-	flags.SetOutput(p.stderr)
+	flags.SetOutput(out.Stderr)
 	base := flags.String("base", "", "base `commit` of the change")
 	if err := flags.Parse(args); err != nil {
-		return exitUsage
+		return report.StatusUsage
 	}
 	if *base == "" || flags.NArg() > 0 {
-		out.printf(out.stderr, "testgate: regression takes -base, and no arguments\n")
-		return out.status(exitUsage)
+		fmt.Fprintf(out.Stderr, "testgate: regression takes -base, and no arguments\n")
+		return report.StatusUsage
 	}
 	res, err := testgate.Regression(ctx, p.runner, testgate.RegressionOptions{Repo: root, Base: *base, TempDir: p.tempDir})
 	if err != nil {
-		return out.fail(err)
+		return fail(out, err)
 	}
-	out.printf(out.stderr, "testgate: %d regression tests, %d fail on the merge base\n", res.Tests, res.Proven)
-	return out.report(res.Findings)
+	fmt.Fprintf(out.Stderr, "testgate: %d regression tests, %d fail on the merge base\n", res.Tests, res.Proven)
+	return out.Findings("testgate", res.Findings)
 }
 
 // defaultMemoryMiB is the default address space limit of each process of the
@@ -177,24 +176,24 @@ func runRegression(ctx context.Context, p process, root string, args []string, o
 const defaultMemoryMiB = 4096
 
 // runExec runs the exec step for the mutant that the environment names.
-func runExec(ctx context.Context, p process, args []string, out *output) int {
+func runExec(ctx context.Context, p process, args []string, out report.Streams) int {
 	flags := flag.NewFlagSet("testgate exec", flag.ContinueOnError)
-	flags.SetOutput(p.stderr)
+	flags.SetOutput(out.Stderr)
 	memory := flags.Uint64("memory", 0, "address space `limit` in MiB of each process of the tests, or 0 for no limit")
 	if err := flags.Parse(args); err != nil {
-		return exitUsage
+		return report.StatusUsage
 	}
 	if flags.NArg() > 0 {
-		out.printf(out.stderr, "testgate: exec takes no arguments\n")
-		return out.status(exitUsage)
+		fmt.Fprintf(out.Stderr, "testgate: exec takes no arguments\n")
+		return report.StatusUsage
 	}
 	seconds, err := strconv.Atoi(lookup(p.environ, "MUTATE_TIMEOUT"))
 	if err != nil {
-		return out.fail(fmt.Errorf("read MUTATE_TIMEOUT: %w", err))
+		return fail(out, fmt.Errorf("read MUTATE_TIMEOUT: %w", err))
 	}
 	if *memory > 0 {
 		if limitErr := p.limitMemory(*memory << 20); limitErr != nil {
-			return out.fail(fmt.Errorf("limit the memory of the tests: %w", limitErr))
+			return fail(out, fmt.Errorf("limit the memory of the tests: %w", limitErr))
 		}
 	}
 	status, err := testgate.ExecMutant(ctx, p.runner, ".", testgate.Mutant{
@@ -204,7 +203,7 @@ func runExec(ctx context.Context, p process, args []string, out *output) int {
 		Timeout:  time.Duration(seconds) * time.Second,
 	})
 	if err != nil {
-		return out.fail(err)
+		return fail(out, err)
 	}
 	return status
 }
@@ -221,43 +220,8 @@ func lookup(environ []string, key string) string {
 	return value
 }
 
-// output writes to the standard streams. It keeps the first write error, so
-// that a failed write changes the exit status instead of being lost.
-type output struct {
-	stdout io.Writer
-	stderr io.Writer
-	err    error
-}
-
-func (o *output) printf(w io.Writer, format string, args ...any) {
-	if o.err == nil {
-		_, o.err = fmt.Fprintf(w, format, args...)
-	}
-}
-
-// status returns code, or exitFailure after a failed write.
-func (o *output) status(code int) int {
-	if o.err != nil {
-		return exitFailure
-	}
-	return code
-}
-
-// fail writes err and returns exitFailure.
-func (o *output) fail(err error) int {
-	o.printf(o.stderr, "testgate: %v\n", err)
-	return exitFailure
-}
-
-// report writes the findings and returns the exit status.
-func (o *output) report(findings []testgate.Finding) int {
-	findings = testgate.SortFindings(findings)
-	for _, f := range findings {
-		o.printf(o.stdout, "%s\n", f)
-	}
-	o.printf(o.stderr, "testgate: %d findings\n", len(findings))
-	if len(findings) > 0 {
-		return o.status(exitFindings)
-	}
-	return o.status(exitOK)
+// fail writes err and returns report.StatusFailure.
+func fail(out report.Streams, err error) int {
+	fmt.Fprintf(out.Stderr, "testgate: %v\n", err)
+	return report.StatusFailure
 }

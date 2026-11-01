@@ -74,6 +74,11 @@ components:
       - github.com/OpenRAE/env-packs/internal/strictyaml
     modules:
       - go.yaml.in/yaml/v3
+  - id: report
+    container: repository-tools
+    description: Holds the findings of the repository tools, writes them, and defines the exit statuses of the tools.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/report
   - id: architecture
     container: repository-tools
     description: Checks the code and the design records against this model.
@@ -82,6 +87,7 @@ components:
       - github.com/OpenRAE/env-packs/tools/archcheck
     depends_on:
       - strict-yaml
+      - report
     modules:
       - golang.org/x/tools
       - golang.org/x/mod
@@ -93,6 +99,9 @@ components:
       - github.com/OpenRAE/env-packs/tools/testgate
     depends_on:
       - strict-yaml
+      - report
+    modules:
+      - github.com/bluekeyes/go-gitdiff
 
 test_modules:
   - github.com/google/go-cmp

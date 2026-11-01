@@ -58,7 +58,7 @@ func (r ExecRunner) Run(ctx context.Context, c Command) (Result, error) {
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()
 	res := Result{Stdout: stdout.Bytes(), Stderr: stderr.Bytes()}
-	if exitErr := (*exec.ExitError)(nil); errors.As(err, &exitErr) {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		res.ExitCode = exitErr.ExitCode()
 		return res, nil
 	}

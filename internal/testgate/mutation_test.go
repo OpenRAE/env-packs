@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -58,7 +59,7 @@ func escapedMutant(mutator, old, replacement string) mutant {
 // gateRecords records.
 func gateReport(t *testing.T) string {
 	t.Helper()
-	var r report
+	var r mutestingReport
 	r.Stats.Total, r.Stats.Killed, r.Stats.NotCompiled, r.Stats.Escaped = 10, 3, 1, 4
 	r.Killed = []mutant{
 		escapedMutant("expression/comparison", "x > 0", "x < 0"),
@@ -155,7 +156,7 @@ func TestMutation(t *testing.T) {
 		t.Fatalf("Mutation() error = %v", err)
 	}
 	want := MutationResult{
-		Findings: []Finding{{
+		Findings: []report.Finding{{
 			Location: "a.go:4",
 			Rule:     RuleMutant,
 			Message:  `no test kills the expression/comparison mutant in F: "if x > 0 {" becomes "if x >= 0 {"`,
@@ -258,7 +259,7 @@ func TestMutationAll(t *testing.T) {
 		t.Fatalf("Mutation(-all) error = %v", err)
 	}
 	var messages []string
-	for _, f := range SortFindings(got.Findings) {
+	for _, f := range report.Sort(got.Findings) {
 		messages = append(messages, f.Location+": "+f.Message)
 	}
 	want := []string{
@@ -436,7 +437,7 @@ func TestMutationRunnerFailure(t *testing.T) {
 }
 
 func TestEvaluateRecordFindings(t *testing.T) {
-	got, err := evaluate(report{}, nil, nil, Records{Version: 2}, false)
+	got, err := evaluate(mutestingReport{}, nil, nil, Records{Version: 2}, false)
 	if err != nil || len(got.Findings) != 1 || got.Findings[0].Rule != RuleRecord {
 		t.Errorf("evaluate() with a bad version = %+v, %v; want one record finding", got, err)
 	}
@@ -473,7 +474,7 @@ func TestEvaluatePackages(t *testing.T) {
 		m.Mutator.File = file
 		return m
 	}
-	rep := report{Killed: []mutant{killed("b/b.go"), killed("a/a.go"), killed("b/c.go")}}
+	rep := mutestingReport{Killed: []mutant{killed("b/b.go"), killed("a/a.go"), killed("b/c.go")}}
 	got, err := evaluate(rep, []string{"a/a.go", "b/b.go", "b/c.go"}, nil, Records{Version: 1}, true)
 	want := []PackageScore{{Dir: "a", Killed: 1}, {Dir: "b", Killed: 2}}
 	if err != nil {

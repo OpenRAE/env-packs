@@ -9,8 +9,9 @@ import (
 	"strings"
 )
 
-// report is the part of the JSON report of go-mutesting that the gate reads.
-type report struct {
+// mutestingReport is the part of the JSON report of go-mutesting that the gate
+// reads.
+type mutestingReport struct {
 	Stats struct {
 		Total       int `json:"totalMutantsCount"`
 		Killed      int `json:"killedCount"`
@@ -33,10 +34,10 @@ type mutant struct {
 }
 
 // parseReport decodes the JSON report of go-mutesting.
-func parseReport(data []byte) (report, error) {
-	var r report
+func parseReport(data []byte) (mutestingReport, error) {
+	var r mutestingReport
 	if err := json.Unmarshal(data, &r); err != nil {
-		return report{}, fmt.Errorf("decode the go-mutesting report: %w", err)
+		return mutestingReport{}, fmt.Errorf("decode the go-mutesting report: %w", err)
 	}
 	return r, nil
 }

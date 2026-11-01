@@ -2,6 +2,7 @@ package testgate
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -9,19 +10,20 @@ import (
 )
 
 // sampleDiff has a changed file, a new file, a deleted file, quoted and
-// tab-ended paths, and an added line that looks like a file header.
+// tab-ended paths, an added line that looks like a file header, and a hunk
+// with context lines.
 const sampleDiff = `diff --git a/x.go b/x.go
 index 1111111..2222222 100644
 --- a/x.go
 +++ b/x.go
-@@ -3 +3 @@ func a() {
+@@ -3 +3,2 @@ func a() {
 -	return 1
 +	return 2
 +++ b/evil.go
-@@ -10,0 +11,2 @@ func b() {
+@@ -10,0 +12,2 @@ func b() {
 +	one()
 +	two()
-@@ -20,2 +21,0 @@ func c() {
+@@ -20,2 +23,0 @@ func c() {
 -	gone()
 -	gone()
 diff --git a/new.go b/new.go
@@ -51,7 +53,27 @@ diff --git a/sp ace.go b/sp ace.go
 +++ b/sp ace.go	
 @@ -7,0 +8 @@
 +c
+diff --git a/context.go b/context.go
+--- a/context.go
++++ b/context.go
+@@ -1,2 +1,4 @@
+ a
++b
+ c
++d
 `
+
+// hunk returns a zero-context hunk that replaces oldCount lines at oldStart
+// with newCount lines at newStart.
+func hunk(oldStart, oldCount, newStart, newCount int) string {
+	return fmt.Sprintf("@@ -%d,%d +%d,%d @@\n", oldStart, oldCount, newStart, newCount) +
+		strings.Repeat("-old\n", oldCount) + strings.Repeat("+new\n", newCount)
+}
+
+// fileDiff returns the diff of file with the hunks.
+func fileDiff(file string, hunks ...string) string {
+	return "diff --git a/" + file + " b/" + file + "\n--- a/" + file + "\n+++ b/" + file + "\n" + strings.Join(hunks, "")
+}
 
 func TestParseDiff(t *testing.T) {
 	got, err := ParseDiff(sampleDiff)
@@ -59,10 +81,11 @@ func TestParseDiff(t *testing.T) {
 		t.Fatalf("ParseDiff() error = %v", err)
 	}
 	want := Changes{
-		"x.go":      {3: true, 11: true, 12: true},
-		"new.go":    {1: true, 2: true, 3: true},
-		`q"uote.go`: {5: true},
-		"sp ace.go": {8: true},
+		"x.go":       {3: true, 4: true, 12: true, 13: true},
+		"new.go":     {1: true, 2: true, 3: true},
+		`q"uote.go`:  {5: true},
+		"sp ace.go":  {8: true},
+		"context.go": {2: true, 4: true},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("ParseDiff() mismatch (-want +got):\n%s", diff)
@@ -70,10 +93,10 @@ func TestParseDiff(t *testing.T) {
 }
 
 func TestParseDiffErrors(t *testing.T) {
-	for _, header := range []string{"@@ -1", "@@ -1 +1", "@@ -1 +1 @x", "@@ -1 1 @@", "@@ -1 +x @@", "@@ -1 +1,y @@"} {
-		diff := "diff --git a/x.go b/x.go\n--- a/x.go\n+++ b/x.go\n" + header + "\n"
-		if _, err := ParseDiff(diff); err == nil || !strings.Contains(err.Error(), "invalid hunk header") {
-			t.Errorf("ParseDiff() with %q: error = %v, want an invalid hunk header", header, err)
+	for _, hunk := range []string{"@@ -1", "@@ -1 +1", "@@ -1 +1 @x", "@@ -1 1 @@", "@@ -1 +x @@", "@@ -1 +1,y @@", "@@ -1 +1,2 @@\n+a"} {
+		diff := "diff --git a/x.go b/x.go\n--- a/x.go\n+++ b/x.go\n" + hunk + "\n"
+		if _, err := ParseDiff(diff); err == nil || !strings.HasPrefix(err.Error(), "parse the diff: ") {
+			t.Errorf("ParseDiff() with %q: error = %v, want a parse error", hunk, err)
 		}
 	}
 	// A deleted file does not add lines, but its headers must still be valid.
@@ -133,7 +156,7 @@ func TestRevParse(t *testing.T) {
 func TestChangedLines(t *testing.T) {
 	r := &fakeRunner{answer: func(Command) (Result, error) { return ok(sampleDiff) }}
 	got, err := changedLines(context.Background(), r, "repo", "0123abc", "*.go")
-	if err != nil || len(got["x.go"]) != 3 {
+	if err != nil || len(got["x.go"]) != 4 {
 		t.Fatalf("changedLines() = %v, %v, want the lines of the sample diff", got, err)
 	}
 	want := []Command{{Dir: "repo", Name: "git", Args: []string{

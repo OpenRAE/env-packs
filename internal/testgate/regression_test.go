@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -49,22 +50,19 @@ func Testing(t *testing.T) {}
 func TestNoMarker(t *testing.T) {}
 `
 
-// regressionDiff changes the doc comment of TestA (line 6), TestB (line 10),
-// TestC (lines 12 and 13), TestD (line 16), and lines 21 to 33. It does not
-// change TestUnchanged. It also changes a test file in testdata.
-const regressionDiff = `diff --git a/pkg/a_test.go b/pkg/a_test.go
---- a/pkg/a_test.go
-+++ b/pkg/a_test.go
-@@ -6 +6 @@
-@@ -10 +10 @@
-@@ -12,2 +12,2 @@
-@@ -16 +16 @@
-@@ -21,0 +21,13 @@
-diff --git a/a/testdata/f_test.go b/a/testdata/f_test.go
---- a/a/testdata/f_test.go
-+++ b/a/testdata/f_test.go
-@@ -1 +1 @@
-`
+// regressionHunks change the doc comment of TestA (line 6), TestB (line 10),
+// TestC (lines 12 and 13), and TestD (line 16). They do not change
+// TestUnchanged.
+func regressionHunks() []string {
+	return []string{hunk(6, 1, 6, 1), hunk(10, 1, 10, 1), hunk(12, 2, 12, 2), hunk(16, 1, 16, 1)}
+}
+
+// regressionDiff changes pkg/a_test.go with the hunks and lines 21 to 33,
+// and it changes a test file in testdata.
+func regressionDiff(hunks ...string) string {
+	return fileDiff("pkg/a_test.go", append(hunks, hunk(21, 0, 21, 13))...) +
+		fileDiff("a/testdata/f_test.go", hunk(1, 1, 1, 1))
+}
 
 // regressionEvents is the go test -json output on the merge base.
 const regressionEvents = `{"Action":"start","Package":"example.com/m/pkg"}
@@ -92,7 +90,7 @@ type regressionRepo struct {
 
 func newRegressionRepo(t *testing.T) *regressionRepo {
 	t.Helper()
-	return &regressionRepo{t: t, diff: regressionDiff, source: regressionSource, events: regressionEvents}
+	return &regressionRepo{t: t, diff: regressionDiff(regressionHunks()...), source: regressionSource, events: regressionEvents}
 }
 
 func (g *regressionRepo) runner() *fakeRunner {
@@ -172,8 +170,8 @@ func TestRegression(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Regression() error = %v", err)
 	}
-	finding := func(line, problem string) Finding {
-		return Finding{
+	finding := func(line, problem string) report.Finding {
+		return report.Finding{
 			Location: "pkg/a_test.go:" + line,
 			Rule:     RuleRegression,
 			Message:  "regression test " + problem + " on the merge base merge0123456",
@@ -181,7 +179,7 @@ func TestRegression(t *testing.T) {
 		}
 	}
 	want := RegressionResult{
-		Findings: []Finding{finding("10", "TestB passes"), finding("13", "TestC skips"), finding("16", "TestD does not run")},
+		Findings: []report.Finding{finding("10", "TestB passes"), finding("13", "TestC skips"), finding("16", "TestD does not run")},
 		Tests:    4,
 		Proven:   1,
 	}
@@ -205,15 +203,7 @@ func TestRegression(t *testing.T) {
 
 func TestRegressionTwoPackages(t *testing.T) {
 	g := newRegressionRepo(t)
-	g.diff = `diff --git a/p/a_test.go b/p/a_test.go
---- a/p/a_test.go
-+++ b/p/a_test.go
-@@ -6 +6 @@
-diff --git a/q/a_test.go b/q/a_test.go
---- a/q/a_test.go
-+++ b/q/a_test.go
-@@ -6 +6 @@
-`
+	g.diff = fileDiff("p/a_test.go", hunk(6, 1, 6, 1)) + fileDiff("q/a_test.go", hunk(6, 1, 6, 1))
 	r := g.runner()
 	answer := r.answer
 	r.answer = func(c Command) (Result, error) {
@@ -248,7 +238,7 @@ func TestRegressionBuildFailure(t *testing.T) {
 
 func TestRegressionNoTests(t *testing.T) {
 	g := newRegressionRepo(t)
-	g.diff = strings.Replace(regressionDiff, "@@ -6 +6 @@\n@@ -10 +10 @@\n@@ -12,2 +12,2 @@\n@@ -16 +16 @@\n", "", 1)
+	g.diff = regressionDiff()
 	r := g.runner()
 	got, err := Regression(context.Background(), r, regressionOptions(t))
 	if err != nil || got.Tests != 0 || len(got.Findings) != 0 {

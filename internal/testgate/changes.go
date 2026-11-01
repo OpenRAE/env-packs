@@ -2,11 +2,11 @@ package testgate
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
+
+	"github.com/bluekeyes/go-gitdiff/gitdiff"
 )
 
 // Lines is a set of line numbers in one file.
@@ -26,76 +26,39 @@ func (l Lines) Intersects(start, end int) bool {
 // root, to its added and changed lines.
 type Changes map[string]Lines
 
-// ParseDiff reads the output of git diff -U0 with the prefixes a/ and b/. It
-// returns the lines that the diff adds or changes in each file. A file without
-// added lines, such as a deleted file, has no entry.
+// ParseDiff reads the output of git diff. It returns the lines that the diff
+// adds or changes in each file. A file without added lines, such as a deleted
+// file, has no entry.
 func ParseDiff(diff string) (Changes, error) {
+	files, _, err := gitdiff.Parse(strings.NewReader(diff))
+	if err != nil {
+		return nil, fmt.Errorf("parse the diff: %w", err)
+	}
 	changes := make(Changes)
-	file, header := "", false
-	for line := range strings.SplitSeq(diff, "\n") {
-		switch {
-		case strings.HasPrefix(line, "diff --git "):
-			file, header = "", true
-		case header && strings.HasPrefix(line, "+++ "):
-			file = newPath(strings.TrimPrefix(line, "+++ "))
-		case strings.HasPrefix(line, "@@ "):
-			header = false
-			if err := changes.addHunk(file, line); err != nil {
-				return nil, err
+	for _, f := range files {
+		for _, frag := range f.TextFragments {
+			line := int(frag.NewPosition)
+			for _, l := range frag.Lines {
+				switch l.Op {
+				case gitdiff.OpAdd:
+					changes.add(f.NewName, line)
+					line++
+				case gitdiff.OpContext:
+					line++
+				case gitdiff.OpDelete:
+				}
 			}
 		}
 	}
 	return changes, nil
 }
 
-// newPath returns the path of a "+++" header without the prefix b/. Git
-// quotes a path with special characters, and it ends a path that has a space
-// with a tab. A deleted file has the path /dev/null and no added lines.
-func newPath(s string) string {
-	s = strings.TrimSuffix(s, "\t")
-	if unquoted, err := strconv.Unquote(s); err == nil {
-		s = unquoted
+// add adds line to the lines of file.
+func (c Changes) add(file string, line int) {
+	if c[file] == nil {
+		c[file] = make(Lines)
 	}
-	return strings.TrimPrefix(s, "b/")
-}
-
-// addHunk adds the new lines of a hunk header, "@@ -a,b +c,d @@", to file.
-func (c Changes) addHunk(file, header string) error {
-	fields := strings.Fields(header)
-	if len(fields) < 4 || fields[3] != "@@" {
-		return fmt.Errorf("invalid hunk header %q", header)
-	}
-	start, count, err := hunkRange(fields[2])
-	if err != nil {
-		return fmt.Errorf("invalid hunk header %q: %w", header, err)
-	}
-	for n := start; n < start+count; n++ {
-		if c[file] == nil {
-			c[file] = make(Lines)
-		}
-		c[file][n] = true
-	}
-	return nil
-}
-
-// hunkRange parses "+c,d" or "+c" into the first line and the number of
-// lines.
-func hunkRange(s string) (start, count int, err error) {
-	s, ok := strings.CutPrefix(s, "+")
-	if !ok {
-		return 0, 0, errors.New("no range of new lines")
-	}
-	first, n, hasCount := strings.Cut(s, ",")
-	if start, err = strconv.Atoi(first); err != nil {
-		return 0, 0, err
-	}
-	count = 1
-	if hasCount {
-		if count, err = strconv.Atoi(n); err != nil {
-			return 0, 0, err
-		}
-	}
-	return start, count, nil
+	c[file][line] = true
 }
 
 // revParse resolves rev to a commit ID. The commit ID is safe to use as an

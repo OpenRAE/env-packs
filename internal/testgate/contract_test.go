@@ -118,7 +118,7 @@ func TestEvaluateErrorContract(t *testing.T) {
 	m.Mutator.File = "c.go"
 	m.Mutator.Original = contractSource
 	m.Mutator.Mutated = strings.Replace(contractSource, "return 0, errBad", "return 1, errBad", 1)
-	got, err := evaluate(report{Escaped: []mutant{m}}, []string{"c.go"}, nil, Records{Version: 1}, true)
+	got, err := evaluate(mutestingReport{Escaped: []mutant{m}}, []string{"c.go"}, nil, Records{Version: 1}, true)
 	if err != nil || got.Escaped != 1 || got.Equivalent != 1 || len(got.Findings) != 0 {
 		t.Errorf("evaluate() of a number beside an error = %+v, %v; want one equivalent mutant and no finding", got, err)
 	}

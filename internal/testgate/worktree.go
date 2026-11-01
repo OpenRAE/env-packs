@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -29,8 +28,10 @@ func withWorktree(ctx context.Context, r Runner, repo, tempDir, commit string, f
 	return f(tree)
 }
 
-// readFile reads the file at path. It opens the directory of the file as the
-// root of the read.
+// readFile reads a file that the gate wrote, or that go-mutesting named. The
+// gosec check G304 reports a read through a path variable as a file
+// inclusion. That is a false positive here, because no path comes from an
+// untrusted input.
 func readFile(path string) ([]byte, error) {
-	return fs.ReadFile(os.DirFS(filepath.Dir(path)), filepath.Base(path))
+	return os.ReadFile(path) //nolint:gosec // G304 false positive: each path comes from the gate or from go-mutesting.
 }

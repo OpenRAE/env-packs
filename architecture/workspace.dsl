@@ -18,6 +18,7 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
                 strict_yaml = component "strict-yaml" "Decodes exactly one YAML document, and rejects unknown fields." "Go"
             }
             repository_tools = container "Repository tools" "The tools that check and release this repository." "Go" {
+                report = component "report" "Holds the findings of the repository tools, writes them, and defines the exit statuses of the tools." "Go"
                 architecture = component "architecture" "Checks the code and the design records against this model." "Go"
                 test_gates = component "test-gates" "Runs mutation testing on changed lines and proves regression tests." "Go"
             }
@@ -29,7 +30,9 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
         env_packs -> raes "Validates SDL and RAES contracts with"
         env_packs -> github "Is built and released on"
         env_packs.repository_tools.architecture -> env_packs.library.strict_yaml "Depends on"
+        env_packs.repository_tools.architecture -> env_packs.repository_tools.report "Depends on"
         env_packs.repository_tools.test_gates -> env_packs.library.strict_yaml "Depends on"
+        env_packs.repository_tools.test_gates -> env_packs.repository_tools.report "Depends on"
     }
 
     views {

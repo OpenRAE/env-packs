@@ -17,6 +17,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/OpenRAE/env-packs/internal/report"
 )
 
 // regressionMarker is the text in the doc comment of a regression test.
@@ -35,7 +37,7 @@ type RegressionOptions struct {
 // RegressionResult is the outcome of one run of the regression gate.
 type RegressionResult struct {
 	// Findings are the regression tests that do not fail on the merge base.
-	Findings []Finding
+	Findings []report.Finding
 	// Tests counts the regression tests that the change adds or changes.
 	Tests int
 	// Proven counts the regression tests that fail on the merge base.
@@ -193,7 +195,7 @@ func copyTestFile(ctx context.Context, r Runner, repo, tree string, deleted bool
 
 // proveDir runs the regression tests of the package in directory dir of the
 // worktree tree, and returns a finding for each test that does not fail.
-func proveDir(ctx context.Context, r Runner, tree, dir string, tests []regressionTest, mergeBase string) ([]Finding, int, error) {
+func proveDir(ctx context.Context, r Runner, tree, dir string, tests []regressionTest, mergeBase string) ([]report.Finding, int, error) {
 	names := make([]string, 0, len(tests))
 	for _, t := range tests {
 		names = append(names, t.name)
@@ -209,7 +211,7 @@ func proveDir(ctx context.Context, r Runner, tree, dir string, tests []regressio
 		return nil, 0, err
 	}
 	pkg := packageOf(events)
-	var findings []Finding
+	var findings []report.Finding
 	proven := 0
 	for _, t := range tests {
 		problem := regressionProblem(events, pkg, t.name)
@@ -217,7 +219,7 @@ func proveDir(ctx context.Context, r Runner, tree, dir string, tests []regressio
 			proven++
 			continue
 		}
-		findings = append(findings, Finding{
+		findings = append(findings, report.Finding{
 			Location: t.file + ":" + strconv.Itoa(t.line),
 			Rule:     RuleRegression,
 			Message:  fmt.Sprintf("regression test %s %s on the merge base %.12s", t.name, problem, mergeBase),
