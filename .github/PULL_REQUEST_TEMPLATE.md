@@ -19,6 +19,7 @@
 - [ ] `make go-arch`
 - [ ] `make go-mutation`
 - [ ] `make go-regression`
+- [ ] `make prose`
 - [ ] Docs changed: built `docs/public/` warning-free (`sphinx-build -W`).
 
 ## Checklist

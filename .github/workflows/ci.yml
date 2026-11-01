@@ -192,8 +192,13 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
+      # The prose gate compares the change with its base, so it needs the full
+      # history.
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -211,6 +216,20 @@ jobs:
 
       - name: Assert the publication boundary
         run: python tools/check_docs_publication_boundary.py docs/public/_build/html
+
+      # Checks the changed Markdown files against the ASD-STE100 rules that a
+      # tool can check (docs/development/documentation-style-guide.md).
+      - name: Install the pinned Vale
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          version: 2026.10.2
+          install_args: aqua:errata-ai/vale
+          cache: false
+
+      - name: Check the prose of the changed Markdown files
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: make prose BASE="$BASE"
 
   # Builds, vets, and tests the Go code of the port (ADR 0047) with the toolchain
   # that go.mod pins. It runs the same `make go-check` target as a local run, so

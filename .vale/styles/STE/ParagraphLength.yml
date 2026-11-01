@@ -1,0 +1,7 @@
+# ASD-STE100: a paragraph has 6 sentences or fewer.
+extends: occurrence
+message: "Write paragraphs of 6 sentences or fewer (found %s)."
+level: error
+scope: paragraph
+max: 6
+token: '[.!?](?:\s|$)'
