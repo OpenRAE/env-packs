@@ -1,0 +1,9 @@
+# The command needs a subcommand.
+exits 2 raes-pack-release
+! stdout .
+stderr '^usage: raes-pack-release'
+
+# A subcommand needs --pack.
+exits 2 raes-pack-release lint
+! stdout .
+stderr 'the following arguments are required: --pack'

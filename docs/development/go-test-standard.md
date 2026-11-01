@@ -99,7 +99,7 @@ before you run it.
 An equivalent mutant changes no behavior that a test can observe.
 
 The gate knows one kind by a rule. A numbers mutant that changes only a result
-beside a non-nil error is equivalent: Go leaves the other results unspecified
+beside a non-nil error is equivalent. Go leaves the other results unspecified
 when a function returns an error. The rule applies to a `return` statement in
 a function whose last result has the type `error`, when the last result is not
 `nil`. Do not write tests for those results.
@@ -150,5 +150,10 @@ Python coverage report.
 
 ## Contracts
 
-The conformance corpus (chunk 09) tests the external contracts of the commands
-and library operations. Package tests cover the behavior inside a package.
+The conformance corpus in `conformance/` tests the external contracts of the
+commands and library operations
+([design 0003](designs/0003-conformance-corpus.md)). Package tests cover the
+behavior inside a package.
+
+- `make conformance` runs the corpus against the Python implementation.
+- A port chunk adds the cases for its surface before its Go code merges.

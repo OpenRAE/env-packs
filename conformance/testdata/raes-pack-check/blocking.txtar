@@ -1,0 +1,34 @@
+# A directory without pack.yaml has one blocking problem.
+mkdir empty
+exits 1 raes-pack-check empty
+stdout '^FOUND 1 blocking problem:$'
+stdout 'pack\.missing'
+! stderr .
+
+# The JSON envelope gives the diagnostic.
+exits 1 raes-pack-check --json empty
+cmpjson stdout want.json
+! stderr .
+
+-- want.json --
+{
+  "diagnostics": [
+    {
+      "code": "pack.missing",
+      "doc": "docs/public/checking.md#pack-layout",
+      "domain": "pack",
+      "explanation": "pack.yaml is missing from the pack root.",
+      "field": null,
+      "file": "pack.yaml",
+      "location": "pack.yaml",
+      "owner": "env-packs",
+      "reason": "Every pack must declare its identity in pack.yaml.",
+      "severity": "error",
+      "suggestion": "Add a pack.yaml at the top of the pack directory (see the template)."
+    }
+  ],
+  "ok": false,
+  "pack": "empty",
+  "summary": {"by_domain": {"pack": 1}, "total": 1},
+  "version": "raes-pack-check/v1"
+}

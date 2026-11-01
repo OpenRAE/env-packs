@@ -92,6 +92,13 @@ components:
       - github.com/OpenRAE/env-packs/tools/testgate
     depends_on:
       - strict-yaml
+  - id: conformance
+    container: repository-tools
+    description: Runs the conformance corpus against the Python or the Go implementation.
+    packages:
+      - github.com/OpenRAE/env-packs/conformance
+    modules:
+      - github.com/rogpeppe/go-internal
 
 test_modules:
   - github.com/google/go-cmp

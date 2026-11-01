@@ -1,0 +1,14 @@
+# The wizard needs a pack id.
+exits 2 raes-pack-new
+! stdout .
+stderr 'a pack id is required'
+
+# A pack id that is not lowercase kebab case is an invalid invocation.
+exits 2 raes-pack-new Bad_Id --preview
+! stdout .
+stderr 'pack_id must be a lowercase kebab-case string'
+
+# An unknown route is an invalid invocation.
+exits 2 raes-pack-new demo --route nope
+! stdout .
+stderr '^usage: raes-pack-new'

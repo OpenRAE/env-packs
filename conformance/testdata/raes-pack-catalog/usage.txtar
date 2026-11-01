@@ -1,0 +1,9 @@
+# The command needs a pack root or a sources manifest.
+exits 2 raes-pack-catalog
+! stdout .
+stderr 'provide a pack_root or --sources manifest'
+
+# A pack root that is not a directory is an invalid invocation.
+exits 2 raes-pack-catalog missing
+! stdout .
+stderr 'not a directory: missing'

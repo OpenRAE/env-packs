@@ -1,0 +1,4 @@
+# The command needs a verb.
+exits 2 raes-pack-dist
+! stdout .
+stderr '^usage: raes-pack-dist'

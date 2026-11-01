@@ -29,6 +29,7 @@ raes-pack-release check --all          # pack release gate
 raes-pack-validate --packs-root packs  # hosted first-party packs
 raes-pack-release check --packs-root packs
 python -m compileall src tests         # byte-compile
+make conformance                       # the conformance corpus against Python
 make go-check                          # Go build, vet, and tests (ADR 0047)
 make go-lint                           # Go lint, formatting, and module tidiness
 make go-audit                          # Go module checksums and known vulnerabilities

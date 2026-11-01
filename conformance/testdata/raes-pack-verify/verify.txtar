@@ -1,0 +1,15 @@
+# A published release, with its SBOM and provenance, is accepted.
+exits 0 raes-pack-release build --pack $REPO/packs/techvault --out published --publish
+glob PUBLISHED published/techvault-*
+exits 0 raes-pack-verify --pack $REPO/packs/techvault --release $PUBLISHED
+stdout '^subject: sha256:[0-9a-f]{64}$'
+stdout '^ACCEPTED$'
+! stderr .
+
+# A release without its SBOM and provenance is rejected.
+exits 0 raes-pack-release build --pack $REPO/packs/techvault --out plain
+glob PLAIN plain/techvault-*
+exits 1 raes-pack-verify --pack $REPO/packs/techvault --release $PLAIN
+stdout '\[absent +\] sbom'
+stdout '^REJECTED$'
+! stderr .

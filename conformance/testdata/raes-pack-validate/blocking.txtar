@@ -1,0 +1,5 @@
+# A directory without pack.yaml fails the author gate.
+mkdir empty
+exits 1 raes-pack-validate --pack empty
+stdout 'pack\.missing'
+! stderr .

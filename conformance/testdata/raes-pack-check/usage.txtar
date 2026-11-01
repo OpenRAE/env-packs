@@ -1,0 +1,9 @@
+# A missing pack root is an invalid invocation.
+exits 2 raes-pack-check
+! stdout .
+stderr '^usage: raes-pack-check'
+
+# A pack root that is not a directory is an invalid invocation.
+exits 2 raes-pack-check missing
+! stdout .
+stderr 'not a directory: missing'

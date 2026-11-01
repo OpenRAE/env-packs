@@ -27,8 +27,8 @@ MISE ?= mise
 
 .DEFAULT_GOAL := help
 
-.PHONY: help devmain prose go-check go-lint go-audit go-fuzz go-arch go-arch-design \
-	go-arch-dsl go-mutation go-mutation-all go-regression
+.PHONY: help devmain prose conformance go-check go-lint go-audit go-fuzz go-arch \
+	go-arch-design go-arch-dsl go-mutation go-mutation-all go-regression
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -118,6 +118,12 @@ go-arch-dsl: ## Render the C4 view of the architecture model
 # the Go port (ADR 0047). The cutover changes it to origin/dev. The gates read
 # only committed code, so commit the work before you run them.
 BASE ?= origin/go-cutover
+
+# Runs the conformance corpus against the Python console scripts on PATH
+# (docs/development/designs/0003-conformance-corpus.md). The corpus starts the
+# commands, so the test results do not come from the cache.
+conformance: ## Run the conformance corpus against the Python implementation
+	$(GO) test ./conformance -count=1 -args -impl=python
 
 # Checks the prose of each Markdown file that HEAD adds or changes since BASE,
 # with the Vale version that mise.toml pins and the rules in .vale/styles/STE

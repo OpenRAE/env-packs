@@ -1,0 +1,9 @@
+# The command needs a subcommand.
+exits 2 raes-pack-kit
+! stdout .
+stderr '^usage: raes-pack-kit'
+
+# Discovery needs the source revision.
+exits 2 raes-pack-kit list $REPO --source-id first-party
+! stdout .
+stderr 'the following arguments are required: --source-revision'
