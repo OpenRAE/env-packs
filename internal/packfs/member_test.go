@@ -54,7 +54,7 @@ func TestOpenMemberRejections(t *testing.T) {
 		if f != nil {
 			t.Errorf("OpenMember(%q) = %v, want nil", tt.rel, f)
 		}
-		if got := reasonOf(err); got != tt.want {
+		if reasonOf(err) != tt.want {
 			t.Errorf("OpenMember(%q) error = %v, want reason %q", tt.rel, err, tt.want)
 		}
 	}
