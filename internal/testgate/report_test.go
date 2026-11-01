@@ -93,12 +93,12 @@ func TestFunctionAt(t *testing.T) {
 		10: {"ptr.method", 9}, 14: {"gen.generic", 13}, 18: {"val.paren", 17},
 	}
 	for line, w := range tests {
-		name, first, err := functionAt(functionSource, line)
-		if err != nil || name != w.name || first != w.first {
-			t.Errorf("functionAt(line %d) = %q, %d, %v, want %q, %d, nil", line, name, first, err, w.name, w.first)
+		got, err := functionAt(functionSource, line)
+		if err != nil || got.name != w.name || got.first != w.first {
+			t.Errorf("functionAt(line %d) = %+v, %v, want %q, %d, nil", line, got, err, w.name, w.first)
 		}
 	}
-	if _, _, err := functionAt("package", 1); err == nil {
+	if _, err := functionAt("package", 1); err == nil {
 		t.Error("functionAt() of invalid source: error = nil, want an error")
 	}
 }

@@ -97,9 +97,9 @@ func TestExecMutantErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ExecMutant(context.Background(), failing, ".", tt.mutant)
-			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-				t.Errorf("ExecMutant() error = %v, want an error with %q", err, tt.wantErr)
+			status, err := ExecMutant(context.Background(), failing, ".", tt.mutant)
+			if status != 3 || err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("ExecMutant() = %d, %v; want 3 and an error with %q", status, err, tt.wantErr)
 			}
 			if data, err := readFile(original); err != nil || string(data) != "original" {
 				t.Errorf("ExecMutant() left %q, %v in place, want the original file", data, err)

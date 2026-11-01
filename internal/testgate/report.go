@@ -79,20 +79,20 @@ func survivor(m mutant) (Survivor, bool, error) {
 	}
 	original := strings.Split(m.Mutator.Original, "\n")
 	mutated := strings.Split(m.Mutator.Mutated, "\n")
-	function, first, err := functionAt(m.Mutator.Original, start)
+	fn, err := functionAt(m.Mutator.Original, start)
 	if err != nil {
 		return Survivor{}, false, fmt.Errorf("parse %s: %w", m.Mutator.File, err)
 	}
 	line := lineAt(original, start)
 	occurrence := 0
-	for n := first; n <= start; n++ {
+	for n := fn.first; n <= start; n++ {
 		if lineAt(original, n) == line {
 			occurrence++
 		}
 	}
 	return Survivor{
 		File:       m.Mutator.File,
-		Function:   function,
+		Function:   fn.name,
 		Mutator:    m.Mutator.Name,
 		Start:      start,
 		End:        end,
@@ -131,22 +131,28 @@ func changedRange(original, mutated []string) (start, end int, changed bool) {
 	return start, max(start, len(original)-j), true
 }
 
-// functionAt returns the name of the function that holds line, "Type.Method"
-// for a method, and the first line of the function. Outside a function, it
-// returns the empty string and line 1.
-func functionAt(src string, line int) (name string, first int, err error) {
+// A function is the function that holds a line: its name, "Type.Method" for
+// a method, and its first line. Outside a function, the name is empty and the
+// first line is 1.
+type function struct {
+	name  string
+	first int
+}
+
+// functionAt returns the function that holds line.
+func functionAt(src string, line int) (function, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "", src, parser.SkipObjectResolution)
 	if err != nil {
-		return "", 0, err
+		return function{}, err
 	}
 	for _, d := range f.Decls {
 		fn, ok := d.(*ast.FuncDecl)
 		if first := fset.Position(d.Pos()).Line; ok && first <= line && line <= fset.Position(fn.End()).Line {
-			return receiverPrefix(fn) + fn.Name.Name, first, nil
+			return function{name: receiverPrefix(fn) + fn.Name.Name, first: first}, nil
 		}
 	}
-	return "", 1, nil
+	return function{first: 1}, nil
 }
 
 // receiverPrefix returns "Type." for a method, and the empty string for a

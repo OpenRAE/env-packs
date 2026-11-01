@@ -143,8 +143,8 @@ func TestRunUsage(t *testing.T) {
 			if status != 2 || stdout != "" || !strings.Contains(stderr, tt.wantStderr) {
 				t.Errorf("run(%q) = %d, stdout %q, stderr %q; want 2, no stdout, and stderr with %q", tt.args, status, stdout, stderr, tt.wantStderr)
 			}
-			if strings.Count(stderr, "testgate: ") > 1 {
-				t.Errorf("run(%q) stderr %q, want one message of testgate", tt.args, stderr)
+			if got, want := strings.Count(stderr, "testgate: "), strings.Count(tt.wantStderr, "testgate: "); got != want {
+				t.Errorf("run(%q) stderr %q has %d messages of testgate, want %d", tt.args, stderr, got, want)
 			}
 		})
 	}
