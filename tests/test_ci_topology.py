@@ -206,17 +206,21 @@ class JobIndependenceTests(unittest.TestCase):
                     "must not `needs:` another job (issue #163)",
                 )
 
-    def test_sonar_depends_only_on_the_coverage_producer(self) -> None:
+    def test_sonar_depends_only_on_the_coverage_producers(self) -> None:
         sonar = self.jobs["sonar"]
         self.assertEqual(
-            _needs(sonar), {"tests"},
-            "SonarCloud must depend only on the unit-test coverage producer, not "
-            "on `verify`, `audit`, or `content` (ADR 0029)",
+            _needs(sonar), {"tests", "go"},
+            "SonarCloud must depend only on the coverage producers (`tests` for "
+            "Python, `go` for Go), not on `verify`, `audit`, or `content` "
+            "(ADR 0029, ADR 0047)",
         )
 
 
 class CoverageAuthorityTests(unittest.TestCase):
-    """Coverage is produced once by `tests` and handed to Sonar as an artifact."""
+    """Coverage is produced once per language and handed to Sonar as an artifact.
+
+    `tests` produces the Python report and `go` produces the Go profile (ADR 0047).
+    """
 
     def setUp(self) -> None:
         self.jobs = _jobs()
@@ -259,6 +263,22 @@ class CoverageAuthorityTests(unittest.TestCase):
             "(ADR 0029: coverage is produced once)",
         )
         self.assertNotIn("coverage run", _runs(sonar))
+
+    def test_go_job_hands_its_coverage_profile_to_sonar(self) -> None:
+        go_uploads = [
+            s for s in _steps(self.jobs["go"])
+            if "actions/upload-artifact" in str(s.get("uses", ""))
+        ]
+        self.assertEqual(
+            [s.get("with", {}).get("path") for s in go_uploads], ["coverage-go.out"],
+            "`go` must upload exactly its coverage profile for Sonar (ADR 0047)",
+        )
+        sonar_downloads = {
+            s.get("with", {}).get("name") for s in _steps(self.jobs["sonar"])
+            if "actions/download-artifact" in str(s.get("uses", ""))
+        }
+        self.assertIn("coverage-go", sonar_downloads)
+        self.assertNotIn("go test", _runs(self.jobs["sonar"]))
 
 
 class GateCompletenessTests(unittest.TestCase):

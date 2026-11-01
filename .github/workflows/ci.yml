@@ -233,6 +233,16 @@ jobs:
       - name: Build, vet, and test the Go code
         run: make go-check
 
+      - name: Upload Go coverage profile
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-go
+          path: coverage-go.out
+          # A missing profile is a defect, not an empty upload: fail loudly so the
+          # sonar job never scans stale or absent coverage.
+          if-no-files-found: error
+          retention-days: 1
+
   # Lints the Go code with the golangci-lint version that mise.toml pins and
   # mise.lock verifies, and checks formatting and module tidiness. The action
   # verifies the mise binary against its signed release checksums. No tool
@@ -263,16 +273,16 @@ jobs:
 
   sonar:
     runs-on: ubuntu-latest
-    # Depend only on the coverage producer, not on the audit or pack gates: the
-    # scanner's single input is the same-run coverage.xml, so it starts as soon
-    # as that artifact exists (ADR 0029).
-    needs: [tests]
+    # Depend only on the coverage producers, not on the audit or pack gates: the
+    # scanner's inputs are the same-run coverage.xml from `tests` and
+    # coverage-go.out from `go`, so it starts as soon as both exist (ADR 0029).
+    needs: [tests, go]
     # SonarCloud needs SONAR_TOKEN, which GitHub withholds from PRs that don't
     # carry repository secrets: forks and Dependabot PRs (Dependabot runs read a
     # separate secret store that this token isn't in). Skip both — the scan still
     # runs on the post-merge push to dev/main with full token access, so the
-    # quality gate covers the integrated code. Dependency bumps don't touch
-    # sonar.sources (src/) anyway, so there is nothing new to analyze here.
+    # quality gate covers the integrated code. Dependency bumps don't touch the
+    # analyzed source files anyway, so there is nothing new to analyze here.
     if: >-
       github.event_name != 'pull_request' ||
       (github.event.pull_request.head.repo.full_name == github.repository &&
@@ -290,6 +300,13 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: coverage-xml
+
+      - name: Download Go coverage profile
+        # The exact, same-run artifact the go job produced. It lands as
+        # ./coverage-go.out, which sonar-project.properties names.
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage-go
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v7
