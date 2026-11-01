@@ -129,6 +129,11 @@ components:
     description: Escapes labels from packs, file names, and arguments for a terminal.
     packages:
       - github.com/OpenRAE/env-packs/internal/terminal
+  - id: raes-interface
+    container: library
+    description: Declares the RAES operations that env-packs uses. Only its adapter calls the RAES Go module.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/raes
   - id: strict-yaml
     container: library
     description: Decodes exactly one YAML document, and rejects unknown fields.
@@ -248,6 +253,20 @@ rules:
     fix: >-
       Only a component that the model lists in this rule's exceptions may start
       a process. Its design record must name the commands that it starts.
+
+  - id: raes-through-adapter
+    description: >-
+      Only the adapter of the RAES interface imports the RAES Go module (ADR
+      0047, design 0007). The adapter does not exist yet, so no package
+      imports the module.
+    scope:
+      containers: [commands, library, repository-tools]
+      main_packages: true
+      test_files: true
+    forbid_imports: [github.com/OpenRAE/rae/...]
+    fix: >-
+      Call RAES through the interfaces of internal/raes. The design record of
+      the adapter adds the adapter to the exceptions of this rule.
 
   - id: files-through-packfs
     description: >-

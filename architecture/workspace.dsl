@@ -23,6 +23,7 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
                 outcome = component "outcome" "The exit statuses and the output streams of the commands and the repository tools, and the handling of defects." "Go"
                 jsondoc = component "jsondoc" "Writes JSON envelopes and documents with the bytes of the Python implementation." "Go"
                 terminal = component "terminal" "Escapes labels from packs, file names, and arguments for a terminal." "Go"
+                raes_interface = component "raes-interface" "Declares the RAES operations that env-packs uses. Only its adapter calls the RAES Go module." "Go"
                 strict_yaml = component "strict-yaml" "Decodes exactly one YAML document, and rejects unknown fields." "Go"
             }
             repository_tools = container "Repository tools" "The tools that check and release this repository." "Go" {
