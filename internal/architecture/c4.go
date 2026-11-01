@@ -1,96 +1,69 @@
 package architecture
 
 import (
-	"fmt"
+	_ "embed"
 	"strings"
+	"text/template"
 )
+
+// workspaceTemplate is the Structurizr DSL template of the C4 view.
+//
+//go:embed workspace.dsl.tmpl
+var workspaceTemplate string
 
 // RenderDSL renders the model as a Structurizr DSL workspace. The output
 // depends only on the model, so a check can compare it with a committed file.
 func RenderDSL(m *Model) []byte {
-	w := &dslWriter{}
-	w.linef("workspace %s %s {", quote(m.System.Name), quote(m.System.Description))
-	w.indent++
-	w.linef("!identifiers hierarchical")
-	w.blank()
-	w.linef("model {")
-	w.indent++
-	w.writeContext(m)
-	w.writeSystem(m)
-	w.writeRelationships(m)
-	w.indent--
-	w.linef("}")
-	w.blank()
-	w.writeViews(m)
-	w.indent--
-	w.linef("}")
-	return []byte(w.b.String())
-}
-
-// dslWriter writes indented DSL lines.
-type dslWriter struct {
-	b      strings.Builder
-	indent int
-}
-
-func (w *dslWriter) linef(format string, args ...any) {
-	w.b.WriteString(strings.Repeat("    ", w.indent))
-	fmt.Fprintf(&w.b, format, args...)
-	w.b.WriteByte('\n')
-}
-
-func (w *dslWriter) blank() {
-	w.b.WriteByte('\n')
-}
-
-func (w *dslWriter) writeContext(m *Model) {
-	for _, p := range m.People {
-		w.linef("%s = person %s %s", dslID(p.ID), quote(p.Name), quote(p.Description))
+	t := template.Must(template.New("workspace").Funcs(template.FuncMap{"q": quote, "id": dslID}).Parse(workspaceTemplate))
+	var b strings.Builder
+	err := t.Execute(&b, workspace{
+		System:          m.System,
+		People:          m.People,
+		ExternalSystems: m.ExternalSystems,
+		Containers:      containersOf(m),
+		Edges:           edgesOf(m),
+	})
+	if err != nil {
+		// Execute fails only for a defect in the fixed template, as Parse
+		// does, so the defect panics as it does in template.Must.
+		panic(err)
 	}
-	for _, e := range m.ExternalSystems {
-		w.linef("%s = softwareSystem %s %s {", dslID(e.ID), quote(e.Name), quote(e.Description))
-		w.indent++
-		w.linef(`tags "External"`)
-		w.indent--
-		w.linef("}")
-	}
+	return []byte(b.String())
 }
 
-func (w *dslWriter) writeSystem(m *Model) {
-	w.linef("%s = softwareSystem %s %s {", dslID(m.System.ID), quote(m.System.Name), quote(m.System.Description))
-	w.indent++
-	for _, c := range m.Containers {
-		components := componentsOf(m, c.ID)
-		if len(components) == 0 {
-			w.linef("%s = container %s %s %s", dslID(c.ID), quote(c.Name), quote(c.Description), quote(c.Technology))
-			continue
-		}
-		w.linef("%s = container %s %s %s {", dslID(c.ID), quote(c.Name), quote(c.Description), quote(c.Technology))
-		w.indent++
-		for _, comp := range components {
-			w.linef("%s = component %s %s %s", dslID(comp.ID), quote(comp.ID), quote(comp.Description), quote("Go"))
-		}
-		w.indent--
-		w.linef("}")
-	}
-	w.indent--
-	w.linef("}")
+// workspace is the data of the template.
+type workspace struct {
+	System          Element
+	People          []Element
+	ExternalSystems []Element
+	Containers      []containerView
+	Edges           []edge
 }
 
-func (w *dslWriter) writeRelationships(m *Model) {
-	edges := edgesOf(m)
-	if len(edges) == 0 {
-		return
-	}
-	w.blank()
-	for _, e := range edges {
-		w.linef("%s -> %s %s", e.from, e.to, quote(e.description))
-	}
+// containerView is a container with its components, in the order of the
+// model.
+type containerView struct {
+	Container
+	Components []Component
 }
 
-// An edge is one relationship of the DSL workspace.
+// An edge is one relationship of the workspace.
 type edge struct {
-	from, to, description string
+	From, To, Description string
+}
+
+func containersOf(m *Model) []containerView {
+	views := make([]containerView, 0, len(m.Containers))
+	for _, c := range m.Containers {
+		v := containerView{Container: c}
+		for _, comp := range m.Components {
+			if comp.Container == c.ID {
+				v.Components = append(v.Components, comp)
+			}
+		}
+		views = append(views, v)
+	}
+	return views
 }
 
 // edgesOf returns the relationships of the model and the dependencies between
@@ -98,50 +71,16 @@ type edge struct {
 func edgesOf(m *Model) []edge {
 	var edges []edge
 	for _, r := range m.Relationships {
-		edges = append(edges, edge{from: dslID(r.From), to: dslID(r.To), description: r.Description})
+		edges = append(edges, edge{From: dslID(r.From), To: dslID(r.To), Description: r.Description})
 	}
 	for _, c := range m.Components {
 		for _, d := range c.DependsOn {
 			if to, ok := m.Component(d); ok {
-				edges = append(edges, edge{from: componentRef(m, c), to: componentRef(m, *to), description: "Depends on"})
+				edges = append(edges, edge{From: componentRef(m, c), To: componentRef(m, *to), Description: "Depends on"})
 			}
 		}
 	}
 	return edges
-}
-
-func (w *dslWriter) writeViews(m *Model) {
-	w.linef("views {")
-	w.indent++
-	system := dslID(m.System.ID)
-	w.writeView("systemContext "+system, "context")
-	w.writeView("container "+system, "containers")
-	for _, c := range m.Containers {
-		if len(componentsOf(m, c.ID)) > 0 {
-			w.writeView("component "+system+"."+dslID(c.ID), "components-"+c.ID)
-		}
-	}
-	w.indent--
-	w.linef("}")
-}
-
-func (w *dslWriter) writeView(kind, key string) {
-	w.linef("%s %s {", kind, quote(key))
-	w.indent++
-	w.linef("include *")
-	w.linef("autoLayout lr")
-	w.indent--
-	w.linef("}")
-}
-
-func componentsOf(m *Model, container string) []Component {
-	var components []Component
-	for _, c := range m.Components {
-		if c.Container == container {
-			components = append(components, c)
-		}
-	}
-	return components
 }
 
 // componentRef returns the hierarchical DSL identifier of a component.

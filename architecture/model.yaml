@@ -75,6 +75,7 @@ components:
       - github.com/OpenRAE/env-packs/tools/archcheck
     modules:
       - golang.org/x/tools
+      - golang.org/x/mod
       - go.yaml.in/yaml/v3
 
 test_modules:

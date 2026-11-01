@@ -119,9 +119,13 @@ linters:
     dupl:
       threshold: 100
 
+    # A bufio.Writer keeps its first write error, and Flush returns it. The
+    # commands check the error of Flush, so they do not check each write.
     errcheck:
       check-type-assertions: true
       check-blank: true
+      exclude-functions:
+        - fmt.Fprintf(*bufio.Writer)
 
     errchkjson:
       check-error-free-encoding: true

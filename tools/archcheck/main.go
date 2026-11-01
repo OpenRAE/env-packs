@@ -18,6 +18,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"flag"
@@ -49,30 +50,45 @@ func main() {
 }
 
 // run runs the command and returns the exit status. Like os.Args, args starts
-// with the program name.
+// with the program name. A failed write to stdout or stderr changes the
+// status to exitFailure.
 func run(args []string, stdout, stderr io.Writer) int {
-	out := &output{stdout: stdout, stderr: stderr}
+	out := output{stdout: bufio.NewWriter(stdout), stderr: bufio.NewWriter(stderr)}
+	status := runMode(args, out)
+	// A bufio.Writer keeps its first write error, and Flush returns it.
+	if err := errors.Join(out.stdout.Flush(), out.stderr.Flush()); err != nil {
+		return exitFailure
+	}
+	return status
+}
+
+// output holds the buffered standard streams.
+type output struct {
+	stdout, stderr *bufio.Writer
+}
+
+func runMode(args []string, out output) int {
 	flags := flag.NewFlagSet("archcheck", flag.ContinueOnError)
-	flags.SetOutput(stderr)
+	flags.SetOutput(out.stderr)
 	dir := flags.String("root", ".", "repository `directory`")
 	if err := flags.Parse(args[1:]); err != nil {
 		return exitUsage
 	}
 	if flags.NArg() == 0 {
-		out.printf(out.stderr, "archcheck: give a mode: design, check, or dsl\n")
-		return out.status(exitUsage)
+		fmt.Fprintf(out.stderr, "archcheck: give a mode: design, check, or dsl\n")
+		return exitUsage
 	}
 	mode, rest := flags.Arg(0), flags.Args()[1:]
 	if mode != "design" && mode != "check" && mode != "dsl" {
-		out.printf(out.stderr, "archcheck: unknown mode %q; give design, check, or dsl\n", mode)
-		return out.status(exitUsage)
+		fmt.Fprintf(out.stderr, "archcheck: unknown mode %q; give design, check, or dsl\n", mode)
+		return exitUsage
 	}
 	repo := os.DirFS(*dir)
 	switch mode {
 	case "design":
-		return out.report(designResult(repo))
+		return report(out, designResult(repo))
 	case "check":
-		return out.report(checkResult(repo, *dir))
+		return report(out, checkResult(repo, *dir))
 	default:
 		return runDSL(repo, *dir, rest, out)
 	}
@@ -157,7 +173,7 @@ func parseModel(data []byte) (*architecture.Model, []architecture.Finding) {
 
 // runDSL renders the C4 view. With -write, it writes the view file into the
 // repository in directory dir.
-func runDSL(repo fs.FS, dir string, args []string, out *output) int {
+func runDSL(repo fs.FS, dir string, args []string, out output) int {
 	flags := flag.NewFlagSet("archcheck dsl", flag.ContinueOnError)
 	flags.SetOutput(out.stderr)
 	write := flags.Bool("write", false, "write "+dslFile+" instead of standard output")
@@ -169,61 +185,33 @@ func runDSL(repo fs.FS, dir string, args []string, out *output) int {
 		findings = architecture.ValidateModel(m, modelFile)
 	}
 	if err != nil || len(findings) > 0 {
-		return out.report(result{findings: findings, err: err})
+		return report(out, result{findings: findings, err: err})
 	}
 	view := architecture.RenderDSL(m)
 	if !*write {
-		out.write(out.stdout, view)
-		return out.status(exitOK)
+		fmt.Fprintf(out.stdout, "%s", view)
+		return exitOK
 	}
 	if err := os.WriteFile(filepath.Join(dir, dslFile), view, 0o600); err != nil {
-		out.printf(out.stderr, "archcheck: write the C4 view: %v\n", err)
-		return out.status(exitFailure)
-	}
-	return out.status(exitOK)
-}
-
-// output writes to the standard streams. It keeps the first write error, so
-// that a failed write changes the exit status instead of being lost.
-type output struct {
-	stdout io.Writer
-	stderr io.Writer
-	err    error
-}
-
-func (o *output) printf(w io.Writer, format string, args ...any) {
-	if o.err == nil {
-		_, o.err = fmt.Fprintf(w, format, args...)
-	}
-}
-
-func (o *output) write(w io.Writer, data []byte) {
-	if o.err == nil {
-		_, o.err = w.Write(data)
-	}
-}
-
-// status returns code, or exitFailure after a failed write.
-func (o *output) status(code int) int {
-	if o.err != nil {
+		fmt.Fprintf(out.stderr, "archcheck: write the C4 view: %v\n", err)
 		return exitFailure
 	}
-	return code
+	return exitOK
 }
 
 // report writes the findings and returns the exit status.
-func (o *output) report(r result) int {
+func report(out output, r result) int {
 	if r.err != nil {
-		o.printf(o.stderr, "archcheck: %v\n", r.err)
-		return o.status(exitFailure)
+		fmt.Fprintf(out.stderr, "archcheck: %v\n", r.err)
+		return exitFailure
 	}
 	findings := architecture.SortFindings(r.findings)
 	for _, f := range findings {
-		o.printf(o.stdout, "%s\n", f)
+		fmt.Fprintf(out.stdout, "%s\n", f)
 	}
-	o.printf(o.stderr, "archcheck: %d findings\n", len(findings))
+	fmt.Fprintf(out.stderr, "archcheck: %d findings\n", len(findings))
 	if len(findings) > 0 {
-		return o.status(exitFindings)
+		return exitFindings
 	}
-	return o.status(exitOK)
+	return exitOK
 }

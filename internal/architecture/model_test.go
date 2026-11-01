@@ -1,6 +1,7 @@
 package architecture
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -84,6 +85,11 @@ func TestParseModel(t *testing.T) {
 			input:   "",
 			wantErr: "decode model: EOF",
 		},
+		{
+			name:    "alias expansion",
+			input:   aliasBomb(),
+			wantErr: "cannot unmarshal",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -91,6 +97,17 @@ func TestParseModel(t *testing.T) {
 			checkParse(t, "ParseModel", tt.input, got, err, tt.want, tt.wantErr)
 		})
 	}
+}
+
+// aliasBomb returns a YAML document whose aliases expand to 10^9 nodes.
+func aliasBomb() string {
+	var b strings.Builder
+	b.WriteString("a: &a [x, x, x, x, x, x, x, x, x, x]\n")
+	for i := 'b'; i <= 'i'; i++ {
+		fmt.Fprintf(&b, "%c: &%c [*%c, *%c, *%c, *%c, *%c, *%c, *%c, *%c, *%c, *%c]\n", i, i, i-1, i-1, i-1, i-1, i-1, i-1, i-1, i-1, i-1, i-1)
+	}
+	b.WriteString("version: *i\n")
+	return b.String()
 }
 
 // checkParse checks the result of a parse function for one input. When
@@ -127,7 +144,7 @@ func TestValidateModel(t *testing.T) {
 			name:   "module path",
 			change: func(m *Model) { m.Module = "repo" },
 			want: []string{
-				`module "repo" is not a valid module path`,
+				`the module path is not valid: malformed module path "repo": missing dot in first path element`,
 				`package "example.com/repo/internal/core" of component "core" is outside module "repo"`,
 				`package "example.com/repo/internal/feature" of component "feature" is outside module "repo"`,
 			},
@@ -282,12 +299,12 @@ func TestValidateModel(t *testing.T) {
 		{
 			name:   "invalid module",
 			change: func(m *Model) { m.Components[1].Modules = []string{"text"} },
-			want:   []string{`module of component "feature" "text" is not a valid module path or is listed more than once`},
+			want:   []string{`module of component "feature" is not valid: malformed module path "text": missing dot in first path element`},
 		},
 		{
 			name:   "duplicate test module",
 			change: func(m *Model) { m.TestModules = append(m.TestModules, m.TestModules[0]) },
-			want:   []string{`test module "github.com/google/go-cmp" is not a valid module path or is listed more than once`},
+			want:   []string{`test module "github.com/google/go-cmp" is listed more than once`},
 		},
 		{
 			name:   "rule without containers",
@@ -323,7 +340,7 @@ func TestValidateModel(t *testing.T) {
 		{
 			name:   "invalid import pattern",
 			change: func(m *Model) { m.Rules[0].ForbidImports = []string{"net/.../http"} },
-			want:   []string{`rule "quiet" has invalid import pattern "net/.../http"`},
+			want:   []string{`rule "quiet" has an invalid import pattern: malformed import path "net/.../http": invalid path element "..."`},
 		},
 		{
 			name:   "invalid symbol",
@@ -397,60 +414,22 @@ func TestValidID(t *testing.T) {
 	}
 }
 
-func TestValidModulePath(t *testing.T) {
-	tests := map[string]bool{
-		"example.com/repo": true, "golang.org/x/tools": true, "go.yaml.in/yaml/v3": true,
-		"": false, "repo": false, "repo/x.y": false, "example.com/a b": false, `example.com\a`: false,
-	}
-	for path, want := range tests {
-		if got := validModulePath(path); got != want {
-			t.Errorf("validModulePath(%q) = %v, want %v", path, got, want)
-		}
-	}
-}
-
-func TestCutLast(t *testing.T) {
-	tests := []struct {
-		s, sep        string
-		before, after string
-		found         bool
-	}{
-		{s: "a.b.c", sep: ".", before: "a.b", after: "c", found: true},
-		{s: ".a", sep: ".", before: "", after: "a", found: true},
-		{s: "a.", sep: ".", before: "a", after: "", found: true},
-		{s: "a::b", sep: "::", before: "a", after: "b", found: true},
-		{s: "abc", sep: ".", before: "abc", after: "", found: false},
-	}
-	for _, tt := range tests {
-		before, after, found := cutLast(tt.s, tt.sep)
-		if before != tt.before || after != tt.after || found != tt.found {
-			t.Errorf("cutLast(%q, %q) = %q, %q, %v, want %q, %q, %v",
-				tt.s, tt.sep, before, after, found, tt.before, tt.after, tt.found)
-		}
-	}
-}
-
-func TestValidImportPattern(t *testing.T) {
-	tests := map[string]bool{
-		"log": true, "net/http/...": true, "golang.org/x/tools/...": true,
-		"": false, "/...": false, "net/../http": false, "a b": false,
-	}
-	for pattern, want := range tests {
-		if got := validImportPattern(pattern); got != want {
-			t.Errorf("validImportPattern(%q) = %v, want %v", pattern, got, want)
-		}
-	}
-}
-
-func TestValidSymbol(t *testing.T) {
+func TestValidateModelSymbols(t *testing.T) {
 	tests := map[string]bool{
 		"println": true, "panic": true, "os.Getenv": true, "path/filepath.Walk": true,
 		"golang.org/x/tools/go/packages.Load": true,
-		"printf":                              false, "os.getenv": false, ".Getenv": false, "os.": false, "os.Get env": false,
+		"printf":                              false, "error": false, "nil": false, "os.getenv": false, ".Getenv": false,
+		"os.": false, "os.Get env": false, "a b.Getenv": false,
 	}
-	for symbol, want := range tests {
-		if got := validSymbol(symbol); got != want {
-			t.Errorf("validSymbol(%q) = %v, want %v", symbol, got, want)
+	for symbol, valid := range tests {
+		m := validModel()
+		m.Rules[0].ForbidSymbols = []string{symbol}
+		var want []string
+		if !valid {
+			want = []string{fmt.Sprintf("rule %q has invalid symbol %q", m.Rules[0].ID, symbol)}
+		}
+		if diff := cmp.Diff(want, messages(t, ValidateModel(m, "model.yaml"), "model.yaml", RuleModel)); diff != "" {
+			t.Errorf("ValidateModel() with symbol %q mismatch (-want +got):\n%s", symbol, diff)
 		}
 	}
 }

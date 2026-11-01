@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"go/token"
+	"go/types"
 	"io"
 	"regexp"
 	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
+	"golang.org/x/mod/module"
 )
 
 // Model is the architecture model of the repository.
@@ -177,8 +179,8 @@ func (v *modelValidator) checkHeader() {
 	if v.model.Version != 1 {
 		v.addf("version is %d; the only supported version is 1", v.model.Version)
 	}
-	if !validModulePath(v.model.Module) {
-		v.addf("module %q is not a valid module path", v.model.Module)
+	if err := module.CheckPath(v.model.Module); err != nil {
+		v.addf("the module path is not valid: %v", err)
 	}
 	if v.model.System.Name == "" {
 		v.addf("the system has no name")
@@ -280,8 +282,11 @@ func (v *modelValidator) checkDependsOn(c Component) {
 func (v *modelValidator) checkModuleList(kind string, modules []string) {
 	seen := make(map[string]bool)
 	for _, mod := range modules {
-		if !validModulePath(mod) || seen[mod] {
-			v.addf("%s %q is not a valid module path or is listed more than once", kind, mod)
+		if err := module.CheckPath(mod); err != nil {
+			v.addf("%s is not valid: %v", kind, err)
+		}
+		if seen[mod] {
+			v.addf("%s %q is listed more than once", kind, mod)
 		}
 		seen[mod] = true
 	}
@@ -330,8 +335,8 @@ func (v *modelValidator) checkRuleBody(r Rule) {
 		v.addf("rule %q forbids nothing", r.ID)
 	}
 	for _, p := range r.ForbidImports {
-		if !validImportPattern(p) {
-			v.addf("rule %q has invalid import pattern %q", r.ID, p)
+		if err := module.CheckImportPath(strings.TrimSuffix(p, "/...")); err != nil {
+			v.addf("rule %q has an invalid import pattern: %v", r.ID, err)
 		}
 	}
 	for _, s := range r.ForbidSymbols {
@@ -372,50 +377,14 @@ func validID(id string) bool {
 	return idPattern.MatchString(id)
 }
 
-// validModulePath reports whether path looks like a module path: no spaces,
-// and a first element with a dot.
-func validModulePath(path string) bool {
-	first, _, _ := strings.Cut(path, "/")
-	return strings.Contains(first, ".") && !strings.ContainsAny(path, " \t\n\\")
-}
-
-// validImportPattern reports whether p is an import path, or an import path
-// that ends in "/...".
-func validImportPattern(p string) bool {
-	return validImportPath(strings.TrimSuffix(p, "/..."))
-}
-
-// validImportPath reports whether path is a non-empty import path without
-// spaces, backslashes, or "..".
-func validImportPath(path string) bool {
-	return path != "" && !strings.ContainsAny(path, " \t\n\\") && !strings.Contains(path, "..")
-}
-
-// validSymbol reports whether s is a builtin function name, or
-// "importpath.Name" with an exported Name.
+// validSymbol reports whether s is a builtin function, or "importpath.Name"
+// with an exported Name.
 func validSymbol(s string) bool {
-	pkg, name, ok := cutLast(s, ".")
-	if !ok {
-		return isBuiltinFunc(s)
+	i := strings.LastIndex(s, ".")
+	if i == -1 {
+		_, ok := types.Universe.Lookup(s).(*types.Builtin)
+		return ok
 	}
-	return validImportPath(pkg) && token.IsIdentifier(name) && token.IsExported(name)
-}
-
-// cutLast slices s around the last instance of sep.
-func cutLast(s, sep string) (before, after string, found bool) {
-	i := strings.LastIndex(s, sep)
-	if i < 0 {
-		return s, "", false
-	}
-	return s[:i], s[i+len(sep):], true
-}
-
-// isBuiltinFunc reports whether name is a builtin function of Go.
-func isBuiltinFunc(name string) bool {
-	switch name {
-	case "append", "cap", "clear", "close", "complex", "copy", "delete", "imag", "len",
-		"make", "max", "min", "new", "panic", "print", "println", "real", "recover":
-		return true
-	}
-	return false
+	name := s[i+1:]
+	return module.CheckImportPath(s[:i]) == nil && token.IsIdentifier(name) && token.IsExported(name)
 }
