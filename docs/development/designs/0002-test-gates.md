@@ -109,9 +109,9 @@ the code of the gate, so it gets a review.
 
 The gate does not use the built-in exec of go-mutesting, for two reasons:
 
-- The built-in exec counts a mutant that does not compile as killed, because
-  `go test` exits with status 1 for a build failure and for a test failure.
-  Such a mutant can hide an untested statement.
+- The built-in exec counts a mutant that does not compile as killed. `go test`
+  exits with status 1 for a build failure and for a test failure. Such a
+  mutant can hide an untested statement.
 - Each mutant runs in the package directory, so the output of `go test -json`
   identifies the build failure exactly.
 
@@ -142,8 +142,8 @@ the occurrence, tells identical lines of one function apart.
   record stays valid when lines move.
 - A record covers one mutant, so a second identical mutant needs its own
   record. A record that names the mutated text cannot hide another mutation
-  of the same line, and a record that names the occurrence cannot hide a
-  second identical line.
+  of the same line. A record that names the occurrence cannot hide a second
+  identical line.
 - The reason must tell why no test can observe the change.
 - The gate has no automatic rule. An earlier rule took each numbers mutant of
   a result beside a non-nil error as equivalent. A review found it unsound: a
@@ -286,7 +286,7 @@ module dependency.
 ## Alternatives
 
 - Gremlins 0.6.0 has a filter for changed lines. In a trial on chunk 04, it
-  ran the tests of a main package at the module root, so each mutant of a
+  ran the tests of a main package at the module root. So each mutant of a
   main package survived. It also reported covered `case` expressions as not
   covered, and it mutated files in `testdata`.
 - A threshold below 100% lets a known survivor merge. With records of the
