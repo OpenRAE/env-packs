@@ -183,6 +183,11 @@ and stop instructions. Their realization profile is
 that profile to an installed CLI and the role's admitted tool surface. The pack
 contains no provider credential and no backend command line.
 
+Each participant also holds one tool action contract: `red-mcp-tool-call` or
+`blue-mcp-tool-call`. Each contract identifies one call to an MCP tool of that
+role. A backend can admit and record each call as a participant action. The
+contract does not classify the effects of a call.
+
 With this acquired pack selected, a normal backend lab start executes the
 authored sequence. Delivery evidence proves dispatch and records the participant
 response. It does not by itself prove that the participant observed or complied
