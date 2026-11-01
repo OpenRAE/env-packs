@@ -86,6 +86,51 @@ No case covers these exit statuses:
 - Status 0 of `raes-pack-issue-skeleton`. The command reads GitHub, and the
   corpus does not use the network.
 
+## Systems security engineering
+
+The corpus is a merge gate. A pull request can change each case, and the
+implementation under test runs as a child process of `go test`.
+
+| Asset | Protection need |
+| --- | --- |
+| The recorded contract (the cases) | Integrity |
+| Merge decision (the result of the corpus) | Integrity |
+| The repository checkout that the cases read | Integrity |
+
+| Threat | Boundary | Control | Verification |
+| --- | --- | --- | --- |
+| A skip for Python hides a break of the contract. | Case to runner | Each `[python] skip` must give a reason and the issue that resolves the deviation. | `TestPythonSkipsNameAnIssue`. |
+| A case passes for the wrong reason, for example with a loose match of the output. | Case to runner | `exits` checks the exact exit status. A case compares the output with `cmp` for exact bytes or with `cmpjson` for decoded content, as the contract requires. | Review of each case. |
+| A case changes the hosted packs or kits that other cases read. | Case to checkout | testscript runs each case in its own temporary work directory. A case only reads `$REPO`. | Review of each case. |
+| The wrong implementation runs, for example a stale binary on `PATH`. | Runner to command | `-impl=go` needs `-bin`, and the runner puts that directory first on `PATH`. The CI job installs the hash-locked Python package. | The runner fails for an unknown `-impl` and for `-impl=go` without `-bin`. |
+
+Residual risk: no tool stops a case from a write to `$REPO`. Review and the
+clean checkout of each CI job limit the effect.
+
+## Data flow
+
+```mermaid
+flowchart LR
+    caller[Maintainer or CI job]
+    subgraph change[Pull request content]
+        cases[(conformance/testdata cases)]
+        repo[(Hosted packs and kits)]
+    end
+    subgraph runner[go test ./conformance]
+        script[testscript]
+        cmds[exits, cmpjson, glob]
+    end
+    impl[Implementation under test: Python console scripts or Go commands]
+    caller -- -impl and -bin --> script
+    cases -- txtar archive --> script
+    script -- files in the work directory --> impl
+    repo -- read through REPO --> impl
+    script --> cmds
+    cmds -- command line --> impl
+    impl -- exit status, stdout, stderr, files --> cmds
+    cmds -- pass or fail --> caller
+```
+
 ## Packages
 
 | Package | Component | Purpose |

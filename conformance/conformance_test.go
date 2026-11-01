@@ -85,8 +85,8 @@ func exits(ts *testscript.TestScript, neg bool, args []string) {
 	ts.Check(err)
 	got := 0
 	if err := ts.Exec(args[1], args[2:]...); err != nil {
-		var exitErr *exec.ExitError
-		if !errors.As(err, &exitErr) {
+		exitErr, ok := errors.AsType[*exec.ExitError](err)
+		if !ok {
 			ts.Fatalf("run %s: %v", args[1], err)
 		}
 		got = exitErr.ExitCode()
