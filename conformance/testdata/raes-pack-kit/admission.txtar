@@ -1,0 +1,21 @@
+# Kit composition reads a file with a secret-like name, such as an
+# environment file or a key, as pack content (#561).
+mkdir repo/environments
+exits 0 raes-pack-new demo --repo repo --yes
+cp env.txt repo/environments/demo/docs/.env
+cp env.txt repo/environments/demo/docs/id_rsa
+exits 0 raes-pack-kit add repo/environments/demo $REPO --source-id first-party --source-revision r1 infrastructure.authoritative-dns-service 1.1.0 --namespace dns --target-sdl sdl/demo.sdl.yaml --preview
+stdout '^add infrastructure\.authoritative-dns-service@1\.1\.0$'
+! stderr .
+
+# Kit composition refuses a RAES trust policy file in any letter case before
+# it reads content.
+cp policy.yaml repo/environments/demo/docs/RAES-Trust.yaml
+exits 1 raes-pack-kit add repo/environments/demo $REPO --source-id first-party --source-revision r1 infrastructure.authoritative-dns-service 1.1.0 --namespace dns --target-sdl sdl/demo.sdl.yaml --preview
+! stdout .
+stderr '^error: operator files are not admitted to local authoring$'
+
+-- env.txt --
+EXAMPLE=1
+-- policy.yaml --
+registries: {}

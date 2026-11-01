@@ -1,10 +1,10 @@
 # Build environments from infrastructure kits
 
-An infrastructure kit is a reusable piece of environment source: a RAES SDL
-module plus its pack-local assets, documentation, tests, provenance, resource
-estimates, and software-component inventory inputs. It is the part you should
-not have to recreate each time you need a domain controller, workstation,
-database, mail system, model service, or observability stack.
+An infrastructure kit is a reusable piece of environment source. It is a RAES
+SDL module plus its pack-local assets, documentation, tests, provenance,
+resource estimates, and software-component inventory inputs. You do not have to
+recreate it each time that you need a domain controller, workstation, database,
+mail system, model service, or observability stack.
 
 Kits do not add a runtime layer. After composition, the result is an ordinary
 environment pack containing editable RAES SDL, ordinary assets,
@@ -12,8 +12,9 @@ environment pack containing editable RAES SDL, ordinary assets,
 `kit.materializations.json` ownership record. A backend sees the resulting RAES
 scenario; it does not call a kit API.
 
-The complete first-party collection is published under `kits/`. Its scope and
-release quality bar are defined by the [kit content strategy](kit-content-strategy.md).
+This repository publishes the complete first-party collection under `kits/`.
+The [kit content strategy](kit-content-strategy.md) defines its scope and
+release quality bar.
 
 ## What an author gets
 
@@ -78,13 +79,17 @@ stays published. Select the newer release to leave the choice to the backend.
 The examples on this page pin 1.0.0 releases.
 
 Six open kits run software that needs more access to the host than many
-containers get: `infrastructure.container-orchestration` (k3s),
-`infrastructure.firewall-nat` (nftables),
-`infrastructure.suricata-network-intrusion-detection-sensor` (packet capture),
-`infrastructure.samba-active-directory-domain-controller` (Samba domain
-services), `infrastructure.linux-domain-member` (domain join), and
-`infrastructure.owlbear-protected-target` (kernel module and BPF LSM). They stay
-open, so the backend decides whether it can realize them.
+containers get:
+
+- `infrastructure.container-orchestration` (k3s)
+- `infrastructure.firewall-nat` (nftables)
+- `infrastructure.suricata-network-intrusion-detection-sensor` (packet capture)
+- `infrastructure.samba-active-directory-domain-controller` (Samba domain
+  services)
+- `infrastructure.linux-domain-member` (domain join)
+- `infrastructure.owlbear-protected-target` (kernel module and BPF LSM)
+
+They stay open, so the backend decides whether it can realize them.
 
 ## Owlbear protected target
 
@@ -96,7 +101,7 @@ qualification boundary.
 It also exports a benign seed inventory.
 The `daemon_active_state` parameter selects `active` or `inactive` typed service state.
 The backend supplies the service binding, kernel-compatible artifacts, target PID, and enforcement arguments.
-No upstream service unit or executable is bundled.
+The kit bundles no upstream service unit or executable.
 Service activity alone does not establish effective protection.
 
 The compute substrate remains open.
@@ -151,10 +156,10 @@ Discovery and inspection read the installed resources without changing them,
 running kit code, or contacting the network. The source root contains `kits/`;
 it is also usable with the CLI's existing source arguments.
 
-The helper requires filesystem-backed installed resources. If they are absent
-or the package is loaded from a ZIP file, it raises `KitError` without extracting
-files or searching a checkout. Editable installations should use an explicit
-checkout source as shown below.
+The helper requires filesystem-backed installed resources. If they are absent,
+or if Python loads the package from a ZIP file, it raises `KitError` without
+extracting files or searching a checkout. Editable installations should use an
+explicit checkout source as shown below.
 
 A kit digest proves content integrity, not authenticity. Admit the acquired
 Python distribution through your supply-chain policy. The existing release
@@ -212,10 +217,11 @@ printf '%s\n' '{"deployment_profile":"standard","service_label":"directory"}' |
     --preview --json
 ```
 
-Preview constructs and validates the complete successor in private staging, but
+Preview constructs and validates the complete successor in private staging. It
 does not change the pack, write its lock, create a RAES cache in it, execute
 content, or contact a registry. Remove `--preview` to commit the exact proposal.
-Parameter values are read from stdin and are not repeated in preview output.
+The command reads parameter values from stdin, and the preview output does not
+repeat them.
 
 Repeat the operation with distinct namespaces to add endpoints, DNS,
 application, data, and observability services. Namespace, export, version,
@@ -224,8 +230,8 @@ conflicts are blocking diagnostics.
 
 For a complete security-operations example, follow the verified
 [defensive-tooling composition](defensive-tooling-composition.md) walkthrough.
-It composes the published Wazuh and Suricata releases, declares one
-supported relationship at the pack root, and keeps static environment state
+It composes the published Wazuh and Suricata releases, and it declares one
+supported relationship at the pack root. It keeps static environment state
 separate from runtime telemetry and backend realization.
 
 ## Update, replace, and remove
@@ -263,24 +269,25 @@ raes-pack-kit remove environments/realistic-lab gateway --preview --json
 ```
 
 If an author changed an owned file after materialization, update, replacement,
-and removal stop with `kit.author-modification.conflict`. Unowned files are not
-selected by filename or byte similarity. Shared SDL and lock files carry
-explicit multi-owner state and are rewritten only as part of a fully validated
-successor.
+and removal stop with `kit.author-modification.conflict`. Filename or byte
+similarity does not select an unowned file. Shared SDL and lock files carry
+explicit multi-owner state. Kit composition rewrites them only as part of a
+fully validated successor.
 
-Kit assets can be placed only below `assets/briefing/`, `assets/content/`,
-`assets/kits/`, or `docs/kits/`. They cannot add pack validators, tests, hooks,
-or workflows. Catalog titles are also treated as untrusted terminal text.
+A kit can place assets only below `assets/briefing/`, `assets/content/`,
+`assets/kits/`, or `docs/kits/`. Kit assets cannot add pack validators, tests,
+hooks, or workflows. Kit tooling also treats catalog titles as untrusted
+terminal text.
 
 Release inspection parses the kit module in memory and denies imports. Local
-composition resolves imports through RAES with an empty registry policy;
-`raes-trust.yaml` and known secret-file names are refused before content reads.
+composition resolves imports through RAES with an empty registry policy. It
+refuses a `raes-trust.yaml` file before it reads content.
 An MCP host uses [separate preparation and review steps](mcp.md) before applying
 a kit proposal.
 
 An exceptionally rare failed recovery exchange returns a tool failure and a
-`recovery:` path. That directory contains the preserved original pack; do not
-delete it until the target and recovery copy have been inspected.
+`recovery:` path. That directory contains the preserved original pack. Do not
+delete it until you inspect the target and the recovery copy.
 
 ## Validate the ordinary result
 
