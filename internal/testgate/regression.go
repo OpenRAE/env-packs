@@ -142,7 +142,7 @@ func hasPackageSource(files []byte, dir string) bool {
 // an arbitrary historical baseline to make a failing gate pass.
 func historicalRegressionBase(ctx context.Context, r Runner, repo, base string, test regressionTest) (string, error) {
 	out, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: []string{
-		"log", "--reverse", "--format=%H", "-G", "Regression test for #", base + "..HEAD", "--", test.file,
+		"log", "--reverse", "--topo-order", "--format=%H", "-G", "Regression test for #", base + "..HEAD", "--", test.file,
 	}})
 	if err != nil {
 		return "", err

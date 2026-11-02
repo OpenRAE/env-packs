@@ -411,7 +411,7 @@ func TestRegressionNewPackageHistory(t *testing.T) {
 		case strings.HasPrefix(c.String(), "git ls-tree "):
 			return ok("pkg/sub/a.go\x00pkg/a_test.go\x00pkg/README.md\x00")
 		case strings.HasPrefix(c.String(), "git log "):
-			if !strings.Contains(c.String(), "--reverse --format=%H -G Regression test for # merge0123456789abcdef..HEAD -- pkg/a_test.go") {
+			if !strings.Contains(c.String(), "--reverse --topo-order --format=%H -G Regression test for # merge0123456789abcdef..HEAD -- pkg/a_test.go") {
 				t.Errorf("history command = %s, want chronological reachable history of the selected file", c)
 			}
 			return ok("unmarked\nfixed\nlater\n")
