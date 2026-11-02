@@ -134,6 +134,22 @@ components:
     description: Declares the RAES operations that env-packs uses. Only its adapter calls the RAES Go module.
     packages:
       - github.com/OpenRAE/env-packs/internal/raes
+  - id: issue-skeleton
+    container: library
+    description: Plans the standard planning issues of a new pack, and writes them to GitHub through gh.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/issueskeleton
+    depends_on:
+      - terminal
+  - id: issue-skeleton-command
+    container: commands
+    description: The raes-pack-issue-skeleton command. Its Runner is the only code that starts gh.
+    packages:
+      - github.com/OpenRAE/env-packs/cmd/raes-pack-issue-skeleton
+    depends_on:
+      - issue-skeleton
+      - outcome
+      - terminal
   - id: strict-yaml
     container: library
     description: Decodes exactly one YAML document, and rejects unknown fields.
@@ -244,6 +260,7 @@ rules:
       containers: [commands, library]
       main_packages: true
       test_files: true
+    except_components: [issue-skeleton-command]
     forbid_imports: [os/exec]
     forbid_symbols:
       - os.StartProcess
