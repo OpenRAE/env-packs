@@ -19,12 +19,12 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Security",
 ]
-# raes is a hard dependency with a minimum version (ADR 0011, ADR 0043): SDL
-# is validated *through RAES* (raes.parse_sdl_file), never a local
-# restatement, and the gate is fail-closed, so RAES cannot be optional. The
-# floor is the oldest RAES release that supplies every RAES API this package
-# uses. requirements/runtime.txt and uv.lock record the exact version CI tests.
-dependencies = ["PyYAML>=6", "raes>=10.4.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
+# raes is a hard dependency pinned to one exact version (ADR 0011, ADR 0047):
+# SDL is validated *through RAES* (raes.parse_sdl_file), never a local
+# restatement, and the gate is fail-closed, so RAES cannot be optional.
+# requirements/runtime.in, requirements/runtime.txt, and uv.lock pin the same
+# version.
+dependencies = ["PyYAML>=6", "raes==10.5.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
 
 [project.optional-dependencies]
 test = ["bcrypt==5.0.0"]
