@@ -55,6 +55,7 @@ hosted packs call them today.
 | Admit an instantiated scenario | `Content.AdmitInstantiated` | OpenRAE/rae#1785 |
 | Resolve a realization designation | `Content.ResolveRealizationDesignation` | No RAES Go port issue names `raes.realization_designation`. |
 | Evaluate a realization constraint | `Content.EvaluateRealizationConstraint` | No RAES Go port issue names `raes_contracts.realization_structure`. |
+| Project a realization concern | `Content.ProjectRealizationConcern` | OpenRAE/rae#1787 (processor semantics; exact public API remains a dependency) |
 | Compile an instantiated scenario and read its published document | `Planning.CompileInstantiated`, `Compilation.Document` | OpenRAE/rae#1787 |
 | Read the compiled time-model contract | `Planning.TimeModelContract` | OpenRAE/rae#1787 |
 | Build and plan with a custom backend manifest | `Planning.StubManifest`, `Planning.PlanWithManifest` | OpenRAE/rae#1787 and OpenRAE/rae#1790 |
@@ -66,8 +67,8 @@ apparatus models. No RAES Go port issue names `raes_contracts.apparatus`.
 
 ## Map of the RAES symbols
 
-The RAES 10.4 inventory covers 97 distinct imported symbols across application
-code, tools, and the eleven content-test modules retained by chunk 27.
+The RAES 10.5 inventory covers 99 distinct imported symbols across application
+code, tools, and the twelve content-test modules retained by chunk 27.
 It includes `raes_backend_protocols`, which the earlier inventory omitted.
 The map records intended adapter responsibilities, not implemented Go parity.
 Published document fields and vocabulary stay RAES contracts. The adapter
@@ -78,7 +79,8 @@ and these retained tests: `test_techvault_pack`, `test_techvault_study_pack`,
 `test_ai_escape_lab_pack`, `test_owlbear_kit`, `test_smtp_imap_mailbox_domain`,
 `test_kit_compute_substrate`, `test_published_kits`,
 `test_hosted_pack_content_binding`, `test_hosted_pack_byte_binding`,
-`test_raes_reference_eligibility`, and `test_bundled_kits`.
+`test_raes_reference_eligibility`, `test_bundled_kits`, and
+`test_techvault_route_authentication`.
 
 | RAES Python symbol | Go replacement | Used by |
 | --- | --- | --- |
@@ -113,7 +115,7 @@ and these retained tests: `test_techvault_pack`, `test_techvault_study_pack`,
 | `raes.module_registry.load_lockfile` | `Modules.LoadLockfile` | `component_boundary.py`, `release.py` |
 | `raes.module_registry.resolve_lock_records` | `Modules.ResolveLock` | `kits.py` |
 | `raes.parse_sdl` | `SDL.Parse` | `authoring.py`, `kits.py`, `validation.py`, `test_raes_reference_eligibility.py`, `refresh_pack_sdl_binding.py` |
-| `raes.parse_sdl_file` | `SDL.ParseFile` | `content_ci.py`, `digest.py`, `kits.py`, `validation.py`, `test_ai_escape_lab_pack.py`, `test_kit_compute_substrate.py`, `test_owlbear_kit.py`, `test_published_kits.py`, `test_smtp_imap_mailbox_domain.py`, `test_techvault_pack.py`, `test_techvault_study_pack.py` |
+| `raes.parse_sdl_file` | `SDL.ParseFile` | `content_ci.py`, `digest.py`, `kits.py`, `validation.py`, `test_ai_escape_lab_pack.py`, `test_kit_compute_substrate.py`, `test_owlbear_kit.py`, `test_published_kits.py`, `test_smtp_imap_mailbox_domain.py`, `test_techvault_pack.py`, `test_techvault_study_pack.py`, `test_techvault_route_authentication.py` |
 | `raes.parse_sdl_sources` | `SDL.ParseSources` | `validation.py` |
 | `raes.realization_designation.designation_records` | `Content.ResolveRealizationDesignation` (adapter derives records) | `test_techvault_pack.py` |
 | `raes.realization_designation.resolve_realization_designation` | `Content.ResolveRealizationDesignation` | `test_techvault_pack.py` |
@@ -168,14 +170,16 @@ and these retained tests: `test_techvault_pack`, `test_techvault_study_pack`,
 | `raes_contracts.external_concept_bindings.admit_external_concept_bindings` | `Concepts.AdmitConceptBindings` | `validation.py` |
 | `raes_contracts.json_ingress.StrictJsonIngressError` | `Artifacts.LoadManifest`: an `*Error` | `digest.py`, `kits.py` |
 | `raes_contracts.realization_envelope.BackendRealizationEnvelopeModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.realization_structure.evaluate_realization_constraint` | `Content.EvaluateRealizationConstraint` | `test_techvault_pack.py` |
+| `raes_contracts.realization_structure.RealizationRelationStatus` | published status in the evaluation result; RAES owns the vocabulary | `test_techvault_route_authentication.py` |
+| `raes_contracts.realization_structure.evaluate_realization_constraint` | `Content.EvaluateRealizationConstraint` | `test_techvault_pack.py`, `test_techvault_route_authentication.py` |
 | `raes_contracts.vocabulary.ObservationStrength` | published vocabulary values in content fixtures; RAES owns admission | `test_kit_compute_substrate.py`, `test_techvault_pack.py` |
 | `raes_contracts.vocabulary.RealizationSupportMode` | published vocabulary values in content fixtures; RAES owns admission | `test_techvault_pack.py` |
 | `raes_contracts.vocabulary.RealizationVerificationScope` | published vocabulary values in content fixtures; RAES owns admission | `test_kit_compute_substrate.py`, `test_techvault_pack.py` |
 | `raes_processor.compiler.compile_runtime_model` | `Planning.CompileInstantiated`, `Compilation.Document` | `test_techvault_study_pack.py` |
-| `raes_processor.compiler.compile_scenario_runtime_model` | `Planning.Compile`, `Compilation.Document` | `authoring.py`, `test_kit_compute_substrate.py`, `test_owlbear_kit.py`, `test_smtp_imap_mailbox_domain.py`, `test_techvault_pack.py` |
+| `raes_processor.compiler.compile_scenario_runtime_model` | `Planning.Compile`, `Compilation.Document` | `authoring.py`, `test_kit_compute_substrate.py`, `test_owlbear_kit.py`, `test_smtp_imap_mailbox_domain.py`, `test_techvault_pack.py`, `test_techvault_route_authentication.py` |
 | `raes_processor.compiler.time_model.time_model_contract_model` | `Planning.TimeModelContract` | `test_techvault_study_pack.py` |
 | `raes_processor.planner.plan` | `Planning.PlanWithStubs`, `Planning.PlanWithManifest` | `authoring.py`, `test_kit_compute_substrate.py`, `test_owlbear_kit.py`, `test_smtp_imap_mailbox_domain.py` |
+| `raes_processor.semantics.realization.project_realization_concern` | `Content.ProjectRealizationConcern` | `test_techvault_route_authentication.py` |
 | `raes_processor.semantics.realization_concerns.realization_concern_descriptors` | `Content.RealizationConcernDescriptors` | `test_kit_compute_substrate.py` |
 | `raes_processor.semantics.realization_observation_admission.has_required_observation_support` | `Content.HasRequiredObservationSupport` | `test_techvault_pack.py` |
 | `raes_processor.trial_compiler.TrialCompilationRequest` | `Experiments.TrialCompilationRequest` | `_experiment_set.py` |

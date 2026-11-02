@@ -66,3 +66,8 @@ including mutation, regression, conformance, content, security, and fuzz checks.
 The combined mutation run also checks two error boundaries. Malformed milestone
 JSON must retain its decoding error. An empty regression selection must succeed
 without asking Git for an unused baseline, even if that lookup would fail.
+
+The current dev content test also projects a realization concern through RAES.
+Extend the existing Content interface with this operation, using published JSON
+values and the two RAES projection options. Keep projection and status vocabulary
+in RAES. Record the new imports in the operation map; add no local semantics.

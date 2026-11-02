@@ -294,6 +294,9 @@ type Content interface {
 	ResolveRealizationDesignation(s Scenario, fieldPointer string) (map[string]any, error)
 	// EvaluateRealizationConstraint evaluates a realization constraint.
 	EvaluateRealizationConstraint(constraint, structure any) (map[string]any, error)
+	// ProjectRealizationConcern projects a published JSON value through the
+	// RAES descriptor, using its observation and recursive projection modes.
+	ProjectRealizationConcern(kind string, value any, observed, recursive bool) (any, error)
 	// RealizationConcernDescriptors returns the published descriptors that
 	// RAES uses to describe realization concerns.
 	RealizationConcernDescriptors() ([]map[string]any, error)
