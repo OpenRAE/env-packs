@@ -38,7 +38,7 @@ CodeQL runs on each PR, including stacked Go PRs. The title guard runs on
 each PR except a promotion into main. An active GitHub ruleset protects the
 Go integration branch and the current stack. It requires review, current
 verification, fuzzing, CodeQL, and the title check, and permits squash merges
-only. No bypass actor is configured. The ruleset does not change dev or main.
+only. The ruleset has no bypass actor. It does not change dev or main.
 
 ## Shared checker dependency
 
@@ -51,8 +51,8 @@ The local development checkout is not a published dependency. Its draft
 loader reads one build configuration and rejects excluded files. Adoption
 must preserve this repository's four-platform checks, generated C4 view,
 and command-versus-library scopes. Issue 617 remains open for that adoption;
-the local checker is not presented as the shared checker. No second model
-or compatibility converter is added.
+the local checker remains a distinct tool. This change adds no second model
+or compatibility converter.
 
 ## Failure contracts
 

@@ -19,13 +19,16 @@ func TestNew(t *testing.T) {
 	if d := New("pack.missing", "", ""); d.File() != "" {
 		t.Errorf("New() without a file = %q, want no file", d.File())
 	}
+	if d := New("pack.missing", "a", ""); d.File() != "a" {
+		t.Errorf("New() with a one-character file = %q, want a", d.File())
+	}
 }
 
 // TestNewFile checks that no absolute or escaping path can enter a
 // diagnostic, and that the panic does not show the path.
 // Regression test for #617.
 func TestNewFile(t *testing.T) {
-	for _, file := range []string{"/etc/passwd", "../secret", "a/../b", "a/", "./a", ".", "a//b", `C:\Users\private.txt`, "C:/Users/private.txt", `\\server\private.txt`, `docs\pack.yaml`} {
+	for _, file := range []string{"/etc/passwd", "../secret", "a/../b", "a/", "./a", ".", "a//b", `C:\Users\private.txt`, "C:/Users/private.txt", "C:", `\\server\private.txt`, `docs\pack.yaml`} {
 		func() {
 			defer func() {
 				message := fmt.Sprint(recover())
