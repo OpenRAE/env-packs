@@ -187,7 +187,7 @@ func TestFix(t *testing.T) {}
 
 func TestRunRegression(t *testing.T) {
 	r := answers(map[string]string{
-		"git ls-tree":                 "pkg\n",
+		"git ls-tree":                 "pkg/a.go\x00",
 		"git rev-parse":               "abc\n",
 		"git diff -U0":                "diff --git a/pkg/a_test.go b/pkg/a_test.go\n--- a/pkg/a_test.go\n+++ b/pkg/a_test.go\n@@ -6 +6 @@\n-// Old.\n+// Regression test for #1.\n",
 		"git show HEAD:pkg/a_test.go": regressionTestFile,

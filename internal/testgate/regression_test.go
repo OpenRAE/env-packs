@@ -103,7 +103,7 @@ func (g *regressionRepo) runner() *fakeRunner {
 		}
 		switch {
 		case strings.HasPrefix(line, "git ls-tree "):
-			return ok("pkg\n")
+			return ok(c.Args[len(c.Args)-1] + "/a.go\x00")
 		case strings.HasPrefix(line, "git rev-parse "):
 			return ok("base0123\n")
 		case strings.HasPrefix(line, "git diff -U0 "):
@@ -409,7 +409,7 @@ func TestRegressionNewPackageHistory(t *testing.T) {
 	r.answer = func(c Command) (Result, error) {
 		switch {
 		case strings.HasPrefix(c.String(), "git ls-tree "):
-			return ok("")
+			return ok("pkg/sub/a.go\x00pkg/a_test.go\x00pkg/README.md\x00")
 		case strings.HasPrefix(c.String(), "git log "):
 			if !strings.Contains(c.String(), "--reverse --format=%H -G Regression test for # merge0123456789abcdef..HEAD -- pkg/a_test.go") {
 				t.Errorf("history command = %s, want chronological reachable history of the selected file", c)

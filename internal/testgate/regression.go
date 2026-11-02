@@ -109,12 +109,12 @@ func regressionBaselines(ctx context.Context, r Runner, repo, base string, tests
 	groups := make(map[string][]regressionTest)
 	for _, test := range tests {
 		dir := path.Dir(test.file)
-		out, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: []string{"ls-tree", "--name-only", base, "--", dir}})
+		out, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: []string{"ls-tree", "-r", "-z", "--name-only", base, "--", dir}})
 		if err != nil {
 			return nil, err
 		}
 		baseline := base
-		if len(out) == 0 {
+		if !hasPackageSource(out, dir) {
 			var err error
 			baseline, err = historicalRegressionBase(ctx, r, repo, base, test)
 			if err != nil {
@@ -124,6 +124,17 @@ func regressionBaselines(ctx context.Context, r Runner, repo, base string, tests
 		groups[baseline] = append(groups[baseline], test)
 	}
 	return groups, nil
+}
+
+// hasPackageSource excludes test-only directories and child packages. Git's
+// NUL-separated paths preserve spaces and other characters in file names.
+func hasPackageSource(files []byte, dir string) bool {
+	for file := range strings.SplitSeq(string(files), "\x00") {
+		if path.Dir(file) == dir && strings.HasSuffix(file, ".go") && !strings.HasSuffix(file, "_test.go") {
+			return true
+		}
+	}
+	return false
 }
 
 // historicalRegressionBase finds the parent of the first marked fix in the
