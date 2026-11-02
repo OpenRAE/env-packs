@@ -142,7 +142,7 @@ func historicalRegressionBase(ctx context.Context, r Runner, repo, base string, 
 	if err != nil {
 		return "", err
 	}
-	for _, commit := range strings.FieldsSeq(string(out)) {
+	for commit := range strings.FieldsSeq(string(out)) {
 		src, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: []string{"show", commit + ":" + test.file}})
 		if err != nil {
 			return "", err
