@@ -32,6 +32,7 @@ from raes import (
     parse_sdl,
     parse_sdl_file,
 )
+from raes.associated_artifacts import ScenarioArtifactParent
 from raes.language_service import apply_structured_edit
 from raes.module_registry import Lockfile, LockRecord, TrustPolicy, resolve_lock_records
 from raes_contracts.associated_artifacts import (
@@ -752,7 +753,7 @@ def _load_release_manifest(
     if set(artifact_paths.values()) != set(inventory) - {manifest_rel}:
         raise KitError("kit associated artifacts do not cover the exact release")
     diagnostics = validate_associated_artifact_manifest(
-        manifest, parent=scenario, artifact_readers=readers
+        manifest, parent=ScenarioArtifactParent(scenario), artifact_readers=readers
     )
     if diagnostics:
         raise KitError("kit associated-artifact byte binding failed")

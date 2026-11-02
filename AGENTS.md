@@ -55,8 +55,8 @@ make prose
   enforces it.
 - The type is the release decision. `feat:` gives a minor release, and `fix:`
   or `perf:` gives a patch release. `feat!:` or `BREAKING CHANGE:` gives a
-  major release, which is a minor release before 1.0. The types docs, chore,
-  test, ci, refactor, and build do not release.
+  major release. The types docs, chore, test, ci, refactor, and build do not
+  release.
 - **Never edit the version or `CHANGELOG.md` by hand.** The version is in
   `pyproject.toml` (`[project].version`). **release-please** owns both. It
   keeps a `chore(main): release X.Y.Z` PR, and a merge of that PR publishes

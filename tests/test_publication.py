@@ -26,11 +26,10 @@ from unittest import mock
 
 from raes.artifact_requirements import (
     ArtifactCandidate,
-    ArtifactIdentity,
-    ArtifactMechanismProfile,
     ArtifactRequirement,
     ArtifactSatisfactionRoute,
 )
+from raes_contracts.artifact_identity import ArtifactIdentity, ArtifactMechanismProfile
 from raes_contracts.backend_profiles import BackendProfileIdentityError
 
 from raes_env_packs import publication

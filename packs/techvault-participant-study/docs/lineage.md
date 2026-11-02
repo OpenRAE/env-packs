@@ -11,7 +11,8 @@ intentional semantic additions are the `study-control` entity and controller,
 Claude Code realization metadata for the red and blue agents, four instruction
 content items, four inject/event occurrences, one ordered script and story, one
 logical clock with four exact windows, two mixed-control behavior
-specifications, and four delivery evidence requirements. Existing TechVault
+specifications, two participant tool action contracts, and four delivery evidence
+requirements. Existing TechVault
 content artifacts remain byte-identical.
 
 The Suricata local corpus is the byte-identical 16-rule file from that pinned
