@@ -174,7 +174,7 @@ func runRegression(ctx context.Context, p process, root string, args []string, o
 	if err != nil {
 		return fail(out, err)
 	}
-	fmt.Fprintf(out.Stderr, "testgate: %d regression tests, %d fail on the merge base\n", res.Tests, res.Proven)
+	fmt.Fprintf(out.Stderr, "testgate: %d regression tests, %d fail before their fixes\n", res.Tests, res.Proven)
 	return report.Write(out, "testgate", res.Findings)
 }
 

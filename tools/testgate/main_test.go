@@ -187,6 +187,7 @@ func TestFix(t *testing.T) {}
 
 func TestRunRegression(t *testing.T) {
 	r := answers(map[string]string{
+		"git ls-tree":                 "pkg\n",
 		"git rev-parse":               "abc\n",
 		"git diff -U0":                "diff --git a/pkg/a_test.go b/pkg/a_test.go\n--- a/pkg/a_test.go\n+++ b/pkg/a_test.go\n@@ -6 +6 @@\n-// Old.\n+// Regression test for #1.\n",
 		"git show HEAD:pkg/a_test.go": regressionTestFile,
@@ -194,8 +195,8 @@ func TestRunRegression(t *testing.T) {
 		"go test":                     `{"Action":"pass","Package":"example.com/m/pkg","Test":"TestFix"}` + "\n",
 	})
 	status, stdout, stderr := runCommand(t, r, nil, "regression", "-base", "origin/main")
-	wantStdout := "pkg/a_test.go:6: regression: regression test TestFix passes on the merge base 0123456789ab\n\tfix: Make the test fail without the fix. Write it against the API of the merge base, and do not skip it.\n"
-	wantStderr := "testgate: 1 regression tests, 0 fail on the merge base\ntestgate: 1 findings\n"
+	wantStdout := "pkg/a_test.go:6: regression: regression test TestFix passes on the baseline 0123456789ab\n\tfix: Make the test fail without the fix. Write it against the API of the baseline, and do not skip it.\n"
+	wantStderr := "testgate: 1 regression tests, 0 fail before their fixes\ntestgate: 1 findings\n"
 	if status != 1 || stdout != wantStdout || stderr != wantStderr {
 		t.Errorf("run(regression) = %d, stdout %q, stderr %q; want 1, stdout %q, and stderr %q", status, stdout, stderr, wantStdout, wantStderr)
 	}

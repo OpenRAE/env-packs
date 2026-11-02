@@ -64,7 +64,7 @@ func regressionDiff(hunks ...string) string {
 		fileDiff("a/testdata/f_test.go", hunk(1, 1, 1, 1))
 }
 
-// regressionEvents is the go test -json output on the merge base.
+// regressionEvents is the go test -json output on the baseline.
 const regressionEvents = `{"Action":"start","Package":"example.com/m/pkg"}
 {"Action":"run","Package":"example.com/m/pkg","Test":"TestA"}
 {"Action":"fail","Package":"example.com/m/pkg","Test":"TestA"}
@@ -102,6 +102,8 @@ func (g *regressionRepo) runner() *fakeRunner {
 			}
 		}
 		switch {
+		case strings.HasPrefix(line, "git ls-tree "):
+			return ok("pkg\n")
 		case strings.HasPrefix(line, "git rev-parse "):
 			return ok("base0123\n")
 		case strings.HasPrefix(line, "git diff -U0 "):
@@ -174,8 +176,8 @@ func TestRegression(t *testing.T) {
 		return report.Finding{
 			Location: "pkg/a_test.go:" + line,
 			Rule:     RuleRegression,
-			Message:  "regression test " + problem + " on the merge base merge0123456",
-			Fix:      "Make the test fail without the fix. Write it against the API of the merge base, and do not skip it.",
+			Message:  "regression test " + problem + " on the baseline merge0123456",
+			Fix:      "Make the test fail without the fix. Write it against the API of the baseline, and do not skip it.",
 		}
 	}
 	want := RegressionResult{
@@ -395,5 +397,86 @@ func TestRegressionTestsRemovalPlaces(t *testing.T) {
 		if err != nil || (len(found) == 1) != want {
 			t.Errorf("regressionTests() with lines removed after line %d = %v, %v; want selected %v", place, found, err, want)
 		}
+	}
+}
+
+// Regression test for #617: integration must prove fixes in newly added packages.
+func TestRegressionNewPackageHistory(t *testing.T) {
+	g := newRegressionRepo(t)
+	g.diff = regressionDiff(hunk(6, 1, 6, 1))
+	r := g.runner()
+	answer := r.answer
+	r.answer = func(c Command) (Result, error) {
+		switch {
+		case strings.HasPrefix(c.String(), "git ls-tree "):
+			return ok("")
+		case strings.HasPrefix(c.String(), "git log "):
+			if !strings.Contains(c.String(), "--reverse --format=%H -G Regression test for # merge0123456789abcdef..HEAD -- pkg/a_test.go") {
+				t.Errorf("history command = %s, want chronological reachable history of the selected file", c)
+			}
+			return ok("unmarked\nfixed\nlater\n")
+		case c.String() == "git show unmarked:pkg/a_test.go":
+			return ok(strings.ReplaceAll(regressionSource, "Regression test for #", "Specification for #"))
+		case c.String() == "git show fixed:pkg/a_test.go":
+			return ok(regressionSource)
+		case c.String() == "git rev-parse --verify --end-of-options fixed^{commit}":
+			t.Fatal("selected the fixed implementation instead of its parent")
+		case c.String() == "git rev-parse --verify --end-of-options fixed^^{commit}":
+			return ok("beforefix0123456789abcdef\n")
+		}
+		return answer(c)
+	}
+	got, err := Regression(context.Background(), r, regressionOptions(t))
+	if err != nil || got.Tests != 1 || got.Proven != 1 || len(got.Findings) != 0 {
+		t.Fatalf("Regression() = %+v, %v; want one proven historical regression", got, err)
+	}
+	var baseline string
+	for _, c := range r.commands {
+		if strings.HasPrefix(c.String(), "git worktree add ") {
+			baseline = c.Args[len(c.Args)-1]
+		}
+		if strings.HasPrefix(c.String(), "git diff --name-only ") && !strings.Contains(c.String(), "beforefix0123456789abcdef") {
+			t.Errorf("overlay command = %s, want changes since the historical baseline", c)
+		}
+	}
+	if baseline != "beforefix0123456789abcdef" {
+		t.Errorf("baseline = %q, want the parent before the marked fix", baseline)
+	}
+}
+
+func TestRegressionHistoryErrors(t *testing.T) {
+	for _, tt := range []struct {
+		name, command, source, want string
+	}{
+		{name: "tree read", command: "git ls-tree", want: "exit status 128"},
+		{name: "history read", command: "git log", want: "exit status 128"},
+		{name: "source read", command: "git show historical:", want: "exit status 128"},
+		{name: "missing marker", source: "package pkg", want: "no historical implementation"},
+		{name: "invalid source", source: "package", want: "expected"},
+		{name: "parent read", command: "git rev-parse --verify --end-of-options historical^", source: regressionSource, want: "exit status 128"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			g := newRegressionRepo(t)
+			g.diff = regressionDiff(hunk(6, 1, 6, 1))
+			r := g.runner()
+			answer := r.answer
+			r.answer = func(c Command) (Result, error) {
+				if tt.command != "" && strings.HasPrefix(c.String(), tt.command) {
+					return Result{ExitCode: 128, Stderr: []byte("read failed")}, nil
+				}
+				switch {
+				case strings.HasPrefix(c.String(), "git ls-tree"):
+					return ok("")
+				case strings.HasPrefix(c.String(), "git log"):
+					return ok("historical\n")
+				case strings.HasPrefix(c.String(), "git show historical:"):
+					return ok(tt.source)
+				}
+				return answer(c)
+			}
+			if _, err := Regression(context.Background(), r, regressionOptions(t)); err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("Regression() error = %v, want %q", err, tt.want)
+			}
+		})
 	}
 }

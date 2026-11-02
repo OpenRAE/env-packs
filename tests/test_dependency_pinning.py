@@ -463,8 +463,8 @@ class LockMatchesProjectMetadataTests(unittest.TestCase):
         self.assertEqual(len(entries), 1, "dependabot.yml must have one gomod entry")
         entry = entries[0]
         self.assertEqual(entry["directory"], "/")
-        self.assertEqual(entry["target-branch"], "dev")
-        self.assertEqual(entry["commit-message"]["prefix"], "fix")
+        self.assertEqual(entry["target-branch"], "go-cutover")
+        self.assertEqual(entry["commit-message"]["prefix"], "build")
 
     def test_declared_floor_is_not_rewritten_as_a_lock(self) -> None:
         # Guardrail from the #142 architecture preflight: this package is a

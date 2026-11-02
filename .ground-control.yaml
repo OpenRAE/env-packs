@@ -9,6 +9,7 @@ rules:
   # hard gate; this makes the workflow produce conforming PRs.
   plan_rules: .gc/plan-rules.md
 workflow:
+  base_branch: go-cutover
   # These run the suite against the package's real dependencies, so they need an
   # interpreter that has them. AGENTS.md documents the setup as a venv with
   # `pip install -e .`, but a bare `python3` is whatever the caller's shell

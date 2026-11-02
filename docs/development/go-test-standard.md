@@ -145,6 +145,13 @@ changes on the merge base with `BASE`. It copies in the changed test files and
 the changed `testdata` files of the package. The test must compile there and
 fail there. Write it against the API that the merge base has.
 
+When an integration introduces a package absent from that base, the gate uses
+its recorded history. It finds the first commit that marked the selected test
+as a regression, then tests against that commit's first parent. It overlays
+only current tests and fixtures. A missing history, a compile failure, a skipped
+test, or a passing test still fails the gate. This permits stack integration
+without treating missing production code as proof of a defect.
+
 ## Coverage
 
 `make go-check` writes `coverage-go.out`. CI sends it to SonarCloud with the

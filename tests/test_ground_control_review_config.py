@@ -143,3 +143,8 @@ class RepositoryBoundaryPlanRuleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GoWorkflowBaseTests(unittest.TestCase):
+    def test_issue_workflows_target_the_go_integration_branch(self) -> None:
+        self.assertEqual(_workflow().get("base_branch"), "go-cutover")

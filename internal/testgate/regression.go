@@ -36,11 +36,11 @@ type RegressionOptions struct {
 
 // RegressionResult is the outcome of one run of the regression gate.
 type RegressionResult struct {
-	// Findings are the regression tests that do not fail on the merge base.
+	// Findings are the regression tests that do not fail on the baseline.
 	Findings []report.Finding
 	// Tests counts the regression tests that the change adds or changes.
 	Tests int
-	// Proven counts the regression tests that fail on the merge base.
+	// Proven counts the regression tests that fail on the baseline.
 	Proven int
 }
 
@@ -71,23 +71,91 @@ func Regression(ctx context.Context, r Runner, opts RegressionOptions) (Regressi
 	}
 	mergeBase := strings.TrimSpace(string(out))
 	res := RegressionResult{Tests: len(tests)}
+	baselines, err := regressionBaselines(ctx, r, opts.Repo, mergeBase, tests)
+	if err != nil {
+		return res, err
+	}
+	for _, baseline := range slices.Sorted(maps.Keys(baselines)) {
+		if err := proveBaseline(ctx, r, opts, baseline, baselines[baseline], &res); err != nil {
+			return res, err
+		}
+	}
+	return res, nil
+}
+
+// proveBaseline overlays the current tests on one implementation before a fix.
+func proveBaseline(ctx context.Context, r Runner, opts RegressionOptions, baseline string, tests []regressionTest, res *RegressionResult) error {
 	byDir := make(map[string][]regressionTest)
-	for _, t := range tests {
-		byDir[path.Dir(t.file)] = append(byDir[path.Dir(t.file)], t)
+	for _, test := range tests {
+		byDir[path.Dir(test.file)] = append(byDir[path.Dir(test.file)], test)
 	}
 	dirs := slices.Sorted(maps.Keys(byDir))
-	err = withWorktree(ctx, r, opts.Repo, opts.TempDir, mergeBase, func(tree string) error {
-		if copyErr := copyTestFiles(ctx, r, opts.Repo, tree, base, dirs); copyErr != nil {
-			return copyErr
+	return withWorktree(ctx, r, opts.Repo, opts.TempDir, baseline, func(tree string) error {
+		if err := copyTestFiles(ctx, r, opts.Repo, tree, baseline, dirs); err != nil {
+			return err
 		}
 		for _, dir := range dirs {
-			if proveErr := proveDir(ctx, r, tree, dir, byDir[dir], mergeBase, &res); proveErr != nil {
-				return proveErr
+			if err := proveDir(ctx, r, tree, dir, byDir[dir], baseline, res); err != nil {
+				return err
 			}
 		}
 		return nil
 	})
-	return res, err
+}
+
+// regressionBaselines uses the merge base unless the package is new to it.
+// For a new package, history must supply the implementation before the fix.
+func regressionBaselines(ctx context.Context, r Runner, repo, base string, tests []regressionTest) (map[string][]regressionTest, error) {
+	groups := make(map[string][]regressionTest)
+	present := make(map[string]bool)
+	for _, test := range tests {
+		dir := path.Dir(test.file)
+		exists, checked := present[dir]
+		if !checked {
+			out, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: []string{"ls-tree", "--name-only", base, "--", dir}})
+			if err != nil {
+				return nil, err
+			}
+			exists = len(out) != 0
+			present[dir] = exists
+		}
+		baseline := base
+		if !exists {
+			var err error
+			baseline, err = historicalRegressionBase(ctx, r, repo, base, test)
+			if err != nil {
+				return nil, err
+			}
+		}
+		groups[baseline] = append(groups[baseline], test)
+	}
+	return groups, nil
+}
+
+// historicalRegressionBase finds the parent of the first marked fix in the
+// history being integrated. Git supplies the revisions; a caller cannot select
+// an arbitrary historical baseline to make a failing gate pass.
+func historicalRegressionBase(ctx context.Context, r Runner, repo, base string, test regressionTest) (string, error) {
+	out, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: []string{
+		"log", "--reverse", "--format=%H", "-G", "Regression test for #", base + "..HEAD", "--", test.file,
+	}})
+	if err != nil {
+		return "", err
+	}
+	for _, commit := range strings.FieldsSeq(string(out)) {
+		src, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: []string{"show", commit + ":" + test.file}})
+		if err != nil {
+			return "", err
+		}
+		marked, err := regressionTests(test.file, src, nil, nil)
+		if err != nil {
+			return "", err
+		}
+		if slices.ContainsFunc(marked, func(candidate regressionTest) bool { return candidate.name == test.name }) {
+			return revParse(ctx, r, repo, commit+"^")
+		}
+	}
+	return "", fmt.Errorf("no historical implementation before regression test %s in %s", test.name, test.file)
 }
 
 // changedRegressionTests returns the regression tests that HEAD adds or
@@ -136,7 +204,7 @@ func regressionTests(file string, src []byte, changed Lines, removed []int) ([]r
 		}
 		start, end := fset.Position(fn.Doc.Pos()).Line, fset.Position(fn.End()).Line
 		inside := func(place int) bool { return start <= place && place < end }
-		if changed.Intersects(start, end) || slices.ContainsFunc(removed, inside) {
+		if changed == nil && removed == nil || changed.Intersects(start, end) || slices.ContainsFunc(removed, inside) {
 			tests = append(tests, regressionTest{file: file, name: fn.Name.Name, line: fset.Position(fn.Pos()).Line})
 		}
 	}
@@ -223,8 +291,8 @@ func proveDir(ctx context.Context, r Runner, tree, dir string, tests []regressio
 		res.Findings = append(res.Findings, report.Finding{
 			Location: t.file + ":" + strconv.Itoa(t.line),
 			Rule:     RuleRegression,
-			Message:  fmt.Sprintf("regression test %s %s on the merge base %.12s", t.name, problem, mergeBase),
-			Fix:      "Make the test fail without the fix. Write it against the API of the merge base, and do not skip it.",
+			Message:  fmt.Sprintf("regression test %s %s on the baseline %.12s", t.name, problem, mergeBase),
+			Fix:      "Make the test fail without the fix. Write it against the API of the baseline, and do not skip it.",
 		})
 	}
 	return nil
