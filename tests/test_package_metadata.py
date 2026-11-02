@@ -22,11 +22,10 @@ class VersionTests(unittest.TestCase):
 
 
 class RaesDependencyTests(unittest.TestCase):
-    def test_raes_declares_one_exact_version(self):
-        """raes is a single runtime dep with one temporary exact pin.
+    def test_raes_declares_one_minimum_version(self):
+        """raes is a single runtime dep with a minimum version (ADR 0043).
 
         The concrete version is deliberately NOT asserted here (ADR 0016).
-        Issue #623 restores the ADR 0043 ``>=`` floor and this invariant.
         """
         root = pathlib.Path(__file__).resolve().parents[1]
         with (root / "pyproject.toml").open("rb") as handle:
@@ -40,8 +39,8 @@ class RaesDependencyTests(unittest.TestCase):
 
         spec = raes_specs[0].replace(" ", "")
         self.assertRegex(
-            spec, r"^raes==\d+(\.\d+)+$",
-            f"raes must pin one exact version until issue #623, got {spec!r}")
+            spec, r"^raes>=\d+(\.\d+)+$",
+            f"raes must declare one minimum version (ADR 0043), got {spec!r}")
 
     def test_bespoke_oracle_package_surface_is_absent(self):
         package_root = pathlib.Path(raes_env_packs.__file__).resolve().parent
