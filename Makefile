@@ -112,6 +112,20 @@ go-fuzz: ## Run every Go fuzz target for FUZZTIME (default 30s)
 go-arch: ## Check the code and design records against the architecture model
 	$(GO) run ./tools/archcheck check
 
+# Git owns the diff. Include rule bodies, scopes, exceptions, and platforms,
+# as well as the structure that the design-record replay checks.
+.PHONY: go-arch-change
+go-arch-change: ## Require a new design record for each committed model change
+	@set -eu; \
+	changed=$$(git diff --name-only --merge-base "$(BASE)" HEAD -- architecture/model.yaml); \
+	if [ -n "$$changed" ]; then \
+	  records=$$(git diff --name-only --diff-filter=A --merge-base "$(BASE)" HEAD -- 'docs/development/designs/[0-9][0-9][0-9][0-9]-*.md'); \
+	  if [ -z "$$records" ]; then \
+	    echo 'architecture/model.yaml: design-change: add a new numbered design record for the model change' >&2; \
+	    exit 1; \
+	  fi; \
+	fi
+
 # The design step: checks the model and the design records before the code
 # exists.
 go-arch-design: ## Check the design records against the architecture model

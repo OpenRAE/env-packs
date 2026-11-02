@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"go/types"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -41,6 +42,9 @@ func TestLoadGraph(t *testing.T) {
 							{Name: "os.Getenv", Line: 14},
 							{Name: fixture + "/b.B", Line: 14},
 							{Name: "example.com/dep.Value", Line: 14},
+							{Name: "os.Stdout", Line: 24},
+							{Name: "os.Stderr", Line: 26},
+							{Name: "os.Stdin", Line: 27},
 						},
 					},
 					{
@@ -75,6 +79,35 @@ func TestLoadGraph(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("LoadGraph() mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// TestProcessStreamBoundary checks the actual repository policy on Go source,
+// including an alias of stdout and direct methods of stderr and stdin.
+func TestProcessStreamBoundary(t *testing.T) {
+	data, err := os.ReadFile("../../architecture/model.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := ParseModel(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, err := LoadGraph("testdata/fixture", []Build{{Name: "host"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.Module = g.Module
+	m.Components = []Component{{ID: "fixture", Container: "library", Packages: []string{g.Module + "/a"}}}
+	var got []string
+	for _, finding := range CheckCode(m, "model.yaml", g) {
+		if finding.Rule == "silent-libraries" && strings.Contains(finding.Message, "use of os.Std") {
+			got = append(got, finding.Location)
+		}
+	}
+	want := []string{"a/a.go:24", "a/a.go:26", "a/a.go:27"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("process stream findings (-want +got):\n%s", diff)
 	}
 }
 

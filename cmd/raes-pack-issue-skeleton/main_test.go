@@ -92,6 +92,8 @@ func repoGH() fakeGH {
 	}
 }
 
+// TestRun checks the command outcomes, including escaped usage errors.
+// Regression test for #617.
 func TestRun(t *testing.T) {
 	base := []string{"--repo", "o/r", "--pack-id", "demo"}
 	tests := []struct {
@@ -105,6 +107,7 @@ func TestRun(t *testing.T) {
 		{name: "help", args: []string{"-h"}, wantStatus: 0, wantStdout: usageLine + "\n"},
 		{name: "unknown flag", args: []string{"--bogus"}, wantStatus: 2, wantStderr: usageLine + "\n" + name + ": error: flag provided but not defined: -bogus\n"},
 		{name: "positional", args: []string{"x"}, wantStatus: 2, wantStderr: name + ": error: unrecognized arguments: x\n"},
+		{name: "positional controls", args: []string{"x\x1b[2J\nforged"}, wantStatus: 2, wantStderr: `unrecognized arguments: x\x1b[2J\x0aforged`},
 		{name: "bad number", args: []string{"--milestone-number", "x"}, wantStatus: 2, wantStderr: `invalid int value: "x"`},
 		{name: "no repo", wantStatus: 1, wantStderr: "--repo OWNER/REPOSITORY is required"},
 		{name: "bad repo", args: []string{"--repo", "a/b/c"}, wantStatus: 1, wantStderr: "got 'a/b/c'\n"},

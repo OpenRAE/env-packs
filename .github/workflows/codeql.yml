@@ -4,15 +4,9 @@
 # ADRs 0015–0017). Results are uploaded to the repository Security tab.
 name: CodeQL
 
-# Pull requests into go-cutover get the Go analysis while the Go port lands
-# there (ADR 0047). The scheduled run analyzes the default branch, which has no
-# Go code until the cutover.
+# Analyze every pull request, including the stacked Go port branches.
 on:
   pull_request:
-    branches:
-      - main
-      - dev
-      - go-cutover
   schedule:
     # Weekly, Monday 07:23 UTC. Off the top of the hour: GitHub delays
     # scheduled runs queued at :00. Scheduled runs analyze the default

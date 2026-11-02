@@ -86,7 +86,7 @@ func parse(args []string, s outcome.Streams) (o options, status int, ok bool) {
 		err = errors.New("unrecognized arguments: " + strings.Join(fs.Args(), " "))
 	}
 	if err != nil {
-		fmt.Fprintf(s.Stderr, "%s\n%s: error: %s\n", usageLine, name, err)
+		fmt.Fprintf(s.Stderr, "%s\n%s: error: %s\n", usageLine, name, terminal.Escape(err.Error()))
 		return o, outcome.Usage, false
 	}
 	return o, outcome.OK, true
