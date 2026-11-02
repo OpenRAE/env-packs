@@ -1,0 +1,6 @@
+    ## Child Issue Guidance
+    This is a skeleton planning issue. The pack-design agent should edit this
+    issue as the design becomes concrete and add child/slice issues for
+    scenario-specific hosts, services, data sets, tooling, or proof gaps that
+    are too large for one PR.
+    

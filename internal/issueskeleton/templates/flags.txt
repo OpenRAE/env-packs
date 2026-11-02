@@ -1,0 +1,18 @@
+    ## Goal
+    Add the all-or-nothing flag, challenge, and reference CTFd layer for `{{.PackID}}` when the scenario has flags.
+
+    {{.PackBlock}}
+    {{.CommonAnchors}}
+    ## Deliverables
+    - `flags/placement.yaml` with one entry per flag and stable `flag_id`s.
+    - `challenges/challenges.yaml` with participant-facing challenge text keyed by the same `flag_id`s.
+    - `ctfd/` reference loader and tests.
+    - Validator coverage reconciling flags to RAES objectives, topology assets, challenges, and CTFd output.
+
+    ## Acceptance Criteria
+    - `pack.yaml.contents.flag_layer: true` only when `flags/`, `challenges/`, and `ctfd/` all ship together.
+    - A flag is proof of executing the path or reaching the gated objective context.
+    - If this pack intentionally has no flag layer, close this issue as not planned only after pack metadata says so.
+
+    {{.ChildIssueNote}}
+    

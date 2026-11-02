@@ -128,3 +128,37 @@ equivalents:
     reason: >-
       U+0100 is printable, so it does not reach this case, and the two forms
       give the same result.
+  - file: internal/terminal/terminal.go
+    function: Quote
+    mutator: expression/comparison
+    line: "case r < 0x100:"
+    mutated: "case r <= 0x100:"
+    reason: >-
+      U+0100 is printable, so it does not reach this case, and the two forms
+      give the same result.
+  - file: internal/terminal/terminal.go
+    function: Quote
+    mutator: expression/comparison
+    line: "case r < 0x10000:"
+    mutated: "case r <= 0x10000:"
+    reason: >-
+      U+10000 is printable, so it does not reach this case, and the two forms
+      give the same result.
+  - file: cmd/raes-pack-issue-skeleton/main.go
+    function: ghPath
+    mutator: branch/if
+    line: "return \"\", err"
+    occurrence: 2
+    mutated: "_ = err"
+    reason: >-
+      LookPath has just found the file, and it follows symlinks to do so, so
+      EvalSymlinks fails only when the file changes between the two calls.
+  - file: cmd/raes-pack-issue-skeleton/main.go
+    function: ghPath
+    mutator: branch/if
+    line: "return \"\", err"
+    occurrence: 3
+    mutated: "_ = err"
+    reason: >-
+      LookPath and EvalSymlinks have just found each path, so Stat fails only
+      when a path changes between the calls.

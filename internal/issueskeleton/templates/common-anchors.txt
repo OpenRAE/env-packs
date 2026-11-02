@@ -1,0 +1,11 @@
+## Contract Anchors
+- The bundled layout contract (`contract/pack-layout.md` in the `raes-env-packs` package): authoritative
+  environment-pack convention and milestone structure.
+- The progressive scaffold wizard (`raes-pack-new`): generates only the files a pack's goal needs, previews them,
+  and validates with the same static check consumers run. Keep the scenario domain-neutral unless the chosen
+  starter route requires otherwise; one full scenario per pack, no stubs or hand-waved services, and `golden`
+  only after participant-equivalent proof.
+- `docs/public/environment-packs.md`: pack metadata, provenance ledger, compatibility manifest, RAES
+  participant behavior, profile bundles, and release boundaries.
+- `docs/public/golden-readiness.md`: isolated golden infrastructure, automated rehearsal, final manual
+  participant walkthrough, and teardown proof.

@@ -1,0 +1,9 @@
+    ## Pack
+    - Pack id: `{{.PackID}}`
+    - Pack root: `{{.PackRoot}}/{{.PackID}}/`
+    - Working title: {{.Title}}
+    - Scenario focus: {{.Focus}}
+
+    ## Source Log
+    {{.Sources}}
+    

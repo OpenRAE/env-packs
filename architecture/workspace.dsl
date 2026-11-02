@@ -12,7 +12,9 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
             tags "External"
         }
         env_packs = softwareSystem "RAES environment-pack tooling" "Defines, validates, and releases RAES environment packs." {
-            commands = container "Commands" "The raes-pack commands. They are the composition root." "Go"
+            commands = container "Commands" "The raes-pack commands. They are the composition root." "Go" {
+                issue_skeleton_command = component "issue-skeleton-command" "The raes-pack-issue-skeleton command. Its Runner is the only code that starts gh." "Go"
+            }
             library = container "Go library" "The pack contracts and the pack operations." "Go" {
                 root = component "root" "The root package of the module." "Go"
                 packfs = component "packfs" "Reads pack trees through root descriptors, and commits staged trees atomically." "Go"
@@ -24,6 +26,7 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
                 jsondoc = component "jsondoc" "Writes JSON envelopes and documents with the bytes of the Python implementation." "Go"
                 terminal = component "terminal" "Escapes labels from packs, file names, and arguments for a terminal." "Go"
                 raes_interface = component "raes-interface" "Declares the RAES operations that env-packs uses. Only its adapter calls the RAES Go module." "Go"
+                issue_skeleton = component "issue-skeleton" "Plans the standard planning issues of a new pack, and writes them to GitHub through gh." "Go"
                 strict_yaml = component "strict-yaml" "Decodes exactly one YAML document, and rejects unknown fields." "Go"
             }
             repository_tools = container "Repository tools" "The tools that check and release this repository." "Go" {
@@ -42,6 +45,10 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
         env_packs.library.schema -> env_packs.library.document "Depends on"
         env_packs.library.schema -> env_packs.library.root "Depends on"
         env_packs.library.schema -> env_packs.library.diagnostic "Depends on"
+        env_packs.library.issue_skeleton -> env_packs.library.terminal "Depends on"
+        env_packs.commands.issue_skeleton_command -> env_packs.library.issue_skeleton "Depends on"
+        env_packs.commands.issue_skeleton_command -> env_packs.library.outcome "Depends on"
+        env_packs.commands.issue_skeleton_command -> env_packs.library.terminal "Depends on"
         env_packs.repository_tools.report -> env_packs.library.outcome "Depends on"
         env_packs.repository_tools.architecture -> env_packs.library.strict_yaml "Depends on"
         env_packs.repository_tools.architecture -> env_packs.repository_tools.report "Depends on"
@@ -57,6 +64,10 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
             autoLayout lr
         }
         container env_packs "containers" {
+            include *
+            autoLayout lr
+        }
+        component env_packs.commands "components-commands" {
             include *
             autoLayout lr
         }

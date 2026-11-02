@@ -1,0 +1,22 @@
+    ## Goal
+    Run the final manual participant walkthrough for `{{.PackID}}` as its own golden-readiness slice.
+
+    {{.PackBlock}}
+    {{.CommonAnchors}}
+    ## Deliverables
+    - Stand up the declared golden range from a clean checkout.
+    - Enter only through the participant execution surface.
+    - Work the intended happy path manually, command by command, from the intended participant privilege context.
+    - Record commands, expected output, objective/flag proof, defects, fixes, reruns, and remaining limitations.
+    - After the manual path works, run automated rehearsal, run static/unit checks, tear down the range, and verify
+      cleanup.
+
+    ## Acceptance Criteria
+    - No SSM, cloud console, Terraform output, generated password, root/SYSTEM shell, database console, or test harness
+      shortcut is used as proof of participant completion.
+    - Every required RAES objective, flag, and success condition is reached from the intended participant role.
+    - The copied golden-readiness checklist identifies exactly what was manually proven, what was automated, and what
+      remains out of scope.
+
+    {{.ChildIssueNote}}
+    

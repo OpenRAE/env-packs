@@ -1,0 +1,25 @@
+    ## Goal
+    Reconcile final docs, status, evidence, release metadata, and teardown state for `{{.PackID}}`.
+
+    {{.PackBlock}}
+    {{.CommonAnchors}}
+    ## Deliverables
+    - Update `pack.yaml` status and `contents` only to match proven reality.
+    - Update `pack.compatibility.yaml` runtime profiles, delivery bundles, artifact boundaries, operator surfaces,
+      and validation gates.
+    - Reconcile README, concepts, attack path, lineage, walkthroughs, golden-readiness checklist, provenance review
+      gates, and evidence reports.
+    - Remove stale TODOs, old emulation-plan-only language, misleading local-only claims, and references to superseded
+      issues.
+    - Run static content gates and pack release checks when artifact boundaries exist.
+    - Verify teardown evidence and ensure no live range resources remain.
+
+    ## Acceptance Criteria
+    - Build, tests, walkthroughs, RAES SDL, flags, profiles, compatibility metadata, and provenance agree on declared
+      behavior, objectives, and artifact boundaries.
+    - Participant-visible exports are leak-scanned and do not include restricted operator state, answers, credentials,
+      or other operator-only material.
+    - Close this umbrella only after final evidence reconciliation is complete.
+
+    {{.ChildIssueNote}}
+    

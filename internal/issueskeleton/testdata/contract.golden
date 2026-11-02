@@ -1,0 +1,42 @@
+## Goal
+Create the `example-pack` scenario contract and pack skeleton under the current pack doctrine.
+
+## Pack
+- Pack id: `example-pack`
+- Pack root: `environments/example-pack/`
+- Working title: Example Pack
+- Scenario focus: A focused example scenario.
+
+## Source Log
+- Source: https://example.invalid/source
+
+## Contract Anchors
+- The bundled layout contract (`contract/pack-layout.md` in the `raes-env-packs` package): authoritative
+  environment-pack convention and milestone structure.
+- The progressive scaffold wizard (`raes-pack-new`): generates only the files a pack's goal needs, previews them,
+  and validates with the same static check consumers run. Keep the scenario domain-neutral unless the chosen
+  starter route requires otherwise; one full scenario per pack, no stubs or hand-waved services, and `golden`
+  only after participant-equivalent proof.
+- `docs/public/environment-packs.md`: pack metadata, provenance ledger, compatibility manifest, RAES
+  participant behavior, profile bundles, and release boundaries.
+- `docs/public/golden-readiness.md`: isolated golden infrastructure, automated rehearsal, final manual
+  participant walkthrough, and teardown proof.
+
+## Deliverables
+- Set `pack.yaml.requirement` to your upstream requirement id if you track one, or `null`; do not synthesize a UID.
+- Scaffold `environments/example-pack/` with the progressive wizard `raes-pack-new` (pick a starter route).
+- Fill `pack.yaml`, `pack.compatibility.yaml`, and `docs/provenance-ledger.yaml` with truthful initial metadata.
+- Replace template prose in `README.md`, `docs/concepts.md`, `docs/attack-path.md`, and `docs/lineage.md`.
+- Record source adaptation decisions: what is used, excluded, changed, or locally designed.
+
+## Acceptance Criteria
+- The pack has the required minimum source shape: `pack.yaml`, `sdl/`, `docs/concepts.md`, `docs/attack-path.md`,
+  and `docs/provenance-ledger.yaml`.
+- Participant-facing framing is offensive by default unless the pack and briefing explicitly declare otherwise.
+- `pack.yaml.status` remains `draft` until a real live build exists.
+
+## Child Issue Guidance
+This is a skeleton planning issue. The pack-design agent should edit this
+issue as the design becomes concrete and add child/slice issues for
+scenario-specific hosts, services, data sets, tooling, or proof gaps that
+are too large for one PR.
