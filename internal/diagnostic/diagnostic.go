@@ -32,7 +32,7 @@ type Diagnostic struct {
 // defect, and New panics without the file in the message. So no absolute
 // path can enter a diagnostic.
 func New(code, file, field string) Diagnostic {
-	if file != "" && (file == "." || !fs.ValidPath(file) || strings.Contains(file, `\`) || len(file) > 2 && file[1] == ':' && file[2] == '/') {
+	if file != "" && (file == "." || !fs.ValidPath(file) || strings.Contains(file, `\`) || strings.HasPrefix(file[1:], ":/")) {
 		panic("diagnostic: the file is not a pack-relative path")
 	}
 	return Diagnostic{code: code, file: file, field: field}

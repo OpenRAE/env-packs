@@ -19,7 +19,7 @@ func TestNew(t *testing.T) {
 	if d := New("pack.missing", "", ""); d.File() != "" {
 		t.Errorf("New() without a file = %q, want no file", d.File())
 	}
-	for _, file := range []string{"a", "C:", "a:b"} {
+	for _, file := range []string{"a", "C:", "a:b", "ab/c"} {
 		if d := New("pack.missing", file, ""); d.File() != file {
 			t.Errorf("New() with relative file %q = %q, want unchanged", file, d.File())
 		}
