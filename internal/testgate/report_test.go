@@ -1,6 +1,8 @@
 package testgate
 
 import (
+	"fmt"
+	"math"
 	"strings"
 	"testing"
 
@@ -157,6 +159,7 @@ func TestLineAt(t *testing.T) {
 // Regression test for #617: incomplete evidence must not pass the mutation gate.
 func TestParseReportRejectsIncompleteEvidence(t *testing.T) {
 	for _, input := range []string{
+		fmt.Sprintf(`{"stats":{"totalMutantsCount":%d,"killedCount":0,"escapedCount":0,"skippedCount":%d,"errorCount":1}}`, math.MinInt, math.MaxInt),
 		`null`, `{}`, `{"stats":{}}`,
 		`{"stats":{"totalMutantsCount":null,"killedCount":0,"escapedCount":0,"skippedCount":0,"errorCount":0}}`,
 		`{"stats":{"totalMutantsCount":1,"killedCount":0,"escapedCount":1,"skippedCount":0,"errorCount":0},"escaped":[]}`,

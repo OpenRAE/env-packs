@@ -192,10 +192,9 @@ func (ghRunner) Run(args []string, stdin []byte) ([]byte, error) {
 	if stdout.exceeded || stderr.exceeded {
 		return nil, errGHOutputLimit
 	}
-	if err != nil && ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-	if _, ok := errors.AsType[*exec.ExitError](err); ok {
+	// A signal (including a deadline kill) is an execution failure, not a
+	// normal gh rejection. Keep it on the bounded internal-error path.
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok && exitErr.ExitCode() > 0 {
 		return nil, &issueskeleton.RunError{Stdout: stdout.buffer.Bytes(), Stderr: stderr.buffer.Bytes()}
 	}
 	return stdout.buffer.Bytes(), err

@@ -35,22 +35,22 @@
       "title": "Go port 01: List the RAES operations that env-packs uses and call them through one Go interface",
       "github_state": "OPEN",
       "assessment": "partial",
-      "evidence": "Interface declarations and symbol map exist. No adapter or operation contract tests exist. The current dev API has also moved; refresh the map on synchronization. Seven operation families lack a named upstream delivery issue.",
+      "evidence": "The synchronized RAES 10.4 inventory maps 97 imported symbols across application code, tools and eleven retained content-test modules. Missing operations now have declarations. The adapter and its operation contract tests remain blocked on the upstream module.",
       "acceptance": [
         {
           "criterion": "The interface package declares every operation in the table and the operations that chunk 27 needs.",
-          "assessment": "partial",
-          "evidence": "Content checks need custom backend-manifest planning, realization concern descriptors, compiled document access and has_required_observation_support. Existing interfaces do not represent all of these."
+          "assessment": "implemented-pending-ci",
+          "evidence": "Declarations now include custom manifests, concern descriptors, compiled documents, observation support, instantiated compilation and time-model contracts."
         },
         {
           "criterion": "The map covers all 72 symbols.",
-          "assessment": "stale",
-          "evidence": "The 78-symbol map covers the old application tree, not current dev or all retained content tests."
+          "assessment": "updated-pending-ci",
+          "evidence": "The refreshed inventory covers 97 distinct imports from current application code, tools and the retained content-test scope."
         },
         {
           "criterion": "A document in `docs/development/` lists the RAES issue that delivers each operation, or states that none exists.",
-          "assessment": "partial",
-          "evidence": "Operations page maps application groups and lists seven upstream gaps; retained content-test operations need the same mapping."
+          "assessment": "met",
+          "evidence": "Operations page names upstream delivery issues or explicitly records missing operation coverage. Public adapter contract remains subject to OpenRAE/rae#1825."
         },
         {
           "criterion": "Only the adapter imports the RAES Go module, and the architecture check (chunk 04) enforces this.",
@@ -2759,5 +2759,15 @@
         }
       ]
     }
-  ]
+  ],
+  "synchronization": {
+    "dev_commit": "b7f2f31",
+    "merge_commit": "88f7c4a",
+    "method": "Real merge of origin/dev into stabilization leaf; no earlier PR merged or closed.",
+    "dependency": "RAES 10.4.0"
+  },
+  "verification": {
+    "status": "pending-final-head-ci",
+    "local": "Targeted tests and four-platform vulnerability scan pass; new regression and mutation proofs in progress."
+  }
 }

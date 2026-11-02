@@ -237,6 +237,17 @@ func TestApplyErrors(t *testing.T) {
 	}
 }
 
+func TestApplyRejectsMalformedWriteResponse(t *testing.T) {
+	f := newFake()
+	f.answers["api --method POST repos/o/r/issues --input -"] = "malformed"
+	gh := resolved(t, f)
+	var output strings.Builder
+	err := gh.Apply(bufio.NewWriter(&output), []Operation{{Action: actionCreateIssue, Title: "t"}}, new(1))
+	if err == nil {
+		t.Error("Apply() accepted a malformed nonempty response")
+	}
+}
+
 // Regression test for #617: incomplete discovery must not create duplicate issues.
 func TestPrepareRefusesIncompleteDiscovery(t *testing.T) {
 	for _, tt := range []struct{ key, reply string }{

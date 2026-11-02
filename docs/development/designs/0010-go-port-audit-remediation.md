@@ -12,7 +12,7 @@ The audit records each milestone requirement and each related PR.
 
 ## Boundaries and reuse
 
-The existing components own the fixes. No new package or dependency is needed.
+The existing components own the fixes. The fixes need no new package or dependency.
 Use standard JSON errors, number conversion, bounded readers, and deferred
 cleanup. Keep `jsonschema`, `yaml.v3`, `go-gitdiff`, and `testscript`.
 Do not replace these libraries with local parsers or validators.
@@ -20,6 +20,18 @@ Do not replace these libraries with local parsers or validators.
 The shared architecture checker has development branches but no release.
 Adoption must preserve the four release platforms and the existing model rules.
 The RAES adapter also remains a dependency; interfaces alone do not deliver it.
+
+The operation map includes application code, tools, and the eleven content
+test modules that chunk 27 retains. Refresh it against RAES 10.4 after merging
+dev. Extend the existing interfaces for custom-manifest planning, compiled
+document access, realization concern descriptors, and observation support.
+Published JSON documents cross these boundaries; RAES still owns validation,
+vocabulary, and semantic evaluation. The adapter derives designation records
+from its scenario handle. No local implementation substitutes for RAES.
+
+Content checks also compile an already instantiated scenario and convert its
+time model to the published contract. Preserve those operations explicitly;
+compiling again with empty parameters would change the input contract.
 
 ## Failure handling
 
@@ -31,7 +43,8 @@ the mutant lists. Missing or inconsistent evidence must fail the gate.
 JSON ingestion distinguishes duplicate names from other syntax errors with
 `errors.Is` and `jsontext.ErrDuplicateName`. Decimal and exponent forms must
 fit the finite float range of the Python contract. An exponent must also
-fit the document byte budget before a schema validator expands it.
+fit the smaller of the document byte budget and the default byte limit before
+a schema validator expands it. Raising the input limit cannot remove that bound.
 Integer tokens retain their digits. Node and depth errors keep their order.
 
 A pack read saturates its lookahead count instead of overflowing it.
@@ -46,7 +59,7 @@ trust in executable owners or their parent directories.
 
 The command uses `exec.CommandContext` with a one-minute limit and a one-second
 pipe wait limit. Output buffers stop at 8 MiB for stdout and 64 KiB for
-stderr. A small bounded writer is needed because `os/exec` takes writers;
+stderr. The command needs a small bounded writer because `os/exec` takes writers;
 the standard library has a limited reader but no limited writer.
 Timeout and output-limit failures use the existing bounded tool-failure path.
 

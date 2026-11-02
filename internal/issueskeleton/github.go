@@ -79,7 +79,7 @@ func (g *GitHub) run(args []string, stdin []byte, out any) error {
 	if _, writeResponse := out.(*json.RawMessage); writeResponse && len(bytes.TrimSpace(stdout)) == 0 {
 		return nil
 	}
-	if data := bytes.TrimSpace(stdout); len(data) == 0 || bytes.Equal(data, []byte("null")) {
+	if bytes.Equal(bytes.TrimSpace(stdout), []byte("null")) {
 		return errors.New("gh returned no JSON result")
 	}
 	return json.Unmarshal(stdout, out)
@@ -141,10 +141,13 @@ func (g *GitHub) Issues() ([]Issue, error) {
 		"issue", "list", "--repo", g.repo, "--state", "all", "--limit", strconv.Itoa(issueLimit),
 		jsonFlag, "number,title,milestone,labels",
 	}, nil, &issues)
-	if err == nil && len(issues) >= issueLimit {
+	if err != nil {
+		return nil, err
+	}
+	if len(issues) >= issueLimit {
 		return nil, fail("issue discovery reached its limit; no changes were made")
 	}
-	return issues, err
+	return issues, nil
 }
 
 // A milestone is a milestone of the repository.

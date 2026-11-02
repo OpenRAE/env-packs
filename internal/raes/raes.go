@@ -238,6 +238,9 @@ type Experiments interface {
 // A Compilation is a scenario that RAES compiled. It is a handle: only the
 // adapter that made it accepts it.
 type Compilation interface {
+	// Document returns the published JSON form, including realization
+	// requirements and participant behavior, for retained content checks.
+	Document() map[string]any
 	// Nodes returns the number of node deployments of the compiled model.
 	Nodes() int
 	// Networks returns the number of networks of the compiled model.
@@ -246,8 +249,7 @@ type Compilation interface {
 	Diagnostics() []Diagnostic
 }
 
-// A Plan summarizes the plan of a compiled scenario with the reference stub
-// manifest of RAES.
+// A Plan summarizes the plan of a compiled scenario with a RAES backend manifest.
 type Plan struct {
 	// Valid reports whether the plan is valid.
 	Valid bool
@@ -257,10 +259,23 @@ type Plan struct {
 	Diagnostics []Diagnostic
 }
 
-// Planning compiles and plans scenarios for the MCP tool. It runs nothing.
+// Planning compiles and plans scenarios for authoring and content checks.
+// It runs nothing.
 type Planning interface {
 	// Compile compiles a scenario with parameter values.
 	Compile(s Scenario, parameters map[string]any) (Compilation, error)
+	// CompileInstantiated compiles an already instantiated scenario without
+	// instantiating it again.
+	CompileInstantiated(s Scenario) (Compilation, error)
+	// StubManifest returns the published JSON form of the reference stub
+	// manifest, optionally including its realization envelope.
+	StubManifest(withRealizationEnvelope bool) (map[string]any, error)
+	// PlanWithManifest validates a published backend manifest and plans the
+	// compiled scenario against it. RAES owns both admission and planning.
+	PlanWithManifest(c Compilation, manifest map[string]any) (Plan, error)
+	// TimeModelContract returns the published time-model contract of a
+	// compilation, or nil when it has no time model.
+	TimeModelContract(c Compilation) (map[string]any, error)
 	// PlanWithStubs plans a compiled scenario with the reference stub
 	// manifest of RAES.
 	PlanWithStubs(c Compilation) (Plan, error)
@@ -274,10 +289,15 @@ type Content interface {
 	// AdmitInstantiated admits an instantiated scenario.
 	AdmitInstantiated(s Scenario) error
 	// ResolveRealizationDesignation resolves the realization designation of
-	// a scenario.
-	ResolveRealizationDesignation(s Scenario, designation any) (map[string]any, error)
+	// a scenario at fieldPointer. The adapter derives the designation records
+	// from the scenario before resolving the pointer.
+	ResolveRealizationDesignation(s Scenario, fieldPointer string) (map[string]any, error)
 	// EvaluateRealizationConstraint evaluates a realization constraint.
 	EvaluateRealizationConstraint(constraint, structure any) (map[string]any, error)
-	// AdmitRealizationObservation admits a realization observation.
-	AdmitRealizationObservation(observation any) (map[string]any, error)
+	// RealizationConcernDescriptors returns the published descriptors that
+	// RAES uses to describe realization concerns.
+	RealizationConcernDescriptors() ([]map[string]any, error)
+	// HasRequiredObservationSupport asks RAES whether the published support
+	// declarations satisfy a requirement for observationKind.
+	HasRequiredObservationSupport(requirement map[string]any, declarations []map[string]any, observationKind string) (bool, error)
 }

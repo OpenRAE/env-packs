@@ -54,6 +54,11 @@ func TestReplaceRollbackFault(t *testing.T) {
 
 // Regression test for #617: failed panic rollback must retain the recovery path.
 func TestReplacePanicRecovery(t *testing.T) {
+	defer func() {
+		if recover() != nil {
+			t.Error("replace() propagated a panic instead of returning the recovery path")
+		}
+	}()
 	staged, target := staging(t)
 	f := newFault("Renameat2", 2, failCall)
 	f.err = unix.EIO

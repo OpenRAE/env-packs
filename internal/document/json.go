@@ -100,9 +100,10 @@ func checkJSONShape(value any, limits Limits) error {
 // Integer tokens retain their precision.
 func checkJSONNumber(n v1.Number, maxBytes int) Code {
 	s := string(n)
-	if i := strings.IndexAny(s, "eE"); i >= 0 {
-		exponent, err := strconv.ParseInt(s[i+1:], 10, 64)
-		if err != nil || exponent > int64(maxBytes) || exponent < -int64(maxBytes) {
+	if i := strings.IndexAny(s, "eE"); i != -1 {
+		exponent, err := strconv.Atoi(s[i+1:])
+		maxExpansion := min(maxBytes, DefaultLimits().MaxBytes)
+		if err != nil || exponent > maxExpansion || exponent < -maxExpansion {
 			return CodeSizeLimit
 		}
 	}

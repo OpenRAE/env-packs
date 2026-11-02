@@ -27,12 +27,12 @@ fresh verification. Design 0010 records the fixes from this audit.
 | A09 | Vulnerability scanning covers only the host build. | PR 592; `Makefile` | Scan all four model platforms. |
 | A10 | Help omits option descriptions and defaults. | PR 616; command flag parser | Print the standard flag help. |
 | A11 | The wizard alias has no blocking-status case. | PR 596; conformance corpus | Add an existing-target case. |
-| A12 | The stack predates current dev and RAES 10.4 changes. | Branch history; PR 607 | Synchronize and revalidate the stack before integration. |
-| A13 | The RAES map omits retained content-test operations. | PR 615; content tests | Keep 552 partial and complete its operation inventory. |
+| A12 | The stack predates current dev and RAES 10.4 changes. | Branch history; PR 607 | Merged current dev into the stabilization leaf; revalidate before integration. |
+| A13 | The RAES map omits retained content-test operations. | PR 615; content tests | Mapped 97 imports and added the missing declarations; adapter delivery remains open. |
 | A14 | The shared architecture checker is not in use. | PR 590; `go.mod` | Track release and compatibility prerequisites before adoption. |
 | A15 | Weekly Go checks and Go dependency updates are not operational. | PRs 589, 591, 592 | Configuration must reach the default branch through an approved PR. |
 | A16 | External command execution has no duration or output bound. | PR 616; `ghRunner` | Add bounded execution and failure tests. |
-| A17 | Discovery silently stops at 2,000 issues or 500 labels. | PR 616; GitHub client | Refuse incomplete discovery before any write, or paginate it. |
+| A17 | Discovery silently stops at 2,000 issues or 500 labels. | PR 616; GitHub client | Refuse capped discovery and missing read responses before any write. |
 
 Earlier fixes in PR 618 cover usage escaping, foreign absolute diagnostic
 paths, process-stream access, model-change records, stacked CodeQL, and the
@@ -55,11 +55,12 @@ Chunks 10 and 11 also name Python consumers outside their new packages.
 Those consumers remain unchanged until their own port chunks. These scope
 items must stay visible even when the foundation PR passes.
 
-The RAES content inventory must include custom backend-manifest planning,
-realization concern descriptors, and compiled document access. It must also
-include `has_required_observation_support`. The current generic observation
-admission method does not represent that call. RAES continues to own these
-semantics; local replacements are not an acceptable remedy.
+The refreshed RAES inventory includes custom backend-manifest planning,
+realization concern descriptors, compiled document access, and observation
+support. It also covers compilation of instantiated scenarios and time-model
+contracts. The declarations now represent those calls. RAES continues to own
+the semantics; adapter implementations and contract tests remain blocked on
+the upstream module.
 
 ## Reuse and shared concerns
 

@@ -271,6 +271,26 @@ func TestGHRunnerLimits(t *testing.T) {
 			if (err != nil) != tt.wantError || len(out) != tt.wantBytes {
 				t.Errorf("Run() = %d bytes, %v; want %d bytes, error=%v", len(out), err, tt.wantBytes, tt.wantError)
 			}
+			if tt.wantError && (err == nil || err.Error() != "gh output exceeds the command limit") {
+				t.Errorf("Run() error = %v, want the output-limit failure", err)
+			}
 		})
+	}
+}
+
+// Regression test for #617: a descendant must not hold the command pipes open.
+func TestGHRunnerInheritedPipe(t *testing.T) {
+	fakeGHScript(t, "sleep 2 &\nexit 0")
+	out, err := (ghRunner{}).Run(nil, nil)
+	if !errors.Is(err, exec.ErrWaitDelay) || len(out) != 0 {
+		t.Errorf("Run() = %q, %v; want the pipe-wait failure", out, err)
+	}
+}
+
+func TestGHRunnerSignal(t *testing.T) {
+	fakeGHScript(t, "kill -TERM $$")
+	_, err := (ghRunner{}).Run(nil, nil)
+	if _, normalExit := errors.AsType[*issueskeleton.RunError](err); err == nil || normalExit {
+		t.Errorf("Run() error = %v, want an execution failure", err)
 	}
 }

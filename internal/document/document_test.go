@@ -295,6 +295,14 @@ func TestDecodeJSONNumberBounds(t *testing.T) {
 		if got := codeOf(err); got != tt.want {
 			t.Errorf("DecodeJSON(%s) code = %s, want %s", tt.src, got, tt.want)
 		}
+		if e, ok := errors.AsType[*Error](err); ok && e.Line != 0 {
+			t.Errorf("DecodeJSON(%s) line = %d, want 0", tt.src, e.Line)
+		}
+	}
+	large := DefaultLimits()
+	large.MaxBytes = 1 << 30
+	if _, err := DecodeJSON([]byte(`1e-1048577`), large); codeOf(err) != CodeSizeLimit {
+		t.Errorf("DecodeJSON() with a raised byte budget error = %v, want bounded expansion", err)
 	}
 	for range 64 {
 		_, err := DecodeJSON([]byte(`{"a":1e400,"b":1e99999999999999999999}`), DefaultLimits())
