@@ -48,10 +48,11 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0040](0040-retire-the-v2-0-2-recovery-exception.md) | Retire the v2.0.2 recovery exception | Accepted |
 | [0041](0041-distribute-kits-as-package-resources.md) | Distribute kits as package resources | Accepted |
 | [0042](0042-carry-raes-experiment-artifact-sets-in-packs.md) | Carry RAES experiment artifact sets in packs | Accepted |
-| [0043](0043-require-a-minimum-raes-version.md) | Require a minimum RAES version | Accepted |
+| [0043](0043-require-a-minimum-raes-version.md) | Require a minimum RAES version | Superseded by 0047 |
 | [0044](0044-restore-breaking-changes-to-major-releases.md) | Restore breaking changes to major releases (supersedes 0039) | Accepted |
 | [0045](0045-version-packs-with-the-package.md) | Version packs with the package (extends 0008) | Accepted |
 | [0046](0046-admit-pinned-local-imports-through-raes-supplied-sources.md) | Admit pinned local imports through RAES supplied sources (amends 0013, 0035) | Accepted |
+| [0047](0047-pin-one-exact-raes-version.md) | Pin one exact RAES version (supersedes 0043) | Accepted |
 
 ```{toctree}
 :hidden:

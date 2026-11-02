@@ -1,6 +1,7 @@
 # ADR 0043 — Require a minimum RAES version
 
-- Status: Accepted
+- Status: Superseded by
+  [ADR 0047](0047-pin-one-exact-raes-version.md)
 - Date: 2026-10-29
 - Supersedes: the exact-pin rule of ADR 0011 (pinned RAES SDL validation) and
   the exact-pin consequence of

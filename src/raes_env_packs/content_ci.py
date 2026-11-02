@@ -33,8 +33,8 @@ packs root:
      SDL is validated *through RAES*, with no SDL schema restated here; the gate
      is fail-closed on a missing/invalid document (ADR 0011, issue #84).
 
-Stdlib + PyYAML, plus RAES (``raes``, a required dependency with a minimum
-version per ADR 0011 and ADR 0043) for SDL
+Stdlib + PyYAML, plus RAES (``raes``, a required dependency pinned to one
+exact version per ADR 0011 and ADR 0047) for SDL
 validation. Run locally exactly as CI does:
 
     raes-pack-validate --pack ./path/to/pack
@@ -609,7 +609,7 @@ def check_tests(
 def _load_raes() -> tuple[Callable[..., object], type[BaseException]]:
     """Return ``(parse_sdl_file, SDLError)`` from RAES, or raise ``ImportError``.
 
-    ``raes`` is a hard dependency (ADR 0011, ADR 0043): SDL is validated
+    ``raes`` is a hard dependency (ADR 0011, ADR 0047): SDL is validated
     *through RAES*, never a local restatement. The import is isolated (and
     lazy) so a broken environment where the dependency is missing surfaces
     as a fail-closed gate failure in :func:`check_sdl` rather than crashing the
