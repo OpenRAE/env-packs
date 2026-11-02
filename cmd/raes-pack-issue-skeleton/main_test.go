@@ -263,7 +263,7 @@ func TestGHRunnerLimits(t *testing.T) {
 		{name: "stdout limit", script: "head -c 8388608 /dev/zero", wantBytes: 8388608},
 		{name: "stdout excess", script: "head -c 8388609 /dev/zero", wantError: true},
 		{name: "stderr limit", script: "head -c 65536 /dev/zero >&2"},
-		{name: "stderr excess", script: "head -c 65537 /dev/zero >&2", wantError: true},
+		{name: "stderr excess", script: "printf partial-result\nhead -c 65537 /dev/zero >&2", wantError: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeGHScript(t, tt.script)

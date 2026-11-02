@@ -194,7 +194,7 @@ func (ghRunner) Run(args []string, stdin []byte) ([]byte, error) {
 	}
 	// A signal (including a deadline kill) is an execution failure, not a
 	// normal gh rejection. Keep it on the bounded internal-error path.
-	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok && exitErr.ExitCode() > 0 {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok && exitErr.ExitCode() != -1 {
 		return nil, &issueskeleton.RunError{Stdout: stdout.buffer.Bytes(), Stderr: stderr.buffer.Bytes()}
 	}
 	return stdout.buffer.Bytes(), err
