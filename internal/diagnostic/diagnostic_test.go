@@ -23,8 +23,9 @@ func TestNew(t *testing.T) {
 
 // TestNewFile checks that no absolute or escaping path can enter a
 // diagnostic, and that the panic does not show the path.
+// Regression test for #617.
 func TestNewFile(t *testing.T) {
-	for _, file := range []string{"/etc/passwd", "../secret", "a/../b", "a/", "./a", ".", "a//b"} {
+	for _, file := range []string{"/etc/passwd", "../secret", "a/../b", "a/", "./a", ".", "a//b", `C:\Users\private.txt`, "C:/Users/private.txt", `\\server\private.txt`, `docs\pack.yaml`} {
 		func() {
 			defer func() {
 				message := fmt.Sprint(recover())

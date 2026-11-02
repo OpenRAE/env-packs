@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	impl = flag.String("impl", "", "the implementation under test: python or go")
-	bin  = flag.String("bin", "", "the `directory` of the Go commands, for -impl=go")
+	impl     = flag.String("impl", "", "the implementation under test: python or go")
+	bin      = flag.String("bin", "", "the `directory` of the Go commands, for -impl=go")
+	faultBin = flag.String("fault-bin", "", "the `directory` of test-only Go fault drivers")
 )
 
 // TestCorpus runs each case against the implementation that -impl selects.
@@ -71,6 +72,9 @@ func params(dir, repo, goBin string) testscript.Params {
 			return cond == *impl, nil
 		},
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
+			"fault": func(ts *testscript.TestScript, neg bool, args []string) {
+				fault(ts, neg, args, repo, goBin)
+			},
 			"exits": func(ts *testscript.TestScript, neg bool, args []string) {
 				exits(ts, neg, args, goBin)
 			},
@@ -78,6 +82,22 @@ func params(dir, repo, goBin string) testscript.Params {
 			"glob":    glob,
 		},
 	}
+}
+
+// fault runs the tool-failure contract through a test-only driver. Go ports
+// must supply their driver; a missing driver never falls back to Python.
+func fault(ts *testscript.TestScript, neg bool, args []string, repo, goBin string) {
+	if neg || len(args) != 1 {
+		ts.Fatalf("usage: fault <command>")
+	}
+	if goBin == "" {
+		exits(ts, false, []string{"3", "python3", filepath.Join(repo, "conformance", "python_fault.py"), args[0]}, "")
+		return
+	}
+	if *faultBin == "" {
+		ts.Fatalf("Go tool-failure cases require -fault-bin with test-only command drivers")
+	}
+	exits(ts, false, []string{"3", args[0]}, *faultBin)
 }
 
 // exits runs a command of the implementation under test and checks its exit
