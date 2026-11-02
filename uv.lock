@@ -640,7 +640,7 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4" },
     { name = "mcp", specifier = ">=2,<3" },
     { name = "pyyaml", specifier = ">=6" },
-    { name = "raes", specifier = ">=10.5.0" },
+    { name = "raes", specifier = "==10.5.0" },
 ]
 provides-extras = ["test"]
 
