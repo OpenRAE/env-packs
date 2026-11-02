@@ -11,6 +11,15 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [7.2.2](https://github.com/OpenRAE/env-packs/compare/v7.2.1...v7.2.2) (2026-11-02)
+
+
+### Bug Fixes
+
+* correct portal route authentication declarations ([#629](https://github.com/OpenRAE/env-packs/issues/629)) ([394cbd0](https://github.com/OpenRAE/env-packs/commit/394cbd00d0df16febfb0a7a088f182c3e89e6b7b))
+* **deps:** restore RAES 10.6 floor and reconcile promotion history ([#633](https://github.com/OpenRAE/env-packs/issues/633)) ([19bc250](https://github.com/OpenRAE/env-packs/commit/19bc25007df0d873e2dcac440e427b433c3c353d))
+* **deps:** restore the RAES minimum version at 10.6.0 ([19f57f5](https://github.com/OpenRAE/env-packs/commit/19f57f5d4a16c96d38ab3c16300822237ab0908e))
+
 ## [7.2.1](https://github.com/OpenRAE/env-packs/compare/v7.2.0...v7.2.1) (2026-11-02)
 
 
