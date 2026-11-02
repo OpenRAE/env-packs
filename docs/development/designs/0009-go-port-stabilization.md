@@ -39,6 +39,7 @@ each PR except a promotion into main. An active GitHub ruleset protects the
 Go integration branch and the current stack. It requires a pull request,
 current verification, fuzzing, CodeQL, and the title check, and permits squash merges
 only. The ruleset has no bypass actor. It does not change dev or main.
+
 The approval count stays at zero, as in the existing repository policy:
 the maintainer cannot approve a PR that uses the maintainer's own account.
 The human merge requirement of ADR 0020 remains in force.
