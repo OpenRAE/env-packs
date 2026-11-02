@@ -1,0 +1,79 @@
+# The helper plans the issues of a pack through gh. A fake gh records its
+# arguments and its standard input, and it answers from fixtures (#575).
+chmod 755 bin/gh
+env PATH=$WORK/bin:$PATH
+env GH_ARGS=$WORK/args.txt
+env GH_STDIN=$WORK/stdin.txt
+
+# A dry run plans the nine issues in the existing milestone and writes
+# nothing.
+exits 0 raes-pack-issue-skeleton --repo example-org/example-packs --pack-id demo --milestone-title 'Environment pack: Demo'
+stdout '^DRY RUN: no GitHub changes will be written\. Pass --apply to write\.$'
+stdout '^CREATE issue in milestone 7: demo: create scenario contract and pack skeleton$'
+stdout '^CREATE issue in milestone 7: demo: reconcile final docs, status, evidence, and teardown$'
+stdout -count=9 '^CREATE issue in milestone 7: '
+! stderr .
+! grep 'POST|PATCH' args.txt
+
+# An existing issue, also under a former title, is skipped, or updated with
+# --refresh-existing.
+env GH_ISSUES=$WORK/issues.json
+exits 0 raes-pack-issue-skeleton --repo example-org/example-packs --pack-id demo --milestone-title 'Environment pack: Demo'
+stdout '^SKIP existing issue #3: demo: create scenario contract and pack skeleton$'
+stdout '^SKIP existing issue #4: demo: specify participant attacker behavior in RAES$'
+exits 0 raes-pack-issue-skeleton --repo example-org/example-packs --pack-id demo --milestone-title 'Environment pack: Demo' --refresh-existing
+stdout '^UPDATE issue #3: demo: create scenario contract and pack skeleton$'
+env GH_ISSUES=
+
+# With --apply, the helper creates the milestone and the issues. Each payload
+# goes on the standard input of gh, never on its command line.
+exits 0 raes-pack-issue-skeleton --repo example-org/example-packs --pack-id demo --milestone-title 'New one' --create-milestone --apply
+stdout '^created milestone 9: New one$'
+stdout -count=9 '^created issue: demo: '
+! stderr .
+grep -count=10 '[-][-]input -$' args.txt
+! grep 'Goal|Environment pack' args.txt
+grep '"milestone": ?9' stdin.txt
+grep '"title": ?"demo: create scenario contract and pack skeleton"' stdin.txt
+
+# A missing milestone without --create-milestone stops the apply.
+exits 1 raes-pack-issue-skeleton --repo example-org/example-packs --pack-id demo --milestone-title Missing --apply
+! stdout .
+stderr '^milestone not found: ''Missing''; pass --create-milestone$'
+
+# A failure of gh stops the helper with the message of gh.
+exits 1 raes-pack-issue-skeleton --repo example-org/missing --pack-id demo --milestone-title Missing
+! stdout .
+stderr '^HTTP 404: Not Found$'
+
+-- bin/gh --
+#!/bin/sh
+printf '%s\n' "$*" >> "$GH_ARGS"
+case "$*" in
+"repo view example-org/missing --json nameWithOwner")
+	echo "HTTP 404: Not Found" >&2
+	exit 1 ;;
+"repo view "*)
+	echo '{"nameWithOwner": "Example-Org/Example-Packs"}' ;;
+"label list "*)
+	echo '[{"name": "area:content"}, {"name": "tier:raes"}, {"name": "documentation"}]' ;;
+"issue list "*)
+	if [ -n "$GH_ISSUES" ]; then cat "$GH_ISSUES"; else echo '[]'; fi ;;
+"api repos/Example-Org/Example-Packs/milestones --paginate")
+	echo '[{"number": 7, "title": "Environment pack: Demo"}]' ;;
+"api --method POST repos/Example-Org/Example-Packs/milestones --input -")
+	cat >> "$GH_STDIN"; echo >> "$GH_STDIN"
+	echo '{"number": 9}' ;;
+"api --method POST repos/Example-Org/Example-Packs/issues --input -"|"api --method PATCH repos/Example-Org/Example-Packs/issues/"*)
+	cat >> "$GH_STDIN"; echo >> "$GH_STDIN"
+	echo '{}' ;;
+*)
+	echo "unexpected gh call: $*" >&2
+	exit 2 ;;
+esac
+-- issues.json --
+[
+  {"number": 3, "title": "demo: create scenario contract and pack skeleton", "milestone": {"number": 7}, "labels": []},
+  {"number": 4, "title": "demo: define hidden path, oracle, and validation model", "milestone": {"number": 7}, "labels": []},
+  {"number": 5, "title": "demo: design topology, assets, and reference triangle", "milestone": {"number": 8}, "labels": []}
+]
