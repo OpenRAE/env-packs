@@ -34,15 +34,6 @@ equivalents:
       A larger batch only reads more names before the budget check. The check
       fails the walk after the same number of names, and a walk within the
       budget lists the same names.
-  - file: internal/packfs/member.go
-    function: Root.ReadMember
-    mutator: numbers/incrementer
-    line: "data, err := io.ReadAll(io.LimitReader(f, int64(maxBytes)+1))"
-    mutated: "data, err := io.ReadAll(io.LimitReader(f, int64(maxBytes)+2))"
-    reason: >-
-      A read of two bytes past the budget gives the same result as a read of
-      one byte past it: a member within the budget reads in full, and a
-      larger member fails the length check.
   - file: internal/document/pyyaml.go
     function: pyFloatValue
     mutator: numbers/decrementer

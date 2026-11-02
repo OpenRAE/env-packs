@@ -6,6 +6,8 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"io"
+	"strconv"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -30,9 +32,12 @@ func DecodeJSON(data []byte, limits Limits) (any, error) {
 		return nil, fail(CodeMultipleDocuments, 0)
 	}
 	// encoding/json keeps the last of two equal names. jsontext rejects
-	// them, and the decode above has already accepted the rest.
+	// them. It also rejects invalid Unicode escapes that v1 replaces.
 	if err := jsontext.NewDecoder(bytes.NewReader(data)).SkipValue(); err != nil {
-		return nil, fail(CodeDuplicateKey, 0)
+		if errors.Is(err, jsontext.ErrDuplicateName) {
+			return nil, fail(CodeDuplicateKey, 0)
+		}
+		return nil, fail(CodeSyntax, 0)
 	}
 	if value == nil {
 		return nil, fail(CodeNull, 0)
@@ -55,12 +60,18 @@ func checkJSONShape(value any, limits Limits) error {
 	}
 	pending := []item{{value: value}}
 	var nodes, deepest int
+	var numberCode Code
 	for len(pending) > 0 {
 		it := pending[len(pending)-1]
 		pending = pending[:len(pending)-1]
 		nodes++
 		deepest = max(deepest, it.depth)
 		switch v := it.value.(type) {
+		case v1.Number:
+			// A fixed precedence keeps the result independent of map order.
+			if code := checkJSONNumber(v, limits.MaxBytes); numberCode == "" || code == CodeNonFinite {
+				numberCode = code
+			}
 		case map[string]any:
 			nodes += len(v)
 			for _, child := range v {
@@ -78,5 +89,27 @@ func checkJSONShape(value any, limits Limits) error {
 	case nodes > limits.MaxNodes:
 		return fail(CodeNodeLimit, 0)
 	}
+	if numberCode != "" {
+		return fail(numberCode, 0)
+	}
 	return nil
+}
+
+// checkJSONNumber bounds exponent expansion by the document budget. A decimal
+// or exponent form must also fit the finite float range of the Python reader.
+// Integer tokens retain their precision.
+func checkJSONNumber(n v1.Number, maxBytes int) Code {
+	s := string(n)
+	if i := strings.IndexAny(s, "eE"); i >= 0 {
+		exponent, err := strconv.ParseInt(s[i+1:], 10, 64)
+		if err != nil || exponent > int64(maxBytes) || exponent < -int64(maxBytes) {
+			return CodeSizeLimit
+		}
+	}
+	if strings.ContainsAny(s, ".eE") {
+		if _, err := n.Float64(); err != nil {
+			return CodeNonFinite
+		}
+	}
+	return ""
 }

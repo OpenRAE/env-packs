@@ -29,7 +29,9 @@ func FuzzInventory(f *testing.F) {
 	f.Add([]byte("fA\x00fa\x00"))
 	f.Add([]byte("lx\x00"))
 	f.Add([]byte("pq\x00"))
-	f.Add([]byte("sx\x00dx"))
+	f.Add([]byte("fa\x00hb\x00"))
+	f.Add([]byte("px\x00fx"))
+	f.Add([]byte("f" + strings.Repeat("d/", 65) + "file\x00"))
 	f.Add([]byte("fcafé\x00"))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		root := fuzzTree(t, data)
@@ -60,8 +62,8 @@ func fuzzTree(t *testing.T, data []byte) string {
 			os.MkdirAll(filepath.Dir(path), 0o750) != nil {
 			continue
 		}
-		switch spec[0] % 4 {
-		case 0:
+		switch spec[0] {
+		case 'f':
 			// O_EXCL never opens an existing member, such as a FIFO, which
 			// would block the open for writing.
 			//nolint:gosec // G304 false positive: the path stays inside the test directory, as checked above.
@@ -70,15 +72,42 @@ func fuzzTree(t *testing.T, data []byte) string {
 					t.Fatalf("close %s: %v", name, err)
 				}
 			}
-		case 1:
+		case 'd':
 			_ = os.Mkdir(path, 0o750) //nolint:errcheck // A member that the system cannot make is not part of the tree.
-		case 2:
+		case 'l':
 			_ = os.Symlink("target", path) //nolint:errcheck // A member that the system cannot make is not part of the tree.
-		default:
+		case 'p':
 			_ = unix.Mkfifo(path, 0o600) //nolint:errcheck // A member that the system cannot make is not part of the tree.
+		case 'h':
+			_ = os.Link(filepath.Join(root, "a"), path) //nolint:errcheck // A missing link source is not part of the tree.
 		}
 	}
 	return root
+}
+
+// FuzzReadMember checks byte budgets against the exact content of a member.
+func FuzzReadMember(f *testing.F) {
+	f.Add([]byte("content"), uint16(7))
+	f.Add([]byte("content"), uint16(6))
+	f.Add([]byte{}, uint16(0))
+	f.Fuzz(func(t *testing.T, data []byte, budget uint16) {
+		if len(data) > 4096 {
+			t.Skip("keep filesystem fuzz inputs bounded")
+		}
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, "member"), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		r := openRoot(t, root)
+		got, err := r.ReadMember("member", int(budget))
+		if len(data) > int(budget) {
+			if got != nil || reasonOf(err) != ReasonByteBudget {
+				t.Fatalf("ReadMember() = %q, %v; want byte-budget refusal", got, err)
+			}
+		} else if err != nil || !bytes.Equal(got, data) {
+			t.Fatalf("ReadMember() = %q, %v; want %q", got, err, data)
+		}
+	})
 }
 
 // checkListing checks that each path of an inventory of root is canonical,

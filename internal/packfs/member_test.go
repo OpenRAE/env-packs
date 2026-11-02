@@ -2,6 +2,7 @@ package packfs
 
 import (
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,6 +61,7 @@ func TestOpenMemberRejections(t *testing.T) {
 	}
 }
 
+// Regression test for #617: the lookahead must not overflow.
 func TestReadMember(t *testing.T) {
 	big := strings.Repeat("x", 100_000)
 	r := openRoot(t, tree(t,
@@ -74,6 +76,8 @@ func TestReadMember(t *testing.T) {
 		reason   Reason
 	}{
 		{rel: "small", maxBytes: 5, want: "12345"},
+		{rel: "small", maxBytes: math.MaxInt, want: "12345"},
+		{rel: "empty", maxBytes: -1, reason: ReasonByteBudget},
 		{rel: "small", maxBytes: 4, reason: ReasonByteBudget},
 		{rel: "empty", maxBytes: 0, want: ""},
 		{rel: "big", maxBytes: len(big), want: big},

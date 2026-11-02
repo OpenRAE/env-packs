@@ -1,0 +1,2763 @@
+{
+  "reviewed_commit": "570ff17aae37b90100190bf7a5ad3e124bcfc971",
+  "date": "2026-11-02",
+  "scope": "All 32 Go-port milestone chunks, all 17 related PRs including the superseded closed PR and stabilization PR, cumulative Go source, tests, conformance, architecture, dependencies, CI, release and Python migration boundaries.",
+  "limits": "This is an audit of delivered code and planned work, not a claim that unimplemented chunks or unpublished upstream modules have been tested. Historical PR check results apply to their recorded heads. New fixes require new CI.",
+  "issues": [
+    {
+      "issue": 551,
+      "url": "https://github.com/OpenRAE/env-packs/issues/551",
+      "title": "Go port 00: Record the Go port and cutover decision in an ADR",
+      "github_state": "CLOSED",
+      "assessment": "implemented",
+      "evidence": "ADR 0047 and its index. PR #584 merged into go-cutover.",
+      "acceptance": [
+        {
+          "criterion": "An accepted ADR records each point above.",
+          "assessment": "met",
+          "evidence": "ADR 0047 accepted."
+        },
+        {
+          "criterion": "The ADR index shows the new ADR and the new status of each ADR that it supersedes or amends.",
+          "assessment": "met",
+          "evidence": "ADR index records amendments and supersessions."
+        },
+        {
+          "criterion": "No code changes.",
+          "assessment": "met",
+          "evidence": "PR #584 changes only the ADR and index."
+        }
+      ]
+    },
+    {
+      "issue": 552,
+      "url": "https://github.com/OpenRAE/env-packs/issues/552",
+      "title": "Go port 01: List the RAES operations that env-packs uses and call them through one Go interface",
+      "github_state": "OPEN",
+      "assessment": "partial",
+      "evidence": "Interface declarations and symbol map exist. No adapter or operation contract tests exist. The current dev API has also moved; refresh the map on synchronization. Seven operation families lack a named upstream delivery issue.",
+      "acceptance": [
+        {
+          "criterion": "The interface package declares every operation in the table and the operations that chunk 27 needs.",
+          "assessment": "partial",
+          "evidence": "Content checks need custom backend-manifest planning, realization concern descriptors, compiled document access and has_required_observation_support. Existing interfaces do not represent all of these."
+        },
+        {
+          "criterion": "The map covers all 72 symbols.",
+          "assessment": "stale",
+          "evidence": "The 78-symbol map covers the old application tree, not current dev or all retained content tests."
+        },
+        {
+          "criterion": "A document in `docs/development/` lists the RAES issue that delivers each operation, or states that none exists.",
+          "assessment": "partial",
+          "evidence": "Operations page maps application groups and lists seven upstream gaps; retained content-test operations need the same mapping."
+        },
+        {
+          "criterion": "Only the adapter imports the RAES Go module, and the architecture check (chunk 04) enforces this.",
+          "assessment": "met-before-adapter",
+          "evidence": "raes-through-adapter rejects RAES imports everywhere until an adapter exception is designed."
+        },
+        {
+          "criterion": "Contract tests pass for every operation that the RAES Go module delivers.",
+          "assessment": "blocked",
+          "evidence": "No adapter or operation contract tests. Upstream #1825 is open; go-cutover contains tooling, not the required RAES application module."
+        }
+      ]
+    },
+    {
+      "issue": 553,
+      "url": "https://github.com/OpenRAE/env-packs/issues/553",
+      "title": "Go port 02: Create the Go module and its CI job beside the Python implementation",
+      "github_state": "CLOSED",
+      "assessment": "implemented-with-qualified-evidence",
+      "evidence": "Module and required CI job exist. Historical packaging comparison reported unchanged wheel contents; the sdist gained ADR 0047, so literal unchanged-sdist acceptance was qualified.",
+      "acceptance": [
+        {
+          "criterion": "The Go build, vet, and test command runs locally and in CI with the pinned toolchain.",
+          "assessment": "met",
+          "evidence": "go.mod pins go1.27.3; go-check and CI build, vet and test."
+        },
+        {
+          "criterion": "`verify` fails when the Go job fails.",
+          "assessment": "met",
+          "evidence": "verify checks the Go job result and fails on non-success."
+        },
+        {
+          "criterion": "The wheel and sdist contents do not change.",
+          "assessment": "qualified",
+          "evidence": "PR #586 records unchanged wheel members, but the sdist gained ADR 0047. Literal unchanged contents were not met."
+        },
+        {
+          "criterion": "`.gc/plan-rules.md` contains the release rule for Go-only pull requests.",
+          "assessment": "met",
+          "evidence": ".gc/plan-rules.md requires non-releasing Go-only titles."
+        }
+      ]
+    },
+    {
+      "issue": 554,
+      "url": "https://github.com/OpenRAE/env-packs/issues/554",
+      "title": "Go port 03: Enforce strict Go linting and the deterministic Google Go Style rules",
+      "github_state": "OPEN",
+      "assessment": "implemented-pending-stabilization",
+      "evidence": "Strict lint and style map exist. PR #618 fixes stream access; the whole-port audit fixes platform-discovery failure. Style rules marked review-only still need human review.",
+      "acceptance": [
+        {
+          "criterion": "CI fails on any lint finding, any formatting change, and any suppression without a linter name and a reason.",
+          "assessment": "fix-in-progress",
+          "evidence": "Lint is strict. Audit repairs a platform-discovery failure that skipped the lint loop."
+        },
+        {
+          "criterion": "The style map covers every decision and best practice in the Google Go Style Guide.",
+          "assessment": "met-with-review-items",
+          "evidence": "go-style-map.md maps deterministic rules to tools and remaining rules to review."
+        },
+        {
+          "criterion": "A library package that prints, logs, reads the environment, or reads the clock fails CI.",
+          "assessment": "fix-in-progress",
+          "evidence": "Silent-library model exists. #618 adds streams and aliased-stream tests. Timing and environment access are forbidden."
+        }
+      ]
+    },
+    {
+      "issue": 555,
+      "url": "https://github.com/OpenRAE/env-packs/issues/555",
+      "title": "Go port 04: Compile one architecture model into repository checks, with a design step before code",
+      "github_state": "OPEN",
+      "assessment": "implemented-pending-shared-adoption",
+      "evidence": "Local model, replay, C4 and code checks exist. PR #618 adds model-change design-record enforcement. go-rae-archcheck has no release; compatibility and adoption remain open.",
+      "acceptance": [
+        {
+          "criterion": "CI fails, with a fix-it message, on each finding type above.",
+          "assessment": "met",
+          "evidence": "CheckCode covers ownership, dependencies, allowed modules, forbidden imports/symbols and unread files."
+        },
+        {
+          "criterion": "CI fails when a design record does not agree with the model.",
+          "assessment": "fix-in-progress",
+          "evidence": "Replay checks structural agreement; #618 adds new-record enforcement for every model edit."
+        },
+        {
+          "criterion": "CI fails when the generated C4 view is not current.",
+          "assessment": "met",
+          "evidence": "Generated DSL bytes are compared with architecture/workspace.dsl."
+        },
+        {
+          "criterion": "`.gc/plan-rules.md` requires the design step before code.",
+          "assessment": "met",
+          "evidence": ".gc/plan-rules.md requires the design step before code."
+        },
+        {
+          "criterion": "The checker has a test for each rule.",
+          "assessment": "met",
+          "evidence": "Model/check/load/design tests include positive and negative rules. Stream fixtures added in #618."
+        },
+        {
+          "criterion": "The lint, test, and mutation gates pass on the checker.",
+          "assessment": "pending-new-head-ci",
+          "evidence": "Historical checker checks passed. New stabilization changes require their own CI."
+        }
+      ]
+    },
+    {
+      "issue": 556,
+      "url": "https://github.com/OpenRAE/env-packs/issues/556",
+      "title": "Go port 05: Define the Go test standard",
+      "github_state": "OPEN",
+      "assessment": "implemented-with-operational-gap",
+      "evidence": "Race, shuffle, fuzz discovery and Go coverage exist. Hosted checks show Go coverage. Weekly Go runs cannot start from the default branch until their workflow reaches it.",
+      "acceptance": [
+        {
+          "criterion": "The test standard document exists.",
+          "assessment": "met",
+          "evidence": "docs/development/go-test-standard.md."
+        },
+        {
+          "criterion": "CI runs the Go tests with the race detector and in shuffled order.",
+          "assessment": "met",
+          "evidence": "make go-check uses -race -shuffle=on; CI invokes it."
+        },
+        {
+          "criterion": "The fuzz job runs every Go fuzz target in the repository.",
+          "assessment": "met-for-PRs",
+          "evidence": "make go-fuzz discovers all targets. Scheduled Go workflow is not yet on main."
+        },
+        {
+          "criterion": "SonarCloud shows Go coverage.",
+          "assessment": "met",
+          "evidence": "Recorded PR Sonar comments show Go coverage; coverage-go.out is uploaded and consumed."
+        }
+      ]
+    },
+    {
+      "issue": 557,
+      "url": "https://github.com/OpenRAE/env-packs/issues/557",
+      "title": "Go port 06: Make mutation testing on changed lines and regression proof merge gates",
+      "github_state": "OPEN",
+      "assessment": "partial",
+      "evidence": "Changed-line mutation and marked-regression gates exist. Audit found malformed mutation reports passed. Weekly workflow is only on a feature branch. Test-only changes rely on the full mutation run, which must be made operational.",
+      "acceptance": [
+        {
+          "criterion": "A pull request whose changed lines score below the threshold fails CI.",
+          "assessment": "fix-in-progress",
+          "evidence": "Changed-line gate exists; audit rejects missing counts and inconsistent report lists."
+        },
+        {
+          "criterion": "A pull request that adds a regression test that passes on the base commit fails CI.",
+          "assessment": "met-for-marked-tests",
+          "evidence": "Regression gate selects changed functions marked Regression test for #N, copies tests to merge base, and requires executed failure."
+        },
+        {
+          "criterion": "A scheduled job reports the mutation score of every Go package.",
+          "assessment": "not-operational",
+          "evidence": "mutation.yml is on the feature stack, not main. No default-branch scheduled Go run exists yet."
+        },
+        {
+          "criterion": "The threshold, the tool version, and the equivalent-mutant record are in the repository.",
+          "assessment": "met",
+          "evidence": "Tool pin in mise.toml; threshold in test standard/design 0002; individual waivers in mutation.yaml."
+        }
+      ]
+    },
+    {
+      "issue": 558,
+      "url": "https://github.com/OpenRAE/env-packs/issues/558",
+      "title": "Go port 07: Keep the supply-chain and security gates for Go",
+      "github_state": "OPEN",
+      "assessment": "partial",
+      "evidence": "Pinned vulnerability scan, CodeQL and Dependabot configuration exist. PR #618 extends CodeQL to stacked PRs. Audit extends vulnerability scanning beyond the host platform. Dependabot Go configuration is not on the default branch yet.",
+      "acceptance": [
+        {
+          "criterion": "A Go dependency with a vulnerability that `govulncheck` reports fails CI.",
+          "assessment": "fix-in-progress",
+          "evidence": "Host vulnerability check exists; audit extends it to all four model platforms."
+        },
+        {
+          "criterion": "CodeQL analyzes Go on pull requests.",
+          "assessment": "fix-in-progress",
+          "evidence": "#618 removes base-branch filtering. Earlier stacked PR heads did not all have CodeQL."
+        },
+        {
+          "criterion": "Dependabot opens Go module updates.",
+          "assessment": "not-operational",
+          "evidence": "gomod entry only exists on the port branch; Dependabot reads default-branch configuration."
+        },
+        {
+          "criterion": "Every new workflow and job uses full SHA pins and least-privilege permissions.",
+          "assessment": "met",
+          "evidence": "Workflow actions use SHA pins and permission policy checks. Read-only scopes follow repository ADR policy."
+        }
+      ]
+    },
+    {
+      "issue": 559,
+      "url": "https://github.com/OpenRAE/env-packs/issues/559",
+      "title": "Go port 08: Keep the documentation standards and check prose in CI",
+      "github_state": "OPEN",
+      "assessment": "implemented",
+      "evidence": "Vale changed-Markdown checks, Go documentation rules, warning-strict docs and publication boundary are configured in required CI.",
+      "acceptance": [
+        {
+          "criterion": "A pull request that adds Markdown that breaks a prose rule fails CI.",
+          "assessment": "met",
+          "evidence": "docs job runs make prose with BASE; policy tests retain the job."
+        },
+        {
+          "criterion": "The style guide contains the Go documentation rules.",
+          "assessment": "met",
+          "evidence": "documentation-style-guide.md includes Go documentation rules."
+        },
+        {
+          "criterion": "The docs build stays warning-strict, and the publication-boundary check stays a merge gate.",
+          "assessment": "met",
+          "evidence": "Sphinx -W and publication-boundary checks remain in required docs job."
+        }
+      ]
+    },
+    {
+      "issue": 560,
+      "url": "https://github.com/OpenRAE/env-packs/issues/560",
+      "title": "Go port 09: Build the contract conformance corpus and run it against Python",
+      "github_state": "OPEN",
+      "assessment": "partial",
+      "evidence": "Dual runner and Python corpus exist. PR #618 fills five tool-failure paths and Go malformed-gh output. Audit adds the missing alias blocking status. Future operation, MCP transcript and Go fault-driver cases remain with their port chunks.",
+      "acceptance": [
+        {
+          "criterion": "One switch runs the corpus against Python or against Go.",
+          "assessment": "met",
+          "evidence": "-impl=python/go plus required Go bin path; missing binaries never use Python fallback."
+        },
+        {
+          "criterion": "The corpus passes against Python. Each marked deviation has a reason and a link to the chunk that resolves it.",
+          "assessment": "met-with-deviations",
+          "evidence": "Python corpus is hosted-tested. Skip markers name issue numbers. Strict YAML/schema and malformed gh remain deviations."
+        },
+        {
+          "criterion": "CI runs the corpus against Python.",
+          "assessment": "met",
+          "evidence": "conformance is required by verify."
+        },
+        {
+          "criterion": "Every command has a case for each exit code that it can return.",
+          "assessment": "fix-in-progress",
+          "evidence": "#618 adds five tool-failure paths. Audit adds status 1 for raes-new-pack. No current Go product command is excluded."
+        }
+      ]
+    },
+    {
+      "issue": 561,
+      "url": "https://github.com/OpenRAE/env-packs/issues/561",
+      "title": "Go port 10: Port the pack filesystem boundary and the staged transactions",
+      "github_state": "OPEN",
+      "assessment": "partial",
+      "evidence": "Descriptor-based reads and Linux transactions exist. Audit fixes panic rollback and maximum read budget, and adds missing hardlink/byte fuzz coverage. Consumers outside packfs remain Python until their own chunks. Embedded collection support is still needed before cutover.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases and fuzz targets cover each rejection: symlink, hardlink, special file, non-canonical name, case-fold collision, escape, member budget, and byte budget.",
+          "assessment": "fix-in-progress",
+          "evidence": "Rejection corpus exists. FuzzInventory lacked hardlink construction and no fuzzer exercised read byte budgets; audit adds both."
+        },
+        {
+          "criterion": "Tests cover create, exchange, conflict, and recovery.",
+          "assessment": "fix-in-progress",
+          "evidence": "Normal create/exchange/conflict/recovery tests exist. Audit adds panic rollback and failed panic-recovery tests."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "pending-new-head-ci",
+          "evidence": "Existing checks passed at the old head; new fixes require new checks."
+        }
+      ]
+    },
+    {
+      "issue": 562,
+      "url": "https://github.com/OpenRAE/env-packs/issues/562",
+      "title": "Go port 11: Port strict document ingest and full schema validation",
+      "github_state": "OPEN",
+      "assessment": "partial",
+      "evidence": "Standard full schema validator, strict decoder and shared Go secret policy exist. Audit fixes extreme-exponent panic and incorrect Unicode diagnostic. Python copies remain until consumers migrate. Rejection of ambiguous YAML values is a recorded deviation.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases show that a violation of each schema keyword fails with a stable code. The cases for `minLength` and the other keywords above are Python deviations.",
+          "assessment": "met-at-foundation",
+          "evidence": "Unit tests cover packaged schema keywords. Command-level strict-schema cases await future Go consumers; Python skips name deviations."
+        },
+        {
+          "criterion": "All hosted kit and pack documents pass.",
+          "assessment": "met-at-reviewed-tree",
+          "evidence": "TestHostedDocuments checks the 140 hosted metadata documents. Must repeat after dev synchronization."
+        },
+        {
+          "criterion": "Fuzz targets cover the decoder.",
+          "assessment": "fix-in-progress",
+          "evidence": "JSON/YAML fuzzers exist. Audit adds extreme-exponent and Unicode regressions."
+        },
+        {
+          "criterion": "One secret-shape policy exists, and no copy remains.",
+          "assessment": "partial",
+          "evidence": "One Go policy exists. Publication has a distinct documented rule. Python duplicates remain until their consumers migrate."
+        }
+      ]
+    },
+    {
+      "issue": 563,
+      "url": "https://github.com/OpenRAE/env-packs/issues/563",
+      "title": "Go port 12: Port the diagnostic model and the command outcome contract",
+      "github_state": "OPEN",
+      "assessment": "implemented-pending-stabilization",
+      "evidence": "One product diagnostic, command outcome, terminal escaping and Python-compatible JSON writer exist. Developer findings and RAES transport diagnostics have distinct purposes. PR #618 fixes foreign absolute paths and usage escaping.",
+      "acceptance": [
+        {
+          "criterion": "One diagnostic type exists, and no package defines another.",
+          "assessment": "met-for-product",
+          "evidence": "diagnostic owns product findings; report is developer output and raes.Diagnostic is transport data, not competing product policy."
+        },
+        {
+          "criterion": "Conformance cases pass for exit codes, JSON-only stdout, and escaped terminal output for each command that exists when this chunk merges.",
+          "assessment": "fix-in-progress",
+          "evidence": "Output helpers exist. #618 extends failure corpus and usage escaping. Future JSON commands must marshal before writing."
+        },
+        {
+          "criterion": "Tests show that diagnostics carry no authored values and no absolute paths.",
+          "assessment": "fix-in-progress",
+          "evidence": "Constructor and no-value tests exist; #618 rejects foreign absolute paths. Authored field names remain location data."
+        }
+      ]
+    },
+    {
+      "issue": 564,
+      "url": "https://github.com/OpenRAE/env-packs/issues/564",
+      "title": "Go port 13: Port consumer static validation and raes-pack-check",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases for `validate_pack` and `raes-pack-check` pass against Go.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The hosted packs give the same verdicts and codes as Python, except where the ADR records a change.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The fuzz target runs in CI.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 565,
+      "url": "https://github.com/OpenRAE/env-packs/issues/565",
+      "title": "Go port 14: Port content identity and artifact resolution",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases pass against Go for the five operations and the new commands.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Every hosted pack and kit validates, and its set digest equals the Python result.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Fuzz targets cover the manifest and locator input.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 566,
+      "url": "https://github.com/OpenRAE/env-packs/issues/566",
+      "title": "Go port 15: Port experiment artifact sets",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases for experiment validation and loading pass against Go.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Fuzz targets cover the experiment documents.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 567,
+      "url": "https://github.com/OpenRAE/env-packs/issues/567",
+      "title": "Go port 16: Port the author CI gate and pack-local execution",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases for `raes-pack-validate` pass against Go.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "`--repo .` and `--packs-root packs` give the same verdicts as Python.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The pack-local validators and tests of the hosted packs run under the Go runner.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "No author-CI copy of a shared check remains.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 568,
+      "url": "https://github.com/OpenRAE/env-packs/issues/568",
+      "title": "Go port 17: Port the publication and component-boundary contracts",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases for publication and supply validation and for component derivation pass against Go.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The hosted packs give the same results as Python.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 569,
+      "url": "https://github.com/OpenRAE/env-packs/issues/569",
+      "title": "Go port 18: Port the release gate and its evidence",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases for the five subcommands pass against Go.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "`check --all` and `check --packs-root packs` give the same verdicts as Python.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The generated views contain the same files with the same bytes as the Python views.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The SBOM and the provenance statement pass their validators.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 570,
+      "url": "https://github.com/OpenRAE/env-packs/issues/570",
+      "title": "Go port 19: Port release verification and distribution",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases for both commands pass against Go.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The distribution rehearsal passes with the Go commands.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Fuzz targets cover archive staging.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 571,
+      "url": "https://github.com/OpenRAE/env-packs/issues/571",
+      "title": "Go port 20: Port the infrastructure kit tooling and the bundled kit collection",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases for `raes-pack-kit` pass against Go.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Every kit validates, and its set digest equals the Python result.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The two walkthroughs pass with the Go commands.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 572,
+      "url": "https://github.com/OpenRAE/env-packs/issues/572",
+      "title": "Go port 21: Port the catalog projection",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases for `raes-pack-catalog` pass against Go, with exact byte comparison for the JSON document.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Tests show that input order does not change the output.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Fuzz targets cover the sources manifest.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 573,
+      "url": "https://github.com/OpenRAE/env-packs/issues/573",
+      "title": "Go port 22: Port the pack wizard",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases for both command names pass against Go.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Replay of the same input gives the same bytes.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Fuzz targets cover the replay input.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 574,
+      "url": "https://github.com/OpenRAE/env-packs/issues/574",
+      "title": "Go port 23: Port the MCP authoring server",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases with MCP request and response transcripts pass against Go.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Fuzz targets cover MCP request handling.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 575,
+      "url": "https://github.com/OpenRAE/env-packs/issues/575",
+      "title": "Go port 24: Port the issue skeleton helper",
+      "github_state": "OPEN",
+      "assessment": "partial",
+      "evidence": "First Go command implemented in merged PR #616, but merged only into 552-raes-interface. Audit fixes help descriptions and group-write checks. External-command resource limits and truncated discovery require remediation.",
+      "acceptance": [
+        {
+          "criterion": "Conformance cases with a fake `gh` pass against Go.",
+          "assessment": "met-at-reviewed-tree",
+          "evidence": "Fake-gh corpus covers dry run, apply, updates and errors. Audit adds missing help descriptions and safe fake-directory modes."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "pending-new-head-ci",
+          "evidence": "#616 passed, but is only merged into an intermediate branch. New fixes require new lint/test/mutation checks."
+        }
+      ]
+    },
+    {
+      "issue": 576,
+      "url": "https://github.com/OpenRAE/env-packs/issues/576",
+      "title": "Go port 25: Port the repository tools",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "The workflows call the Go tools, and the Go tools pass their tests.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The binding refresh tool gives the same manifest bytes as the Python tool for the hosted packs.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "`tools/` contains no Python files.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The lint, architecture, test, and mutation gates pass.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 577,
+      "url": "https://github.com/OpenRAE/env-packs/issues/577",
+      "title": "Go port 26: Move the repository policy tests to policy as code",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "A list maps each invariant to its new check, or to the reason that it no longer applies.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Each policy has a test with a passing case and a failing case.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "CI runs the policy gate, and `policy_command` runs the same gate.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 578,
+      "url": "https://github.com/OpenRAE/env-packs/issues/578",
+      "title": "Go port 27: Keep the first-party content checks after the cutover",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "A list maps each invariant to its new check.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Every invariant on the list has a check that runs in CI.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "No test imports `raes_env_packs`.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 579,
+      "url": "https://github.com/OpenRAE/env-packs/issues/579",
+      "title": "Go port 28: Remove the Python library from pack-local code",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "No pack-local file imports `raes_env_packs`.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Author CI passes for all hosted packs with the Go runner.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Each pack's content manifest validates after the refresh.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 580,
+      "url": "https://github.com/OpenRAE/env-packs/issues/580",
+      "title": "Go port 29: Publish the Go distribution through the release workflow",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "Existing release workflow still publishes Python. No Go artifact dry run, Go version source, embedded collections or final PyPI transition exists. Keeping Go unpublished is correct before cutover.",
+      "acceptance": [
+        {
+          "criterion": "A dry run makes signed and attested artifacts with an SBOM.",
+          "assessment": "not-implemented",
+          "evidence": "No Go release dry run or signed Go artifact evidence."
+        },
+        {
+          "criterion": "The pack version gate reads the new version file.",
+          "assessment": "not-implemented",
+          "evidence": "Version remains in pyproject.toml; release-please remains its owner."
+        },
+        {
+          "criterion": "No Go release publishes before the cutover.",
+          "assessment": "met",
+          "evidence": "No Go publishing path has been enabled."
+        }
+      ]
+    },
+    {
+      "issue": 581,
+      "url": "https://github.com/OpenRAE/env-packs/issues/581",
+      "title": "Go port 30: Rewrite the documentation for the Go implementation",
+      "github_state": "OPEN",
+      "assessment": "not-implemented",
+      "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery.",
+      "acceptance": [
+        {
+          "criterion": "Only the migration page tells the reader to install or import the Python package.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "Each command example shows real output from the Go command.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        },
+        {
+          "criterion": "The docs build passes with warnings as errors.",
+          "assessment": "not-implemented",
+          "evidence": "No Go implementation of this chunk exists in the audited tree. Its acceptance criteria remain open; its Python implementation is not proof of delivery."
+        }
+      ]
+    },
+    {
+      "issue": 582,
+      "url": "https://github.com/OpenRAE/env-packs/issues/582",
+      "title": "Go port 31: Remove the Python implementation on go-cutover and merge go-cutover into dev",
+      "github_state": "OPEN",
+      "assessment": "not-ready",
+      "evidence": "Most product ports remain absent, the full Go corpus cannot pass, Python remains shipped, and go-cutover is behind dev. A green leaf PR does not satisfy cutover acceptance.",
+      "acceptance": [
+        {
+          "criterion": "Chunks 00 to 30 are closed.",
+          "assessment": "not-met",
+          "evidence": "Only #551 and #553 are closed at the audit snapshot."
+        },
+        {
+          "criterion": "The conformance corpus passes against Go, and no Python deviation mark remains.",
+          "assessment": "not-met",
+          "evidence": "Only issue-skeleton has a Go command; Python deviation markers remain."
+        },
+        {
+          "criterion": "`go-cutover` has no Python files except those that the ADR keeps.",
+          "assessment": "not-met",
+          "evidence": "Python application, tools and tests remain."
+        },
+        {
+          "criterion": "`verify` passes on `go-cutover`.",
+          "assessment": "not-met",
+          "evidence": "go-cutover lacks the later stack and current dev changes."
+        },
+        {
+          "criterion": "The pull request from `go-cutover` into `dev` is open, and its checks pass.",
+          "assessment": "not-met",
+          "evidence": "No ready cutover promotion exists; this is correct while prior criteria remain unmet."
+        }
+      ]
+    }
+  ],
+  "pull_requests": [
+    {
+      "number": 584,
+      "title": "docs: record the Go port and hard cutover decision (ADR 0047)",
+      "state": "MERGED",
+      "head": "7fb99d64977d7038cd4ae25f1943d3df55df010a",
+      "base": "45296794fc2dff9a79229db32e5e644f80cc6745",
+      "merge_commit": {
+        "oid": "d1b4e7cd42eaeb6d0e7cd38beeffbad90d0620f3"
+      },
+      "files": [
+        "docs/decisions/adrs/0047-port-the-tooling-to-go-with-one-cutover.md",
+        "docs/decisions/adrs/README.md"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Analyze (python)",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "PR title guard",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "CodeQL",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 585,
+      "title": "build: add the Go module and its CI job",
+      "state": "CLOSED",
+      "head": "43913fb95df59e1ac3b67cda28dae89488241b47",
+      "base": "d1b4e7cd42eaeb6d0e7cd38beeffbad90d0620f3",
+      "merge_commit": null,
+      "files": [
+        ".gc/plan-rules.md",
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/workflows/ci.yml",
+        ".ground-control.yaml",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "Makefile",
+        "doc.go",
+        "docs/README.md",
+        "docs/decisions/adrs/0013-separate-consumer-static-validation-from-author-ci.md",
+        "docs/decisions/adrs/0035-compose-catalog-kits-through-raes-and-transactional-pack-projections.md",
+        "docs/decisions/adrs/0046-admit-pinned-local-imports-through-raes-supplied-sources.md",
+        "docs/decisions/adrs/0047-port-the-tooling-to-go-with-one-cutover.md",
+        "docs/decisions/adrs/README.md",
+        "docs/development/pack-local-consumer-validation-design.md",
+        "docs/development/pack-local-consumer-validation-preflight.md",
+        "docs/public/checking.md",
+        "docs/public/mcp.md",
+        "docs/public/validating.md",
+        "go.mod",
+        "pyproject.toml",
+        "requirements/runtime.in",
+        "requirements/runtime.txt",
+        "src/raes_env_packs/check.py",
+        "src/raes_env_packs/digest.py",
+        "src/raes_env_packs/kits.py",
+        "src/raes_env_packs/validation.py",
+        "tests/test_authoring.py",
+        "tests/test_kit_materialization.py",
+        "tests/test_validation.py",
+        "uv.lock"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 586,
+      "title": "build: add the Go module and its CI job",
+      "state": "MERGED",
+      "head": "3a886d620db665b25e7dde76925198f3bea62ce9",
+      "base": "d1b4e7cd42eaeb6d0e7cd38beeffbad90d0620f3",
+      "merge_commit": {
+        "oid": "8799368af1847229f376c7fea95e4f02d1c00073"
+      },
+      "files": [
+        ".gc/plan-rules.md",
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/workflows/ci.yml",
+        ".ground-control.yaml",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "Makefile",
+        "doc.go",
+        "go.mod"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 587,
+      "title": "ci: enforce strict Go lint and the Google Go Style rules",
+      "state": "MERGED",
+      "head": "224bf19ad98c22f4017ff8f3966b359d63112272",
+      "base": "8799368af1847229f376c7fea95e4f02d1c00073",
+      "merge_commit": {
+        "oid": "ed0a6c2178aee146326da6d843d4e3006360d1f6"
+      },
+      "files": [
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/workflows/ci.yml",
+        ".golangci.yml",
+        ".ground-control.yaml",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "Makefile",
+        "docs/development/go-style-map.md",
+        "mise.lock",
+        "mise.toml"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 589,
+      "title": "ci: define the Go test standard and run Go fuzz targets",
+      "state": "MERGED",
+      "head": "b5fdf616f5b0978d6728636ba68b8ac392146a26",
+      "base": "ed0a6c2178aee146326da6d843d4e3006360d1f6",
+      "merge_commit": {
+        "oid": "a57f713bd03ed4e7bae950b6f9f96e95d99b44e4"
+      },
+      "files": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/fuzz.yml",
+        ".gitignore",
+        "CONTRIBUTING.md",
+        "Makefile",
+        "docs/development/ci.md",
+        "docs/development/go-test-standard.md",
+        "sonar-project.properties",
+        "tests/test_ci_topology.py"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 590,
+      "title": "build: compile the architecture model into repository checks",
+      "state": "MERGED",
+      "head": "0aeb98013f5b79f7a4ea9bfa926ad839abcf2f6e",
+      "base": "a57f713bd03ed4e7bae950b6f9f96e95d99b44e4",
+      "merge_commit": {
+        "oid": "b435c115f43afdb7d6ec60fd26ec8dc066fe9b4d"
+      },
+      "files": [
+        ".gc/plan-rules.md",
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/workflows/ci.yml",
+        ".golangci.yml",
+        ".ground-control.yaml",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "Makefile",
+        "architecture/model.yaml",
+        "architecture/workspace.dsl",
+        "docs/README.md",
+        "docs/development/ci.md",
+        "docs/development/designs/0001-architecture-model.md",
+        "docs/development/designs/README.md",
+        "docs/development/go-style-map.md",
+        "go.mod",
+        "go.sum",
+        "internal/architecture/c4.go",
+        "internal/architecture/c4_test.go",
+        "internal/architecture/check.go",
+        "internal/architecture/check_test.go",
+        "internal/architecture/design.go",
+        "internal/architecture/design_test.go",
+        "internal/architecture/doc.go",
+        "internal/architecture/finding.go",
+        "internal/architecture/graph.go",
+        "internal/architecture/load.go",
+        "internal/architecture/load_test.go",
+        "internal/architecture/model.go",
+        "internal/architecture/model_test.go",
+        "internal/architecture/testdata/broken/broken.go",
+        "internal/architecture/testdata/broken/go.mod",
+        "internal/architecture/testdata/dep/dep.go",
+        "internal/architecture/testdata/dep/go.mod",
+        "internal/architecture/testdata/empty/go.mod",
+        "internal/architecture/testdata/fixture/a/a.go",
+        "internal/architecture/testdata/fixture/a/a_test.go",
+        "internal/architecture/testdata/fixture/a/ext_test.go",
+        "internal/architecture/testdata/fixture/b/b.go",
+        "internal/architecture/testdata/fixture/b/gen.go",
+        "internal/architecture/testdata/fixture/cmd/tool/main.go",
+        "internal/architecture/testdata/fixture/d/d.go",
+        "internal/architecture/testdata/fixture/go.mod",
+        "internal/architecture/testdata/workspace.golden.dsl",
+        "internal/architecture/workspace.dsl.tmpl",
+        "tools/archcheck/main.go",
+        "tools/archcheck/main_test.go",
+        "tools/archcheck/testdata/repo/architecture/model.yaml",
+        "tools/archcheck/testdata/repo/architecture/workspace.dsl",
+        "tools/archcheck/testdata/repo/doc.go",
+        "tools/archcheck/testdata/repo/docs/development/designs/0001-start.md",
+        "tools/archcheck/testdata/repo/docs/development/designs/README.md",
+        "tools/archcheck/testdata/repo/go.mod"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 591,
+      "title": "ci: add the Go test, security, and prose gates and the conformance corpus",
+      "state": "OPEN",
+      "head": "82b523e1a1f903c75b1efee1231317721347fc24",
+      "base": "b435c115f43afdb7d6ec60fd26ec8dc066fe9b4d",
+      "merge_commit": null,
+      "files": [
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/dependabot.yml",
+        ".github/workflows/ci.yml",
+        ".github/workflows/codeql.yml",
+        ".github/workflows/mutation.yml",
+        ".golangci.yml",
+        ".ground-control.yaml",
+        ".vale.ini",
+        ".vale/styles/STE/ParagraphLength.yml",
+        ".vale/styles/STE/PassiveVoice.yml",
+        ".vale/styles/STE/PlainWords.yml",
+        ".vale/styles/STE/SentenceLength.yml",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "Makefile",
+        "architecture/model.yaml",
+        "architecture/workspace.dsl",
+        "conformance/conformance_test.go",
+        "conformance/doc.go",
+        "conformance/testdata/raes-new-pack/alias.txtar",
+        "conformance/testdata/raes-pack-catalog/blocking.txtar",
+        "conformance/testdata/raes-pack-catalog/usage.txtar",
+        "conformance/testdata/raes-pack-catalog/valid.txtar",
+        "conformance/testdata/raes-pack-check/blocking.txtar",
+        "conformance/testdata/raes-pack-check/usage.txtar",
+        "conformance/testdata/raes-pack-check/valid.txtar",
+        "conformance/testdata/raes-pack-dist/plans.txtar",
+        "conformance/testdata/raes-pack-dist/usage.txtar",
+        "conformance/testdata/raes-pack-issue-skeleton/usage.txtar",
+        "conformance/testdata/raes-pack-kit/discovery.txtar",
+        "conformance/testdata/raes-pack-kit/usage.txtar",
+        "conformance/testdata/raes-pack-mcp/eof.txtar",
+        "conformance/testdata/raes-pack-mcp/usage.txtar",
+        "conformance/testdata/raes-pack-new/blocking.txtar",
+        "conformance/testdata/raes-pack-new/create.txtar",
+        "conformance/testdata/raes-pack-new/usage.txtar",
+        "conformance/testdata/raes-pack-release/blocking.txtar",
+        "conformance/testdata/raes-pack-release/pass.txtar",
+        "conformance/testdata/raes-pack-release/usage.txtar",
+        "conformance/testdata/raes-pack-validate/blocking.txtar",
+        "conformance/testdata/raes-pack-validate/usage.txtar",
+        "conformance/testdata/raes-pack-validate/valid.txtar",
+        "conformance/testdata/raes-pack-verify/usage.txtar",
+        "conformance/testdata/raes-pack-verify/verify.txtar",
+        "docs/development/ci.md",
+        "docs/development/designs/0002-test-gates.md",
+        "docs/development/designs/0003-conformance-corpus.md",
+        "docs/development/documentation-style-guide.md",
+        "docs/development/go-test-standard.md",
+        "go.mod",
+        "go.sum",
+        "internal/architecture/check.go",
+        "internal/architecture/check_test.go",
+        "internal/architecture/design.go",
+        "internal/architecture/design_test.go",
+        "internal/architecture/doc.go",
+        "internal/architecture/finding.go",
+        "internal/architecture/model.go",
+        "internal/architecture/model_test.go",
+        "internal/architecture/rules.go",
+        "internal/report/report.go",
+        "internal/report/report_test.go",
+        "internal/strictyaml/strictyaml.go",
+        "internal/strictyaml/strictyaml_test.go",
+        "internal/testgate/changes.go",
+        "internal/testgate/changes_test.go",
+        "internal/testgate/doc.go",
+        "internal/testgate/exec.go",
+        "internal/testgate/exec_test.go",
+        "internal/testgate/gotest.go",
+        "internal/testgate/gotest_test.go",
+        "internal/testgate/mutation.go",
+        "internal/testgate/mutation_test.go",
+        "internal/testgate/records.go",
+        "internal/testgate/records_test.go",
+        "internal/testgate/regression.go",
+        "internal/testgate/regression_test.go",
+        "internal/testgate/report.go",
+        "internal/testgate/report_test.go",
+        "internal/testgate/rules.go",
+        "internal/testgate/runner.go",
+        "internal/testgate/runner_test.go",
+        "internal/testgate/worktree.go",
+        "mise.lock",
+        "mise.toml",
+        "mutation.yaml",
+        "tests/test_codeql_workflow.py",
+        "tests/test_dependency_pinning.py",
+        "tools/archcheck/main.go",
+        "tools/testgate/main.go",
+        "tools/testgate/main_test.go"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Analyze (python)",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Analyze (go)",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "CodeQL",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 592,
+      "title": "ci: keep the supply-chain and security gates for Go",
+      "state": "MERGED",
+      "head": "d021b5ad0f125e8a8ad22728f30c48b4988084c2",
+      "base": "1685bfb4551a1f0a9e8f0530a9392655784838fc",
+      "merge_commit": {
+        "oid": "49065791414c18a296c7e38611d7a5bf78200e18"
+      },
+      "files": [
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/dependabot.yml",
+        ".github/workflows/ci.yml",
+        ".github/workflows/codeql.yml",
+        ".ground-control.yaml",
+        ".vale.ini",
+        ".vale/styles/STE/ParagraphLength.yml",
+        ".vale/styles/STE/PassiveVoice.yml",
+        ".vale/styles/STE/PlainWords.yml",
+        ".vale/styles/STE/SentenceLength.yml",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "Makefile",
+        "architecture/model.yaml",
+        "architecture/workspace.dsl",
+        "conformance/conformance_test.go",
+        "conformance/doc.go",
+        "conformance/testdata/raes-new-pack/alias.txtar",
+        "conformance/testdata/raes-pack-catalog/blocking.txtar",
+        "conformance/testdata/raes-pack-catalog/usage.txtar",
+        "conformance/testdata/raes-pack-catalog/valid.txtar",
+        "conformance/testdata/raes-pack-check/blocking.txtar",
+        "conformance/testdata/raes-pack-check/usage.txtar",
+        "conformance/testdata/raes-pack-check/valid.txtar",
+        "conformance/testdata/raes-pack-dist/plans.txtar",
+        "conformance/testdata/raes-pack-dist/usage.txtar",
+        "conformance/testdata/raes-pack-issue-skeleton/usage.txtar",
+        "conformance/testdata/raes-pack-kit/discovery.txtar",
+        "conformance/testdata/raes-pack-kit/usage.txtar",
+        "conformance/testdata/raes-pack-mcp/eof.txtar",
+        "conformance/testdata/raes-pack-mcp/usage.txtar",
+        "conformance/testdata/raes-pack-new/blocking.txtar",
+        "conformance/testdata/raes-pack-new/create.txtar",
+        "conformance/testdata/raes-pack-new/usage.txtar",
+        "conformance/testdata/raes-pack-release/blocking.txtar",
+        "conformance/testdata/raes-pack-release/pass.txtar",
+        "conformance/testdata/raes-pack-release/usage.txtar",
+        "conformance/testdata/raes-pack-validate/blocking.txtar",
+        "conformance/testdata/raes-pack-validate/usage.txtar",
+        "conformance/testdata/raes-pack-validate/valid.txtar",
+        "conformance/testdata/raes-pack-verify/usage.txtar",
+        "conformance/testdata/raes-pack-verify/verify.txtar",
+        "docs/development/ci.md",
+        "docs/development/designs/0003-conformance-corpus.md",
+        "docs/development/documentation-style-guide.md",
+        "docs/development/go-test-standard.md",
+        "go.mod",
+        "go.sum",
+        "mise.lock",
+        "mise.toml",
+        "tests/test_codeql_workflow.py",
+        "tests/test_dependency_pinning.py"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 593,
+      "title": "ci: check the prose of changed Markdown files",
+      "state": "MERGED",
+      "head": "bfd7139d0ec228330b3ea087b68d6470e15772d9",
+      "base": "e93082ff7780a42069f1f62374a3eb3314c4b6ef",
+      "merge_commit": {
+        "oid": "64e615735800b66454f9df03eea5fa56332e320b"
+      },
+      "files": [
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/workflows/ci.yml",
+        ".ground-control.yaml",
+        ".vale.ini",
+        ".vale/styles/STE/ParagraphLength.yml",
+        ".vale/styles/STE/PassiveVoice.yml",
+        ".vale/styles/STE/PlainWords.yml",
+        ".vale/styles/STE/SentenceLength.yml",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "Makefile",
+        "docs/development/ci.md",
+        "docs/development/documentation-style-guide.md",
+        "mise.lock",
+        "mise.toml"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 596,
+      "title": "test: add the conformance corpus and run it against Python",
+      "state": "MERGED",
+      "head": "7b3f851dc17d88996f8df0bd659f5b7744922cef",
+      "base": "64e615735800b66454f9df03eea5fa56332e320b",
+      "merge_commit": {
+        "oid": "d021b5ad0f125e8a8ad22728f30c48b4988084c2"
+      },
+      "files": [
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/workflows/ci.yml",
+        ".ground-control.yaml",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "Makefile",
+        "architecture/model.yaml",
+        "architecture/workspace.dsl",
+        "conformance/conformance_test.go",
+        "conformance/doc.go",
+        "conformance/testdata/raes-new-pack/alias.txtar",
+        "conformance/testdata/raes-pack-catalog/blocking.txtar",
+        "conformance/testdata/raes-pack-catalog/usage.txtar",
+        "conformance/testdata/raes-pack-catalog/valid.txtar",
+        "conformance/testdata/raes-pack-check/blocking.txtar",
+        "conformance/testdata/raes-pack-check/usage.txtar",
+        "conformance/testdata/raes-pack-check/valid.txtar",
+        "conformance/testdata/raes-pack-dist/plans.txtar",
+        "conformance/testdata/raes-pack-dist/usage.txtar",
+        "conformance/testdata/raes-pack-issue-skeleton/usage.txtar",
+        "conformance/testdata/raes-pack-kit/discovery.txtar",
+        "conformance/testdata/raes-pack-kit/usage.txtar",
+        "conformance/testdata/raes-pack-mcp/eof.txtar",
+        "conformance/testdata/raes-pack-mcp/usage.txtar",
+        "conformance/testdata/raes-pack-new/blocking.txtar",
+        "conformance/testdata/raes-pack-new/create.txtar",
+        "conformance/testdata/raes-pack-new/usage.txtar",
+        "conformance/testdata/raes-pack-release/blocking.txtar",
+        "conformance/testdata/raes-pack-release/pass.txtar",
+        "conformance/testdata/raes-pack-release/usage.txtar",
+        "conformance/testdata/raes-pack-validate/blocking.txtar",
+        "conformance/testdata/raes-pack-validate/usage.txtar",
+        "conformance/testdata/raes-pack-validate/valid.txtar",
+        "conformance/testdata/raes-pack-verify/usage.txtar",
+        "conformance/testdata/raes-pack-verify/verify.txtar",
+        "docs/development/ci.md",
+        "docs/development/designs/0003-conformance-corpus.md",
+        "docs/development/go-test-standard.md",
+        "go.mod",
+        "go.sum"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 605,
+      "title": "fix: drop the secret-file name list from input admission",
+      "state": "OPEN",
+      "head": "b521f1bdb15879e5cab56c6c6ea15fc8abafd2b4",
+      "base": "82b523e1a1f903c75b1efee1231317721347fc24",
+      "merge_commit": null,
+      "files": [
+        "conformance/testdata/raes-pack-kit/admission.txtar",
+        "docs/development/pack-local-consumer-validation-design.md",
+        "docs/public/kits.md",
+        "docs/public/mcp.md",
+        "src/raes_env_packs/_authoring_safety.py",
+        "src/raes_env_packs/authoring.py",
+        "src/raes_env_packs/validation.py",
+        "src/raes_env_packs/verify.py",
+        "tests/test_authoring.py",
+        "tests/test_validation.py"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 606,
+      "title": "refactor: port the pack filesystem boundary to Go",
+      "state": "OPEN",
+      "head": "48165af52fc3f079c55ed91fbf66fa1baecc2933",
+      "base": "b521f1bdb15879e5cab56c6c6ea15fc8abafd2b4",
+      "merge_commit": null,
+      "files": [
+        "Makefile",
+        "architecture/model.yaml",
+        "architecture/workspace.dsl",
+        "conformance/testdata/raes-pack-check/budgets.txtar",
+        "conformance/testdata/raes-pack-check/unsafe-members.txtar",
+        "docs/development/designs/0004-pack-filesystem.md",
+        "docs/development/designs/README.md",
+        "go.mod",
+        "go.sum",
+        "internal/architecture/load.go",
+        "internal/architecture/load_test.go",
+        "internal/architecture/model.go",
+        "internal/architecture/model_test.go",
+        "internal/packfs/admission.go",
+        "internal/packfs/admission_test.go",
+        "internal/packfs/doc.go",
+        "internal/packfs/errors.go",
+        "internal/packfs/fault_linux_test.go",
+        "internal/packfs/fault_test.go",
+        "internal/packfs/fuzz_test.go",
+        "internal/packfs/inventory.go",
+        "internal/packfs/inventory_test.go",
+        "internal/packfs/member.go",
+        "internal/packfs/member_test.go",
+        "internal/packfs/names.go",
+        "internal/packfs/names_test.go",
+        "internal/packfs/packfs_test.go",
+        "internal/packfs/root.go",
+        "internal/packfs/root_test.go",
+        "internal/packfs/system.go",
+        "internal/packfs/system_linux.go",
+        "internal/packfs/system_other.go",
+        "internal/packfs/transactions.go",
+        "internal/packfs/transactions_linux_test.go",
+        "internal/packfs/transactions_other_test.go",
+        "internal/packfs/transactions_test.go",
+        "mutation.yaml",
+        "tools/archcheck/main.go",
+        "tools/archcheck/main_test.go",
+        "tools/archcheck/testdata/repo/architecture/model.yaml"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 611,
+      "title": "refactor: port strict document ingest and full schema validation to Go",
+      "state": "OPEN",
+      "head": "f4b588c8d249c8a66173de464eaad59162be620c",
+      "base": "48165af52fc3f079c55ed91fbf66fa1baecc2933",
+      "merge_commit": null,
+      "files": [
+        "architecture/model.yaml",
+        "architecture/workspace.dsl",
+        "conformance/testdata/raes-pack-check/schema.txtar",
+        "conformance/testdata/raes-pack-check/yaml-strict.txtar",
+        "conformance/testdata/raes-pack-kit/schema.txtar",
+        "docs/development/designs/0005-strict-ingest.md",
+        "go.mod",
+        "go.sum",
+        "internal/architecture/model.go",
+        "internal/document/doc.go",
+        "internal/document/document_test.go",
+        "internal/document/errors.go",
+        "internal/document/fuzz_test.go",
+        "internal/document/json.go",
+        "internal/document/limits.go",
+        "internal/document/pyyaml.go",
+        "internal/document/pyyaml_test.go",
+        "internal/document/yaml.go",
+        "internal/schema/schema.go",
+        "internal/schema/schema_test.go",
+        "internal/secretshape/secretshape.go",
+        "internal/secretshape/secretshape_test.go",
+        "mutation.yaml",
+        "schemas.go"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 614,
+      "title": "refactor: port the diagnostic model and the command outcome contract to Go",
+      "state": "OPEN",
+      "head": "ebc0c2dffa621b86450bdec04eb011046d04a8e2",
+      "base": "f4b588c8d249c8a66173de464eaad59162be620c",
+      "merge_commit": null,
+      "files": [
+        "architecture/model.yaml",
+        "architecture/workspace.dsl",
+        "conformance/testdata/raes-pack-catalog/escape.txtar",
+        "conformance/testdata/raes-pack-check/escape.txtar",
+        "docs/development/designs/0006-diagnostics-and-outcomes.md",
+        "internal/diagnostic/catalog.go",
+        "internal/diagnostic/catalog.json",
+        "internal/diagnostic/diagnostic.go",
+        "internal/diagnostic/diagnostic_test.go",
+        "internal/diagnostic/testdata/presentations.json",
+        "internal/jsondoc/jsondoc.go",
+        "internal/jsondoc/jsondoc_test.go",
+        "internal/outcome/outcome.go",
+        "internal/outcome/outcome_test.go",
+        "internal/report/report.go",
+        "internal/report/report_test.go",
+        "internal/schema/schema.go",
+        "internal/schema/schema_test.go",
+        "internal/terminal/terminal.go",
+        "internal/terminal/terminal_test.go",
+        "mutation.yaml",
+        "tools/archcheck/main.go",
+        "tools/testgate/main.go"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 615,
+      "title": "refactor: declare the RAES operations as Go interfaces",
+      "state": "OPEN",
+      "head": "f78b4fd53bdc3952e4783ae5b85c894b77dfb97e",
+      "base": "ebc0c2dffa621b86450bdec04eb011046d04a8e2",
+      "merge_commit": null,
+      "files": [
+        ".github/workflows/ci.yml",
+        "Makefile",
+        "architecture/model.yaml",
+        "architecture/workspace.dsl",
+        "cmd/raes-pack-issue-skeleton/main.go",
+        "cmd/raes-pack-issue-skeleton/main_test.go",
+        "conformance/testdata/raes-pack-issue-skeleton/gh.txtar",
+        "docs/development/designs/0007-raes-interface.md",
+        "docs/development/designs/0008-issue-skeleton.md",
+        "docs/development/raes-operations.md",
+        "internal/issueskeleton/bodies.go",
+        "internal/issueskeleton/bodies_test.go",
+        "internal/issueskeleton/github.go",
+        "internal/issueskeleton/github_test.go",
+        "internal/issueskeleton/operations.go",
+        "internal/issueskeleton/plan.go",
+        "internal/issueskeleton/plan_test.go",
+        "internal/issueskeleton/templates/behavior.txt",
+        "internal/issueskeleton/templates/build.txt",
+        "internal/issueskeleton/templates/child-issue-note.txt",
+        "internal/issueskeleton/templates/common-anchors.txt",
+        "internal/issueskeleton/templates/contract.txt",
+        "internal/issueskeleton/templates/final.txt",
+        "internal/issueskeleton/templates/flags.txt",
+        "internal/issueskeleton/templates/issues.json",
+        "internal/issueskeleton/templates/manual.txt",
+        "internal/issueskeleton/templates/pack.txt",
+        "internal/issueskeleton/templates/profiles.txt",
+        "internal/issueskeleton/templates/rehearsal.txt",
+        "internal/issueskeleton/templates/topology.txt",
+        "internal/issueskeleton/testdata/contract.golden",
+        "internal/raes/raes.go",
+        "internal/raes/raes_test.go",
+        "internal/terminal/terminal.go",
+        "internal/terminal/terminal_test.go",
+        "mutation.yaml"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance-go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 616,
+      "title": "refactor: port the issue skeleton helper to Go",
+      "state": "MERGED",
+      "head": "9d3c4b3e100265237cb6fe1cc0dec249e260e087",
+      "base": "ff6ab6ae5bd02d55ec7ea18a2d7c6be27af610ac",
+      "merge_commit": {
+        "oid": "f78b4fd53bdc3952e4783ae5b85c894b77dfb97e"
+      },
+      "files": [
+        ".github/workflows/ci.yml",
+        "Makefile",
+        "architecture/model.yaml",
+        "architecture/workspace.dsl",
+        "cmd/raes-pack-issue-skeleton/main.go",
+        "cmd/raes-pack-issue-skeleton/main_test.go",
+        "conformance/testdata/raes-pack-issue-skeleton/gh.txtar",
+        "docs/development/designs/0008-issue-skeleton.md",
+        "internal/issueskeleton/bodies.go",
+        "internal/issueskeleton/bodies_test.go",
+        "internal/issueskeleton/github.go",
+        "internal/issueskeleton/github_test.go",
+        "internal/issueskeleton/operations.go",
+        "internal/issueskeleton/plan.go",
+        "internal/issueskeleton/plan_test.go",
+        "internal/issueskeleton/templates/behavior.txt",
+        "internal/issueskeleton/templates/build.txt",
+        "internal/issueskeleton/templates/child-issue-note.txt",
+        "internal/issueskeleton/templates/common-anchors.txt",
+        "internal/issueskeleton/templates/contract.txt",
+        "internal/issueskeleton/templates/final.txt",
+        "internal/issueskeleton/templates/flags.txt",
+        "internal/issueskeleton/templates/issues.json",
+        "internal/issueskeleton/templates/manual.txt",
+        "internal/issueskeleton/templates/pack.txt",
+        "internal/issueskeleton/templates/profiles.txt",
+        "internal/issueskeleton/templates/rehearsal.txt",
+        "internal/issueskeleton/templates/topology.txt",
+        "internal/issueskeleton/testdata/contract.golden",
+        "internal/terminal/terminal.go",
+        "internal/terminal/terminal_test.go",
+        "mutation.yaml"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance-go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "number": 618,
+      "title": "refactor: stabilize Go port output boundaries and verification gates",
+      "state": "OPEN",
+      "head": "570ff17aae37b90100190bf7a5ad3e124bcfc971",
+      "base": "f78b4fd53bdc3952e4783ae5b85c894b77dfb97e",
+      "merge_commit": null,
+      "files": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/codeql.yml",
+        ".github/workflows/pr-title.yml",
+        "Makefile",
+        "architecture/model.yaml",
+        "cmd/raes-pack-issue-skeleton/main.go",
+        "cmd/raes-pack-issue-skeleton/main_test.go",
+        "conformance/conformance_test.go",
+        "conformance/python_fault.py",
+        "conformance/testdata/raes-pack-catalog/tool-failure.txtar",
+        "conformance/testdata/raes-pack-check/tool-failure.txtar",
+        "conformance/testdata/raes-pack-dist/tool-failure.txtar",
+        "conformance/testdata/raes-pack-issue-skeleton/tool-failure.txtar",
+        "conformance/testdata/raes-pack-kit/tool-failure.txtar",
+        "conformance/testdata/raes-pack-verify/tool-failure.txtar",
+        "docs/development/designs/0003-conformance-corpus.md",
+        "docs/development/designs/0009-go-port-stabilization.md",
+        "internal/architecture/load_test.go",
+        "internal/architecture/testdata/fixture/a/a.go",
+        "internal/diagnostic/diagnostic.go",
+        "internal/diagnostic/diagnostic_test.go",
+        "tests/test_codeql_workflow.py",
+        "tests/test_go_stabilization.py"
+      ],
+      "checks": [
+        {
+          "name": "compile",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Analyze (python)",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz validate_pack",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "PR title guard",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "PR title guard",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Analyze (go)",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "tests",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "Fuzz Go targets",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "content",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "docs",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "conformance-go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-audit",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-lint",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-arch",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-mutation",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "go-regression",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "sonar",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "verify",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "CodeQL",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "GitGuardian Security Checks",
+          "result": "SUCCESS"
+        },
+        {
+          "name": "SonarCloud Code Analysis",
+          "result": "SUCCESS"
+        }
+      ]
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import (
 func TestParseReport(t *testing.T) {
 	data := `{"stats":{"totalMutantsCount":5,"killedCount":2,"escapedCount":1,"skippedCount":1,"errorCount":1},
 		"escaped":[{"mutator":{"mutatorName":"branch/if","originalSourceCode":"a","mutatedSourceCode":"b","originalFilePath":"x.go","originalStartLine":0}}],
-		"killed":[]}`
+		"killed":[{},{}]}`
 	got, err := parseReport([]byte(data))
 	if err != nil {
 		t.Fatalf("parseReport() error = %v", err)
@@ -151,5 +151,26 @@ func TestLineAt(t *testing.T) {
 	}
 	if got := lineAt(lines, 3); got != "" {
 		t.Errorf("lineAt(3) = %q, want the empty string", got)
+	}
+}
+
+// Regression test for #617: incomplete evidence must not pass the mutation gate.
+func TestParseReportRejectsIncompleteEvidence(t *testing.T) {
+	for _, input := range []string{
+		`null`, `{}`, `{"stats":{}}`,
+		`{"stats":{"totalMutantsCount":null,"killedCount":0,"escapedCount":0,"skippedCount":0,"errorCount":0}}`,
+		`{"stats":{"totalMutantsCount":1,"killedCount":0,"escapedCount":1,"skippedCount":0,"errorCount":0},"escaped":[]}`,
+		`{"stats":{"totalMutantsCount":1,"killedCount":1,"escapedCount":0,"skippedCount":0,"errorCount":0},"killed":[]}`,
+		`{"stats":{"totalMutantsCount":1,"killedCount":0,"escapedCount":0,"skippedCount":0,"errorCount":0}}`,
+		`{"stats":{"totalMutantsCount":0,"killedCount":0,"escapedCount":0,"skippedCount":-1,"errorCount":1}}`,
+		`{"stats":{"totalMutantsCount":0,"killedCount":0,"escapedCount":0,"skippedCount":1,"errorCount":0}}`,
+		`{"stats":{"totalMutantsCount":-1,"killedCount":0,"escapedCount":0,"skippedCount":0,"errorCount":0}}`,
+	} {
+		if _, err := parseReport([]byte(input)); err == nil {
+			t.Errorf("parseReport(%s) accepted incomplete evidence", input)
+		}
+	}
+	if _, err := parseReport([]byte(`{"stats":{"totalMutantsCount":0,"killedCount":0,"escapedCount":0,"skippedCount":0,"errorCount":0},"killed":[],"escaped":[]}`)); err != nil {
+		t.Errorf("parseReport() rejected a complete empty report: %v", err)
 	}
 }

@@ -1,5 +1,6 @@
 # Python lets malformed gh JSON escape as an unbounded traceback and status 1.
 [python] skip 'deviation: malformed gh JSON must give bounded tool failure (#617)'
+chmod 700 bin
 chmod 755 bin/gh
 env PATH=$WORK/bin:$PATH
 exits 3 raes-pack-issue-skeleton --repo example-org/example-packs --pack-id demo --milestone-number 7

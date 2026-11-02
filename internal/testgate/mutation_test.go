@@ -61,7 +61,7 @@ func escapedMutant(mutator, old, replacement string) mutant {
 func gateReport(t *testing.T) string {
 	t.Helper()
 	var r mutestingReport
-	r.Stats.Total, r.Stats.Killed, r.Stats.NotCompiled, r.Stats.Escaped = 10, 3, 1, 4
+	r.Stats.Total, r.Stats.Killed, r.Stats.NotCompiled, r.Stats.Escaped = 8, 3, 1, 4
 	r.Killed = []mutant{
 		escapedMutant("expression/comparison", "x > 0", "x < 0"),
 		escapedMutant("numbers/decrementer", "return 1", "return 0"),
@@ -163,7 +163,7 @@ func TestMutation(t *testing.T) {
 			Message:  `no test kills the expression/comparison mutant in F: "if x > 0 {" becomes "if x >= 0 {"`,
 			Fix:      "Add a test that fails with the mutant. If no test can observe the change, record the mutant in mutation.yaml with the reason.",
 		}},
-		Files: 1, Mutants: 10, Skipped: 3, Killed: 2, NotCompiled: 1, Escaped: 2, Equivalent: 1,
+		Files: 1, Mutants: 8, Skipped: 3, Killed: 2, NotCompiled: 1, Escaped: 2, Equivalent: 1,
 		Packages: []PackageScore{{Dir: ".", Killed: 2, Survived: 1, Equivalent: 1}},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -383,8 +383,10 @@ func TestMutationErrors(t *testing.T) {
 			wantErr: "decode the go-mutesting report",
 		},
 		{
-			name:    "failed exec step",
-			change:  func(g *gate, _ *MutationOptions) { g.report = `{"stats":{"errorCount":1}}` },
+			name: "failed exec step",
+			change: func(g *gate, _ *MutationOptions) {
+				g.report = `{"stats":{"totalMutantsCount":1,"killedCount":0,"escapedCount":0,"skippedCount":0,"errorCount":1}}`
+			},
 			wantErr: "the exec step failed for 1 mutants",
 		},
 		{
@@ -398,14 +400,16 @@ func TestMutationErrors(t *testing.T) {
 			wantErr: "decode mutation.yaml",
 		},
 		{
-			name:    "mutant of another file",
-			change:  func(g *gate, _ *MutationOptions) { g.report = `{"escaped":[{"mutator":{"originalFilePath":"z.go"}}]}` },
+			name: "mutant of another file",
+			change: func(g *gate, _ *MutationOptions) {
+				g.report = `{"stats":{"totalMutantsCount":1,"killedCount":0,"escapedCount":1,"skippedCount":0,"errorCount":0},"escaped":[{"mutator":{"originalFilePath":"z.go"}}]}`
+			},
 			wantErr: "go-mutesting reported a mutant of z.go, which the gate did not mutate",
 		},
 		{
 			name: "mutant that does not parse",
 			change: func(g *gate, _ *MutationOptions) {
-				g.report = `{"escaped":[{"mutator":{"originalFilePath":"a.go","originalSourceCode":"package\n\n\n}\n","mutatedSourceCode":"package\n\n\n{\n"}}]}`
+				g.report = `{"stats":{"totalMutantsCount":1,"killedCount":0,"escapedCount":1,"skippedCount":0,"errorCount":0},"escaped":[{"mutator":{"originalFilePath":"a.go","originalSourceCode":"package\n\n\n}\n","mutatedSourceCode":"package\n\n\n{\n"}}]}`
 			},
 			wantErr: "parse a.go",
 		},

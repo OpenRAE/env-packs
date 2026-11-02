@@ -51,3 +51,18 @@ func TestReplaceRollbackFault(t *testing.T) {
 		t.Errorf("the recovery path has %q, want the original tree", got)
 	}
 }
+
+// Regression test for #617: failed panic rollback must retain the recovery path.
+func TestReplacePanicRecovery(t *testing.T) {
+	staged, target := staging(t)
+	f := newFault("Renameat2", 2, failCall)
+	f.err = unix.EIO
+	err := replace(f, staged, target, func(string) error { panic("private defect") })
+	e, ok := errors.AsType[*Error](err)
+	if !ok || e.Reason != ReasonRecovery || e.Path != staged || !errors.Is(err, unix.EIO) {
+		t.Fatalf("replace() = %v, want recovery path and rollback cause", err)
+	}
+	if got := readFile(t, filepath.Join(staged, "file")); got != "old" {
+		t.Errorf("recovery path = %q, want old", got)
+	}
+}
