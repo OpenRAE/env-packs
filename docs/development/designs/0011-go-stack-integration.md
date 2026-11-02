@@ -62,3 +62,7 @@ flowchart LR
 
 Run targeted gate tests locally. Hosted CI validates the complete combined tree,
 including mutation, regression, conformance, content, security, and fuzz checks.
+
+The combined mutation run also checks two error boundaries. Malformed milestone
+JSON must retain its decoding error. An empty regression selection must succeed
+without asking Git for an unused baseline, even if that lookup would fail.

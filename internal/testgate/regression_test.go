@@ -241,6 +241,9 @@ func TestRegressionBuildFailure(t *testing.T) {
 func TestRegressionNoTests(t *testing.T) {
 	g := newRegressionRepo(t)
 	g.diff = regressionDiff()
+	// An empty selection needs no baseline. An unavailable merge base must
+	// not turn an unrelated change into a failed regression check.
+	g.fail = map[string]Result{"git merge-base": {ExitCode: 1, Stderr: []byte("no merge base")}}
 	r := g.runner()
 	got, err := Regression(context.Background(), r, regressionOptions(t))
 	if err != nil || got.Tests != 0 || len(got.Findings) != 0 {

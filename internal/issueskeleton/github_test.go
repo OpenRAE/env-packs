@@ -3,6 +3,7 @@ package issueskeleton
 import (
 	"bufio"
 	"errors"
+	"io"
 	"slices"
 	"strings"
 	"testing"
@@ -91,8 +92,8 @@ func TestMilestones(t *testing.T) {
 		t.Errorf("Milestones() = %v, %v; want %v", got, err, want)
 	}
 	f.answers["api repos/o/r/milestones --paginate"] = "[{"
-	if _, err := resolved(t, f).Milestones(); err == nil {
-		t.Error("Milestones() of bad JSON: no error")
+	if got, err := resolved(t, f).Milestones(); !errors.Is(err, io.ErrUnexpectedEOF) || got != nil {
+		t.Errorf("Milestones() of truncated JSON = %v, %v; want no milestones and unexpected EOF", got, err)
 	}
 	f.errs["api repos/o/r/milestones --paginate"] = &RunError{Stderr: []byte("denied")}
 	if _, err := resolved(t, f).Milestones(); err == nil || err.Error() != "denied" {
