@@ -24,3 +24,28 @@ func TestEscape(t *testing.T) {
 		}
 	}
 }
+
+func TestQuote(t *testing.T) {
+	// The values are those of repr in Python.
+	tests := map[string]string{
+		"":                          "''",
+		"plain":                     "'plain'",
+		"it's":                      "\"it's\"",
+		"say \"hi\"":                "'say \"hi\"'",
+		"both ' and \"":             "'both \\' and \"'",
+		"back\\slash":               "'back\\\\slash'",
+		"tab\u0009nl\u000acr\u000d": "'tab\\tnl\\ncr\\r'",
+		"esc\u001b del\u007f":       "'esc\\x1b del\\x7f'",
+		"nel\u0085 nbsp\u00a0":      "'nel\\x85 nbsp\\xa0'",
+		"ar\u061cmark":              "'ar\\u061cmark'",
+		"tag\U000e0001":             "'tag\\U000e0001'",
+		"caf\u00e9 \U0001f600":      "'caf\u00e9 \U0001f600'",
+		"bad\xffbyte":               `'bad\udcffbyte'`,
+		"\ufffd\x01":                "'\ufffd\\x01'",
+	}
+	for s, want := range tests {
+		if got := Quote(s); got != want {
+			t.Errorf("Quote(%q) = %q, want %q", s, got, want)
+		}
+	}
+}

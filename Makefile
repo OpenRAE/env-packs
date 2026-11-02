@@ -27,7 +27,7 @@ MISE ?= mise
 
 .DEFAULT_GOAL := help
 
-.PHONY: help devmain prose conformance go-check go-lint go-audit go-fuzz go-arch \
+.PHONY: help devmain prose conformance conformance-go go-check go-lint go-audit go-fuzz go-arch \
 	go-arch-design go-arch-dsl go-mutation go-mutation-all go-regression
 
 help: ## List the available targets
@@ -131,6 +131,14 @@ BASE ?= origin/go-cutover
 # commands, so the test results do not come from the cache.
 conformance: ## Run the conformance corpus against the Python implementation
 	$(GO) test ./conformance -count=1 -args -impl=python
+
+# Builds each Go command under cmd/ and runs its conformance cases against it.
+# The other commands have no Go implementation yet (design 0008).
+conformance-go: ## Run the conformance cases of the Go commands against Go
+	@set -eu; bin=$$(mktemp -d); trap 'rm -rf "$$bin"' EXIT; \
+	$(GO) build -o "$$bin/" ./cmd/...; \
+	commands=$$(ls cmd | paste -sd '|' -); \
+	$(GO) test ./conformance -count=1 -run "TestCorpus/^($$commands)$$/" -args -impl=go -bin "$$bin"
 
 # Checks the prose of each Markdown file that HEAD adds or changes since BASE,
 # with the Vale version that mise.toml pins and the rules in .vale/styles/STE

@@ -268,6 +268,25 @@ jobs:
       - name: Run the conformance corpus against Python
         run: make conformance
 
+  # Runs the conformance cases of each Go command against the Go build with
+  # `make conformance-go` (design 0008). It needs no Python.
+  conformance-go:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Run the conformance cases of the Go commands
+        run: make conformance-go
+
   # Builds, vets, and tests the Go code of the port (ADR 0047) with the toolchain
   # that go.mod pins. It runs the same `make go-check` target as a local run, so
   # the two cannot drift. There is no module cache: the downloads are small, and a
@@ -485,7 +504,7 @@ jobs:
   # adding it to `needs` and to the check below (ADR 0029).
   verify:
     runs-on: ubuntu-latest
-    needs: [compile, tests, audit, content, docs, conformance, go, go-lint, go-audit, go-arch, go-mutation, go-regression]
+    needs: [compile, tests, audit, content, docs, conformance, conformance-go, go, go-lint, go-audit, go-arch, go-mutation, go-regression]
     if: always()
     steps:
       - name: Require every mandatory verification job to pass
@@ -496,6 +515,7 @@ jobs:
           CONTENT: ${{ needs.content.result }}
           DOCS: ${{ needs.docs.result }}
           CONFORMANCE: ${{ needs.conformance.result }}
+          CONFORMANCE_GO: ${{ needs.conformance-go.result }}
           GO: ${{ needs.go.result }}
           GO_LINT: ${{ needs.go-lint.result }}
           GO_AUDIT: ${{ needs.go-audit.result }}
@@ -503,8 +523,8 @@ jobs:
           GO_MUTATION: ${{ needs.go-mutation.result }}
           GO_REGRESSION: ${{ needs.go-regression.result }}
         run: |
-          echo "compile=$COMPILE tests=$TESTS audit=$AUDIT content=$CONTENT docs=$DOCS conformance=$CONFORMANCE go=$GO go-lint=$GO_LINT go-audit=$GO_AUDIT go-arch=$GO_ARCH go-mutation=$GO_MUTATION go-regression=$GO_REGRESSION"
-          for result in "$COMPILE" "$TESTS" "$AUDIT" "$CONTENT" "$DOCS" "$CONFORMANCE" "$GO" "$GO_LINT" "$GO_AUDIT" "$GO_ARCH" "$GO_MUTATION" "$GO_REGRESSION"; do
+          echo "compile=$COMPILE tests=$TESTS audit=$AUDIT content=$CONTENT docs=$DOCS conformance=$CONFORMANCE conformance-go=$CONFORMANCE_GO go=$GO go-lint=$GO_LINT go-audit=$GO_AUDIT go-arch=$GO_ARCH go-mutation=$GO_MUTATION go-regression=$GO_REGRESSION"
+          for result in "$COMPILE" "$TESTS" "$AUDIT" "$CONTENT" "$DOCS" "$CONFORMANCE" "$CONFORMANCE_GO" "$GO" "$GO_LINT" "$GO_AUDIT" "$GO_ARCH" "$GO_MUTATION" "$GO_REGRESSION"; do
             if [ "$result" != "success" ]; then
               echo "::error::A mandatory verification job did not succeed; blocking merge."
               exit 1

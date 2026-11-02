@@ -1,0 +1,24 @@
+    ## Goal
+    Define the real topology, assets, participant surface, and reference-triangle design for `{{.PackID}}`.
+
+    {{.PackBlock}}
+    {{.CommonAnchors}}
+    ## Deliverables
+    - `sdl/` start-state model naming every required host, identity, domain, application, service, share, dataset,
+      route, credential, tool, dependency, and objective state.
+    - `assets/` content for planted artifacts, briefing material, synthetic credentials, target data, and custom
+      service/container source.
+    - Reference-triangle design mapping the same path into `build/`, `tests/`, and `docs/walkthroughs/`.
+    - Participant execution surface design: attacker host, browser terminal, seeded foothold, VPN/jump access, or
+      equivalent.
+    - Live-build isolation design: dedicated VPC/subnets or equivalent isolation, no default-VPC golden range, and no
+      private-DNS endpoints in shared VPCs.
+
+    ## Acceptance Criteria
+    - Every referenced component has a real implementation plan.
+    - Local/minimal profiles are marked as degraded aids and cannot replace the golden build.
+    - The design shows how the golden build creates participant start state without hidden manual setup or required
+      repo-root `.env`.
+
+    {{.ChildIssueNote}}
+    
