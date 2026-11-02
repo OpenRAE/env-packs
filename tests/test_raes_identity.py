@@ -127,7 +127,7 @@ class PackageIdentityTests(unittest.TestCase):
         )
 
     def test_raes_is_the_single_upstream_floor(self) -> None:
-        # ADR 0043: a minimum version, not one exact patch level.
+        # One temporary exact pin; issue #623 restores the ADR 0043 floor.
         dependencies = _project()["dependencies"]
         specs = [
             dependency.replace(" ", "")
@@ -135,7 +135,7 @@ class PackageIdentityTests(unittest.TestCase):
             if re.match(r"raes(?![\w-])", dependency.strip())
         ]
         self.assertEqual(len(specs), 1)
-        self.assertRegex(specs[0], r"\Araes>=[^=<>!~;,\s]+\Z")
+        self.assertRegex(specs[0], r"\Araes==[^=<>!~;,\s]+\Z")
         self.assertFalse(
             any(
                 dependency.startswith(

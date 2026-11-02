@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "raes-env-packs"
 # Static version, bumped by release-please on release (ADR 0008).
-version = "7.2.0"
+version = "7.2.1"
 description = "RAES environment-pack definition, schemas, template, and authoring/validation tooling."
 readme = "README.md"
 # RAES 9 supports only CPython 3.14 (issue #519, ADR 0011). SDL validation flows entirely through RAES, so this package tracks
@@ -19,12 +19,11 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Security",
 ]
-# raes is a hard dependency with a minimum version (ADR 0011, ADR 0043): SDL
-# is validated *through RAES* (raes.parse_sdl_file), never a local
-# restatement, and the gate is fail-closed, so RAES cannot be optional. The
-# floor is the oldest RAES release that supplies every RAES API this package
-# uses. requirements/runtime.txt and uv.lock record the exact version CI tests.
-dependencies = ["PyYAML>=6", "raes>=10.4.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
+# raes is a hard dependency (ADR 0011): SDL is validated *through RAES*
+# (raes.parse_sdl_file), never a local restatement, and the gate is fail-closed,
+# so RAES cannot be optional. It temporarily pins one exact version instead of
+# the ADR 0043 floor; issue #623 restores the floor.
+dependencies = ["PyYAML>=6", "raes==10.5.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
 
 [project.optional-dependencies]
 test = ["bcrypt==5.0.0"]
