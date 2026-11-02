@@ -36,7 +36,8 @@ from raes_contracts.contracts import (
 from raes_contracts.diagnostics import Diagnostic
 from raes_contracts.json_ingress import StrictJsonIngressError
 from raes import SDLError, Scenario, load_sdl_fragment, parse_sdl_file
-from raes.artifact_requirements import ArtifactIdentity
+from raes.associated_artifacts import ScenarioArtifactParent
+from raes_contracts.artifact_identity import ArtifactIdentity
 
 from . import _pack_fs
 from .validation import (
@@ -352,7 +353,7 @@ def _validate_with_parent_candidates(
         try:
             diagnostics = validate_associated_artifact_manifest(
                 manifest,
-                parent=parent,
+                parent=ScenarioArtifactParent(parent),
                 artifact_readers=cast(Mapping[str, BinaryIO], readers),
                 limits=limits,
             )
@@ -625,7 +626,7 @@ def _select_single_parent(
     best: tuple[Diagnostic, ...] | None = None
     for parent in candidates:
         diagnostics = validate_associated_artifact_manifest(
-            manifest, parent=parent, artifact_readers={}, limits=limits
+            manifest, parent=ScenarioArtifactParent(parent), artifact_readers={}, limits=limits
         )
         residual = tuple(item for item in diagnostics if item.code not in _PRESENCE_CODES)
         if not residual:
@@ -680,7 +681,7 @@ def _bind_artifact_set(
     try:
         diagnostics = validate_associated_artifact_manifest(
             manifest,
-            parent=parent,
+            parent=ScenarioArtifactParent(parent),
             artifact_readers=cast(Mapping[str, BinaryIO], readers),
             limits=limits,
         )

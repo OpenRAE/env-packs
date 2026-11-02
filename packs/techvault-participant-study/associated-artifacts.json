@@ -595,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault-participant-study.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "0ea4f26ecc34ec8c8ad28031cc919c57cc795889ebeb66e0ae1489e9ab8bdd40"
+        "value": "486f019d38808a47ed94dc97aa91171a6dd082de1847b96f701aa6a6f91bfd26"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -627,9 +627,9 @@
       "uri": "raes-environment-pack:/sdl/techvault-participant-study.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "24dd7fd8c5e51cf78a6e00a718d231a78ced5b746c774f6a209c25538233f33b"
+        "value": "9cbae9a6c017ba9ac2318e02c217401581f1ddb9be7dc2a9144c8ce4a001bb03"
       },
-      "size_bytes": 162380,
+      "size_bytes": 162313,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -701,5 +701,5 @@
       "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:46434fd2aebfdd86b3e83df52dd5b133a685ae85fb242d7433d016b9975f4e9c"
+  "set_digest": "sha256:1b7d91690f25d7a89cc0ee5d5703a0b80cb96364660b6af31a32c356cc42a070"
 }

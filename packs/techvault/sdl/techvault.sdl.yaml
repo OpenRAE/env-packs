@@ -745,7 +745,6 @@ nodes:
           settings:
             - setting_id: misp-api-authentication
               name: MISP API credential
-              provenance: unknown
               classification: redacted
               description: Uses the secret_fixture key at accounts.misp-suricata-sync-api-key.credential_bindings; this setting records value-free posture.
             - setting_id: misp-tls-verification
@@ -756,7 +755,6 @@ nodes:
             - setting_id: misp-ca-trust-anchor
               name: MISP trusted CA certificate
               value: /opt/techvault/soc-certs/lab-ca.pem
-              provenance: unknown
               classification: plain
           reload_channels:
             - reload_channel_id: suricata-command-socket
@@ -1220,7 +1218,7 @@ nodes:
           name: rsyslog
           description: Forwards the domain controller's local syslog to the Wazuh manager's remote syslog listener.
           sources:
-            - {source_id: local-syslog, kind: other, selector: "*.*", parse_format: syslog}
+            - {source_id: local-syslog, kind: socket, selector: "*.*", parse_format: syslog}
           buffer_policy:
             buffer_policy_id: ad-syslog-forwarder-buffer
             crypto: none
