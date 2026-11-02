@@ -1,0 +1,21 @@
+    ## Goal
+    Add automated live rehearsal for the `{{.PackID}}` golden build.
+
+    {{.PackBlock}}
+    {{.CommonAnchors}}
+    ## Deliverables
+    - `tests/` or build-local rehearsal tooling targeting the same declared golden runtime profile as the build issue.
+    - Automated checks for setup health, participant start state, RAES objectives and behavior, flags when present,
+      negative gates, reset/persistence behavior, and cleanup.
+    - Durable rehearsal report committed under `docs/`.
+    - Walkthrough alignment checks or explicit trace showing that automated steps and future human walkthroughs cover
+      the same path.
+
+    ## Acceptance Criteria
+    - Rehearsal runs against the live golden build profile, not an abstraction or degraded local-only shortcut.
+    - Operator transports are used only for provisioning, observation, diagnostics, reset, or teardown.
+    - The rehearsal does not inject secrets, flags, users, data, or services that the golden build should have placed
+      in-world.
+
+    {{.ChildIssueNote}}
+    
