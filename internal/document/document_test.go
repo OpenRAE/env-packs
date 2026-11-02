@@ -94,6 +94,7 @@ func TestDecodeYAMLRejections(t *testing.T) {
 		{name: "two documents", src: "a: 1\n---\nb: 2\n", code: CodeMultipleDocuments, line: 2},
 		{name: "empty", src: "", code: CodeNull},
 		{name: "null", src: "~\n", code: CodeNull, line: 1},
+		{name: "unpaired surrogate", src: `{"a":"\ud800"}`, code: CodeSyntax},
 		{name: "syntax", src: "a: [1\n", code: CodeSyntax},
 		{name: "invalid UTF-8", src: "a: \xff\n", code: CodeInvalidUTF8},
 		{name: "nodes mostly from aliases", src: aliasChain(9), code: CodeAliasLimit},
@@ -156,6 +157,7 @@ func TestDecodeJSON(t *testing.T) {
 	}
 }
 
+// Regression test for #617: invalid Unicode escapes are not duplicate keys.
 func TestDecodeJSONRejections(t *testing.T) {
 	small := Limits{MaxBytes: 64, MaxNodes: 6, MaxAliases: 2, MaxDepth: 2}
 	tests := []struct {
@@ -165,6 +167,7 @@ func TestDecodeJSONRejections(t *testing.T) {
 	}{
 		{name: "duplicate name", src: `{"a": 1, "a": 2}`, code: CodeDuplicateKey},
 		{name: "nested duplicate name", src: `{"a": {"b": 1, "b": 1}}`, code: CodeDuplicateKey},
+		{name: "unpaired surrogate", src: `{"a":"\ud800"}`, code: CodeSyntax},
 		{name: "syntax", src: `{"a": }`, code: CodeSyntax},
 		{name: "non-finite", src: `{"a": NaN}`, code: CodeSyntax},
 		{name: "trailing value", src: `{} {}`, code: CodeMultipleDocuments},
@@ -270,6 +273,41 @@ func TestDecodeYAMLIntegers(t *testing.T) {
 		got, err := DecodeYAML([]byte(tt.src), DefaultLimits())
 		if codeOf(err) != tt.code || !cmp.Equal(tt.want, got) {
 			t.Errorf("DecodeYAML(%q) = %v, %v; want %v and code %q", tt.src, got, err, tt.want, tt.code)
+		}
+	}
+}
+
+// Regression test for #617: a short exponent must not crash schema validation.
+func TestDecodeJSONNumberBounds(t *testing.T) {
+	for _, tt := range []struct {
+		src  string
+		want Code
+	}{
+		{`1e99999999999999999999`, CodeSizeLimit},
+		{`1e-99999999999999999999`, CodeSizeLimit},
+		{`1e1048577`, CodeSizeLimit}, {`1e-1048577`, CodeSizeLimit},
+		{`1e1048576`, CodeNonFinite}, {`1e-1048576`, ""},
+		{`1e400`, CodeNonFinite}, {`-1e400`, CodeNonFinite},
+		{`1e308`, ""}, {`1e-1000`, ""}, {`123456789012345678901234567890`, ""},
+		{strings.Repeat("9", 400), ""},
+	} {
+		_, err := DecodeJSON([]byte(tt.src), DefaultLimits())
+		if got := codeOf(err); got != tt.want {
+			t.Errorf("DecodeJSON(%s) code = %s, want %s", tt.src, got, tt.want)
+		}
+		if e, ok := errors.AsType[*Error](err); ok && e.Line != 0 {
+			t.Errorf("DecodeJSON(%s) line = %d, want 0", tt.src, e.Line)
+		}
+	}
+	large := DefaultLimits()
+	large.MaxBytes = 1 << 30
+	if _, err := DecodeJSON([]byte(`1e-1048577`), large); codeOf(err) != CodeSizeLimit {
+		t.Errorf("DecodeJSON() with a raised byte budget error = %v, want bounded expansion", err)
+	}
+	for range 64 {
+		_, err := DecodeJSON([]byte(`{"a":1e400,"b":1e99999999999999999999}`), DefaultLimits())
+		if got := codeOf(err); got != CodeNonFinite {
+			t.Errorf("mixed numbers code = %s, want %s", got, CodeNonFinite)
 		}
 	}
 }

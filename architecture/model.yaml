@@ -224,6 +224,9 @@ rules:
       - os.Setenv
       - os.Unsetenv
       - os.Clearenv
+      - os.Stdin
+      - os.Stdout
+      - os.Stderr
       - time.Now
       - time.Since
       - time.Until

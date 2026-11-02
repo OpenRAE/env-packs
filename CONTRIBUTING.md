@@ -93,8 +93,7 @@ merge starts each release, and no one runs a release script. The
 
 - `feat:` gives a minor release.
 - `fix:` and `perf:` give a patch release.
-- `feat!:` and `BREAKING CHANGE:` give a major release. Before version 1.0, a
-  major release becomes a minor release.
+- `feat!:` and `BREAKING CHANGE:` give a major release.
 - `docs`, `chore`, `refactor`, `test`, `ci`, and `build` do not release.
 
 Do not change a version or edit `CHANGELOG.md`. When pull requests reach

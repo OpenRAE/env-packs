@@ -40,7 +40,7 @@ func TestMainProcess(t *testing.T) {
 		wantStderr string
 	}{
 		{args: []string{"--bogus", "x"}, wantStatus: 2, wantStderr: usageLine + "\n" + name + ": error: flag provided but not defined: -bogus\n"},
-		{args: []string{"-h"}, wantStdout: usageLine + "\n\nCreate standard skeleton GitHub issues for an environment pack.\n"},
+
 		{wantStatus: 1, wantStderr: "--repo OWNER/REPOSITORY is required: name the catalog repository that will own the pack (e.g. example-org/example-packs).\n"},
 	}
 	for _, tt := range tests {
@@ -92,6 +92,8 @@ func repoGH() fakeGH {
 	}
 }
 
+// TestRun checks the command outcomes, including escaped usage errors.
+// Regression test for #617.
 func TestRun(t *testing.T) {
 	base := []string{"--repo", "o/r", "--pack-id", "demo"}
 	tests := []struct {
@@ -105,6 +107,7 @@ func TestRun(t *testing.T) {
 		{name: "help", args: []string{"-h"}, wantStatus: 0, wantStdout: usageLine + "\n"},
 		{name: "unknown flag", args: []string{"--bogus"}, wantStatus: 2, wantStderr: usageLine + "\n" + name + ": error: flag provided but not defined: -bogus\n"},
 		{name: "positional", args: []string{"x"}, wantStatus: 2, wantStderr: name + ": error: unrecognized arguments: x\n"},
+		{name: "positional controls", args: []string{"x\x1b[2J\nforged"}, wantStatus: 2, wantStderr: `unrecognized arguments: x\x1b[2J\x0aforged`},
 		{name: "bad number", args: []string{"--milestone-number", "x"}, wantStatus: 2, wantStderr: `invalid int value: "x"`},
 		{name: "no repo", wantStatus: 1, wantStderr: "--repo OWNER/REPOSITORY is required"},
 		{name: "bad repo", args: []string{"--repo", "a/b/c"}, wantStatus: 1, wantStderr: "got 'a/b/c'\n"},
@@ -135,7 +138,7 @@ func TestRun(t *testing.T) {
 // PATH.
 func fakeGHScript(t *testing.T, script string) {
 	t.Helper()
-	dir := t.TempDir()
+	dir := privateDir(t)
 	if err := os.WriteFile(filepath.Join(dir, "gh"), []byte("#!/bin/sh\n"+script), 0o700); err != nil { //nolint:gosec // G306 false positive: the test makes an executable script in its own directory.
 		t.Fatalf("write the fake gh: %v", err)
 	}
@@ -167,7 +170,7 @@ func TestGHRunner(t *testing.T) {
 }
 
 func TestGHRunnerMissing(t *testing.T) {
-	t.Setenv("PATH", t.TempDir())
+	t.Setenv("PATH", privateDir(t))
 	if _, err := (ghRunner{}).Run([]string{"x"}, nil); err == nil {
 		t.Error("Run() without gh: no error")
 	} else if _, ok := errors.AsType[*issueskeleton.RunError](err); ok {
@@ -176,10 +179,10 @@ func TestGHRunnerMissing(t *testing.T) {
 }
 
 // TestGHPathRefusesFilesOthersCanWrite checks that the command does not run a
-// gh that other users can replace.
+// gh that other users can replace. Regression test for #617.
 func TestGHPathRefusesFilesOthersCanWrite(t *testing.T) {
-	safe := t.TempDir()
-	open := t.TempDir()
+	safe := privateDir(t)
+	open := privateDir(t)
 	//nolint:gosec // G302 false positive: the test makes its own directory writable by others, to show that the command refuses it.
 	if err := os.Chmod(open, 0o777); err != nil {
 		t.Fatalf("make the directory writable: %v", err)
@@ -195,12 +198,12 @@ func TestGHPathRefusesFilesOthersCanWrite(t *testing.T) {
 		return path
 	}
 	target := write(open, "real-gh", 0o700)
-	linkDir := t.TempDir()
+	linkDir := privateDir(t)
 	if err := os.Symlink(target, filepath.Join(linkDir, "gh")); err != nil {
 		t.Fatalf("link gh: %v", err)
 	}
-	fileDir := t.TempDir()
-	write(fileDir, "gh", 0o777)
+	fileDir := privateDir(t)
+	write(fileDir, "gh", 0o770)
 	write(open, "gh", 0o700)
 	for name, dir := range map[string]string{"directory": open, "target directory": linkDir, "file": fileDir} {
 		t.Setenv("PATH", dir)
@@ -212,7 +215,7 @@ func TestGHPathRefusesFilesOthersCanWrite(t *testing.T) {
 			t.Errorf("Run() with a %s that others can write error = %v, want the refusal", name, err)
 		}
 	}
-	write(safe, "gh", 0o700)
+	write(safe, "gh", 0o755)
 	t.Setenv("PATH", safe)
 	if got, err := ghPath(); err != nil || got != filepath.Join(safe, "gh") {
 		t.Errorf("ghPath() = %q, %v; want the gh in the safe directory", got, err)
@@ -223,5 +226,71 @@ func TestGHPathErrors(t *testing.T) {
 	t.Setenv("PATH", ".")
 	if got, err := ghPath(); !errors.Is(err, exec.ErrNotFound) {
 		t.Errorf("ghPath() without gh = %q, %v; want %v", got, err, exec.ErrNotFound)
+	}
+}
+
+// privateDir makes the fake executable directory independent of the host umask.
+func privateDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil { //nolint:gosec // G302 false positive: a private directory needs owner execute access.
+		t.Fatal(err)
+	}
+	return dir
+}
+
+// Regression test for #617: help must explain the options and their defaults.
+func TestHelpDescribesFlags(t *testing.T) {
+	var stdout, stderr strings.Builder
+	status := run([]string{"--help"}, &stdout, &stderr, repoGH())
+	if status != 0 || stderr.Len() != 0 {
+		t.Fatalf("help status = %d, stderr = %q", status, stderr.String())
+	}
+	for _, text := range []string{"write changes to GitHub; default is dry-run", "source-log entry; repeatable", "TBD by the pack-design agent.", "existing GitHub milestone number"} {
+		if !strings.Contains(stdout.String(), text) {
+			t.Errorf("help lacks %q", text)
+		}
+	}
+}
+
+// Regression test for #617: process output must not grow without a bound.
+func TestGHRunnerLimits(t *testing.T) {
+	for _, tt := range []struct {
+		name, script string
+		wantError    bool
+		wantBytes    int
+	}{
+		{name: "stdout limit", script: "head -c 8388608 /dev/zero", wantBytes: 8388608},
+		{name: "stdout excess", script: "head -c 8388609 /dev/zero", wantError: true},
+		{name: "stderr limit", script: "head -c 65536 /dev/zero >&2"},
+		{name: "stderr excess", script: "printf partial-result\nhead -c 65537 /dev/zero >&2", wantError: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeGHScript(t, tt.script)
+			out, err := (ghRunner{}).Run(nil, nil)
+			if (err != nil) != tt.wantError || len(out) != tt.wantBytes {
+				t.Errorf("Run() = %d bytes, %v; want %d bytes, error=%v", len(out), err, tt.wantBytes, tt.wantError)
+			}
+			if tt.wantError && (err == nil || err.Error() != "gh output exceeds the command limit") {
+				t.Errorf("Run() error = %v, want the output-limit failure", err)
+			}
+		})
+	}
+}
+
+// Regression test for #617: a descendant must not hold the command pipes open.
+func TestGHRunnerInheritedPipe(t *testing.T) {
+	fakeGHScript(t, "sleep 2 &\nexit 0")
+	out, err := (ghRunner{}).Run(nil, nil)
+	if !errors.Is(err, exec.ErrWaitDelay) || len(out) != 0 {
+		t.Errorf("Run() = %q, %v; want the pipe-wait failure", out, err)
+	}
+}
+
+func TestGHRunnerSignal(t *testing.T) {
+	fakeGHScript(t, "kill -TERM $$")
+	_, err := (ghRunner{}).Run(nil, nil)
+	if _, normalExit := errors.AsType[*issueskeleton.RunError](err); err == nil || normalExit {
+		t.Errorf("Run() error = %v, want an execution failure", err)
 	}
 }

@@ -2,6 +2,7 @@ package packfs
 
 import (
 	"io"
+	"math"
 	"os"
 	"strings"
 
@@ -79,7 +80,11 @@ func (r *Root) ReadMember(rel string, maxBytes int) ([]byte, error) {
 		return nil, err
 	}
 	defer closeReadOnly(f)
-	data, err := io.ReadAll(io.LimitReader(f, int64(maxBytes)+1))
+	limit := int64(maxBytes)
+	if limit < math.MaxInt64 {
+		limit++
+	}
+	data, err := io.ReadAll(io.LimitReader(f, limit))
 	if err != nil {
 		return nil, fail(ReasonUnreadable, "pack member could not be read", err)
 	}

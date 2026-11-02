@@ -7,21 +7,18 @@ defensive SOC, seeded data, and exact content artifacts. It declares the
 in-world state a conforming realization must provide without selecting how a
 backend constructs or exposes that state.
 
-The pack is named `techvault-participant-study`. It derives from TechVault and
+The pack name is `techvault-participant-study`. It derives from TechVault and
 adds a portable participant experiment. A consumer validates the pack and its associated-artifact
-manifest, then resolves each SDL `content.source` by opaque artifact id. No
-consumer is expected to recover content from this repository's checkout paths
+manifest, then resolves each SDL `content.source` by opaque artifact id. Consumers must not recover content from this repository's checkout paths
 or from the former APTL source tree.
 
-Historical source attribution is recorded in `docs/lineage.md` and
-`docs/provenance-ledger.yaml`; no originating backend is part of TechVault's
-portable identity.
+`docs/lineage.md` and `docs/provenance-ledger.yaml` record historical source
+attribution. No originating backend is part of TechVault's portable identity.
 
 ## Maturity
 
 The pack is `built`: the complete scenario definition and byte-bound content
-are present, but this repository does not yet claim golden-range proof. Golden
-build, rehearsal, and participant walkthrough work is tracked separately in
+are present, but this repository does not yet claim golden-range proof. See the separate golden-build, rehearsal, and participant walkthrough work in
 [issue #237](https://github.com/OpenRAE/env-packs/issues/237).
 
 ## Validation
@@ -38,23 +35,25 @@ python -m unittest tests.test_techvault_study_pack
 The pack-local satisfaction profile in
 `profiles/exact-artifact-copy-v1.json` defines the digest-bound copy route used
 by every exact content requirement. Tar assets are deterministic POSIX tar
-carriers whose members are materialized at the declared directory destination.
+carriers. The backend materializes their members at the declared directory
+destination.
 
 ## Portable realization boundary
 
-TechVault uses an open realization designation and carries no substrate
-constraints, machine images, build recipes, host-port publications, launch
-commands, environment-variable delivery, capability grants, backend mounts, or
-restart policy. Product and protocol versions are declared through typed RAES
-runtime state when they are known. A backend remains free to choose its own
+TechVault uses an open realization designation. It carries no substrate
+constraints, machine images, build recipes, host-port publications, or launch
+commands. It also carries no environment-variable delivery, capability grants,
+backend mounts, or restart policy. Typed RAES runtime state declares known
+product and protocol versions. A backend remains free to choose its own
 implementation while preserving those in-world facts and exact content bytes.
+
 That state includes service credential posture, certificate trust, and the
-final ownership and modes of scenario-significant files; it does not prescribe
+final ownership and modes of scenario-significant files. It does not prescribe
 how a backend supplies a secret, installs trust, or reaches that final state.
 
-TechVault likewise does not select where realization evidence is collected.
+TechVault likewise does not select where a backend collects realization evidence.
 The backend must authoritatively corroborate the declared state at the RAES
-verification scope, but may use native control-plane readback, daemon
+verification scope. It may use native control-plane readback, daemon
 observation, guest observation, or another admitted method. It selects the
 least intrusive complete method allowed by realization scope; omission of a
 collection-method floor does not make evidence optional.
@@ -75,7 +74,7 @@ backend environment variable or secret-store lookup supplies these values.
 | MISP console | `accounts.misp-administrator` | `admin@admin.test` |
 | MISP synchronization API | `accounts.misp-suricata-sync-api-key` | `techvault-suricata-sync` |
 
-Each primary binding is named `<account-id>-primary`. These intentionally public
+Each primary binding has the name `<account-id>-primary`. These intentionally public
 synthetic values belong to the scenario. The existing runtime MISP principal
 and API setting carry `redacted` posture because those RAES surfaces omit raw
 material; their account bindings carry the `secret_fixture` values. This does
@@ -91,12 +90,12 @@ the declared bindings. The indexer hashes match the same authored values;
 tests verify both matches and incorrect-password rejection. Credential files
 have restricted owner/mode declarations. The Filebeat configuration follows
 [Wazuh's 4.12.0 configuration](https://github.com/wazuh/wazuh/blob/v4.12.0/extensions/filebeat/7.x/filebeat.yml)
-for its Wazuh module and index-template behavior, retaining certificate-verified
+for its Wazuh module and index-template behavior. It retains certificate-verified
 HTTPS to the declared indexer.
 
 The indexer's internal-users file defines initialization content. A retained
-security index may still contain earlier state; the backend must corroborate
-the declared credentials during realization and handle retained state through
+security index may still contain earlier state. The backend must corroborate
+the declared credentials during realization. It handles retained state through
 its own migration policy. Static validation does not prove live authentication
 or migrate retained data.
 
@@ -109,12 +108,12 @@ instantiates a run. These variables have no defaults. Sensitive `content` files
 place the values; each host's `filesystem_inventory` declares their ownership
 and permissions. User flags retain mode `0644`, with `labadmin` ownership on
 `victim`, `dev-user` on `workstation`, and `root` on the other hosts. Root flags
-are owned by `root:root` with mode `0600` at `/root/root.txt`.
+have `root:root` ownership and mode `0600` at `/root/root.txt`.
 
 Generation, signing, and verification belong to the backend. The pack supplies
 no flag generator, signing keys, token format, or flag-generation service.
-Required variables express the backend-supplied values while RAES's native
-per-run generated-value declaration is tracked in
+Required variables express the backend-supplied values. See RAES's native
+per-run generated-value declaration in
 [rae#1276](https://github.com/OpenRAE/rae/issues/1276). The SDL owns these file
 declarations; TechVault does not duplicate them in a flag placement map.
 
@@ -124,25 +123,24 @@ TechVault ships immutable source bundles for the participant tools based on APTL
 commit `7c673a19f9fb6a3eb1d17305104196b600bd59cc`. The Kali workstation receives
 `aptl-mcp-common` and `mcp-red`; the separate SOC workstation receives the
 common package plus the six defensive MCP packages. Each host declares a
-Node.js 22 runtime. The archives contain only source, package/build manifests,
-the upstream MIT license, and source metadata—no dependencies, generated build
+Node.js 22 runtime. The archives contain only source, package/build manifests, the upstream MIT
+license, and source metadata. They contain no dependencies, generated build
 output, tests, backend configuration, or launch wrapper.
 
 Runtime Wazuh MCP configuration must send custom-rule writes to
 `PUT /rules/files/{filename}` with Wazuh JWT authentication and
 `overwrite=true`. Runtime configuration supplies service URLs and credentials.
 
-The shared telemetry wrapper is adapted to emit only tool identity and status metadata; it never
-exports request, response, or error content. The SDL selects no installation or
+The adapted shared telemetry wrapper emits only tool identity and status
+metadata. It never exports request, response, or error content. The SDL selects no installation or
 process-management method.
 
 ## Suricata content contract
 
 The Suricata configuration and 16-rule TechVault local corpus are exact pack
-artifacts. Product-provided built-in rules remain a separate source. The four
-empty MISP files are clean-start seeds in an ephemeral shared volume; the
-declared MISP forwarding agent may replace them and reload the engine through
-the private Unix socket. A consumer must not source or copy replacement files
+artifacts. Product-provided built-in rules remain a separate source. The four empty MISP files are clean-start seeds in an ephemeral shared volume.
+The declared MISP forwarding agent may replace them and reload the engine
+through the private Unix socket. A consumer must not source or copy replacement files
 from an APTL/LilRAE checkout.
 
 Static validation joins the artifact identities, content placements, selected
@@ -172,7 +170,7 @@ deliveries. The SDL supplies the exact sequence and instruction text:
 
 1. red start at logical tick 1;
 2. red stop at logical tick 3;
-3. blue start at logical tick 5, after red has been directed to stop; and
+3. blue start at logical tick 5, after the instruction for red to stop; and
 4. blue stop at logical tick 7.
 
 Each delivery binds its inject, event, script, story, exact logical-time window,
@@ -182,6 +180,11 @@ and stop instructions. Their realization profile is
 `participant-implementation-manifest:claude-code`; the realizing backend maps
 that profile to an installed CLI and the role's admitted tool surface. The pack
 contains no provider credential and no backend command line.
+
+Each participant also holds one tool action contract: `red-mcp-tool-call` or
+`blue-mcp-tool-call`. Each contract identifies one call to an MCP tool of that
+role. A backend can admit and record each call as a participant action. The
+contract does not classify the effects of a call.
 
 With this acquired pack selected, a normal backend lab start executes the
 authored sequence. Delivery evidence proves dispatch and records the participant

@@ -7,7 +7,7 @@ type Code string
 
 // The codes of the errors.
 const (
-	// CodeSizeLimit marks a document with more bytes than the limit.
+	// CodeSizeLimit marks a document or a number expansion beyond the byte limit.
 	CodeSizeLimit Code = "document.size-limit"
 	// CodeInvalidUTF8 marks a document that is not valid UTF-8.
 	CodeInvalidUTF8 Code = "document.invalid-utf8"

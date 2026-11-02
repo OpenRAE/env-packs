@@ -1,5 +1,6 @@
 # The helper plans the issues of a pack through gh. A fake gh records its
 # arguments and its standard input, and it answers from fixtures (#575).
+chmod 700 bin
 chmod 755 bin/gh
 env PATH=$WORK/bin:$PATH
 env GH_ARGS=$WORK/args.txt

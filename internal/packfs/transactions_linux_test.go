@@ -85,3 +85,26 @@ func TestReplaceExchangeFailure(t *testing.T) {
 		t.Errorf("Replace() = %v, check called %v; want ReasonExchangeFailed and no check", err, called)
 	}
 }
+
+// Regression test for #617: a panic must not leave the replacement installed.
+func TestReplacePanicRollsBack(t *testing.T) {
+	staged, target := staging(t)
+	cause := errors.New("private defect")
+	func() {
+		defer func() {
+			if got, ok := recover().(error); !ok || !errors.Is(got, cause) {
+				t.Errorf("Replace() panic = %v, want original cause", got)
+			}
+		}()
+		if err := Replace(staged, target, func(string) error { panic(cause) }); err != nil {
+			t.Fatal(err)
+		}
+		t.Error("Replace() did not propagate the panic")
+	}()
+	if got := readFile(t, filepath.Join(target, "file")); got != "old" {
+		t.Errorf("target after panic = %q, want old", got)
+	}
+	if got := readFile(t, filepath.Join(staged, "file")); got != "new" {
+		t.Errorf("staged after panic = %q, want new", got)
+	}
+}

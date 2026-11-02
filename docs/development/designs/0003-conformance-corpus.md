@@ -76,16 +76,12 @@ Each command has a case for each exit status that an input can cause, with the
 class of each output stream. Each later port chunk adds the cases for its own
 surface before its Go code merges.
 
-No case covers these exit statuses:
-
-- Status 3 of `raes-pack-check`, `raes-pack-catalog`, `raes-pack-kit`,
-  `raes-pack-verify`, and `raes-pack-dist`. It marks a tool failure: an
-  internal defect, an interrupted kit change that needs recovery, or a host
-  without atomic file moves. No pack, argument, or input causes it. A case
-  would record a defect as the contract. The unit tests of each
-  implementation cover these paths.
-- Status 0 of `raes-pack-issue-skeleton`. The command reads GitHub, and the
-  corpus does not use the network.
+The tool-failure cases use test-only fault drivers (design 0009). They check
+status 3, empty stdout, and bounded stderr without the injected private value.
+The Python driver patches the service boundary with the standard mock library.
+Each Go command supplies a test-only driver through `-fault-bin` when it ports
+that surface. A missing driver fails the case; it never runs Python instead.
+The issue-helper success case uses a fake `gh` and needs no network.
 
 ## Systems security engineering
 

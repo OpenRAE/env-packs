@@ -236,3 +236,38 @@ func TestApplyErrors(t *testing.T) {
 		t.Errorf("Apply() of a failed issue error = %v", err)
 	}
 }
+
+func TestApplyRejectsMalformedWriteResponse(t *testing.T) {
+	f := newFake()
+	f.answers["api --method POST repos/o/r/issues --input -"] = "malformed"
+	gh := resolved(t, f)
+	var output strings.Builder
+	err := gh.Apply(bufio.NewWriter(&output), []Operation{{Action: actionCreateIssue, Title: "t"}}, new(1))
+	if err == nil {
+		t.Error("Apply() accepted a malformed nonempty response")
+	}
+}
+
+// Regression test for #617: incomplete discovery must not create duplicate issues.
+func TestPrepareRefusesIncompleteDiscovery(t *testing.T) {
+	for _, tt := range []struct{ key, reply string }{
+		{"issue list --repo o/r --state all --limit 2000 --json number,title,milestone,labels", "[" + strings.TrimSuffix(strings.Repeat(`{"number":1},`, 2000), ",") + "]"},
+		{"label list --repo o/r --limit 500 --json name", "[" + strings.TrimSuffix(strings.Repeat(`{"name":"x"},`, 500), ",") + "]"},
+		{"issue list --repo o/r --state all --limit 2000 --json number,title,milestone,labels", ""},
+		{"label list --repo o/r --limit 500 --json name", "null"},
+		{"api repos/o/r/milestones --paginate", ""},
+		{"api repos/o/r/milestones --paginate", "null"},
+	} {
+		f := newFake()
+		f.answers[tt.key] = tt.reply
+		gh := resolved(t, f)
+		if ops, _, err := gh.Prepare(NewTemplates(), Plan{PackID: "demo", Title: "Demo", MilestoneTitle: "new"}, true, false); err == nil || ops != nil {
+			t.Errorf("Prepare() with incomplete %s = %v, %v", tt.key, ops, err)
+		}
+		for _, c := range f.calls {
+			if strings.Contains(c.args, "--method") {
+				t.Errorf("Prepare() wrote through %s", c.args)
+			}
+		}
+	}
+}

@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/OpenRAE/env-packs/internal/issueskeleton"
@@ -81,12 +83,14 @@ func parse(args []string, s outcome.Streams) (o options, status int, ok bool) {
 	switch {
 	case errors.Is(err, flag.ErrHelp):
 		fmt.Fprintf(s.Stdout, "%s\n\nCreate standard skeleton GitHub issues for an environment pack.\n", usageLine)
+		fs.SetOutput(s.Stdout)
+		fs.PrintDefaults()
 		return o, outcome.OK, false
 	case err == nil && fs.NArg() > 0:
 		err = errors.New("unrecognized arguments: " + strings.Join(fs.Args(), " "))
 	}
 	if err != nil {
-		fmt.Fprintf(s.Stderr, "%s\n%s: error: %s\n", usageLine, name, err)
+		fmt.Fprintf(s.Stderr, "%s\n%s: error: %s\n", usageLine, name, terminal.Escape(err.Error()))
 		return o, outcome.Usage, false
 	}
 	return o, outcome.OK, true
@@ -160,28 +164,65 @@ func (o options) plan(repo string) (issueskeleton.Plan, error) {
 // (design 0008).
 type ghRunner struct{}
 
+// Command limits bound the GitHub process and the data it can return.
+const (
+	ghTimeout     = time.Minute
+	ghStdoutLimit = 8 << 20
+	ghStderrLimit = 64 << 10
+)
+
+// errGHOutputLimit reports incomplete process output without exposing it.
+var errGHOutputLimit = errors.New("gh output exceeds the command limit")
+
 // Run runs gh with args, and gives it stdin.
 func (ghRunner) Run(args []string, stdin []byte) ([]byte, error) {
 	gh, err := ghPath()
 	if err != nil {
 		return nil, err
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), ghTimeout)
+	defer cancel()
 	//nolint:gosec // G204 false positive: the program is gh at its checked absolute path, the arguments go as an argument vector without a shell, and the only argument from the user is the --repo selector, which ValidateRepo checks first.
-	cmd := exec.Command(gh, args...)
+	cmd := exec.CommandContext(ctx, gh, args...)
+	cmd.WaitDelay = time.Second
 	cmd.Stdin = bytes.NewReader(stdin)
-	var stdout, stderr bytes.Buffer
+	stdout, stderr := limitedBuffer{remaining: ghStdoutLimit}, limitedBuffer{remaining: ghStderrLimit}
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err = cmd.Run()
-	if _, ok := errors.AsType[*exec.ExitError](err); ok {
-		return nil, &issueskeleton.RunError{Stdout: stdout.Bytes(), Stderr: stderr.Bytes()}
+	if stdout.exceeded || stderr.exceeded {
+		return nil, errGHOutputLimit
 	}
-	return stdout.Bytes(), err
+	// A signal (including a deadline kill) is an execution failure, not a
+	// normal gh rejection. Keep it on the bounded internal-error path.
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok && exitErr.ExitCode() != -1 {
+		return nil, &issueskeleton.RunError{Stdout: stdout.buffer.Bytes(), Stderr: stderr.buffer.Bytes()}
+	}
+	return stdout.buffer.Bytes(), err
+}
+
+// limitedBuffer bounds a process stream. A write past the limit fails, so
+// os/exec stops copying the stream and reports an incomplete result.
+type limitedBuffer struct {
+	buffer    bytes.Buffer
+	remaining int
+	exceeded  bool
+}
+
+func (b *limitedBuffer) Write(p []byte) (int, error) {
+	n := min(len(p), b.remaining)
+	_, _ = b.buffer.Write(p[:n]) // bytes.Buffer.Write never returns an error.
+	b.remaining -= n
+	if n < len(p) {
+		b.exceeded = true
+		return n, errGHOutputLimit
+	}
+	return n, nil
 }
 
 // ghPath returns the absolute path of gh from PATH, after symlinks resolve.
-// It refuses a gh that other users can replace: the directory where PATH
-// gives gh, the file, and the directory of the file must not be writable by
-// others.
+// It rejects group or other write access to the file and its immediate
+// directories. The caller must supply a trusted PATH, including the owners
+// and parent directories of its entries.
 func ghPath() (string, error) {
 	found, err := exec.LookPath("gh")
 	if err != nil {
@@ -196,7 +237,7 @@ func ghPath() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if info.Mode().Perm()&0o002 != 0 {
+		if info.Mode().Perm()&0o022 != 0 {
 			return "", &issueskeleton.Error{Message: "gh at " + terminal.Quote(found) +
 				" is not safe to run: other users can write " + terminal.Quote(path)}
 		}

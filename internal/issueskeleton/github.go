@@ -43,8 +43,10 @@ func (e *RunError) Error() string {
 
 // The parts of the arguments of gh that the calls share.
 const (
-	jsonFlag = "--json"
-	repos    = "repos/"
+	jsonFlag   = "--json"
+	repos      = "repos/"
+	issueLimit = 2000
+	labelLimit = 500
 )
 
 // A GitHub client reads and writes one repository through gh.
@@ -72,8 +74,13 @@ func (g *GitHub) run(args []string, stdin []byte, out any) error {
 	if err != nil {
 		return err
 	}
-	if len(bytes.TrimSpace(stdout)) == 0 {
+	// Issue writes need only the successful gh status. Reads and milestone
+	// creation require a JSON result before the next decision.
+	if _, writeResponse := out.(*json.RawMessage); writeResponse && len(bytes.TrimSpace(stdout)) == 0 {
 		return nil
+	}
+	if bytes.Equal(bytes.TrimSpace(stdout), []byte("null")) {
+		return errors.New("gh returned no JSON result")
 	}
 	return json.Unmarshal(stdout, out)
 }
@@ -114,8 +121,11 @@ func (g *GitHub) Labels() (map[string]bool, error) {
 	var rows []struct {
 		Name string `json:"name"`
 	}
-	if err := g.run([]string{"label", "list", "--repo", g.repo, "--limit", "500", jsonFlag, "name"}, nil, &rows); err != nil {
+	if err := g.run([]string{"label", "list", "--repo", g.repo, "--limit", strconv.Itoa(labelLimit), jsonFlag, "name"}, nil, &rows); err != nil {
 		return nil, err
+	}
+	if len(rows) >= labelLimit {
+		return nil, fail("label discovery reached its limit; no changes were made")
 	}
 	labels := make(map[string]bool, len(rows))
 	for _, row := range rows {
@@ -128,10 +138,16 @@ func (g *GitHub) Labels() (map[string]bool, error) {
 func (g *GitHub) Issues() ([]Issue, error) {
 	var issues []Issue
 	err := g.run([]string{
-		"issue", "list", "--repo", g.repo, "--state", "all", "--limit", "2000",
+		"issue", "list", "--repo", g.repo, "--state", "all", "--limit", strconv.Itoa(issueLimit),
 		jsonFlag, "number,title,milestone,labels",
 	}, nil, &issues)
-	return issues, err
+	if err != nil {
+		return nil, err
+	}
+	if len(issues) >= issueLimit {
+		return nil, fail("issue discovery reached its limit; no changes were made")
+	}
+	return issues, nil
 }
 
 // A milestone is a milestone of the repository.
@@ -150,6 +166,9 @@ func (g *GitHub) Milestones() ([]milestone, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(bytes.TrimSpace(stdout)) == 0 {
+		return nil, errors.New("gh returned no milestone JSON")
+	}
 	var all []milestone
 	dec := json.NewDecoder(bytes.NewReader(stdout))
 	for {
@@ -158,6 +177,9 @@ func (g *GitHub) Milestones() ([]milestone, error) {
 			return all, nil
 		} else if err != nil {
 			return nil, err
+		}
+		if page == nil {
+			return nil, errors.New("gh returned a null milestone page")
 		}
 		all = append(all, page...)
 	}

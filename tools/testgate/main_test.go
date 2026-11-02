@@ -326,7 +326,7 @@ func newScoreRepo(t *testing.T) fakeRunner {
 	mutantJSON := func(file string) string {
 		return fmt.Sprintf(`{"mutator":{"mutatorName":"numbers/incrementer","originalFilePath":%q,"originalSourceCode":%q,"mutatedSourceCode":%q}}`, file, source, mutated)
 	}
-	report := `{"stats":{"totalMutantsCount":2},"killed":[` + mutantJSON("a/a.go") + `],"escaped":[` + mutantJSON("b/b.go") + `]}`
+	report := `{"stats":{"totalMutantsCount":2,"killedCount":1,"escapedCount":1,"skippedCount":0,"errorCount":0},"killed":[` + mutantJSON("a/a.go") + `],"escaped":[` + mutantJSON("b/b.go") + `]}`
 	records := "version: 1\nequivalents:\n  - file: b/b.go\n    function: F\n    mutator: numbers/incrementer\n    line: return 1\n    mutated: return 2\n    reason: R.\n"
 	return fakeRunner{answer: func(c testgate.Command) (testgate.Result, error) {
 		line := c.String()

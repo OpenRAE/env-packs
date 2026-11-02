@@ -1,0 +1,6 @@
+# A controlled service failure must give status 3 and no stdout (#617).
+# Each implementation supplies a test-only fault driver, never a production hook.
+fault raes-pack-catalog
+! stdout .
+stderr '^raes-pack-catalog: internal error'
+! stderr 'PRIVATE-FAULT-VALUE'

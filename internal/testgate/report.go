@@ -2,6 +2,7 @@ package testgate
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -38,6 +39,26 @@ func parseReport(data []byte) (mutestingReport, error) {
 	var r mutestingReport
 	if err := json.Unmarshal(data, &r); err != nil {
 		return mutestingReport{}, fmt.Errorf("decode the go-mutesting report: %w", err)
+	}
+	var fields struct {
+		Stats map[string]json.RawMessage `json:"stats"`
+	}
+	_ = json.Unmarshal(data, &fields) //nolint:errcheck // The first decode already validated the JSON and the stats object; RawMessage accepts every field value.
+	for _, key := range []string{"totalMutantsCount", "killedCount", "escapedCount", "skippedCount", "errorCount"} {
+		var count *int
+		if err := json.Unmarshal(fields.Stats[key], &count); err != nil || count == nil {
+			return mutestingReport{}, fmt.Errorf("the go-mutesting report has no integer %s", key)
+		}
+	}
+	remaining := r.Stats.Total
+	for _, count := range []int{r.Stats.Killed, r.Stats.Escaped, r.Stats.NotCompiled, r.Stats.Errored} {
+		if count < 0 || count > remaining {
+			return mutestingReport{}, errors.New("the go-mutesting report has inconsistent counts")
+		}
+		remaining -= count
+	}
+	if remaining != 0 || r.Stats.Killed != len(r.Killed) || r.Stats.Escaped != len(r.Escaped) {
+		return mutestingReport{}, errors.New("the go-mutesting report counts do not match its mutants")
 	}
 	return r, nil
 }

@@ -67,10 +67,10 @@ class CodeqlWorkflowContractTests(unittest.TestCase):
         return -1
 
     # --- triggers -------------------------------------------------------
-    def test_pull_request_targets_dev_and_main(self) -> None:
-        branches = self.on["pull_request"]["branches"]
-        self.assertIn("main", branches, "CodeQL must run on PRs into main (#57)")
-        self.assertIn("dev", branches, "CodeQL must run on PRs into dev (#57)")
+    def test_pull_request_has_no_branch_filter(self) -> None:
+        trigger = self.on["pull_request"] or {}
+        self.assertNotIn("branches", trigger)
+        self.assertNotIn("branches-ignore", trigger)
 
     def test_has_weekly_schedule(self) -> None:
         schedule = self.on.get("schedule")
@@ -86,12 +86,6 @@ class CodeqlWorkflowContractTests(unittest.TestCase):
             self.assertEqual(dom, "*", f"weekly schedule must not pin day-of-month: {cron!r}")
             # Off the top of the hour — GitHub delays top-of-hour scheduled runs.
             self.assertNotEqual(minute, "0", f"avoid top-of-hour scheduling: {cron!r}")
-
-    def test_pull_request_targets_the_go_port_branch(self) -> None:
-        # The Go port lands on go-cutover (ADR 0047). Its pull requests need the
-        # Go analysis, because the default branch has no Go code until the
-        # cutover.
-        self.assertIn("go-cutover", self.on["pull_request"]["branches"])
 
     def test_trigger_surface_is_pr_and_schedule_only(self) -> None:
         # No push (redundant with PR + schedule) and never pull_request_target,

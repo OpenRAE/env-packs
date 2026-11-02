@@ -18,7 +18,8 @@ const (
 const writeFlags = unix.O_WRONLY | unix.O_CREAT | unix.O_TRUNC | unix.O_NOFOLLOW | unix.O_CLOEXEC
 
 // WriteMember writes content to the file at the canonical path rel below the
-// staging root directory. It creates each missing directory with the mode
+// fresh, private staging root directory. Callers must not reuse an untrusted
+// tree as a staging root. It creates each missing directory with the mode
 // 0755 and the file with the mode 0600, through descriptors and without
 // following a symlink. It does not copy ownership, access control lists,
 // extended attributes, or set-id bits.
@@ -124,27 +125,38 @@ func exchange(sys system, staged, target string) error {
 // check fails, Replace exchanges the trees back and returns the error of
 // check. When that exchange fails, Replace returns ReasonRecovery, and the
 // path of the error keeps the original tree (ADR 0035).
+// A panic in check also rolls back before it propagates. A failed rollback
+// returns ReasonRecovery instead, so the caller can retain the original tree.
 func Replace(staged, target string, check func(previous string) error) error {
 	return replace(unixSystem{}, staged, target, check)
 }
 
-func replace(sys system, staged, target string, check func(previous string) error) error {
-	if err := exchange(sys, staged, target); err != nil {
-		return err
+func replace(sys system, staged, target string, check func(previous string) error) (err error) {
+	if exchangeErr := exchange(sys, staged, target); exchangeErr != nil {
+		return exchangeErr
 	}
-	checkErr := check(staged)
-	if checkErr == nil {
-		return nil
-	}
-	if err := exchange(sys, staged, target); err != nil {
-		return &Error{
-			Reason: ReasonRecovery,
-			Path:   staged,
-			msg:    "the trees could not be exchanged back; the original tree is kept for recovery",
-			err:    errors.Join(checkErr, err),
+	accepted := false
+	defer func() {
+		cause := recover()
+		if accepted {
+			return
 		}
-	}
-	return checkErr
+		if rollbackErr := exchange(sys, staged, target); rollbackErr != nil {
+			err = &Error{
+				Reason: ReasonRecovery,
+				Path:   staged,
+				msg:    "the trees could not be exchanged back; the original tree is kept for recovery",
+				err:    errors.Join(err, rollbackErr),
+			}
+			return
+		}
+		if cause != nil {
+			panic(cause)
+		}
+	}()
+	err = check(staged)
+	accepted = err == nil
+	return err
 }
 
 // unsupported reports whether err means that the platform has no renameat2.
