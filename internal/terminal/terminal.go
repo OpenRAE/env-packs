@@ -41,3 +41,43 @@ func hex(r rune, width int) string {
 	digits := strconv.FormatInt(int64(r), 16)
 	return strings.Repeat("0", max(0, width-len(digits))) + digits
 }
+
+// Quote returns s as the repr function of Python writes a string: in single
+// quotes, or in double quotes when s holds a single quote and no double
+// quote. It escapes the quote, a backslash, and each character that is not
+// printable, so the result is safe to write to a terminal. A byte that is not
+// valid UTF-8 becomes \udcNN, as in Escape.
+func Quote(s string) string {
+	quote := "'"
+	if strings.Contains(s, "'") && !strings.Contains(s, `"`) {
+		quote = `"`
+	}
+	var b strings.Builder
+	b.WriteString(quote)
+	for i := 0; i < len(s); {
+		r, size := utf8.DecodeRuneInString(s[i:])
+		switch {
+		case r == utf8.RuneError && size == 1:
+			b.WriteString(`\udc` + strconv.FormatUint(uint64(s[i]), 16))
+		case string(r) == quote || r == '\\':
+			b.WriteString(`\` + string(r))
+		case r == '\t':
+			b.WriteString(`\t`)
+		case r == '\n':
+			b.WriteString(`\n`)
+		case r == '\r':
+			b.WriteString(`\r`)
+		case unicode.IsPrint(r):
+			b.WriteString(s[i : i+size])
+		case r < 0x100:
+			b.WriteString(`\x` + hex(r, 2))
+		case r < 0x10000:
+			b.WriteString(`\u` + hex(r, 4))
+		default:
+			b.WriteString(`\U` + hex(r, 8))
+		}
+		i += size
+	}
+	b.WriteString(quote)
+	return b.String()
+}
