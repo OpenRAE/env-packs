@@ -1023,7 +1023,7 @@ nodes:
               path: /logout
               methods:
                 - GET
-              auth_required: true
+              auth_required: false
               description: Ends the session.
             - route_id: dashboard
               path: /dashboard
@@ -1054,7 +1054,7 @@ nodes:
               path: /api/v1/users/<int:user_id>
               methods:
                 - GET
-              auth_required: true
+              auth_required: false
               description: Fetch one user record. /api/v1/users/<id> performs no authorization check and returns an API key.
             - route_id: api-customers
               path: /api/v1/customers
