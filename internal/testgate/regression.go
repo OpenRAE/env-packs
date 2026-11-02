@@ -107,20 +107,14 @@ func proveBaseline(ctx context.Context, r Runner, opts RegressionOptions, baseli
 // For a new package, history must supply the implementation before the fix.
 func regressionBaselines(ctx context.Context, r Runner, repo, base string, tests []regressionTest) (map[string][]regressionTest, error) {
 	groups := make(map[string][]regressionTest)
-	present := make(map[string]bool)
 	for _, test := range tests {
 		dir := path.Dir(test.file)
-		exists, checked := present[dir]
-		if !checked {
-			out, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: []string{"ls-tree", "--name-only", base, "--", dir}})
-			if err != nil {
-				return nil, err
-			}
-			exists = len(out) != 0
-			present[dir] = exists
+		out, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: []string{"ls-tree", "--name-only", base, "--", dir}})
+		if err != nil {
+			return nil, err
 		}
 		baseline := base
-		if !exists {
+		if len(out) == 0 {
 			var err error
 			baseline, err = historicalRegressionBase(ctx, r, repo, base, test)
 			if err != nil {
