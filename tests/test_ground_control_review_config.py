@@ -141,5 +141,10 @@ class RepositoryBoundaryPlanRuleTests(unittest.TestCase):
         self.assertNotIn("does not host actual environment packs", text)
 
 
+class GoWorkflowBaseTests(unittest.TestCase):
+    def test_issue_workflows_target_the_go_integration_branch(self) -> None:
+        self.assertEqual(_workflow().get("base_branch"), "go-cutover")
+
+
 if __name__ == "__main__":
     unittest.main()

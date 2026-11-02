@@ -6,6 +6,15 @@
 version: 1
 module: github.com/OpenRAE/env-packs
 
+# The release targets (ADR 0047). The code check reads the code that each
+# platform builds, so a file that build constraints exclude on one platform is
+# still checked.
+platforms:
+  - linux/amd64
+  - linux/arm64
+  - darwin/amd64
+  - darwin/arm64
+
 system:
   id: env-packs
   name: RAES environment-pack tooling
@@ -67,16 +76,126 @@ components:
     description: The root package of the module.
     packages:
       - github.com/OpenRAE/env-packs
+  - id: packfs
+    container: library
+    description: Reads pack trees through root descriptors, and commits staged trees atomically.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/packfs
+    modules:
+      - golang.org/x/sys
+      - golang.org/x/text
+  - id: document
+    container: library
+    description: Decodes pack-owned YAML and JSON strictly, within the validation limits.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/document
+    modules:
+      - go.yaml.in/yaml/v3
+  - id: schema
+    container: library
+    description: Holds the packaged schemas and validates a document against them in full.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/schema
+    depends_on:
+      - document
+      - root
+      - diagnostic
+    modules:
+      - github.com/santhosh-tekuri/jsonschema/v6
+  - id: secret-shape
+    container: library
+    description: The one policy for secret-shaped keys and values.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/secretshape
+    modules:
+      - golang.org/x/text
+  - id: diagnostic
+    container: library
+    description: The one diagnostic type of the product, its presentation catalog, and the list of the diagnostics of one operation.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/diagnostic
+  - id: outcome
+    container: library
+    description: The exit statuses and the output streams of the commands and the repository tools, and the handling of defects.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/outcome
+  - id: jsondoc
+    container: library
+    description: Writes JSON envelopes and documents with the bytes of the Python implementation.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/jsondoc
+  - id: terminal
+    container: library
+    description: Escapes labels from packs, file names, and arguments for a terminal.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/terminal
+  - id: raes-interface
+    container: library
+    description: Declares the RAES operations that env-packs uses. Only its adapter calls the RAES Go module.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/raes
+  - id: issue-skeleton
+    container: library
+    description: Plans the standard planning issues of a new pack, and writes them to GitHub through gh.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/issueskeleton
+    depends_on:
+      - terminal
+  - id: issue-skeleton-command
+    container: commands
+    description: The raes-pack-issue-skeleton command. Its Runner is the only code that starts gh.
+    packages:
+      - github.com/OpenRAE/env-packs/cmd/raes-pack-issue-skeleton
+    depends_on:
+      - issue-skeleton
+      - outcome
+      - terminal
+  - id: strict-yaml
+    container: library
+    description: Decodes exactly one YAML document, and rejects unknown fields.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/strictyaml
+    modules:
+      - go.yaml.in/yaml/v3
+  - id: report
+    container: repository-tools
+    description: Holds the findings of the repository tools and writes them.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/report
+    depends_on:
+      - outcome
   - id: architecture
     container: repository-tools
     description: Checks the code and the design records against this model.
     packages:
       - github.com/OpenRAE/env-packs/internal/architecture
       - github.com/OpenRAE/env-packs/tools/archcheck
+    depends_on:
+      - strict-yaml
+      - report
+      - outcome
     modules:
       - golang.org/x/tools
       - golang.org/x/mod
-      - go.yaml.in/yaml/v3
+  - id: test-gates
+    container: repository-tools
+    description: Runs mutation testing on changed lines and proves regression tests.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/testgate
+      - github.com/OpenRAE/env-packs/tools/testgate
+    depends_on:
+      - strict-yaml
+      - report
+      - outcome
+    modules:
+      - github.com/bluekeyes/go-gitdiff
+  - id: conformance
+    container: repository-tools
+    description: Runs the conformance corpus against the Python or the Go implementation.
+    packages:
+      - github.com/OpenRAE/env-packs/conformance
+    modules:
+      - github.com/rogpeppe/go-internal
 
 test_modules:
   - github.com/google/go-cmp
@@ -105,6 +224,9 @@ rules:
       - os.Setenv
       - os.Unsetenv
       - os.Clearenv
+      - os.Stdin
+      - os.Stdout
+      - os.Stderr
       - time.Now
       - time.Since
       - time.Until
@@ -141,6 +263,7 @@ rules:
       containers: [commands, library]
       main_packages: true
       test_files: true
+    except_components: [issue-skeleton-command]
     forbid_imports: [os/exec]
     forbid_symbols:
       - os.StartProcess
@@ -151,6 +274,20 @@ rules:
       Only a component that the model lists in this rule's exceptions may start
       a process. Its design record must name the commands that it starts.
 
+  - id: raes-through-adapter
+    description: >-
+      Only the adapter of the RAES interface imports the RAES Go module (ADR
+      0047, design 0007). The adapter does not exist yet, so no package
+      imports the module.
+    scope:
+      containers: [commands, library, repository-tools]
+      main_packages: true
+      test_files: true
+    forbid_imports: [github.com/OpenRAE/rae/...]
+    fix: >-
+      Call RAES through the interfaces of internal/raes. The design record of
+      the adapter adds the adapter to the exceptions of this rule.
+
   - id: files-through-packfs
     description: >-
       Library code touches the filesystem only through the pack filesystem
@@ -159,6 +296,8 @@ rules:
       containers: [library]
       main_packages: true
       test_files: false
+    except_components: [packfs]
+    forbid_imports: [golang.org/x/sys/unix, syscall]
     forbid_symbols:
       - os.Chmod
       - os.Chown

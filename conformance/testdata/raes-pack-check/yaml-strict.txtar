@@ -1,0 +1,128 @@
+# A plain YAML scalar that YAML 1.1 and YAML 1.2 read differently is a
+# blocking problem. For example, Python reads no as false. An explicit tag is
+# also a blocking problem (#562).
+[python] skip 'deviation: Python reads YAML 1.1 plain scalars and explicit tags, which the contract rejects (#562)'
+mkdir repo/environments
+exits 0 raes-pack-new demo --repo repo --yes
+cp ambiguous.yaml repo/environments/demo/docs/provenance-ledger.yaml
+exits 1 raes-pack-check repo/environments/demo
+stdout '^\[pack\] yaml\.invalid  \(owner: env-packs\)\n  where: docs/provenance-ledger\.yaml$'
+! stderr .
+
+cp tagged.yaml repo/environments/demo/docs/provenance-ledger.yaml
+exits 1 raes-pack-check repo/environments/demo
+stdout '^\[pack\] yaml\.invalid  \(owner: env-packs\)\n  where: docs/provenance-ledger\.yaml$'
+! stderr .
+
+# A quoted scalar is a string in both versions.
+cp quoted.yaml repo/environments/demo/docs/provenance-ledger.yaml
+exits 0 raes-pack-check repo/environments/demo
+! stderr .
+
+-- ambiguous.yaml --
+schema_version: "environment-pack-provenance/v3"
+pack:
+  name: demo
+sources:
+  - source_id: original-design
+    name: "RAES original scenario design"
+    license: "proprietary"
+    usage: reused
+    attribution_required: no
+    used: "All bespoke pack content."
+artifacts:
+  - artifact_id: docs
+    path: docs/
+    classification: commercial-only
+    sources: [original-design]
+    description: "Pack documentation."
+content_safety:
+  no_real_malware: true
+  no_real_third_party_targets: true
+  no_real_credentials: true
+  no_sensitive_data: true
+  offensive_tooling_boundary: true
+  notes: ""
+review:
+  status: pending
+  gates:
+    - gate_id: licensing
+      status: pending
+    - gate_id: attribution
+      status: pending
+    - gate_id: sensitive-data
+      status: pending
+    - gate_id: offensive-tooling
+      status: pending
+-- tagged.yaml --
+schema_version: "environment-pack-provenance/v3"
+pack:
+  name: demo
+  title: !!str Demo
+sources:
+  - source_id: original-design
+    name: "RAES original scenario design"
+    license: "proprietary"
+    usage: reused
+    attribution_required: false
+    used: "All bespoke pack content."
+artifacts:
+  - artifact_id: docs
+    path: docs/
+    classification: commercial-only
+    sources: [original-design]
+    description: "Pack documentation."
+content_safety:
+  no_real_malware: true
+  no_real_third_party_targets: true
+  no_real_credentials: true
+  no_sensitive_data: true
+  offensive_tooling_boundary: true
+  notes: ""
+review:
+  status: pending
+  gates:
+    - gate_id: licensing
+      status: pending
+    - gate_id: attribution
+      status: pending
+    - gate_id: sensitive-data
+      status: pending
+    - gate_id: offensive-tooling
+      status: pending
+-- quoted.yaml --
+schema_version: "environment-pack-provenance/v3"
+pack:
+  name: demo
+  title: 'no'
+sources:
+  - source_id: original-design
+    name: "RAES original scenario design"
+    license: "proprietary"
+    usage: reused
+    attribution_required: false
+    used: "All bespoke pack content."
+artifacts:
+  - artifact_id: docs
+    path: docs/
+    classification: commercial-only
+    sources: [original-design]
+    description: "Pack documentation."
+content_safety:
+  no_real_malware: true
+  no_real_third_party_targets: true
+  no_real_credentials: true
+  no_sensitive_data: true
+  offensive_tooling_boundary: true
+  notes: ""
+review:
+  status: pending
+  gates:
+    - gate_id: licensing
+      status: pending
+    - gate_id: attribution
+      status: pending
+    - gate_id: sensitive-data
+      status: pending
+    - gate_id: offensive-tooling
+      status: pending

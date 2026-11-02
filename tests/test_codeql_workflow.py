@@ -67,10 +67,10 @@ class CodeqlWorkflowContractTests(unittest.TestCase):
         return -1
 
     # --- triggers -------------------------------------------------------
-    def test_pull_request_targets_dev_and_main(self) -> None:
-        branches = self.on["pull_request"]["branches"]
-        self.assertIn("main", branches, "CodeQL must run on PRs into main (#57)")
-        self.assertIn("dev", branches, "CodeQL must run on PRs into dev (#57)")
+    def test_pull_request_has_no_branch_filter(self) -> None:
+        trigger = self.on["pull_request"] or {}
+        self.assertNotIn("branches", trigger)
+        self.assertNotIn("branches-ignore", trigger)
 
     def test_has_weekly_schedule(self) -> None:
         schedule = self.on.get("schedule")
@@ -119,6 +119,20 @@ class CodeqlWorkflowContractTests(unittest.TestCase):
         entry = next((e for e in include if e.get("language") == "python"), None)
         self.assertIsNotNone(entry, "matrix must analyze the python language")
         self.assertEqual(entry.get("build-mode"), "none")
+
+    def test_go_autobuild_matrix_with_the_pinned_toolchain(self) -> None:
+        # Go needs a build to analyze. A Go setup step for the Go entry only
+        # selects the toolchain that go.mod pins, before CodeQL init.
+        include = self.job["strategy"]["matrix"]["include"]
+        entry = next((e for e in include if e.get("language") == "go"), None)
+        self.assertIsNotNone(entry, "matrix must analyze the go language")
+        self.assertEqual(entry.get("build-mode"), "autobuild")
+        setup = self._index("actions/setup-go@")
+        self.assertGreaterEqual(setup, 0, "the Go entry needs actions/setup-go")
+        self.assertLess(setup, self._index(_INIT_ACTION), "set up Go before CodeQL init")
+        step = self.steps[setup]
+        self.assertEqual(step.get("if"), "matrix.language == 'go'")
+        self.assertEqual(step["with"].get("go-version-file"), "go.mod")
 
     def test_codeql_scans_the_complete_repository(self) -> None:
         init_step = next(

@@ -1,0 +1,5 @@
+# An invalid pack gives no document, and a diagnostic on stderr.
+mkdir empty
+exits 1 raes-pack-catalog empty
+! stdout .
+stderr 'catalog\.pack\.invalid:pack\.missing'

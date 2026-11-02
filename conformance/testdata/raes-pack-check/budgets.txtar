@@ -1,0 +1,19 @@
+# A pack with more members than the budget of 1024 is a blocking problem.
+mkdir many
+exec sh -c 'i=0; while [ $i -lt 1025 ]; do : > many/f$i; i=$((i+1)); done'
+exits 1 raes-pack-check --json many
+stdout '"code": "resource\.member-limit"'
+
+# A metadata file larger than the budget of 1 MiB is a blocking problem.
+mkdir big
+exec sh -c 'head -c 1048577 /dev/zero | tr "\000" "#" > big/pack.yaml'
+exits 1 raes-pack-check --json big
+stdout '"code": "resource\.metadata-limit"'
+
+# A pack.yaml pointer that leaves the pack is invalid.
+exits 1 raes-pack-check --json escape
+stdout '"code": "provenance\.pointer\.invalid"'
+
+-- escape/pack.yaml --
+name: escape
+provenance_ledger: ../outside.yaml

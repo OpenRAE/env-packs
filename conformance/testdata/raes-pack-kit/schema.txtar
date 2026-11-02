@@ -1,0 +1,21 @@
+# A kit release whose resource estimate is below the minimum of 1 breaks the
+# kit contract (#562).
+mkdir src/kits/infrastructure.secrets-store
+exec cp -R $REPO/kits/infrastructure.secrets-store/1.0.0 src/kits/infrastructure.secrets-store/1.0.0
+exits 0 raes-pack-kit list src --source-id first-party --source-revision r1
+stdout '^infrastructure\.secrets-store@1\.0\.0 — '
+exec sh -c 'sed "s/^  cpu_cores: .*/  cpu_cores: 0/" src/kits/infrastructure.secrets-store/1.0.0/kit.yaml > kit.yaml'
+cp kit.yaml src/kits/infrastructure.secrets-store/1.0.0/kit.yaml
+exits 1 raes-pack-kit list src --source-id first-party --source-revision r1
+! stdout .
+stderr '^error: kit manifest does not satisfy the closed contract$'
+
+# A kit release whose released_at is not an RFC 3339 date and time breaks the
+# kit contract.
+[python] skip 'deviation: the Python schema subset does not assert format (#562)'
+cp $REPO/kits/infrastructure.secrets-store/1.0.0/kit.yaml src/kits/infrastructure.secrets-store/1.0.0/kit.yaml
+exec sh -c 'sed "s/^released_at: .*/released_at: yesterday/" src/kits/infrastructure.secrets-store/1.0.0/kit.yaml > kit.yaml'
+cp kit.yaml src/kits/infrastructure.secrets-store/1.0.0/kit.yaml
+exits 1 raes-pack-kit list src --source-id first-party --source-revision r1
+! stdout .
+stderr '^error: kit manifest does not satisfy the closed contract$'

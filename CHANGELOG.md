@@ -11,6 +11,50 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [7.2.1](https://github.com/OpenRAE/env-packs/compare/v7.2.0...v7.2.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* adopt RAES 10.4 and declare provable TechVault setting provenance ([#607](https://github.com/OpenRAE/env-packs/issues/607)) ([b7f2f31](https://github.com/OpenRAE/env-packs/commit/b7f2f319c984de256cf2822ac278f6c31b445121))
+* pin RAES 10.5.0 exactly ([#624](https://github.com/OpenRAE/env-packs/issues/624)) ([df0e8c4](https://github.com/OpenRAE/env-packs/commit/df0e8c483044a7e5a10b0e241f8938b9ecd61c07)), closes [#623](https://github.com/OpenRAE/env-packs/issues/623)
+* require RAES 10.5 and declare the TechVault syslog source as a socket ([#622](https://github.com/OpenRAE/env-packs/issues/622)) ([1e5b842](https://github.com/OpenRAE/env-packs/commit/1e5b842c41a1993cefa02fa9d187abbef7f3f9cd)), closes [#604](https://github.com/OpenRAE/env-packs/issues/604)
+
+
+### Documentation
+
+* remove the false pre-1.0 breaking-change rule from the release docs ([#613](https://github.com/OpenRAE/env-packs/issues/613)) ([079de83](https://github.com/OpenRAE/env-packs/commit/079de83b26657c12bd03d636b8cf10a05521dcde))
+
+## [7.2.0](https://github.com/OpenRAE/env-packs/compare/v7.1.0...v7.2.0) (2026-11-01)
+
+
+### Features
+
+* **packs:** declare red and blue tool action contracts in the participant study ([#598](https://github.com/OpenRAE/env-packs/issues/598)) ([bcd0745](https://github.com/OpenRAE/env-packs/commit/bcd0745cf5031cc32ec9aee0c7b80d2dabba65af)), closes [#597](https://github.com/OpenRAE/env-packs/issues/597)
+
+
+### Bug Fixes
+
+* admit pinned local imports in the public consumer check ([#550](https://github.com/OpenRAE/env-packs/issues/550)) ([4529679](https://github.com/OpenRAE/env-packs/commit/45296794fc2dff9a79229db32e5e644f80cc6745))
+
+## [7.1.0](https://github.com/OpenRAE/env-packs/compare/v7.0.0...v7.1.0) (2026-10-31)
+
+
+### Features
+
+* **kits:** add reusable Owlbear protected-target kit ([#546](https://github.com/OpenRAE/env-packs/issues/546)) ([a5a423b](https://github.com/OpenRAE/env-packs/commit/a5a423bed99215b639ae10a0465ce238f3d35226))
+
+
+### Bug Fixes
+
+* install the package before the pack version sync and gate publication on pack versions ([#545](https://github.com/OpenRAE/env-packs/issues/545)) ([4589b28](https://github.com/OpenRAE/env-packs/commit/4589b28a697a3cf9d60539499a172c9803bf88f9))
+
+
+### Documentation
+
+* **kits:** document Owlbear composition and adapter boundary ([975bd78](https://github.com/OpenRAE/env-packs/commit/975bd78b32f78b4e7aac4892adafb13fe24da50a))
+* **kits:** document Owlbear composition and runtime boundary ([#547](https://github.com/OpenRAE/env-packs/issues/547)) ([975bd78](https://github.com/OpenRAE/env-packs/commit/975bd78b32f78b4e7aac4892adafb13fe24da50a))
+
 ## [7.0.0](https://github.com/OpenRAE/env-packs/compare/v6.5.1...v7.0.0) (2026-10-31)
 
 

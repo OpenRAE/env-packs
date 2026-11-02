@@ -3,6 +3,7 @@ package architecture
 import (
 	"testing"
 
+	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -17,7 +18,7 @@ func TestCheckCode(t *testing.T) {
 		name   string
 		change func(m *Model)
 		graph  Graph
-		want   []Finding
+		want   []report.Finding
 	}{
 		{
 			name: "clean code",
@@ -35,7 +36,7 @@ func TestCheckCode(t *testing.T) {
 				pkg("internal/core", false, File{Name: "internal/core/core.go"}),
 				{Path: testModule + "/internal/stray", Dir: "internal/stray"},
 			}},
-			want: []Finding{
+			want: []report.Finding{
 				{
 					Location: "internal/stray", Rule: RulePackageOwner,
 					Message: `package "example.com/repo/internal/stray" has no component`,
@@ -60,7 +61,7 @@ func TestCheckCode(t *testing.T) {
 				pkg("internal/core", false, File{Name: "internal/core/core.go", Symbols: []Symbol{{Name: "println", Line: 2}}}),
 				pkg("internal/feature", false, File{Name: "internal/feature/f.go"}),
 			}},
-			want: []Finding{
+			want: []report.Finding{
 				{
 					Location: "internal/aaa", Rule: RulePackageOwner,
 					Message: `package "example.com/repo/internal/aaa" has no component`,
@@ -79,7 +80,7 @@ func TestCheckCode(t *testing.T) {
 				},
 				Unread: []string{"internal/core/gen.go", "locked"},
 			},
-			want: []Finding{unreadFinding("internal/core/gen.go"), unreadFinding("locked")},
+			want: []report.Finding{unreadFinding("internal/core/gen.go"), unreadFinding("locked")},
 		},
 		{
 			name: "import inside one component",
@@ -109,7 +110,7 @@ func TestCheckCode(t *testing.T) {
 					{Path: testModule + "/internal/extra", Module: testModule, Line: 5},
 				}}),
 			}},
-			want: []Finding{{
+			want: []report.Finding{{
 				Location: "internal/feature/f.go:5", Rule: RuleComponentDependency,
 				Message: `component "feature" imports "example.com/repo/internal/extra" of component "extra", but the model does not permit this dependency`,
 				Fix:     `Use a component that "feature" may depend on (core), or add the dependency "feature" -> "extra" to the model in a design step.`,
@@ -124,7 +125,7 @@ func TestCheckCode(t *testing.T) {
 				pkg("internal/feature", false, File{Name: "internal/feature/f.go"}),
 				{Path: testModule + "/internal/stray", Dir: "internal/stray"},
 			}},
-			want: []Finding{{
+			want: []report.Finding{{
 				Location: "internal/stray", Rule: RulePackageOwner,
 				Message: `package "example.com/repo/internal/stray" has no component`,
 				Fix:     "Add the package to the packages of a component in architecture/model.yaml, in a design step (docs/development/designs/README.md).",
@@ -138,7 +139,7 @@ func TestCheckCode(t *testing.T) {
 				}}),
 				pkg("internal/feature", false, File{Name: "internal/feature/f.go"}),
 			}},
-			want: []Finding{{
+			want: []report.Finding{{
 				Location: "internal/core/core.go:7", Rule: RuleComponentDependency,
 				Message: `component "core" imports "example.com/repo/internal/feature" of component "feature", but the model does not permit this dependency`,
 				Fix:     `Use a component that "core" may depend on (no other component), or add the dependency "core" -> "feature" to the model in a design step.`,
@@ -158,7 +159,7 @@ func TestCheckCode(t *testing.T) {
 					{Path: "github.com/google/go-cmp/cmp", Module: "github.com/google/go-cmp", Line: 9},
 				}}),
 			}},
-			want: []Finding{
+			want: []report.Finding{
 				{
 					Location: "internal/core/core.go:2", Rule: RuleExternalModule,
 					Message: `component "core" imports "golang.org/x/text/language" from module "golang.org/x/text", but the model does not permit this module`,
@@ -190,7 +191,7 @@ func TestCheckCode(t *testing.T) {
 				}),
 				pkg("internal/feature", false, File{Name: "internal/feature/f.go"}),
 			}},
-			want: []Finding{
+			want: []report.Finding{
 				quietFinding("internal/core/core.go:10", "use of println"),
 				quietFinding("internal/core/core.go:3", `import of "log"`),
 				quietFinding("internal/core/core.go:4", `import of "net/http/httptest"`),
@@ -204,7 +205,7 @@ func TestCheckCode(t *testing.T) {
 			if tt.change != nil {
 				tt.change(m)
 			}
-			got := SortFindings(CheckCode(m, "model.yaml", tt.graph))
+			got := report.Sort(CheckCode(m, "model.yaml", tt.graph))
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("CheckCode() mismatch (-want +got):\n%s", diff)
 			}
@@ -212,8 +213,8 @@ func TestCheckCode(t *testing.T) {
 	}
 }
 
-func unreadFinding(location string) Finding {
-	return Finding{
+func unreadFinding(location string) report.Finding {
+	return report.Finding{
 		Location: location,
 		Rule:     RuleUnreadPath,
 		Message:  "the check cannot read this path, so the rules of the model do not apply to it",
@@ -221,8 +222,8 @@ func unreadFinding(location string) Finding {
 	}
 }
 
-func quietFinding(location, what string) Finding {
-	return Finding{
+func quietFinding(location, what string) report.Finding {
+	return report.Finding{
 		Location: location,
 		Rule:     "quiet",
 		Message:  what + ` in component "core" breaks the rule: Libraries do not print.`,
@@ -283,23 +284,5 @@ func TestMatchImport(t *testing.T) {
 		if got := matchImport(tt.pattern, tt.path); got != tt.want {
 			t.Errorf("matchImport(%q, %q) = %v, want %v", tt.pattern, tt.path, got, tt.want)
 		}
-	}
-}
-
-func TestSortFindings(t *testing.T) {
-	a := Finding{Location: "a.go:1", Rule: "r", Message: "m", Fix: "f"}
-	b := Finding{Location: "a.go:1", Rule: "s", Message: "m", Fix: "f"}
-	c := Finding{Location: "b.go:1", Rule: "r", Message: "m", Fix: "f"}
-	got := SortFindings([]Finding{c, b, a, c, a})
-	if diff := cmp.Diff([]Finding{a, b, c}, got); diff != "" {
-		t.Errorf("SortFindings() mismatch (-want +got):\n%s", diff)
-	}
-}
-
-func TestFindingString(t *testing.T) {
-	f := Finding{Location: "a.go:3", Rule: "quiet", Message: "use of fmt.Println", Fix: "Return the value."}
-	want := "a.go:3: quiet: use of fmt.Println\n\tfix: Return the value."
-	if got := f.String(); got != want {
-		t.Errorf("Finding.String() = %q, want %q", got, want)
 	}
 }

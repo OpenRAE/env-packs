@@ -581,19 +581,10 @@ class LocalImportTests(PackValidationFixture):
                 self.assertIn(_DENIED, result.errors)
                 self.assertFalse((self.root / "sdl" / ".raes").exists())
 
-    def test_sensitive_import_target_is_never_read(self) -> None:
+    def test_import_target_with_a_secret_like_name_is_admitted(self) -> None:
         self._compose(module_rel="sdl/credentials/base.sdl.yaml")
-        reads: list[str] = []
-        original = _validation._pack_fs.read_member_bytes
-
-        def record(root_fd: int, rel: str, **kwargs: object) -> bytes:
-            reads.append(rel)
-            return original(root_fd, rel, **kwargs)
-
-        with mock.patch.object(_validation._pack_fs, "read_member_bytes", record):
-            result = self.validate()
-        self.assertIn(_DENIED, result.errors)
-        self.assertNotIn("sdl/credentials/base.sdl.yaml", reads)
+        result = self.validate()
+        self.assertTrue(result.ok, result.errors)
 
     def test_source_set_beyond_the_composition_budget_is_refused(self) -> None:
         self._compose()

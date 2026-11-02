@@ -1,0 +1,22 @@
+    ## Goal
+    Add delivery/audience profile bundles for `{{.PackID}}` when the pack has multiple audiences.
+
+    {{.PackBlock}}
+    {{.CommonAnchors}}
+    ## Deliverables
+    - `profiles/bundles.yaml` with supported bundle rows and entrypoints.
+    - Guided, unguided, purple-team, agent-benchmark, and demo content as applicable.
+    - `profiles/validate_*.py` plus tests for manifest consistency, participant/operator split, leak scanning, and
+      compatibility joins.
+    - Matching `pack.yaml.contents.profile_bundles`, `profile_bundles:` index, and
+      `pack.compatibility.yaml.delivery_bundles` rows.
+
+    ## Acceptance Criteria
+    - Selecting a profile changes content exposure only; it does not create a second scenario specification or a second
+      golden proof.
+    - Participant files do not disclose operator-only action ordering, raw evidence, answers, credentials, flags, or
+      next-step hints.
+    - If this pack intentionally has no profile layer, close this issue as not planned only after pack metadata says so.
+
+    {{.ChildIssueNote}}
+    

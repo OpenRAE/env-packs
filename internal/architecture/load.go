@@ -20,14 +20,41 @@ import (
 // maxLoadErrors bounds the package errors that LoadGraph reports.
 const maxLoadErrors = 10
 
-// LoadGraph loads every package of the Go module in dir, with its test files.
-// The paths in the graph are relative to the module root.
-func LoadGraph(dir string) (Graph, error) {
-	deps, err := load(dir, packages.NeedName|packages.NeedImports|packages.NeedDeps|packages.NeedModule)
+// A Build is one configuration of the go command that loads the code.
+type Build struct {
+	// Name names the build in error messages, for example "linux/amd64".
+	Name string
+	// Env is the environment of the go command, in the form of os.Environ.
+	// A nil environment is the environment of the process.
+	Env []string
+}
+
+// LoadGraph loads every package of the Go module in dir, with its test files,
+// once for each build. A file is part of the graph when a build reads it, and
+// a path is unread when no build reads it. The paths in the graph are relative
+// to the module root.
+func LoadGraph(dir string, builds []Build) (Graph, error) {
+	if len(builds) == 0 {
+		return Graph{}, errors.New("no build to load")
+	}
+	graphs := make([]Graph, 0, len(builds))
+	for _, b := range builds {
+		g, err := loadBuild(dir, b.Env)
+		if err != nil {
+			return Graph{}, fmt.Errorf("build %s: %w", b.Name, err)
+		}
+		graphs = append(graphs, g)
+	}
+	return mergeGraphs(graphs), nil
+}
+
+// loadBuild loads the graph of the module in dir for one environment.
+func loadBuild(dir string, env []string) (Graph, error) {
+	deps, err := load(dir, env, packages.NeedName|packages.NeedImports|packages.NeedDeps|packages.NeedModule)
 	if err != nil {
 		return Graph{}, err
 	}
-	roots, err := load(dir, packages.NeedName|packages.NeedSyntax|packages.NeedTypes|
+	roots, err := load(dir, env, packages.NeedName|packages.NeedSyntax|packages.NeedTypes|
 		packages.NeedTypesInfo|packages.NeedModule|packages.NeedForTest)
 	if err != nil {
 		return Graph{}, err
@@ -39,10 +66,44 @@ func LoadGraph(dir string) (Graph, error) {
 	return buildGraph(mod, roots, modulePaths(deps)), nil
 }
 
+// mergeGraphs merges the graphs of the builds. A package has the files of
+// each graph. The graphs that read one file read the same source, so the
+// merge keeps the first copy of each file. A package is a main package when
+// it is a main package in one graph. A path is unread when it is unread in
+// each graph.
+func mergeGraphs(graphs []Graph) Graph {
+	merged := Graph{Module: graphs[0].Module, Unread: graphs[0].Unread}
+	byPath := make(map[string]*Package)
+	seen := make(map[string]bool)
+	for _, g := range graphs {
+		for _, p := range g.Packages {
+			mp := byPath[p.Path]
+			if mp == nil {
+				mp = &Package{Path: p.Path, Dir: p.Dir}
+				byPath[p.Path] = mp
+			}
+			mp.Main = mp.Main || p.Main
+			for _, f := range p.Files {
+				if !seen[f.Name] {
+					seen[f.Name] = true
+					mp.Files = append(mp.Files, f)
+				}
+			}
+		}
+		merged.Unread = slices.DeleteFunc(merged.Unread, func(path string) bool { return !slices.Contains(g.Unread, path) })
+	}
+	for _, pkgPath := range slices.Sorted(maps.Keys(byPath)) {
+		mp := byPath[pkgPath]
+		slices.SortFunc(mp.Files, func(x, y File) int { return cmp.Compare(x.Name, y.Name) })
+		merged.Packages = append(merged.Packages, *mp)
+	}
+	return merged
+}
+
 // load loads the packages of the module in dir that match the pattern ./...,
 // with their test variants. It fails when a package has an error.
-func load(dir string, mode packages.LoadMode) ([]*packages.Package, error) {
-	roots, err := packages.Load(&packages.Config{Mode: mode, Dir: dir, Tests: true}, "./...")
+func load(dir string, env []string, mode packages.LoadMode) ([]*packages.Package, error) {
+	roots, err := packages.Load(&packages.Config{Mode: mode, Dir: dir, Env: env, Tests: true}, "./...")
 	if err == nil {
 		err = packageErrors(roots)
 	}
@@ -93,8 +154,10 @@ func modulePaths(roots []*packages.Package) map[string]string {
 
 // buildGraph merges the package variants that go/packages returns for tests
 // into one Package for each import path. A test variant belongs to the
-// package that it tests (ForTest). A file outside the module root, such as
-// the generated main file of a test binary, is not part of the graph.
+// package that it tests (ForTest), so a file of a package with tests occurs
+// once for each variant, and mergeGraphs keeps one copy. A file outside the
+// module root, such as the generated main file of a test binary, is not part
+// of the graph.
 func buildGraph(mod *packages.Module, roots []*packages.Package, modules map[string]string) Graph {
 	byPath := make(map[string]*Package)
 	read := make(map[string]bool)
@@ -102,7 +165,7 @@ func buildGraph(mod *packages.Module, roots []*packages.Package, modules map[str
 		owner := cmp.Or(p.ForTest, p.PkgPath)
 		for _, syntax := range p.Syntax {
 			name, ok := strings.CutPrefix(p.Fset.File(syntax.FileStart).Name(), mod.Dir+string(filepath.Separator))
-			if !ok || read[name] {
+			if !ok {
 				continue
 			}
 			read[name] = true

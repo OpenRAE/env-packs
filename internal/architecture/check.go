@@ -5,16 +5,18 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/OpenRAE/env-packs/internal/report"
 )
 
 // CheckCode compares the code with the model. The findings about the model
 // itself name modelPath as their location.
-func CheckCode(m *Model, modelPath string, g Graph) []Finding {
+func CheckCode(m *Model, modelPath string, g Graph) []report.Finding {
 	c := codeChecker{model: m, owners: m.Owners(), graph: g}
 	c.checkModule(modelPath)
 	c.checkOwnership(modelPath)
 	for _, name := range g.Unread {
-		c.add(Finding{
+		c.add(report.Finding{
 			Location: name,
 			Rule:     RuleUnreadPath,
 			Message:  "the check cannot read this path, so the rules of the model do not apply to it",
@@ -39,16 +41,16 @@ type codeChecker struct {
 	model    *Model
 	owners   map[string]*Component
 	graph    Graph
-	findings []Finding
+	findings []report.Finding
 }
 
-func (c *codeChecker) add(f Finding) {
+func (c *codeChecker) add(f report.Finding) {
 	c.findings = append(c.findings, f)
 }
 
 func (c *codeChecker) checkModule(modelPath string) {
 	if c.graph.Module != c.model.Module {
-		c.add(Finding{
+		c.add(report.Finding{
 			Location: modelPath,
 			Rule:     RuleModel,
 			Message:  fmt.Sprintf("the model describes module %q, but the code is module %q", c.model.Module, c.graph.Module),
@@ -62,7 +64,7 @@ func (c *codeChecker) checkOwnership(modelPath string) {
 	for _, p := range c.graph.Packages {
 		inCode[p.Path] = true
 		if _, ok := c.owners[p.Path]; !ok {
-			c.add(Finding{
+			c.add(report.Finding{
 				Location: p.Dir,
 				Rule:     RulePackageOwner,
 				Message:  fmt.Sprintf("package %q has no component", p.Path),
@@ -73,7 +75,7 @@ func (c *codeChecker) checkOwnership(modelPath string) {
 	for _, comp := range c.model.Components {
 		for _, p := range comp.Packages {
 			if !inCode[p] {
-				c.add(Finding{
+				c.add(report.Finding{
 					Location: modelPath,
 					Rule:     RuleUnknownPackage,
 					Message:  fmt.Sprintf("component %q owns package %q, but the code has no such package", comp.ID, p),
@@ -117,7 +119,7 @@ func (c *codeChecker) checkComponentImport(owner *Component, f File, imp Import)
 	if len(owner.DependsOn) > 0 {
 		allowed = strings.Join(slices.Sorted(slices.Values(owner.DependsOn)), ", ")
 	}
-	c.add(Finding{
+	c.add(report.Finding{
 		Location: location(f, imp.Line),
 		Rule:     RuleComponentDependency,
 		Message:  fmt.Sprintf("component %q imports %q of component %q, but the model does not permit this dependency", owner.ID, imp.Path, target.ID),
@@ -133,7 +135,7 @@ func (c *codeChecker) checkModuleImport(owner *Component, f File, imp Import) {
 	if f.Test {
 		fix = fmt.Sprintf("Add module %q to the test modules or to the modules of component %q in a design step, and give the reason in the design record.", imp.Module, owner.ID)
 	}
-	c.add(Finding{
+	c.add(report.Finding{
 		Location: location(f, imp.Line),
 		Rule:     RuleExternalModule,
 		Message:  fmt.Sprintf("component %q imports %q from module %q, but the model does not permit this module", owner.ID, imp.Path, imp.Module),
@@ -155,8 +157,8 @@ func (c *codeChecker) applicableRules(owner *Component, mainPackage, testFile bo
 	return rules
 }
 
-func ruleFinding(r Rule, owner *Component, f File, line int, what string) Finding {
-	return Finding{
+func ruleFinding(r Rule, owner *Component, f File, line int, what string) report.Finding {
+	return report.Finding{
 		Location: location(f, line),
 		Rule:     r.ID,
 		Message:  fmt.Sprintf("%s in component %q breaks the rule: %s", what, owner.ID, r.Description),

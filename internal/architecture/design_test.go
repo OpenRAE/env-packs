@@ -6,6 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -92,7 +93,7 @@ func TestLoadDesigns(t *testing.T) {
 	if first := designs[1]; first.Path != "designs/0001-first.md" || first.Title != "First" || first.Issue != 1 {
 		t.Errorf("LoadDesigns() record 1 = %+v, want the parsed first record", first)
 	}
-	want := []Finding{
+	want := []report.Finding{
 		designFinding("designs/0003-numbers.md", "has design number 4, but its file name does not start with 0004-"),
 		designFinding("designs/0004-no-issue.md", "names no GitHub issue"),
 		designFinding("designs/0005-no-title.md", "has no title"),
@@ -102,7 +103,7 @@ func TestLoadDesigns(t *testing.T) {
 		designFinding("designs/0009-negative.md", "has design number -9, but its file name does not start with -009-"),
 		designFinding("designs/notes.md", "is not a design record file named NNNN-slug.md"),
 	}
-	if diff := cmp.Diff(want, SortFindings(findings)); diff != "" {
+	if diff := cmp.Diff(want, report.Sort(findings)); diff != "" {
 		t.Errorf("LoadDesigns() findings mismatch (-want +got):\n%s", diff)
 	}
 }
@@ -233,7 +234,7 @@ func TestCheckDesigns(t *testing.T) {
 
 // designMessages returns the messages of design findings, and checks that each
 // finding has the design rule and a fix.
-func designMessages(t *testing.T, findings []Finding) []string {
+func designMessages(t *testing.T, findings []report.Finding) []string {
 	t.Helper()
 	var got []string
 	for _, f := range findings {

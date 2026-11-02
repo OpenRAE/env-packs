@@ -1,7 +1,7 @@
 {
   "schema_version": "associated-artifact-manifest/v1",
   "manifest_id": "techvault-associated-artifacts",
-  "manifest_version": "7.0.0",
+  "manifest_version": "7.2.1",
   "canonicalization_profile": "associated-artifact-set/v1",
   "scope": "scenario",
   "parent_ref": {
@@ -547,7 +547,7 @@
       "uri": "raes-environment-pack:/pack.compatibility.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "1230611a6ad38552daf95978b8d3c7999ddf878c97b11ca53c8c6b67add244c2"
+        "value": "bc959540ac06a1458d6fafa13177af3a2d905f97edf654a4027ded705128f37a"
       },
       "size_bytes": 1571,
       "created_at": "2026-08-02T00:00:00Z",
@@ -563,7 +563,7 @@
       "uri": "raes-environment-pack:/pack.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "eb193c1c80570c281a0bae71aa351a25e5db83df013f2fe32f2231c25a901683"
+        "value": "61a1fa91b9d52740f1f25fa856dfb659393ec4dc8525b468ae590ab3a5be1a2a"
       },
       "size_bytes": 542,
       "created_at": "2026-08-02T00:00:00Z",
@@ -595,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "1cdb196f5a6078139c028123a8a160128e0075c665555928f32dd5946fe9ecbd"
+        "value": "0037018bebf021e39023839dac7966f9e021dbe5853bb5aa254a9215f5f19c59"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -627,9 +627,9 @@
       "uri": "raes-environment-pack:/sdl/techvault.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "76ef4dc52d1f52f8b2a18e4875b9e0b93dbc2c21a4c356584e49da30c7a15062"
+        "value": "a903323973ec44b523de54ba2ae9f2d1c0b22268ba4c447a794e79109f2985b4"
       },
-      "size_bytes": 135233,
+      "size_bytes": 135168,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -701,5 +701,5 @@
       "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:d4bb9d0145acd7e834d942ed45c6a7ad140ffee4b0d168add4ab311e38e08fbc"
+  "set_digest": "sha256:ef1a5a54b769d9ca42360d012b98fdfcff2a9716c2636d222e112484501d7324"
 }

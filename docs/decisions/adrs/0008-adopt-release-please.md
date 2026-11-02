@@ -12,11 +12,10 @@
 
 ## Context
 
-Every home-grown approach so far (hatch-vcs tags, a committed literal + a custom
-`tools/release.py`, towncrier collation) left a manual step: someone had to run a
-script or hand-collate the changelog to cut a release. The requirement is that a
-release is produced by **merges only** — no scripts to remember. That is exactly
-what [release-please](https://github.com/googleapis/release-please) does.
+Earlier approaches left a manual release step. These included hatch-vcs tags,
+a version literal with `tools/release.py`, and towncrier collation. Someone
+had to run a script or assemble the changelog. **Merges only** must produce
+a release, with no release script to remember. This is what [release-please](https://github.com/googleapis/release-please) does.
 
 ## Decision
 
@@ -29,12 +28,12 @@ release-please rewrites that string on release. `{{IMPORT}}/__init__.py` derives
 
 ### 2. Changelog = release-please
 release-please owns `CHANGELOG.md`. Feature PRs never touch it (no collisions).
-towncrier and `changelog.d/` are removed.
+The repository no longer uses towncrier or `changelog.d/`.
 
 ### 3. Commit contract (what release-please reads)
 Squash-merge feature PRs; the PR title is a Conventional Commit:
-`feat:`→minor, `fix:`/`perf:`→patch, `feat!:`/`BREAKING CHANGE:`→major (pre-1.0
-demotes major→minor); `docs`/`chore`/`refactor`/`test`/`ci`/`build`→no release.
+`feat:`→minor, `fix:`/`perf:`→patch, `feat!:`/`BREAKING CHANGE:`→major;
+`docs`/`chore`/`refactor`/`test`/`ci`/`build`→no release.
 The required PR-title guard keeps this enforced on `dev` and `main`.
 
 ### 4. Config
@@ -60,8 +59,9 @@ that PR → it tags and publishes.** Nothing is hand-run; feature PRs never edit
 `CHANGELOG.md`.
 
 ## Caveat
-The release PR is opened by `GITHUB_TOKEN`, so required CI checks don't auto-run
-on it — **admin-merge it**, or give release-please a stored PAT so its checks run.
+A release PR that uses `GITHUB_TOKEN` does not start the required CI checks.
+Use the stored release credential so its checks run. Do not bypass required
+checks to merge a release.
 
 ## Consequences
 - Releases are merge-only; no scripts, no towncrier, no hand-collation.

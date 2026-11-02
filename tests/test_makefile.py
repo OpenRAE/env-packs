@@ -188,6 +188,35 @@ class MakefileSafetyTests(unittest.TestCase):
             "make devmain must propagate a failing gh instead of reporting success",
         )
 
+    def test_go_platform_discovery_failure_stops_gates(self) -> None:
+        # Regression for #617: command substitution in a for header hides failure.
+        fake = self.tmpdir / "go"
+        fake.write_text('#!/bin/sh\nif [ "$1" = run ]; then exit 42; fi\nexit 0\n')
+        fake.chmod(0o700)
+        for target in ("go-lint", "go-audit"):
+            with self.subTest(target=target):
+                result = subprocess.run(
+                    ["make", "-f", str(_MAKEFILE), target, f"GO={fake}", "MISE=true"],
+                    cwd=_MAKEFILE.parent, text=True, capture_output=True, check=False,
+                )
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_go_security_checks_every_platform(self) -> None:
+        fake = self.tmpdir / "go"
+        fake.write_text('#!/bin/sh\nif [ "$1" = run ]; then printf "linux/amd64\\nlinux/arm64\\ndarwin/amd64\\ndarwin/arm64\\n"; fi\n')
+        fake.chmod(0o700)
+        mise = self.tmpdir / "mise"
+        record = self.tmpdir / "platforms"
+        mise.write_text('#!/bin/sh\nprintf "%s/%s\\n" "$GOOS" "$GOARCH" >> "' + str(record) + '"\n')
+        mise.chmod(0o700)
+        result = subprocess.run(
+            ["make", "-f", str(_MAKEFILE), "go-audit", f"GO={fake}", f"MISE={mise}"],
+            cwd=_MAKEFILE.parent, text=True, capture_output=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(record.read_text().splitlines(),
+                         ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64"])
+
 
 class MakefileStaticTests(unittest.TestCase):
     def setUp(self) -> None:

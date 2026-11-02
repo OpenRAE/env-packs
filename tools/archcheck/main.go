@@ -6,11 +6,14 @@
 //	archcheck [-root dir] design
 //	archcheck [-root dir] check
 //	archcheck [-root dir] dsl [-write]
+//	archcheck [-root dir] platforms
 //
 // The design mode checks the model and the design records, and does not read
 // the code. Run it in the design step, before the code exists. The check mode
 // also compares the code and the C4 view with the model. The dsl mode renders
 // the C4 view of the model, and -write writes it to architecture/workspace.dsl.
+// The platforms mode writes the release platforms of the model, one on each
+// line, so that make go-lint can lint the code of each platform.
 //
 // The exit status is 0 with no findings, 1 with findings, 2 for invalid
 // usage, and 3 when the tool cannot complete. See
@@ -18,7 +21,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"flag"
@@ -27,15 +29,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/OpenRAE/env-packs/internal/architecture"
-)
-
-const (
-	exitOK       = 0
-	exitFindings = 1
-	exitUsage    = 2
-	exitFailure  = 3
+	"github.com/OpenRAE/env-packs/internal/outcome"
+	"github.com/OpenRAE/env-packs/internal/report"
 )
 
 // The architecture files, relative to the repository root.
@@ -46,58 +45,51 @@ const (
 )
 
 func main() {
-	os.Exit(run(os.Args, os.Stdout, os.Stderr))
+	os.Exit(run(os.Args, os.Environ(), os.Stdout, os.Stderr))
 }
 
 // run runs the command and returns the exit status. Like os.Args, args starts
-// with the program name. A failed write to stdout or stderr changes the
-// status to exitFailure.
-func run(args []string, stdout, stderr io.Writer) int {
-	out := output{stdout: bufio.NewWriter(stdout), stderr: bufio.NewWriter(stderr)}
-	status := runMode(args, out)
-	// A bufio.Writer keeps its first write error, and Flush returns it.
-	if err := errors.Join(out.stdout.Flush(), out.stderr.Flush()); err != nil {
-		return exitFailure
-	}
-	return status
+// with the program name. The go command that loads the code runs with the
+// environment environ, in the form of os.Environ. A failed write to stdout or
+// stderr changes the status to outcome.ToolFailure.
+func run(args, environ []string, stdout, stderr io.Writer) int {
+	out := outcome.NewStreams(stdout, stderr)
+	return out.Flush(runMode(args, environ, out))
 }
 
-// output holds the buffered standard streams.
-type output struct {
-	stdout, stderr *bufio.Writer
-}
-
-func runMode(args []string, out output) int {
+func runMode(args, environ []string, out outcome.Streams) int {
 	flags := flag.NewFlagSet("archcheck", flag.ContinueOnError)
-	flags.SetOutput(out.stderr)
+	flags.SetOutput(out.Stderr)
 	dir := flags.String("root", ".", "repository `directory`")
 	if err := flags.Parse(args[1:]); err != nil {
-		return exitUsage
+		return outcome.Usage
 	}
 	if flags.NArg() == 0 {
-		fmt.Fprintf(out.stderr, "archcheck: give a mode: design, check, or dsl\n")
-		return exitUsage
+		fmt.Fprintf(out.Stderr, "archcheck: give a mode: design, check, dsl, or platforms\n")
+		return outcome.Usage
 	}
 	mode, rest := flags.Arg(0), flags.Args()[1:]
-	if mode != "design" && mode != "check" && mode != "dsl" {
-		fmt.Fprintf(out.stderr, "archcheck: unknown mode %q; give design, check, or dsl\n", mode)
-		return exitUsage
+	if mode != "design" && mode != "check" && mode != "dsl" && mode != "platforms" {
+		fmt.Fprintf(out.Stderr, "archcheck: unknown mode %q; give design, check, dsl, or platforms\n", mode)
+		return outcome.Usage
 	}
 	repo := os.DirFS(*dir)
 	switch mode {
 	case "design":
-		return report(out, designResult(repo))
+		return writeResult(out, designResult(repo))
 	case "check":
-		return report(out, checkResult(repo, *dir))
-	default:
+		return writeResult(out, checkResult(repo, *dir, environ))
+	case "dsl":
 		return runDSL(repo, *dir, rest, out)
+	default:
+		return runPlatforms(repo, rest, out)
 	}
 }
 
 // result is the outcome of one check run.
 type result struct {
 	model    *architecture.Model
-	findings []architecture.Finding
+	findings []report.Finding
 	err      error
 }
 
@@ -120,12 +112,12 @@ func designResult(repo fs.FS) result {
 
 // checkResult adds the code checks and the C4 view check to designResult.
 // The directory dir holds the repository, for the Go package loader.
-func checkResult(repo fs.FS, dir string) result {
+func checkResult(repo fs.FS, dir string, environ []string) result {
 	r := designResult(repo)
 	if r.model == nil {
 		return r
 	}
-	graph, err := architecture.LoadGraph(dir)
+	graph, err := architecture.LoadGraph(dir, platformBuilds(environ, r.model.Platforms))
 	if err != nil {
 		return result{err: err}
 	}
@@ -135,7 +127,7 @@ func checkResult(repo fs.FS, dir string) result {
 		return result{err: fmt.Errorf("read the C4 view: %w", err)}
 	}
 	if !bytes.Equal(view, architecture.RenderDSL(r.model)) {
-		r.findings = append(r.findings, architecture.Finding{
+		r.findings = append(r.findings, report.Finding{
 			Location: dslFile,
 			Rule:     architecture.RuleC4View,
 			Message:  "the C4 view differs from the rendered architecture model",
@@ -145,10 +137,23 @@ func checkResult(repo fs.FS, dir string) result {
 	return r
 }
 
+// platformBuilds returns a build for each platform, "GOOS/GOARCH", with the
+// environment environ and without cgo. A cgo file is then unread on each
+// platform, so the code check reports it.
+func platformBuilds(environ, platforms []string) []architecture.Build {
+	builds := make([]architecture.Build, 0, len(platforms))
+	for _, p := range platforms {
+		goos, goarch, _ := strings.Cut(p, "/")
+		env := append(slices.Clone(environ), "GOOS="+goos, "GOARCH="+goarch, "CGO_ENABLED=0")
+		builds = append(builds, architecture.Build{Name: p, Env: env})
+	}
+	return builds
+}
+
 // loadModel reads and decodes the model. A file that cannot be read is an
 // error, and a model that does not decode is a finding. The model is nil in
 // both cases.
-func loadModel(repo fs.FS) (*architecture.Model, []architecture.Finding, error) {
+func loadModel(repo fs.FS) (*architecture.Model, []report.Finding, error) {
 	data, err := fs.ReadFile(repo, modelFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read the model: %w", err)
@@ -158,10 +163,10 @@ func loadModel(repo fs.FS) (*architecture.Model, []architecture.Finding, error) 
 }
 
 // parseModel decodes the model. A decode failure is a finding about the model.
-func parseModel(data []byte) (*architecture.Model, []architecture.Finding) {
+func parseModel(data []byte) (*architecture.Model, []report.Finding) {
 	m, err := architecture.ParseModel(data)
 	if err != nil {
-		return nil, []architecture.Finding{{
+		return nil, []report.Finding{{
 			Location: modelFile,
 			Rule:     architecture.RuleModel,
 			Message:  err.Error(),
@@ -171,47 +176,66 @@ func parseModel(data []byte) (*architecture.Model, []architecture.Finding) {
 	return m, nil
 }
 
-// runDSL renders the C4 view. With -write, it writes the view file into the
-// repository in directory dir.
-func runDSL(repo fs.FS, dir string, args []string, out output) int {
-	flags := flag.NewFlagSet("archcheck dsl", flag.ContinueOnError)
-	flags.SetOutput(out.stderr)
-	write := flags.Bool("write", false, "write "+dslFile+" instead of standard output")
-	if err := flags.Parse(args); err != nil {
-		return exitUsage
-	}
+// validModel loads and validates the model. When the model cannot be read or
+// has a defect, it returns nil and the result to report.
+func validModel(repo fs.FS) (*architecture.Model, result) {
 	m, findings, err := loadModel(repo)
 	if m != nil {
 		findings = architecture.ValidateModel(m, modelFile)
 	}
 	if err != nil || len(findings) > 0 {
-		return report(out, result{findings: findings, err: err})
+		return nil, result{findings: findings, err: err}
+	}
+	return m, result{}
+}
+
+// runPlatforms writes the release platforms of the model, one on each line.
+func runPlatforms(repo fs.FS, args []string, out outcome.Streams) int {
+	if len(args) > 0 {
+		fmt.Fprintf(out.Stderr, "archcheck: platforms takes no arguments\n")
+		return outcome.Usage
+	}
+	m, r := validModel(repo)
+	if m == nil {
+		return writeResult(out, r)
+	}
+	for _, p := range m.Platforms {
+		fmt.Fprintf(out.Stdout, "%s\n", p)
+	}
+	return outcome.OK
+}
+
+// runDSL renders the C4 view. With -write, it writes the view file into the
+// repository in directory dir.
+func runDSL(repo fs.FS, dir string, args []string, out outcome.Streams) int {
+	flags := flag.NewFlagSet("archcheck dsl", flag.ContinueOnError)
+	flags.SetOutput(out.Stderr)
+	write := flags.Bool("write", false, "write "+dslFile+" instead of standard output")
+	if err := flags.Parse(args); err != nil {
+		return outcome.Usage
+	}
+	m, r := validModel(repo)
+	if m == nil {
+		return writeResult(out, r)
 	}
 	view := architecture.RenderDSL(m)
 	if !*write {
-		fmt.Fprintf(out.stdout, "%s", view)
-		return exitOK
+		fmt.Fprintf(out.Stdout, "%s", view)
+		return outcome.OK
 	}
 	if err := os.WriteFile(filepath.Join(dir, dslFile), view, 0o600); err != nil {
-		fmt.Fprintf(out.stderr, "archcheck: write the C4 view: %v\n", err)
-		return exitFailure
+		fmt.Fprintf(out.Stderr, "archcheck: write the C4 view: %v\n", err)
+		return outcome.ToolFailure
 	}
-	return exitOK
+	return outcome.OK
 }
 
-// report writes the findings and returns the exit status.
-func report(out output, r result) int {
+// writeResult writes the error or the findings of a run, and returns the exit
+// status.
+func writeResult(out outcome.Streams, r result) int {
 	if r.err != nil {
-		fmt.Fprintf(out.stderr, "archcheck: %v\n", r.err)
-		return exitFailure
+		fmt.Fprintf(out.Stderr, "archcheck: %v\n", r.err)
+		return outcome.ToolFailure
 	}
-	findings := architecture.SortFindings(r.findings)
-	for _, f := range findings {
-		fmt.Fprintf(out.stdout, "%s\n", f)
-	}
-	fmt.Fprintf(out.stderr, "archcheck: %d findings\n", len(findings))
-	if len(findings) > 0 {
-		return exitFindings
-	}
-	return exitOK
+	return report.Write(out, "archcheck", r.findings)
 }

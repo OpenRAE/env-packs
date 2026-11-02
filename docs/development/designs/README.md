@@ -16,7 +16,8 @@ Do these steps before you write the code of a change:
    it does not read the code.
 
 Then write the code, and run `make go-arch`. It checks the code against the
-model.
+model. It loads the code once for each platform in the `platforms` list of the
+model. So it also checks a file that build constraints exclude on one platform.
 
 ## Format
 

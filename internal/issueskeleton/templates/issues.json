@@ -1,0 +1,111 @@
+[
+  {
+    "key": "contract",
+    "suffix": "create scenario contract and pack skeleton",
+    "labels": [
+      "documentation",
+      "area:content",
+      "area:emulation",
+      "tier:raes"
+    ],
+    "legacy_suffixes": []
+  },
+  {
+    "key": "topology",
+    "suffix": "design topology, assets, and reference triangle",
+    "labels": [
+      "area:content",
+      "area:infra",
+      "area:validation",
+      "area:emulation",
+      "tier:raes"
+    ],
+    "legacy_suffixes": []
+  },
+  {
+    "key": "behavior",
+    "suffix": "specify participant attacker behavior in RAES",
+    "labels": [
+      "area:content",
+      "area:validation",
+      "area:operator",
+      "area:emulation",
+      "tier:raes"
+    ],
+    "legacy_suffixes": [
+      "define hidden path, oracle, and validation model"
+    ]
+  },
+  {
+    "key": "flags",
+    "suffix": "add flag, challenge, and reference CTFd layer",
+    "labels": [
+      "area:content",
+      "area:validation",
+      "area:product",
+      "area:emulation",
+      "tier:raes"
+    ],
+    "legacy_suffixes": []
+  },
+  {
+    "key": "profiles",
+    "suffix": "add delivery profile bundles",
+    "labels": [
+      "area:content",
+      "area:product",
+      "tier:raes",
+      "profile:guided",
+      "profile:unguided",
+      "profile:purple",
+      "profile:agent-benchmark",
+      "profile:demo"
+    ],
+    "legacy_suffixes": []
+  },
+  {
+    "key": "build",
+    "suffix": "implement golden live-infrastructure build",
+    "labels": [
+      "area:infra",
+      "area:emulation",
+      "tier:raes"
+    ],
+    "legacy_suffixes": []
+  },
+  {
+    "key": "rehearsal",
+    "suffix": "add automated live rehearsal",
+    "labels": [
+      "area:validation",
+      "area:operator",
+      "area:emulation",
+      "tier:raes"
+    ],
+    "legacy_suffixes": []
+  },
+  {
+    "key": "manual",
+    "suffix": "run final manual participant walkthrough",
+    "labels": [
+      "area:validation",
+      "area:operator",
+      "documentation",
+      "area:emulation",
+      "tier:raes"
+    ],
+    "legacy_suffixes": []
+  },
+  {
+    "key": "final",
+    "suffix": "reconcile final docs, status, evidence, and teardown",
+    "labels": [
+      "documentation",
+      "area:validation",
+      "area:operator",
+      "area:emulation",
+      "tier:raes"
+    ],
+    "legacy_suffixes": []
+  }
+]

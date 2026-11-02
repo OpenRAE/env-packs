@@ -1,7 +1,7 @@
 {
   "schema_version": "associated-artifact-manifest/v1",
   "manifest_id": "techvault-participant-study-associated-artifacts",
-  "manifest_version": "7.0.0",
+  "manifest_version": "7.2.1",
   "canonicalization_profile": "associated-artifact-set/v1",
   "scope": "scenario",
   "parent_ref": {
@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "be6063f6d29bce918ecbc13844a5232c8b8351c727dad6dd3ea3f71ed6dfa83a"
+        "value": "5c40e30462416b717973615cb2993d89d2a00a4a2103b85ac01280d39caa5c46"
       },
-      "size_bytes": 10297,
+      "size_bytes": 10573,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -515,9 +515,9 @@
       "uri": "raes-environment-pack:/docs/lineage.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "5d59244358edb5376d819140119b7ae68e81b9b7ed8bcf22782b935d7a7bdeb1"
+        "value": "830d34f52ff099caea63f4243553c94698553a225dbbb6c89cb2e7fdbcd079f9"
       },
-      "size_bytes": 3409,
+      "size_bytes": 3428,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -547,7 +547,7 @@
       "uri": "raes-environment-pack:/pack.compatibility.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "c4a1153dde0583d1181633ed407d8c0177024820ed707e81c1a7a8bb0d10a0d2"
+        "value": "94b77b548567b3d14aba4339aa04d378bfd33129e8c0065b30e015bfc6dd41f4"
       },
       "size_bytes": 1607,
       "created_at": "2026-08-02T00:00:00Z",
@@ -563,7 +563,7 @@
       "uri": "raes-environment-pack:/pack.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "b1a9024ad3a6728fa096c27b2c2d0bd0addcd7bee55c1f33eccca15e67d924ac"
+        "value": "66965bf957f1e430aa67b450f33fa5bef213b5766d4f941b6ec6bbea08637064"
       },
       "size_bytes": 552,
       "created_at": "2026-08-02T00:00:00Z",
@@ -595,7 +595,7 @@
       "uri": "raes-environment-pack:/sdl/techvault-participant-study.bindings.json",
       "checksum": {
         "algorithm": "sha256",
-        "value": "3c068427304858e9309ce54f5be19f1fce48796ed7cb590cafe6024c2b655755"
+        "value": "f7744e409e2aa0109361df0ac208423e60344fc9b87723737a954d66df07bad0"
       },
       "size_bytes": 44611,
       "created_at": "2026-09-13T00:00:00Z",
@@ -627,9 +627,9 @@
       "uri": "raes-environment-pack:/sdl/techvault-participant-study.sdl.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "582d0f610b30d49d1020ef41e83f3fddc2163ba4b4ec9d6b08f8b251a01548b1"
+        "value": "95f8ad37689963ebcc5ff84ec71108750611991a9e8c29f54af72d74369d5b82"
       },
-      "size_bytes": 160582,
+      "size_bytes": 162315,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -701,5 +701,5 @@
       "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:73dadac3c6bf2a65d3caa1118bbeb0c7fdf2004a7e77e566297443c0abfc9062"
+  "set_digest": "sha256:a43e8372162d653e8803be9c92fffe1afb149f5d1c365e1e5d9a7062bfed70d3"
 }

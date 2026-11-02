@@ -1,0 +1,18 @@
+# A hosted pack has no blocking problem.
+exits 0 raes-pack-check $REPO/packs/techvault
+stdout '^OK — no blocking problems found\.$'
+! stderr .
+
+# The JSON envelope reports the same result.
+exits 0 raes-pack-check --json $REPO/packs/techvault
+cmpjson stdout want.json
+! stderr .
+
+-- want.json --
+{
+  "diagnostics": [],
+  "ok": true,
+  "pack": "techvault",
+  "summary": {"by_domain": {}, "total": 0},
+  "version": "raes-pack-check/v1"
+}

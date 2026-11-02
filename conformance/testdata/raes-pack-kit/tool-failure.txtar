@@ -1,0 +1,6 @@
+# A controlled service failure must give status 3 and no stdout (#617).
+# Each implementation supplies a test-only fault driver, never a production hook.
+fault raes-pack-kit
+! stdout .
+stderr '^error: kit tool failure'
+! stderr 'PRIVATE-FAULT-VALUE'

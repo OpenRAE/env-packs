@@ -50,8 +50,8 @@ The server writes MCP protocol messages to stdout, not a human-facing prompt.
 | `pack_publication_plan` | Shared signing and registry effect plan for admitted release evidence. |
 
 `pack_sdl` accepts text, not paths or imports. RAES owns its semantics and
-diagnostic codes. Source ranges are preserved; authored exception prose is
-replaced with bounded explanations. Planning uses RAES's reference stub
+diagnostic codes. The adapter keeps source ranges, and it replaces authored
+exception prose with bounded explanations. Planning uses RAES's reference stub
 manifest. It does not establish support on a real backend.
 
 `pack_publication_plan` requires `--release HANDLE ROOT` at launch. Supply that
@@ -96,10 +96,10 @@ For [kit composition](kits.md), use a separate preparation step:
 3. Review the returned complete pack changes, then confirm `pack_apply`.
    A changed base pack fails instead of overwriting your work.
 
-Preparation is a filesystem effect, even though the live pack is unchanged.
+Preparation is a filesystem effect, even though it does not change the live pack.
 It is never hidden inside search, inspection, or a read-only preview. The shared
 `wizard.review_document` and `kits.review_document` APIs provide the same
-complete author views; existing value-free CLI previews are unchanged.
+complete author views. The existing value-free CLI previews do not change.
 
 ## Host responsibilities and limits
 
@@ -109,19 +109,20 @@ untrusted content. Do not permit concurrent replacement of source trees or
 their parents. Do not expose a home directory as a source or write root.
 These controls are not an OS sandbox for hostile local processes.
 
-The adapter rejects symlinks, special files, known secret-file names, and
-`raes-trust.yaml` before content reads. Kit release inspection parses an
+The adapter rejects symlinks, special files, and `raes-trust.yaml` before
+content reads. Kit release inspection parses an
 import-free module in memory. Explicit preparation supports local imports
 under RAES's empty registry policy; pack-supplied policies cannot enable network
 access. Static consumer validation admits only pinned and locked local imports.
 It reports any other import as `sdl.imports-denied`.
 
-Tool arguments are closed objects, bounded to 64 KiB and 32 levels. Transport
-frames are capped at 256 KiB; invalid frames close input without echoing content.
-Results are capped at 2 MiB. A session retains at most 32 proposals and 64 MiB
-of proposal data. Oversized reviews fail instead of silently truncating approval
-content. Binary changes expose byte identities but cannot be applied through
-this text-review adapter.
+Each tool argument is a closed object of at most 64 KiB and 32 levels. The
+adapter caps transport frames at 256 KiB. An invalid frame closes the input
+without an echo of its content. The adapter caps results at 2 MiB.
+
+A session retains at most 32 proposals and 64 MiB of proposal data. Oversized
+reviews fail instead of silently truncating approval content. Binary changes
+expose byte identities, but this text-review adapter cannot apply them.
 
 Do not put plaintext secrets in requests or admitted content. Name and value
 checks are defense in depth, not a way to recognize every possible secret.

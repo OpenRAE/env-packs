@@ -1,0 +1,1422 @@
+[
+  {
+    "code": "pack",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack manifest (pack.yaml) is missing or malformed.",
+    "reason": "pack.yaml is the pack's identity entrypoint; nothing else can be trusted without it.",
+    "suggestion": "Add a valid pack.yaml at the top of the pack directory.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "pack.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack manifest (pack.yaml) is missing or malformed.",
+    "reason": "pack.yaml is the pack's identity entrypoint; nothing else can be trusted without it.",
+    "suggestion": "Add a valid pack.yaml at the top of the pack directory.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "pack.missing",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "pack.yaml is missing from the pack root.",
+    "reason": "Every pack must declare its identity in pack.yaml.",
+    "suggestion": "Add a pack.yaml at the top of the pack directory (see the template).",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "pack.missing.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "pack.yaml is missing from the pack root.",
+    "reason": "Every pack must declare its identity in pack.yaml.",
+    "suggestion": "Add a pack.yaml at the top of the pack directory (see the template).",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "pack.type",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "pack.yaml did not parse to a mapping.",
+    "reason": "The manifest must be a YAML mapping of identity fields.",
+    "suggestion": "Make pack.yaml a top-level mapping (key: value pairs), not a list or scalar.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "pack.type.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "pack.yaml did not parse to a mapping.",
+    "reason": "The manifest must be a YAML mapping of identity fields.",
+    "suggestion": "Make pack.yaml a top-level mapping (key: value pairs), not a list or scalar.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "pack.identity.missing",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A required identity field (name, title, or version) is missing or empty.",
+    "reason": "Consumers key on a pack's name, title, and version.",
+    "suggestion": "Set name, title, and version in pack.yaml to non-empty strings.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "pack.identity.missing.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A required identity field (name, title, or version) is missing or empty.",
+    "reason": "Consumers key on a pack's name, title, and version.",
+    "suggestion": "Set name, title, and version in pack.yaml to non-empty strings.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "pack.identity.name-mismatch",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The name in pack.yaml does not match the pack directory name.",
+    "reason": "The manifest name is the pack's identity and must match its folder.",
+    "suggestion": "Set name in pack.yaml to the directory name, or rename the directory to match.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "pack.identity.name-mismatch.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The name in pack.yaml does not match the pack directory name.",
+    "reason": "The manifest name is the pack's identity and must match its folder.",
+    "suggestion": "Set name in pack.yaml to the directory name, or rename the directory to match.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "yaml",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A pack file is not valid YAML.",
+    "reason": "The check reads pack metadata as strict YAML.",
+    "suggestion": "Fix the YAML syntax in the reported file.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "yaml.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A pack file is not valid YAML.",
+    "reason": "The check reads pack metadata as strict YAML.",
+    "suggestion": "Fix the YAML syntax in the reported file.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "yaml.invalid",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A pack file is not valid YAML.",
+    "reason": "The check reads pack metadata as strict YAML.",
+    "suggestion": "Fix the YAML syntax in the reported file.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "yaml.invalid.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A pack file is not valid YAML.",
+    "reason": "The check reads pack metadata as strict YAML.",
+    "suggestion": "Fix the YAML syntax in the reported file.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "yaml.invalid-utf8",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A pack file is not valid UTF-8 text.",
+    "reason": "Pack metadata must be UTF-8 so it reads deterministically.",
+    "suggestion": "Re-save the reported file as UTF-8 text.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "yaml.invalid-utf8.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A pack file is not valid UTF-8 text.",
+    "reason": "Pack metadata must be UTF-8 so it reads deterministically.",
+    "suggestion": "Re-save the reported file as UTF-8 text.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "yaml.duplicate-key",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A YAML mapping in the pack has a duplicate key.",
+    "reason": "Duplicate keys are ambiguous, so the strict loader rejects them.",
+    "suggestion": "Remove the duplicated key from the reported file.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "yaml.duplicate-key.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A YAML mapping in the pack has a duplicate key.",
+    "reason": "Duplicate keys are ambiguous, so the strict loader rejects them.",
+    "suggestion": "Remove the duplicated key from the reported file.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "filesystem",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack filesystem could not be read safely.",
+    "reason": "The check reads only through a no-follow, descriptor-anchored boundary.",
+    "suggestion": "Point the check at the pack's top-level directory and remove unsafe members.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "filesystem.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack filesystem could not be read safely.",
+    "reason": "The check reads only through a no-follow, descriptor-anchored boundary.",
+    "suggestion": "Point the check at the pack's top-level directory and remove unsafe members.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "filesystem.invalid-root",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack root could not be opened as a directory.",
+    "reason": "The check needs a real directory to inventory the pack.",
+    "suggestion": "Point the check at the pack's top-level directory.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "filesystem.invalid-root.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack root could not be opened as a directory.",
+    "reason": "The check needs a real directory to inventory the pack.",
+    "suggestion": "Point the check at the pack's top-level directory.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "filesystem.unsafe-member",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack contains an unsafe member (symlink, hardlink, special file, or escaping path).",
+    "reason": "The check refuses to follow these so foreign input cannot escape the pack root.",
+    "suggestion": "Replace the unsafe member with a regular file inside the pack.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "filesystem.unsafe-member.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack contains an unsafe member (symlink, hardlink, special file, or escaping path).",
+    "reason": "The check refuses to follow these so foreign input cannot escape the pack root.",
+    "suggestion": "Replace the unsafe member with a regular file inside the pack.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "filesystem.changed",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A pack file changed or disappeared while the check was running.",
+    "reason": "The check needs a stable, immutable pack snapshot to be deterministic.",
+    "suggestion": "Stage the pack immutably, then re-run the check over the staged bytes.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "filesystem.changed.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A pack file changed or disappeared while the check was running.",
+    "reason": "The check needs a stable, immutable pack snapshot to be deterministic.",
+    "suggestion": "Stage the pack immutably, then re-run the check over the staged bytes.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "resource",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack exceeded a check resource limit.",
+    "reason": "Bounds protect the consumer from oversized or adversarial input.",
+    "suggestion": "Reduce the input, or raise the bound via PackValidationLimits.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "resource.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack exceeded a check resource limit.",
+    "reason": "Bounds protect the consumer from oversized or adversarial input.",
+    "suggestion": "Reduce the input, or raise the bound via PackValidationLimits.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "resource.metadata-limit",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A metadata file is larger than the check allows.",
+    "reason": "Metadata size is bounded so a pack cannot exhaust the consumer.",
+    "suggestion": "Shrink the reported file, or raise max_metadata_bytes via PackValidationLimits.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "resource.metadata-limit.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A metadata file is larger than the check allows.",
+    "reason": "Metadata size is bounded so a pack cannot exhaust the consumer.",
+    "suggestion": "Shrink the reported file, or raise max_metadata_bytes via PackValidationLimits.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "resource.sdl-limit",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An SDL document is larger than the check allows.",
+    "reason": "SDL size is bounded so a pack cannot exhaust the consumer.",
+    "suggestion": "Shrink the reported document, or raise max_sdl_bytes via PackValidationLimits.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "resource.sdl-limit.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An SDL document is larger than the check allows.",
+    "reason": "SDL size is bounded so a pack cannot exhaust the consumer.",
+    "suggestion": "Shrink the reported document, or raise max_sdl_bytes via PackValidationLimits.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "resource.member-limit",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack has more files than the check allows.",
+    "reason": "Member count is bounded so a pack cannot exhaust the consumer.",
+    "suggestion": "Reduce the file count, or raise max_members via PackValidationLimits.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "resource.member-limit.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The pack has more files than the check allows.",
+    "reason": "Member count is bounded so a pack cannot exhaust the consumer.",
+    "suggestion": "Reduce the file count, or raise max_members via PackValidationLimits.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "challenges",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The challenges document uses a removed pack field.",
+    "reason": "Challenge grouping and classification are not pack semantics.",
+    "suggestion": "Remove the offending field from the challenge entry.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "challenges.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The challenges document uses a removed pack field.",
+    "reason": "Challenge grouping and classification are not pack semantics.",
+    "suggestion": "Remove the offending field from the challenge entry.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "challenges.category.forbidden",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "challenges[].category is a removed pack field.",
+    "reason": "Tactic/technique classification lives in RAES SDL, not a pack field (ADR 0014).",
+    "suggestion": "Remove the category field from the reported challenge entry.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "challenges.category.forbidden.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "challenges[].category is a removed pack field.",
+    "reason": "Tactic/technique classification lives in RAES SDL, not a pack field (ADR 0014).",
+    "suggestion": "Remove the category field from the reported challenge entry.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "content-set",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A monitoring corpus's declared files disagree with the files the pack supplies.",
+    "reason": "RAES compares a corpus's file_count and file_refs exactly when realizing it.",
+    "suggestion": "Make the corpus declaration match the files the pack ships.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "content-set.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A monitoring corpus's declared files disagree with the files the pack supplies.",
+    "reason": "RAES compares a corpus's file_count and file_refs exactly when realizing it.",
+    "suggestion": "Make the corpus declaration match the files the pack ships.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "content-set.file-refs.missing",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A monitoring corpus declares a file_count but no file_refs.",
+    "reason": "A file count can only be checked against the files it counts.",
+    "suggestion": "List the corpus's files in file_refs.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "content-set.file-refs.missing.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A monitoring corpus declares a file_count but no file_refs.",
+    "reason": "A file count can only be checked against the files it counts.",
+    "suggestion": "List the corpus's files in file_refs.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "content-set.file-count-mismatch",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A monitoring corpus's file_count differs from the number of its file_refs.",
+    "reason": "file_count counts the corpus's files, not the rules or decoders inside them.",
+    "suggestion": "Set file_count to the number of files listed in file_refs.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "content-set.file-count-mismatch.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A monitoring corpus's file_count differs from the number of its file_refs.",
+    "reason": "file_count counts the corpus's files, not the rules or decoders inside them.",
+    "suggestion": "Set file_count to the number of files listed in file_refs.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "content-set.file-ref.unsupplied",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A monitoring corpus lists a file that nothing puts on its node.",
+    "reason": "A backend cannot realize a corpus file the scenario never supplies.",
+    "suggestion": "Add a content row that places the file on the node, or fix the path.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "content-set.file-ref.unsupplied.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "A monitoring corpus lists a file that nothing puts on its node.",
+    "reason": "A backend cannot realize a corpus file the scenario never supplies.",
+    "suggestion": "Add a content row that places the file on the node, or fix the path.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "provenance",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger is missing or does not meet the pack contract.",
+    "reason": "The ledger is the pack's origin, licensing, safety, and review record.",
+    "suggestion": "Add or correct docs/provenance-ledger.yaml (see the template).",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.more",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger is missing or does not meet the pack contract.",
+    "reason": "The ledger is the pack's origin, licensing, safety, and review record.",
+    "suggestion": "Add or correct docs/provenance-ledger.yaml (see the template).",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.pointer",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "pack.yaml's provenance_ledger pointer is missing or is not the canonical path.",
+    "reason": "The ledger is required and must live at docs/provenance-ledger.yaml.",
+    "suggestion": "Set provenance_ledger: docs/provenance-ledger.yaml in pack.yaml.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.pointer.more",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "pack.yaml's provenance_ledger pointer is missing or is not the canonical path.",
+    "reason": "The ledger is required and must live at docs/provenance-ledger.yaml.",
+    "suggestion": "Set provenance_ledger: docs/provenance-ledger.yaml in pack.yaml.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.missing",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The referenced provenance ledger file was not found.",
+    "reason": "The ledger the manifest points at must actually exist in the pack.",
+    "suggestion": "Add docs/provenance-ledger.yaml, or fix the pointer to the real file.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.missing.more",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The referenced provenance ledger file was not found.",
+    "reason": "The ledger the manifest points at must actually exist in the pack.",
+    "suggestion": "Add docs/provenance-ledger.yaml, or fix the pointer to the real file.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.type",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger did not parse to a mapping.",
+    "reason": "The ledger must be a YAML mapping for the schema to apply.",
+    "suggestion": "Make docs/provenance-ledger.yaml a top-level YAML mapping.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.type.more",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger did not parse to a mapping.",
+    "reason": "The ledger must be a YAML mapping for the schema to apply.",
+    "suggestion": "Make docs/provenance-ledger.yaml a top-level YAML mapping.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.name-mismatch",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The ledger's pack.name does not match the pack's name.",
+    "reason": "The ledger must describe this pack, not another one.",
+    "suggestion": "Set pack.name in the ledger to match name in pack.yaml.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.name-mismatch.more",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The ledger's pack.name does not match the pack's name.",
+    "reason": "The ledger must describe this pack, not another one.",
+    "suggestion": "Set pack.name in the ledger to match name in pack.yaml.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.safety.required",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "A required content-safety attestation is missing or is not true.",
+    "reason": "Packs must attest they carry no real malware, live targets, credentials, or sensitive data.",
+    "suggestion": "Set the reported content_safety flag to true in the ledger — only if it is actually true.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.safety.required.more",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "A required content-safety attestation is missing or is not true.",
+    "reason": "Packs must attest they carry no real malware, live targets, credentials, or sensitive data.",
+    "suggestion": "Set the reported content_safety flag to true in the ledger — only if it is actually true.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.review-gate.missing",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "A required publication review gate is missing.",
+    "reason": "Licensing, attribution, sensitive-data, and offensive-tooling must each be reviewed before publication.",
+    "suggestion": "Add the missing gate under review.gates in the ledger.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.review-gate.missing.more",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "A required publication review gate is missing.",
+    "reason": "Licensing, attribution, sensitive-data, and offensive-tooling must each be reviewed before publication.",
+    "suggestion": "Add the missing gate under review.gates in the ledger.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.schema",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger does not match its packaged schema.",
+    "reason": "The ledger must match provenance.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.schema.more",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger does not match its packaged schema.",
+    "reason": "The ledger must match provenance.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "compatibility",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "The compatibility manifest does not meet the pack contract.",
+    "reason": "The manifest is how a pack declares the runtime and delivery surfaces a consumer can rely on.",
+    "suggestion": "Correct pack.compatibility.yaml, or remove the pointer if the pack has no manifest.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.more",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "The compatibility manifest does not meet the pack contract.",
+    "reason": "The manifest is how a pack declares the runtime and delivery surfaces a consumer can rely on.",
+    "suggestion": "Correct pack.compatibility.yaml, or remove the pointer if the pack has no manifest.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.pointer",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "pack.yaml's compatibility_manifest pointer is invalid.",
+    "reason": "The pointer must name a real pack-relative file.",
+    "suggestion": "Point compatibility_manifest at an existing file, or remove it.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.pointer.more",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "pack.yaml's compatibility_manifest pointer is invalid.",
+    "reason": "The pointer must name a real pack-relative file.",
+    "suggestion": "Point compatibility_manifest at an existing file, or remove it.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.missing",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "The referenced compatibility manifest file was not found.",
+    "reason": "The manifest the manifest points at must exist in the pack.",
+    "suggestion": "Add the compatibility file the pointer names, or remove the pointer.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.missing.more",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "The referenced compatibility manifest file was not found.",
+    "reason": "The manifest the manifest points at must exist in the pack.",
+    "suggestion": "Add the compatibility file the pointer names, or remove the pointer.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.type",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "The compatibility manifest did not parse to a mapping.",
+    "reason": "The manifest must be a YAML mapping for the schema to apply.",
+    "suggestion": "Make the compatibility file a top-level YAML mapping.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.type.more",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "The compatibility manifest did not parse to a mapping.",
+    "reason": "The manifest must be a YAML mapping for the schema to apply.",
+    "suggestion": "Make the compatibility file a top-level YAML mapping.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.boundary-overlap",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "A participant-visible path overlaps a restricted (operator, oracle, or private) path.",
+    "reason": "Hidden-tier content must never be reachable from a participant export.",
+    "suggestion": "Move the participant path so it is disjoint from every restricted root.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.boundary-overlap.more",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "A participant-visible path overlaps a restricted (operator, oracle, or private) path.",
+    "reason": "Hidden-tier content must never be reachable from a participant export.",
+    "suggestion": "Move the participant path so it is disjoint from every restricted root.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.asset.missing",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "A compatibility asset marked 'shipped' names a file the pack does not contain.",
+    "reason": "A shipped asset declaration must reference a real member so consumers and catalogs can rely on it.",
+    "suggestion": "Add the missing asset file, correct its path, or set the asset's status to planned/not_shipped.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.asset.missing.more",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "A compatibility asset marked 'shipped' names a file the pack does not contain.",
+    "reason": "A shipped asset declaration must reference a real member so consumers and catalogs can rely on it.",
+    "suggestion": "Add the missing asset file, correct its path, or set the asset's status to planned/not_shipped.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.schema",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "The compatibility manifest does not match its packaged schema.",
+    "reason": "The manifest must match pack-compatibility.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "compatibility.schema.more",
+    "severity": "error",
+    "domain": "compatibility",
+    "owner": "env-packs",
+    "explanation": "The compatibility manifest does not match its packaged schema.",
+    "reason": "The manifest must match pack-compatibility.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema.",
+    "doc": "docs/public/checking.md#compatibility"
+  },
+  {
+    "code": "publication",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The publication-supply document does not meet the pack contract.",
+    "reason": "The publication profile declares what a release supplies; it must describe this pack.",
+    "suggestion": "Correct publication-supply.yaml, or remove the pointer if the pack makes no publication claim.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "publication.more",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The publication-supply document does not meet the pack contract.",
+    "reason": "The publication profile declares what a release supplies; it must describe this pack.",
+    "suggestion": "Correct publication-supply.yaml, or remove the pointer if the pack makes no publication claim.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "publication.identity-mismatch",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The publication profile's release identity names a different pack.",
+    "reason": "A release identity must describe this pack, not attach another pack's identity to this card.",
+    "suggestion": "Set the publication profile's release.pack name and version to match pack.yaml.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "publication.identity-mismatch.more",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The publication profile's release identity names a different pack.",
+    "reason": "A release identity must describe this pack, not attach another pack's identity to this card.",
+    "suggestion": "Set the publication profile's release.pack name and version to match pack.yaml.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "sdl",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An SDL start-state document did not pass RAES validation.",
+    "reason": "The start state must be valid under the installed raes.",
+    "suggestion": "Fix the SDL document; RAES owns its syntax and meaning.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An SDL start-state document did not pass RAES validation.",
+    "reason": "The start state must be valid under the installed raes.",
+    "suggestion": "Fix the SDL document; RAES owns its syntax and meaning.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.missing",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "The pack has no direct sdl/*.sdl.yaml start-state document.",
+    "reason": "Every pack must ship at least one SDL start state.",
+    "suggestion": "Add an sdl/<name>.sdl.yaml document describing the environment start state.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.missing.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "The pack has no direct sdl/*.sdl.yaml start-state document.",
+    "reason": "Every pack must ship at least one SDL start state.",
+    "suggestion": "Add an sdl/<name>.sdl.yaml document describing the environment start state.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.invalid",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "The SDL start state failed RAES validation.",
+    "reason": "The start state must parse and validate under the installed raes.",
+    "suggestion": "Validate the document with raes and fix the reported SDL error.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.invalid.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "The SDL start state failed RAES validation.",
+    "reason": "The start state must parse and validate under the installed raes.",
+    "suggestion": "Validate the document with raes and fix the reported SDL error.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.invalid-utf8",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An SDL document is not valid UTF-8 text.",
+    "reason": "SDL documents must be UTF-8 so RAES can parse them.",
+    "suggestion": "Re-save the reported SDL document as UTF-8 text.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.invalid-utf8.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An SDL document is not valid UTF-8 text.",
+    "reason": "SDL documents must be UTF-8 so RAES can parse them.",
+    "suggestion": "Re-save the reported SDL document as UTF-8 text.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.imports-denied",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "RAES refused an SDL import in the reported document.",
+    "reason": "The consumer check admits only local imports with a digest pin and one matching raes.lock.json record, so it never reaches the network.",
+    "suggestion": "Add or update the import with raes-pack-kit so it is pinned and locked, or inline the imported content.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.imports-denied.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "RAES refused an SDL import in the reported document.",
+    "reason": "The consumer check admits only local imports with a digest pin and one matching raes.lock.json record, so it never reaches the network.",
+    "suggestion": "Add or update the import with raes-pack-kit so it is pinned and locked, or inline the imported content.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.bindings-invalid",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An SDL concept-binding or scheme-snapshot document is malformed.",
+    "reason": "Bindings and their pinned schemes must match the RAES external concept binding contracts.",
+    "suggestion": "Correct the reported document so it validates as external-concept-bindings/v1 or a scheme snapshot list.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.bindings-invalid.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An SDL concept-binding or scheme-snapshot document is malformed.",
+    "reason": "Bindings and their pinned schemes must match the RAES external concept binding contracts.",
+    "suggestion": "Correct the reported document so it validates as external-concept-bindings/v1 or a scheme snapshot list.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.bindings-unresolved",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "A concept binding no longer resolves against its SDL or pinned scheme.",
+    "reason": "Every binding must name a current SDL subject and a concept present in its pinned scheme snapshot.",
+    "suggestion": "Retarget the bindings after editing the SDL, or correct the subject or concept the binding names.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.bindings-unresolved.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "A concept binding no longer resolves against its SDL or pinned scheme.",
+    "reason": "Every binding must name a current SDL subject and a concept present in its pinned scheme snapshot.",
+    "suggestion": "Retarget the bindings after editing the SDL, or correct the subject or concept the binding names.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.bindings-schemes-missing",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "A concept-binding document has no pinned scheme snapshots beside it.",
+    "reason": "Bindings resolve only against explicitly pinned schemes, never a fetched catalog.",
+    "suggestion": "Add sdl/<name>.schemes.json with the scheme snapshots the bindings name.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.bindings-schemes-missing.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "A concept-binding document has no pinned scheme snapshots beside it.",
+    "reason": "Bindings resolve only against explicitly pinned schemes, never a fetched catalog.",
+    "suggestion": "Add sdl/<name>.schemes.json with the scheme snapshots the bindings name.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.bindings-orphan",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "A concept-binding or scheme-snapshot document has no matching SDL document.",
+    "reason": "Bindings attach to one sdl/<name>.sdl.yaml start state and its schemes to those bindings.",
+    "suggestion": "Rename the document to match its SDL start state, or remove it.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "sdl.bindings-orphan.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "A concept-binding or scheme-snapshot document has no matching SDL document.",
+    "reason": "Bindings attach to one sdl/<name>.sdl.yaml start state and its schemes to those bindings.",
+    "suggestion": "Rename the document to match its SDL start state, or remove it.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment document did not pass RAES validation.",
+    "reason": "RAES owns the experiment, task, and capture specification contracts.",
+    "suggestion": "Fix the reported experiment document; RAES owns its syntax and meaning.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment document did not pass RAES validation.",
+    "reason": "RAES owns the experiment, task, and capture specification contracts.",
+    "suggestion": "Fix the reported experiment document; RAES owns its syntax and meaning.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.spec-invalid",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment authoring input (*.exp.yaml) failed the RAES experiment loader.",
+    "reason": "The authoring input must be bounded YAML that validates as experiment-authoring-input-v1.",
+    "suggestion": "Validate the document with the RAES experiment loader and fix the reported contract error.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.spec-invalid.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment authoring input (*.exp.yaml) failed the RAES experiment loader.",
+    "reason": "The authoring input must be bounded YAML that validates as experiment-authoring-input-v1.",
+    "suggestion": "Validate the document with the RAES experiment loader and fix the reported contract error.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.task-invalid",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment task (*.task.json) is malformed or fails its RAES contract.",
+    "reason": "A task must be strict JSON that validates as experiment-task-v1.",
+    "suggestion": "Fix the reported task so it validates as experiment-task-v1.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.task-invalid.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment task (*.task.json) is malformed or fails its RAES contract.",
+    "reason": "A task must be strict JSON that validates as experiment-task-v1.",
+    "suggestion": "Fix the reported task so it validates as experiment-task-v1.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.capture-invalid",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment capture specification (*.capture.json) is malformed or fails its RAES contract.",
+    "reason": "A capture specification must be strict JSON that validates as experiment-capture-spec-v1.",
+    "suggestion": "Fix the reported capture specification so it validates as experiment-capture-spec-v1.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.capture-invalid.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment capture specification (*.capture.json) is malformed or fails its RAES contract.",
+    "reason": "A capture specification must be strict JSON that validates as experiment-capture-spec-v1.",
+    "suggestion": "Fix the reported capture specification so it validates as experiment-capture-spec-v1.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.family-invalid",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "RAES did not admit the SDL document an experiment names as its scenario family.",
+    "reason": "Experiment checks need a scenario family that RAES admits.",
+    "suggestion": "Fix the scenario family SDL so RAES admits it.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.family-invalid.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "RAES did not admit the SDL document an experiment names as its scenario family.",
+    "reason": "Experiment checks need a scenario family that RAES admits.",
+    "suggestion": "Fix the scenario family SDL so RAES admits it.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.selection-invalid",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment selection policy does not fit its scenario family.",
+    "reason": "RAES checks each policy against a declared variation point and its domain.",
+    "suggestion": "Point the policy at a declared variation point and use an outcome in its domain.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.selection-invalid.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment selection policy does not fit its scenario family.",
+    "reason": "RAES checks each policy against a declared variation point and its domain.",
+    "suggestion": "Point the policy at a declared variation point and use an outcome in its domain.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.treatment-invalid",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment treatment selection does not match its scenario family.",
+    "reason": "RAES checks the family id, family digest, point, target, owner, and outcome of each treatment.",
+    "suggestion": "Update the treatment pins after a family edit, and use a declared point and member.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.treatment-invalid.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment treatment selection does not match its scenario family.",
+    "reason": "RAES checks the family id, family digest, point, target, owner, and outcome of each treatment.",
+    "suggestion": "Update the treatment pins after a family edit, and use a declared point and member.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.binding-invalid",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment scenario binding does not match its scenario family.",
+    "reason": "RAES resolves each scenario binding to the canonical target of a declared variation point.",
+    "suggestion": "Use the canonical target id, value type, and owner of a declared variation point.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.binding-invalid.more",
+    "severity": "error",
+    "domain": "sdl",
+    "owner": "raes",
+    "explanation": "An experiment scenario binding does not match its scenario family.",
+    "reason": "RAES resolves each scenario binding to the canonical target of a declared variation point.",
+    "suggestion": "Use the canonical target id, value type, and owner of a declared variation point.",
+    "doc": "docs/public/checking.md#sdl-and-raes"
+  },
+  {
+    "code": "experiment.spec-duplicate",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "Two experiment authoring inputs share one id and version.",
+    "reason": "An experiment identity must select one document.",
+    "suggestion": "Give each experiment authoring input a distinct spec_id or spec_version.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.spec-duplicate.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "Two experiment authoring inputs share one id and version.",
+    "reason": "An experiment identity must select one document.",
+    "suggestion": "Give each experiment authoring input a distinct spec_id or spec_version.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.task-duplicate",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "Two experiment tasks share one id and version.",
+    "reason": "A task reference must select one document.",
+    "suggestion": "Give each experiment task a distinct task_id or task_version.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.task-duplicate.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "Two experiment tasks share one id and version.",
+    "reason": "A task reference must select one document.",
+    "suggestion": "Give each experiment task a distinct task_id or task_version.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.capture-duplicate",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "Two experiment capture specifications share one id and version.",
+    "reason": "A capture reference must select one document.",
+    "suggestion": "Give each experiment capture specification a distinct capture_spec_id or spec_version.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.capture-duplicate.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "Two experiment capture specifications share one id and version.",
+    "reason": "A capture reference must select one document.",
+    "suggestion": "Give each experiment capture specification a distinct capture_spec_id or spec_version.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.task-unresolved",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment's task_ref matches no task in experiments/.",
+    "reason": "The pack must carry the task each experiment references.",
+    "suggestion": "Add the referenced experiments/<name>.task.json, or correct task_ref.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.task-unresolved.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment's task_ref matches no task in experiments/.",
+    "reason": "The pack must carry the task each experiment references.",
+    "suggestion": "Add the referenced experiments/<name>.task.json, or correct task_ref.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.task-ambiguous",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment's task_ref matches more than one task in experiments/.",
+    "reason": "A reference without a version must still select one document.",
+    "suggestion": "Add ref_version to task_ref, or remove the extra task.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.task-ambiguous.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment's task_ref matches more than one task in experiments/.",
+    "reason": "A reference without a version must still select one document.",
+    "suggestion": "Add ref_version to task_ref, or remove the extra task.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.capture-unresolved",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment's capture_spec_refs entry matches no capture specification in experiments/.",
+    "reason": "The pack must carry each capture specification an experiment references.",
+    "suggestion": "Add the referenced experiments/<name>.capture.json, or correct the reference.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.capture-unresolved.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment's capture_spec_refs entry matches no capture specification in experiments/.",
+    "reason": "The pack must carry each capture specification an experiment references.",
+    "suggestion": "Add the referenced experiments/<name>.capture.json, or correct the reference.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.capture-ambiguous",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment's capture_spec_refs entry matches more than one capture specification.",
+    "reason": "A reference without a version must still select one document.",
+    "suggestion": "Add ref_version to the reference, or remove the extra capture specification.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.capture-ambiguous.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment's capture_spec_refs entry matches more than one capture specification.",
+    "reason": "A reference without a version must still select one document.",
+    "suggestion": "Add ref_version to the reference, or remove the extra capture specification.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.scenario-unresolved",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment does not name a pack SDL document as its scenario family.",
+    "reason": "Each experiment needs an id-only scenario intended_scenario_ref that matches an SDL document name.",
+    "suggestion": "Set intended_scenario_ref to {ref_kind: scenario, ref_id: <SDL name>}.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.scenario-unresolved.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment does not name a pack SDL document as its scenario family.",
+    "reason": "Each experiment needs an id-only scenario intended_scenario_ref that matches an SDL document name.",
+    "suggestion": "Set intended_scenario_ref to {ref_kind: scenario, ref_id: <SDL name>}.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.scenario-ambiguous",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment's scenario family name matches more than one SDL document.",
+    "reason": "The family reference must select one SDL document.",
+    "suggestion": "Give each sdl/*.sdl.yaml document a distinct name.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "experiment.scenario-ambiguous.more",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "An experiment's scenario family name matches more than one SDL document.",
+    "reason": "The family reference must select one SDL document.",
+    "suggestion": "Give each sdl/*.sdl.yaml document a distinct name.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "provenance.schema.required",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger does not match its packaged schema.",
+    "reason": "The ledger must match provenance.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema. A required field is missing — add it.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.schema.enum",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger does not match its packaged schema.",
+    "reason": "The ledger must match provenance.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema. The value is not one of the allowed choices — use an allowed value.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.schema.pattern",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger does not match its packaged schema.",
+    "reason": "The ledger must match provenance.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema. The value does not match the required format — correct its format.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.schema.type",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger does not match its packaged schema.",
+    "reason": "The ledger must match provenance.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema. The value has the wrong type — use the type the schema expects.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.schema.unknown",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger does not match its packaged schema.",
+    "reason": "The ledger must match provenance.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema. An unrecognized field is present — remove it.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.schema.min-items",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger does not match its packaged schema.",
+    "reason": "The ledger must match provenance.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema. The list needs more entries — add the required minimum.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.schema.const",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger does not match its packaged schema.",
+    "reason": "The ledger must match provenance.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema. The value must equal the fixed required value — set it exactly.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "provenance.schema.ref",
+    "severity": "error",
+    "domain": "trust",
+    "owner": "env-packs",
+    "explanation": "The provenance ledger does not match its packaged schema.",
+    "reason": "The ledger must match provenance.schema.yaml so tools can read it.",
+    "suggestion": "Correct the field at the reported location to match the schema. An internal schema reference did not resolve — please report this upstream.",
+    "doc": "docs/public/checking.md#trust-and-provenance"
+  },
+  {
+    "code": "unknown.code",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The check reported a problem with this pack.",
+    "reason": "See the diagnostic code and location for the specific contract it failed.",
+    "suggestion": "Consult the pack contract documentation for this code.",
+    "doc": "docs/public/checking.md#pack-layout"
+  },
+  {
+    "code": "kit-materializations.schema.type",
+    "severity": "error",
+    "domain": "pack",
+    "owner": "env-packs",
+    "explanation": "The check reported a problem with this pack.",
+    "reason": "See the diagnostic code and location for the specific contract it failed.",
+    "suggestion": "Consult the pack contract documentation for this code. The value has the wrong type — use the type the schema expects.",
+    "doc": "docs/public/checking.md#pack-layout"
+  }
+]

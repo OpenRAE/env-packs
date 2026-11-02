@@ -2,6 +2,46 @@
 
 lockfile_version = 3
 
+[[tools."aqua:errata-ai/vale"]]
+version = "3.25.1"
+backend = "aqua:errata-ai/vale"
+specifiers = ["3.25.1"]
+
+[tools."aqua:errata-ai/vale"."platforms.linux-arm64"]
+checksum = "sha256:2a69755b68118c612c455fc0c5ea1b9438519aa1c852e3fb303b3ad97141bbb0"
+url = "https://github.com/vale-cli/vale/releases/download/v3.25.1/vale_3.25.1_Linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/667037026"
+
+[tools."aqua:errata-ai/vale"."platforms.linux-arm64-musl"]
+checksum = "sha256:2a69755b68118c612c455fc0c5ea1b9438519aa1c852e3fb303b3ad97141bbb0"
+url = "https://github.com/vale-cli/vale/releases/download/v3.25.1/vale_3.25.1_Linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/667037026"
+
+[tools."aqua:errata-ai/vale"."platforms.linux-x64"]
+checksum = "sha256:4bf5c5176b682b1da0830f471584d3494f1c2e27ee3029e1ad6f6661d4962182"
+url = "https://github.com/vale-cli/vale/releases/download/v3.25.1/vale_3.25.1_Linux_64-bit.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/667037022"
+
+[tools."aqua:errata-ai/vale"."platforms.linux-x64-musl"]
+checksum = "sha256:4bf5c5176b682b1da0830f471584d3494f1c2e27ee3029e1ad6f6661d4962182"
+url = "https://github.com/vale-cli/vale/releases/download/v3.25.1/vale_3.25.1_Linux_64-bit.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/667037022"
+
+[tools."aqua:errata-ai/vale"."platforms.macos-arm64"]
+checksum = "sha256:fbcaa68d9b9e229b9c8dc918f209e93572ce943039700b7e04a423ff12f684cd"
+url = "https://github.com/vale-cli/vale/releases/download/v3.25.1/vale_3.25.1_macOS_arm64.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/667037030"
+
+[tools."aqua:errata-ai/vale"."platforms.macos-x64"]
+checksum = "sha256:e27097e84a812d45546de8d6a4ffa75538cab39c96f79b153b601240f8cefaf9"
+url = "https://github.com/vale-cli/vale/releases/download/v3.25.1/vale_3.25.1_macOS_64-bit.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/667037025"
+
+[tools."aqua:errata-ai/vale"."platforms.windows-x64"]
+checksum = "sha256:5f4b5cefee5d0f7ee0621d7cc035886515888fd732c4e8add36d3c922f2adc68"
+url = "https://github.com/vale-cli/vale/releases/download/v3.25.1/vale_3.25.1_Windows_64-bit.zip"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/667037103"
+
 [[tools."aqua:golangci/golangci-lint"]]
 version = "2.15.0"
 backend = "aqua:golangci/golangci-lint"
@@ -48,3 +88,13 @@ checksum = "sha256:cd7ea6063c95de245e17e5246e42bdc14bb221792c429dbd239ab3a6ade6c
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-windows-amd64.zip"
 url_api = "https://api.github.com/repos/golangci/golangci-lint/releases/assets/647132900"
 provenance = "github-attestations"
+
+[[tools."go:github.com/avito-tech/go-mutesting/cmd/go-mutesting"]]
+version = "0.0.0-20261002081621-9ce5f731e321"
+backend = "go:github.com/avito-tech/go-mutesting/cmd/go-mutesting"
+specifiers = ["v0.0.0-20261002081621-9ce5f731e321"]
+
+[[tools."go:golang.org/x/vuln/cmd/govulncheck"]]
+version = "1.9.0"
+backend = "go:golang.org/x/vuln/cmd/govulncheck"
+specifiers = ["v1.9.0"]

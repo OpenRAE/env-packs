@@ -1,0 +1,11 @@
+# A pack name with a terminal control sequence prints in a visible form, so it
+# cannot move the cursor or erase the screen (#563).
+exits 1 raes-pack-catalog evil
+! stdout .
+stderr '^\[local\] evil\\x1b\[2Jx catalog\.pack\.invalid:pack\.identity\.name-mismatch at pack\.yaml  \(see docs/public/catalog\.md\)$'
+! stderr '\x1b'
+
+-- evil/pack.yaml --
+name: "evil\e[2Jx"
+title: T
+version: 1.0.0

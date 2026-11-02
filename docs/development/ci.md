@@ -13,13 +13,14 @@ same time:
 
 | Workflow | Checks | Blocks merge? |
 | --- | --- | --- |
-| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `go`, `go-lint`, `go-arch`, **`verify`**, `sonar` | only **`verify`** |
-| `codeql.yml` | `Analyze (python)`: static security analysis | depends on branch protection |
+| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `conformance`, `go`, `go-lint`, `go-audit`, `go-arch`, `go-mutation`, `go-regression`, **`verify`**, `sonar` | only **`verify`** |
+| `codeql.yml` | `Analyze (python)` and `Analyze (go)`: static security analysis | depends on branch protection |
 | `fuzz.yml` | `Fuzz validate_pack`: bounded fuzzing of the untrusted-pack boundary. `Fuzz Go targets`: every native Go fuzz target | depends on branch protection |
 | `pr-title.yml` | `PR title guard`: the Conventional Commit shape | depends on branch protection |
 
 `scorecard.yml` publishes the supply-chain posture from `main` and on a
-schedule. It does not run on pull requests.
+schedule. `mutation.yml` runs mutation testing on each Go file each week. They
+do not run on pull requests.
 
 `ci.yml` and `fuzz.yml` run on each pull request, whatever its base branch is. A
 pull request of the Go port (ADR 0047) can use an unmerged chunk branch as its
@@ -44,16 +45,35 @@ does not wait for an unrelated job, and the fastest signal arrives first.
   runs `raes-pack-validate --packs-root packs` and
   `raes-pack-release check --packs-root packs` for the first-party packs.
 - **`docs`**: builds `docs/public/` with warnings as errors, and checks the
-  publication boundary of the built site (ADR 0030).
+  publication boundary of the built site (ADR 0030). It then runs `make prose`
+  on the Markdown files that the change adds or changes (see
+  [the style guide](documentation-style-guide.md)).
+- **`conformance`**: installs the hash-locked Python package and runs `make
+  conformance`. The conformance corpus checks the exit statuses and the output
+  streams of each command
+  ([design 0003](designs/0003-conformance-corpus.md)).
 - **`go`**: `make go-check` builds, vets, and tests every Go package with the
   race detector and in shuffled order. It uploads `coverage-go.out`. This job is
   the **coverage authority** for Go.
+- **`go-audit`**: `make go-audit` verifies the downloaded modules against
+  `go.sum` (`go mod verify`). It then runs the govulncheck version that
+  `mise.toml` pins, and a reachable known vulnerability fails it. It retries a
+  bounded number of times, because the vulnerability database is on the
+  network.
 - **`go-lint`**: `make go-lint` runs the golangci-lint version that `mise.toml`
   pins and `mise.lock` verifies. It also checks the formatting and the module
   tidiness (see [the Go style map](go-style-map.md)).
 - **`go-arch`**: `make go-arch` checks the Go code, the design records, and the
   C4 view against the architecture model (see
   [the design records](designs/README.md)).
+- **`go-mutation`**: `make go-mutation` runs mutation testing on the Go lines
+  that the change adds or changes. It installs the go-mutesting version that
+  `mise.toml` pins.
+- **`go-regression`**: `make go-regression` proves that each new regression
+  test fails on the merge base.
+
+`go-mutation` and `go-regression` fetch the full history. Their base is the
+base commit of the pull request, or the commit before a push.
 
 The jobs do not share a runner. So a broken test shows on the `tests` check
 without a wait for the `pip-audit` network lookup, and the reverse. The Go test
@@ -86,7 +106,7 @@ strict (`sonar.qualitygate.wait=true`).
 
 ## Shard ownership
 
-The Python unit suite is **not sharded**. One job (`tests`) runs one
+The Python unit suite has **no shards**. One job (`tests`) runs one
 `unittest discover -s tests`, so each test runs once in each run. When ADR 0029
 recorded this decision, the suite had 474 tests and took about 14 seconds
 locally. Shards would then add more install and coverage-merge time than they
@@ -111,10 +131,15 @@ Those files stay the authority.
 | `tests` | `python -m unittest discover -s tests` (with coverage: `coverage run -m unittest discover -s tests && coverage xml`) |
 | `audit` | `python -m pip install -r requirements/pip-audit.txt && pip-audit` |
 | `content` | `raes-pack-validate --repo .` and `raes-pack-release check --all`, then the same gates with `--packs-root packs` |
-| `docs` | `python -m sphinx -W -b html docs/public docs/public/_build/html`, then `python tools/check_docs_publication_boundary.py docs/public/_build/html` |
+| `docs` | `python -m sphinx -W -b html docs/public docs/public/_build/html`, then `python tools/check_docs_publication_boundary.py docs/public/_build/html`, then `make prose BASE=<base>` (after `mise install`; commit first) |
+| `conformance` | `make conformance` (with the package installed in the active environment) |
 | `go` | `make go-check` |
 | `go-lint` | `make go-lint` (after `mise install`) |
+| `go-audit` | `make go-audit` (after `mise install`) |
 | `go-arch` | `make go-arch` (`make go-arch-design` in the design step) |
+| `go-mutation` | `make go-mutation BASE=<base>` (after `mise install`; commit first) |
+| `go-regression` | `make go-regression BASE=<base>` (commit first) |
+| `Mutation testing on each Go file` | `make go-mutation-all` |
 | `Fuzz Go targets` | `make go-fuzz` (set `FUZZTIME` to change the time for each target) |
 | `sonar` | Runs in CI only, because it needs `SONAR_TOKEN`. Its inputs are `coverage.xml` from `tests` and `coverage-go.out` from `go` |
 | `PR title guard` | `python tools/check_pr_title.py` (it reads the pull request title from the event) |
@@ -123,7 +148,7 @@ Those files stay the authority.
 
 These numbers give the end-to-end GitHub Actions time, including the queue.
 Each time starts at the event and ends when the job completes. The cohort is a
-fixed set of pull-request `ci.yml` runs that were not cancelled. The tables give
+fixed set of pull-request `ci.yml` runs that ran to the end. The tables give
 the median and the nearest-rank p95. They exclude push, schedule, and rerun
 runs.
 

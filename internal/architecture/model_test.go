@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/OpenRAE/env-packs/internal/report"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -14,10 +15,11 @@ const testModule = "example.com/repo"
 // value, so a test can change it.
 func validModel() *Model {
 	return &Model{
-		Version: 1,
-		Module:  testModule,
-		System:  Element{ID: "system", Name: "System", Description: "The system."},
-		People:  []Element{{ID: "author", Name: "Author", Description: "Writes packs."}},
+		Version:   1,
+		Module:    testModule,
+		Platforms: []string{"linux/amd64", "darwin/arm64"},
+		System:    Element{ID: "system", Name: "System", Description: "The system."},
+		People:    []Element{{ID: "author", Name: "Author", Description: "Writes packs."}},
 		ExternalSystems: []Element{
 			{ID: "upstream", Name: "Upstream", Description: "An external system."},
 		},
@@ -153,6 +155,25 @@ func TestValidateModel(t *testing.T) {
 			name:   "system name",
 			change: func(m *Model) { m.System.Name = "" },
 			want:   []string{"the system has no name"},
+		},
+		{
+			name:   "no platform",
+			change: func(m *Model) { m.Platforms = nil },
+			want:   []string{"the model names no platform"},
+		},
+		{
+			name:   "invalid platform",
+			change: func(m *Model) { m.Platforms = []string{"linux", "linux/amd64", "Linux/amd64", "linux/amd64/v2"} },
+			want: []string{
+				`platform "linux" is not GOOS/GOARCH or is listed more than once`,
+				`platform "Linux/amd64" is not GOOS/GOARCH or is listed more than once`,
+				`platform "linux/amd64/v2" is not GOOS/GOARCH or is listed more than once`,
+			},
+		},
+		{
+			name:   "duplicate platform",
+			change: func(m *Model) { m.Platforms = []string{"linux/amd64", "linux/amd64"} },
+			want:   []string{`platform "linux/amd64" is not GOOS/GOARCH or is listed more than once`},
 		},
 		{
 			name:   "system identifier",
@@ -372,7 +393,7 @@ func TestValidateModel(t *testing.T) {
 
 // messages returns the messages of the findings, and checks that each finding
 // has the given location and rule and a fix.
-func messages(t *testing.T, findings []Finding, location, rule string) []string {
+func messages(t *testing.T, findings []report.Finding, location, rule string) []string {
 	t.Helper()
 	var got []string
 	for _, f := range findings {

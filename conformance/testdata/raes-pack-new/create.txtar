@@ -1,0 +1,15 @@
+# A preview writes nothing.
+exits 0 raes-pack-new demo --preview
+stdout '^pack: demo$'
+! stderr .
+
+exits 0 raes-pack-new demo --preview --json
+stdout '"version": "raes-pack-wizard/v1"'
+! stderr .
+
+# The wizard creates the pack in the environments directory of the repository.
+mkdir repo/environments
+exits 0 raes-pack-new demo --repo repo --yes
+stdout '^created environments/demo$'
+! stderr .
+exists repo/environments/demo/pack.yaml

@@ -1,0 +1,20 @@
+    ## Goal
+    Create the `{{.PackID}}` scenario contract and pack skeleton under the current pack doctrine.
+
+    {{.PackBlock}}
+    {{.CommonAnchors}}
+    ## Deliverables
+    - Set `pack.yaml.requirement` to your upstream requirement id if you track one, or `null`; do not synthesize a UID.
+    - Scaffold `environments/{{.PackID}}/` with the progressive wizard `raes-pack-new` (pick a starter route).
+    - Fill `pack.yaml`, `pack.compatibility.yaml`, and `docs/provenance-ledger.yaml` with truthful initial metadata.
+    - Replace template prose in `README.md`, `docs/concepts.md`, `docs/attack-path.md`, and `docs/lineage.md`.
+    - Record source adaptation decisions: what is used, excluded, changed, or locally designed.
+
+    ## Acceptance Criteria
+    - The pack has the required minimum source shape: `pack.yaml`, `sdl/`, `docs/concepts.md`, `docs/attack-path.md`,
+      and `docs/provenance-ledger.yaml`.
+    - Participant-facing framing is offensive by default unless the pack and briefing explicitly declare otherwise.
+    - `pack.yaml.status` remains `draft` until a real live build exists.
+
+    {{.ChildIssueNote}}
+    

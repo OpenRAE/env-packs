@@ -1,17 +1,15 @@
 package architecture
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"go/token"
 	"go/types"
-	"io"
 	"regexp"
 	"slices"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
+	"github.com/OpenRAE/env-packs/internal/report"
+	"github.com/OpenRAE/env-packs/internal/strictyaml"
 	"golang.org/x/mod/module"
 )
 
@@ -21,6 +19,9 @@ type Model struct {
 	Version int `yaml:"version"`
 	// Module is the path of the Go module that the model describes.
 	Module string `yaml:"module"`
+	// Platforms are the release targets, each as "GOOS/GOARCH". The code
+	// check reads the code that each platform builds.
+	Platforms []string `yaml:"platforms"`
 	// System is the software system of the repository.
 	System Element `yaml:"system"`
 	// People are the people who use the system.
@@ -104,25 +105,10 @@ type RuleScope struct {
 // YAML document.
 func ParseModel(data []byte) (*Model, error) {
 	var m Model
-	if err := decodeStrict(data, &m); err != nil {
+	if err := strictyaml.Decode(data, &m); err != nil {
 		return nil, fmt.Errorf("decode model: %w", err)
 	}
 	return &m, nil
-}
-
-// decodeStrict decodes exactly one YAML document into v and rejects fields
-// that v does not declare.
-func decodeStrict(data []byte, v any) error {
-	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true)
-	if err := dec.Decode(v); err != nil {
-		return err
-	}
-	var extra yaml.Node
-	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
-		return errors.New("more than one YAML document")
-	}
-	return nil
 }
 
 // Component returns the component with the given identifier.
@@ -147,7 +133,7 @@ func (m *Model) Owners() map[string]*Component {
 
 // ValidateModel returns the defects of the model. The findings name path as
 // their location.
-func ValidateModel(m *Model, path string) []Finding {
+func ValidateModel(m *Model, path string) []report.Finding {
 	v := modelValidator{path: path, model: m}
 	v.checkHeader()
 	v.checkIDs()
@@ -163,11 +149,11 @@ func ValidateModel(m *Model, path string) []Finding {
 type modelValidator struct {
 	path     string
 	model    *Model
-	findings []Finding
+	findings []report.Finding
 }
 
 func (v *modelValidator) addf(format string, args ...any) {
-	v.findings = append(v.findings, Finding{
+	v.findings = append(v.findings, report.Finding{
 		Location: v.path,
 		Rule:     RuleModel,
 		Message:  fmt.Sprintf(format, args...),
@@ -184,6 +170,16 @@ func (v *modelValidator) checkHeader() {
 	}
 	if v.model.System.Name == "" {
 		v.addf("the system has no name")
+	}
+	if len(v.model.Platforms) == 0 {
+		v.addf("the model names no platform")
+	}
+	seen := make(map[string]bool)
+	for _, p := range v.model.Platforms {
+		if !platformPattern.MatchString(p) || seen[p] {
+			v.addf("platform %q is not GOOS/GOARCH or is listed more than once", p)
+		}
+		seen[p] = true
 	}
 }
 
@@ -369,6 +365,9 @@ func (v *modelValidator) checkRuleScope(r Rule) {
 // joined by single hyphens. The first word starts with a letter.
 const idExpr = `[a-z][a-z0-9]*(?:-[a-z0-9]+)*`
 
+// platformPattern matches a platform, "GOOS/GOARCH".
+var platformPattern = regexp.MustCompile(`^[a-z0-9]+/[a-z0-9]+$`)
+
 // idPattern matches an identifier and nothing else.
 var idPattern = regexp.MustCompile(`^` + idExpr + `$`)
 
@@ -380,11 +379,10 @@ func validID(id string) bool {
 // validSymbol reports whether s is a builtin function, or "importpath.Name"
 // with an exported Name.
 func validSymbol(s string) bool {
-	i := strings.LastIndex(s, ".")
-	if i == -1 {
+	importPath, name, found := strings.CutLast(s, ".")
+	if !found {
 		_, ok := types.Universe.Lookup(s).(*types.Builtin)
 		return ok
 	}
-	name := s[i+1:]
-	return module.CheckImportPath(s[:i]) == nil && token.IsIdentifier(name) && token.IsExported(name)
+	return module.CheckImportPath(importPath) == nil && token.IsIdentifier(name) && token.IsExported(name)
 }

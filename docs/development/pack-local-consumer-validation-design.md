@@ -9,7 +9,7 @@ records the decision. The
 
 | Component | Responsibility |
 | --- | --- |
-| Source set (`validation.py`) | Selects each `*.sdl.yaml` and `raes.lock.json` member below `sdl/` from the safe inventory. Excludes sensitive members. Reads each member one time through `_pack_fs`. Enforces the total byte limit. |
+| Source set (`validation.py`) | Selects each `*.sdl.yaml` and `raes.lock.json` member below `sdl/` from the safe inventory. Reads each member one time through `_pack_fs`. Enforces the total byte limit. |
 | Consumer parse (`validation.py`) | Calls RAES `parse_sdl_sources()` for one direct root. Maps RAES failures to stable codes. Parses a materialized root with content-only `parse_sdl()`. |
 | Shared static checks (`validation.py`) | Receive the RAES scenario. Content-set, concept-binding, and experiment checks do not change. |
 | Artifact resolution (`digest.py`) | `resolve_pack_artifact()` uses the same source set and consumer parse for its parent candidates. It reuses the bytes of a selected parent document (ADR 0033). |
@@ -43,7 +43,6 @@ No diagnostic contains RAES message text, authored values, or absolute paths.
 | Module bytes change after the author pinned them. | Pack bytes to RAES | RAES compares each pin and lock record with the supplied bytes. | Changed-module test. |
 | An unpinned or unlocked import enters a scenario. | Validator to RAES | RAES requires a pin and one agreeing lock record at each depth. | Unpinned and unlocked tests. |
 | A link or traversal reads outside the pack. | Pack bytes to validator | Descriptor-anchored `_pack_fs` reads. RAES resolves imports inside the source set. | Existing filesystem tests and an escape test. |
-| A secret file enters the source set. | Pack bytes to validator | `sensitive_member` excludes it before a read. | Sensitive-member test. |
 | A large source set exhausts the consumer. | Pack bytes to validator | Member and total byte limits. RAES composition limits. | Limit test. |
 | A diagnostic discloses authored data. | Validator to caller | Stable codes and pack-relative paths only. | Diagnostic-content tests. |
 

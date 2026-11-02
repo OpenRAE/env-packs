@@ -1,0 +1,24 @@
+    ## Goal
+    Specify RAES participant behavior for the attacker in `{{.PackID}}`.
+
+    {{.PackBlock}}
+    {{.CommonAnchors}}
+    ## Deliverables
+    - RAES `agents`, `behavior_specifications`, and `action_contracts` that identify the attacker participant and the
+      governed actions available to that participant.
+    - RAES preconditions, effects, failure classes, observation boundaries, outcome interpretation rules, objectives,
+      evidence requirements, and workflows needed to describe the intended behavior.
+    - Pack-local explanatory design prose mapping clues, credentials, tools, planted artifacts, privileges, routes,
+      services, and data to concrete RAES SDL and `assets/` references without defining a second semantic model.
+    - Reference tests and walkthroughs that execute the declared behavior from the participant surface against the live
+      golden build.
+
+    ## Acceptance Criteria
+    - The hydrated RAES SDL is the only machine-readable scenario specification; no pack-side behavior or reachability
+      schema is introduced.
+    - RAES validation accepts every participant-behavior reference and rejects unresolved semantic references.
+    - Live rehearsal and the participant walkthrough demonstrate that the reference build realizes the declared RAES
+      behavior and objectives from the intended participant privilege context.
+
+    {{.ChildIssueNote}}
+    

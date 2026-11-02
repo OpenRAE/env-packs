@@ -18,3 +18,11 @@ func A() string {
 func Message(err error) string {
 	return err.Error()
 }
+
+// Streams uses process streams directly and through an alias.
+func Streams() {
+	out := os.Stdout
+	_, _ = out.WriteString("debug")
+	_, _ = os.Stderr.WriteString("debug")
+	_, _ = os.Stdin.Read(nil)
+}

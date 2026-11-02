@@ -7,6 +7,6 @@
 // design records in docs/development/designs/ record each change to the
 // structure of the model.
 //
-// The package reports differences as [Finding] values. It does not print, so
+// The package reports differences as [report.Finding] values. It does not print, so
 // the command in tools/archcheck decides how to show them.
 package architecture

@@ -1,0 +1,4 @@
+# The command needs the release directory.
+exits 2 raes-pack-verify --pack $REPO/packs/techvault
+! stdout .
+stderr 'the following arguments are required: --release'

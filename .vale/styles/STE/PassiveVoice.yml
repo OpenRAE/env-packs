@@ -1,0 +1,54 @@
+# ASD-STE100: use the active voice. The rule finds a form of "be" before a
+# past participle.
+extends: existence
+message: "Use the active voice: '%s' is passive."
+level: error
+ignorecase: true
+raw:
+  - '\b(?:am|are|is|was|were|be|been|being)\s+(?:not\s+)?'
+tokens:
+  - '[\p{L}]+ed'
+  - begun
+  - broken
+  - brought
+  - built
+  - bought
+  - caught
+  - chosen
+  - done
+  - drawn
+  - driven
+  - found
+  - given
+  - gone
+  - held
+  - hidden
+  - kept
+  - known
+  - laid
+  - led
+  - left
+  - lost
+  - made
+  - meant
+  - met
+  - paid
+  - read
+  - run
+  - said
+  - seen
+  - sent
+  - set
+  - shown
+  - shut
+  - sold
+  - spent
+  - split
+  - spoken
+  - taken
+  - taught
+  - thought
+  - told
+  - understood
+  - won
+  - written

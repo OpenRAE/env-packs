@@ -141,20 +141,15 @@ class AuthoringTests(TestCase):
             if len(str(path)) < 4096:
                 self.assertEqual(result["result"]["recovery_path"], str(path))
 
-    def test_read_tools_cannot_execute_or_connect_or_read_secret_members(self):
-        from raes_env_packs import _pack_fs
-
+    def test_read_tools_cannot_execute_or_connect(self):
         (self.pack / "sdl" / "validate_custom.py").write_text("raise RuntimeError('executed')")
-        original = _pack_fs.open_member
-        def guard(fd, rel, **kwargs):
-            self.assertNotIn(".env", rel)
-            return original(fd, rel, **kwargs)
         with mock.patch("socket.socket.connect", side_effect=AssertionError("network")), \
-             mock.patch("subprocess.Popen", side_effect=AssertionError("process")), \
-             mock.patch.object(_pack_fs, "open_member", side_effect=guard):
+             mock.patch("subprocess.Popen", side_effect=AssertionError("process")):
             self.assertEqual(self.call("pack_validate", source="sample")["status"], 0)
-            (self.pack / ".env").write_text("private fixture")
-            self.assertEqual(self.call("pack_validate", source="sample")["status"], 1)
+
+    def test_secret_like_member_names_are_pack_content(self):
+        (self.pack / "docs" / ".env").write_text("EXAMPLE=1\n")
+        self.assertEqual(self.call("pack_validate", source="sample")["status"], 0)
 
     def test_sdl_services_delegate_to_real_raes(self):
         from raes.language_service import language_completions

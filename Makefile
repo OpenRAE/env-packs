@@ -27,7 +27,8 @@ MISE ?= mise
 
 .DEFAULT_GOAL := help
 
-.PHONY: help devmain go-check go-lint go-fuzz go-arch go-arch-design go-arch-dsl
+.PHONY: help devmain prose conformance conformance-go go-check go-lint go-audit go-fuzz go-arch \
+	go-arch-design go-arch-dsl go-mutation go-mutation-all go-regression
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -66,12 +67,34 @@ go-check: ## Build, vet, and test the Go code
 	$(GO) vet ./...
 	$(GO) test -race -shuffle=on -coverprofile=coverage-go.out ./...
 
-# Lints the Go code with the pinned golangci-lint, checks the formatting, and
-# checks that go.mod and go.sum are tidy (docs/development/go-style-map.md).
+# Lints the Go code with the pinned golangci-lint once for each release
+# platform of the architecture model, so that each build-constrained file is
+# linted. Then it checks the formatting, and checks that go.mod and go.sum are
+# tidy (docs/development/go-style-map.md).
 go-lint: ## Lint the Go code and check formatting and tidiness
-	$(MISE) exec -- golangci-lint run ./...
+	@set -eu; \
+	platforms=$$($(GO) run ./tools/archcheck platforms); \
+	for platform in $$platforms; do \
+	  echo "go-lint: $$platform"; \
+	  GOOS=$${platform%/*} GOARCH=$${platform#*/} CGO_ENABLED=0 \
+	    $(MISE) exec -- golangci-lint run ./...; \
+	done
 	$(MISE) exec -- golangci-lint fmt --diff ./...
 	$(GO) mod tidy -diff
+
+# Checks the downloaded modules against go.sum, and reports each known
+# vulnerability that the code can reach, with the govulncheck version that
+# mise.toml pins. govulncheck reads the Go vulnerability database on the
+# network.
+go-audit: ## Verify the Go modules and check them for known vulnerabilities
+	$(GO) mod verify
+	@set -eu; \
+	platforms=$$($(GO) run ./tools/archcheck platforms); \
+	for platform in $$platforms; do \
+	  echo "go-audit: $$platform"; \
+	  GOOS=$${platform%/*} GOARCH=$${platform#*/} CGO_ENABLED=0 \
+	    $(MISE) exec -- govulncheck ./...; \
+	done
 
 # The fuzz time for each target. The weekly CI schedule raises it.
 FUZZTIME ?= 30s
@@ -96,6 +119,20 @@ go-fuzz: ## Run every Go fuzz target for FUZZTIME (default 30s)
 go-arch: ## Check the code and design records against the architecture model
 	$(GO) run ./tools/archcheck check
 
+# Git owns the diff. Include rule bodies, scopes, exceptions, and platforms,
+# as well as the structure that the design-record replay checks.
+.PHONY: go-arch-change
+go-arch-change: ## Require a new design record for each committed model change
+	@set -eu; \
+	changed=$$(git diff --name-only --merge-base "$(BASE)" HEAD -- architecture/model.yaml); \
+	if [ -n "$$changed" ]; then \
+	  records=$$(git diff --name-only --diff-filter=A --merge-base "$(BASE)" HEAD -- 'docs/development/designs/[0-9][0-9][0-9][0-9]-*.md'); \
+	  if [ -z "$$records" ]; then \
+	    echo 'architecture/model.yaml: design-change: add a new numbered design record for the model change' >&2; \
+	    exit 1; \
+	  fi; \
+	fi
+
 # The design step: checks the model and the design records before the code
 # exists.
 go-arch-design: ## Check the design records against the architecture model
@@ -104,3 +141,49 @@ go-arch-design: ## Check the design records against the architecture model
 # Renders architecture/workspace.dsl from the architecture model.
 go-arch-dsl: ## Render the C4 view of the architecture model
 	$(GO) run ./tools/archcheck dsl -write
+
+# The base commit of the gates on the changed lines: the integration branch of
+# the Go port (ADR 0047). The cutover changes it to origin/dev. The gates read
+# only committed code, so commit the work before you run them.
+BASE ?= origin/go-cutover
+
+# Runs the conformance corpus against the Python console scripts on PATH
+# (docs/development/designs/0003-conformance-corpus.md). The corpus starts the
+# commands, so the test results do not come from the cache.
+conformance: ## Run the conformance corpus against the Python implementation
+	$(GO) test ./conformance -count=1 -args -impl=python
+
+# Builds each Go command under cmd/ and runs its conformance cases against it.
+# The other commands have no Go implementation yet (design 0008).
+conformance-go: ## Run the conformance cases of the Go commands against Go
+	@set -eu; bin=$$(mktemp -d); trap 'rm -rf "$$bin"' EXIT; \
+	$(GO) build -o "$$bin/" ./cmd/...; \
+	commands=$$(ls cmd | paste -sd '|' -); \
+	$(GO) test ./conformance -count=1 -run "TestCorpus/^($$commands)$$/" -args -impl=go -bin "$$bin"
+
+# Checks the prose of each Markdown file that HEAD adds or changes since BASE,
+# with the Vale version that mise.toml pins and the rules in .vale/styles/STE
+# (docs/development/documentation-style-guide.md). It skips CHANGELOG.md, test
+# fixtures, and the assets of packs and kits.
+prose: ## Check the prose of the Markdown files changed since BASE
+	@set -eu; \
+	files=$$(git diff --name-only --diff-filter=d --merge-base "$(BASE)" HEAD -- '*.md' \
+	  ':(exclude)CHANGELOG.md' ':(exclude,glob)**/testdata/**' ':(exclude)tests/fixtures' \
+	  ':(exclude,glob)packs/*/assets/**' ':(exclude,glob)kits/*/*/assets/**'); \
+	if [ -z "$$files" ]; then echo "prose: no changed Markdown file"; exit 0; fi; \
+	$(MISE) exec -- vale $$files
+
+# Mutation testing on the Go lines that HEAD changes since BASE, with the
+# go-mutesting version that mise.toml pins
+# (docs/development/go-test-standard.md).
+go-mutation: ## Mutation testing on the Go lines changed since BASE
+	$(MISE) exec -- $(GO) run ./tools/testgate mutation -base "$(BASE)"
+
+# Mutation testing on each Go file. A weekly workflow runs it.
+go-mutation-all: ## Mutation testing on each Go file
+	$(MISE) exec -- $(GO) run ./tools/testgate mutation -all
+
+# Proves that each regression test that HEAD adds or changes since BASE fails
+# on the merge base.
+go-regression: ## Prove that each new regression test fails before its fix
+	$(GO) run ./tools/testgate regression -base "$(BASE)"

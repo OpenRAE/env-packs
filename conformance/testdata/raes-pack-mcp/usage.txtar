@@ -1,0 +1,4 @@
+# --pack takes four values.
+exits 2 raes-pack-mcp --pack a b
+! stdout .
+stderr 'argument --pack: expected 4 arguments'

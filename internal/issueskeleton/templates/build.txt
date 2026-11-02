@@ -1,0 +1,24 @@
+    ## Goal
+    Implement the `{{.PackID}}` golden build in the declared live infrastructure.
+
+    {{.PackBlock}}
+    {{.CommonAnchors}}
+    ## Deliverables
+    - `build/` implementation for the golden runtime profile.
+    - Every referenced host, identity, domain, application, service, share, dataset, route, tool, credential, flag, and
+      objective state created from committed pack source.
+    - Participant entry surface provisioned by the build.
+    - Reset, rebuild, cleanup, teardown, and operator diagnostics.
+    - `pack.compatibility.yaml` runtime profile, platform feature, validation, and artifact-boundary
+      references updated to point at actual build surfaces.
+
+    ## Acceptance Criteria
+    - A clean checkout can apply the golden build using committed pack content plus approved cloud/operator credentials
+      only.
+    - The build enters participant start state without hidden manual setup, rehearsal-only seeding, generated-password
+      shortcuts, or operator-only management-plane actions.
+    - The scenario may move to `built` only when it stands up; it remains short of `golden` until participant-equivalent
+      proof and evidence complete.
+
+    {{.ChildIssueNote}}
+    

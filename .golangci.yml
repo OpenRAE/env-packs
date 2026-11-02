@@ -119,12 +119,19 @@ linters:
     dupl:
       threshold: 100
 
-    # A bufio.Writer keeps its first write error, and Flush returns it. The
-    # commands check the error of Flush, so they do not check each write.
+    # errchkjson owns the errors of JSON encoding. It requires the check when
+    # the encoding can fail, and it rejects the check when the value is safe.
+    # errcheck would reject the unchecked form of a safe value, so it leaves
+    # these functions to errchkjson. A bufio.Writer keeps its first write
+    # error, and Flush returns it. The commands check the error of Flush, so
+    # they do not check each write.
     errcheck:
       check-type-assertions: true
       check-blank: true
       exclude-functions:
+        - encoding/json.Marshal
+        - encoding/json.MarshalIndent
+        - (*encoding/json.Encoder).Encode
         - fmt.Fprintf(*bufio.Writer)
 
     errchkjson:

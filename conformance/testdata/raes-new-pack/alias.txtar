@@ -1,0 +1,15 @@
+# raes-new-pack is the same command as raes-pack-new.
+exits 0 raes-new-pack demo --preview
+stdout '^pack: demo$'
+! stderr .
+
+exits 2 raes-new-pack
+! stdout .
+stderr 'a pack id is required'
+
+# The alias preserves the blocking status for an existing target.
+mkdir repo/environments
+exits 0 raes-new-pack demo --repo repo --yes
+exits 1 raes-new-pack demo --repo repo --yes
+! stdout .
+stderr '^error: target already exists: environments/demo$'

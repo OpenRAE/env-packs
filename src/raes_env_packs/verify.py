@@ -43,7 +43,6 @@ from . import release_provenance
 from . import sbom as sbom_module
 from . import validation
 from . import _pack_fs
-from ._authoring_safety import sensitive_member
 
 STATE_ABSENT = "absent"
 STATE_UNAVAILABLE = "unavailable"
@@ -183,7 +182,7 @@ def _load_json_pointer(
 
     ref = evidence.get(key) if isinstance(evidence, dict) else None
     rel = ref.get("path") if isinstance(ref, dict) else None
-    if not isinstance(rel, str) or sensitive_member(rel):
+    if not isinstance(rel, str):
         return None
     errors = validation._Errors(limits)
     document = validation._strict_json_member(root_fd, rel, limits, errors)

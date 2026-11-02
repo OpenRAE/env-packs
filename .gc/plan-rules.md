@@ -7,7 +7,7 @@ the generic workflow. Ground Control injects this file into planning via
 ## Releases & versioning (ADR 0008 — hard requirement)
 
 - **Never hand-edit the version or changelog.** The version lives in
-  `pyproject.toml` (`[project].version`) and is bumped by **release-please** only;
+  `pyproject.toml` (`[project].version`) and only **release-please** updates it;
   `__version__` derives from installed metadata. Do **not** edit `[project].version`,
   `__version__`, or `CHANGELOG.md` in a feature PR — release-please owns them. A PR
   that does is wrong; drop that change.
@@ -16,16 +16,16 @@ the generic workflow. Ground Control injects this file into planning via
   the pack digests (ADR 0045).
 - **The PR title (Conventional Commit) is the release decision** — there are no
   changelog fragments and no scripts to run. Rubric: `feat:`→minor,
-  `fix:`/`perf:`→patch, `feat!:`/`BREAKING CHANGE:`→major (pre-1.0 → minor);
+  `fix:`/`perf:`→patch, `feat!:`/`BREAKING CHANGE:`→major;
   `docs`/`chore`/`refactor`/`test`/`ci`/`build`→no release.
 - **PR titles MUST be Conventional Commits** — a required CI check
   (`PR title guard`, `tools/check_pr_title.py`) blocks non-conforming titles and
   bans agent/tool prefixes like `[claude]`/`[codex]`.
 - **Do not add ad hoc release/tag/publish paths to ordinary feature work.**
   release-please maintains the `chore(main): release X.Y.Z` PR automatically; a
-  human merges it to publish. An issue explicitly changing release architecture
-  must keep the logic in the canonical `.github/workflows/release-please.yml`
-  and amend the governing ADR rather than add a parallel workflow (ADR 0017).
+  human merges it to publish. An issue that changes release architecture must keep the logic in
+  `.github/workflows/release-please.yml`. It must amend the governing ADR instead
+  of adding a parallel workflow (ADR 0017).
 - **Merge habits:** feature PRs are **squash-merged** (the title becomes the
   Conventional Commit release-please reads). Open `dev`→`main` promotions with
   `make devmain` and merge them with a **merge commit**, never squash or rebase,
@@ -46,7 +46,7 @@ See [ADR 0008](../docs/decisions/adrs/0008-adopt-release-please.md).
   match, and pass `make go-arch-design`. The plan names the design record, the
   component that owns each new package, and each new dependency. Then write the
   code and pass `make go-arch`.
-- **Python changes on `dev` are limited to fixes, security updates, and RAES
+- **Limit Python changes on `dev` to fixes, security updates, and RAES
   dependency updates.** A sync pull request brings `dev` into `go-cutover`. When
   a `dev` change alters a contract, the sync pull request also changes the
   conformance corpus.

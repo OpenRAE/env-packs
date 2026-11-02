@@ -43,7 +43,6 @@ from yaml.events import (
 )
 
 from . import _experiment_set, _pack_fs
-from ._authoring_safety import sensitive_member
 
 CONTENT_SAFETY_FLAGS = (
     "no_real_malware",
@@ -1472,24 +1471,15 @@ def _add_sdl_read_error(
 def _consumer_sdl_members(inventory: Iterable[str]) -> list[str]:
     """Return the SDL and RAES lock members that a consumer parse may read.
 
-    The set holds each direct root, plus each other SDL document and lock that
-    is not a sensitive member. It holds no RAES trust policy (ADR 0046).
+    The set holds each SDL document and each RAES lock below ``sdl/``. It
+    holds no RAES trust policy (ADR 0046).
     """
 
     return sorted(
         rel
         for rel in inventory
         if rel.startswith("sdl/")
-        and (
-            (rel.count("/") == 1 and rel.endswith(_SDL_SUFFIX))
-            or (
-                not sensitive_member(rel)
-                and (
-                    rel.endswith(_SDL_SUFFIX)
-                    or rel.rsplit("/", 1)[-1] == LOCKFILE_NAME
-                )
-            )
-        )
+        and (rel.endswith(_SDL_SUFFIX) or rel.rsplit("/", 1)[-1] == LOCKFILE_NAME)
     )
 
 
