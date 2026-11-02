@@ -11,6 +11,20 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [7.2.1](https://github.com/OpenRAE/env-packs/compare/v7.2.0...v7.2.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* adopt RAES 10.4 and declare provable TechVault setting provenance ([#607](https://github.com/OpenRAE/env-packs/issues/607)) ([b7f2f31](https://github.com/OpenRAE/env-packs/commit/b7f2f319c984de256cf2822ac278f6c31b445121))
+* pin RAES 10.5.0 exactly ([#624](https://github.com/OpenRAE/env-packs/issues/624)) ([df0e8c4](https://github.com/OpenRAE/env-packs/commit/df0e8c483044a7e5a10b0e241f8938b9ecd61c07)), closes [#623](https://github.com/OpenRAE/env-packs/issues/623)
+* require RAES 10.5 and declare the TechVault syslog source as a socket ([#622](https://github.com/OpenRAE/env-packs/issues/622)) ([1e5b842](https://github.com/OpenRAE/env-packs/commit/1e5b842c41a1993cefa02fa9d187abbef7f3f9cd)), closes [#604](https://github.com/OpenRAE/env-packs/issues/604)
+
+
+### Documentation
+
+* remove the false pre-1.0 breaking-change rule from the release docs ([#613](https://github.com/OpenRAE/env-packs/issues/613)) ([079de83](https://github.com/OpenRAE/env-packs/commit/079de83b26657c12bd03d636b8cf10a05521dcde))
+
 ## [7.2.0](https://github.com/OpenRAE/env-packs/compare/v7.1.0...v7.2.0) (2026-11-01)
 
 
