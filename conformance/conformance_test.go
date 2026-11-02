@@ -97,7 +97,9 @@ func fault(ts *testscript.TestScript, neg bool, args []string, repo, goBin strin
 	if *faultBin == "" {
 		ts.Fatalf("Go tool-failure cases require -fault-bin with test-only command drivers")
 	}
-	exits(ts, false, []string{"3", args[0]}, *faultBin)
+	dir, err := filepath.Abs(*faultBin)
+	ts.Check(err)
+	exits(ts, false, []string{"3", args[0]}, dir)
 }
 
 // exits runs a command of the implementation under test and checks its exit
