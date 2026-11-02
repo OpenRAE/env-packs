@@ -27,12 +27,12 @@ type Diagnostic struct {
 
 // New returns a diagnostic with code, file, and field. The file is empty or a
 // pack-relative member path that is valid for io/fs: relative,
-// slash-separated, and without "." or ".." elements, backslashes, or a drive
-// prefix. Any other file is a
+// slash-separated, and without "." or ".." elements, backslashes, or a drive-root
+// path. Any other file is a
 // defect, and New panics without the file in the message. So no absolute
 // path can enter a diagnostic.
 func New(code, file, field string) Diagnostic {
-	if file != "" && (file == "." || !fs.ValidPath(file) || strings.Contains(file, `\`) || len(file) > 1 && file[1] == ':') {
+	if file != "" && (file == "." || !fs.ValidPath(file) || strings.Contains(file, `\`) || len(file) > 2 && file[1] == ':' && file[2] == '/') {
 		panic("diagnostic: the file is not a pack-relative path")
 	}
 	return Diagnostic{code: code, file: file, field: field}

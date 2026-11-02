@@ -18,7 +18,7 @@ they do not write to process streams. The architecture model forbids the
 covers aliases and method calls through those variables, without a new
 method-analysis mechanism.
 
-The diagnostic constructor rejects backslashes and drive prefixes in file
+The diagnostic constructor rejects backslashes and drive-root paths in file
 locations. Field names remain location data, including authored names. The
 terminal adapter escapes them when it writes text. JSON encoders escape
 control characters. A field name is not a scalar value; tests must distinguish
@@ -84,7 +84,7 @@ flowchart LR
 | Threat | Control | Verification |
 | --- | --- | --- |
 | An argument drives the terminal. | Escape usage-error text at the command boundary. | Control-character regression test. |
-| A diagnostic exposes a foreign absolute path. | Reject backslashes and drive prefixes. | Constructor rejection tests. |
+| A diagnostic exposes a foreign absolute path. | Reject backslashes and drive-root paths. | Constructor rejection tests. |
 | A library writes through a process stream. | Forbid the stream variable, including aliases. | Real-source architecture fixture. |
 | A rule weakens without a design record. | Compare the model and added records with the PR base. | Temporary Git repository tests. |
 | A stack merge skips checks. | Required GitHub checks with no bypass actor. | Read back the applied ruleset. |
