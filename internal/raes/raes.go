@@ -248,10 +248,10 @@ type TrialInput struct {
 	ParticipantConfigurationValidators map[ManifestKey]ParticipantConfigurationValidator
 }
 
-// A TrialRequest is an adapter-owned RAES trial compilation request. The
-// adapter retains its admitted context, including trusted validator behavior.
+// A TrialFamilyProvider exposes the family of an adapter-owned RAES trial request.
+// The adapter retains its admitted context, including trusted validator behavior.
 // Only the adapter that made the request accepts it for further RAES operations.
-type TrialRequest interface {
+type TrialFamilyProvider interface {
 	// Family returns the admitted family retained by the request.
 	Family() Scenario
 }
@@ -281,7 +281,7 @@ type Experiments interface {
 	ValidateParticipantConfiguration(manifest, configuration any) error
 	// TrialCompilationRequest builds and checks the trial compilation request
 	// of an experiment.
-	TrialCompilationRequest(input TrialInput) (TrialRequest, error)
+	TrialCompilationRequest(input TrialInput) (TrialFamilyProvider, error)
 }
 
 // A Compilation is a scenario that RAES compiled. It is a handle: only the

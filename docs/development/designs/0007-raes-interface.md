@@ -88,7 +88,7 @@ This supports nested inventory and materialization archive round-trips.
 `TrialInput` carries the scenario handle, published documents, manifests, and
 caller-supplied configuration validators needed for a trial request.
 `ManifestKey` indexes manifests and validators by identity and version.
-`TrialRequest` retains the admitted family as an adapter-owned handle.
+`TrialFamilyProvider` retains the admitted family as an adapter-owned handle.
 `ManifestLimits` carries artifact count, per-artifact bytes, and total bytes.
 These types declare consumer inputs; they copy no upstream validation rules.
 

@@ -7,7 +7,7 @@ var _ interface {
 } = ContractValidator(nil)
 
 var _ interface {
-	TrialCompilationRequest(input TrialInput) (TrialRequest, error)
+	TrialCompilationRequest(input TrialInput) (TrialFamilyProvider, error)
 } = Experiments(nil)
 
 var _ interface {

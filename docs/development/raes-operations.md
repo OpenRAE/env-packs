@@ -196,4 +196,4 @@ and these retained tests: `test_techvault_pack`, `test_techvault_study_pack`,
 | `raes_processor.semantics.realization.project_realization_concern` | `Content.ProjectRealizationConcern` | `test_techvault_route_authentication.py` |
 | `raes_processor.semantics.realization_concerns.realization_concern_descriptors` | `Content.RealizationConcernDescriptors` | `test_kit_compute_substrate.py` |
 | `raes_processor.semantics.realization_observation_admission.has_required_observation_support` | `Content.HasRequiredObservationSupport` | `test_techvault_pack.py` |
-| `raes_processor.trial_compiler.TrialCompilationRequest` | `Experiments.TrialCompilationRequest`, `TrialInput`, `TrialRequest` | `_experiment_set.py` |
+| `raes_processor.trial_compiler.TrialCompilationRequest` | `Experiments.TrialCompilationRequest`, `TrialInput`, `TrialFamilyProvider` | `_experiment_set.py` |
