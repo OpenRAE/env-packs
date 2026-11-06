@@ -213,6 +213,7 @@ For current Codex installations, the supported user discovery directory is `~/.a
 See the [official skill discovery documentation](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills).
 Use your client's normal installation mechanism to expose the existing skill there.
 Codex follows skill-directory symlinks.
+
 The delivery session also discovered the older `~/.codex/skills/` installation through its supplied skill catalog.
 [Claude Code](https://code.claude.com/docs/en/skills#choose-where-skills-load) uses `~/.claude/skills/documentation/`; the inspected setup links that directory to the same existing skill.
 The repository does not install or redistribute either personal setup.
