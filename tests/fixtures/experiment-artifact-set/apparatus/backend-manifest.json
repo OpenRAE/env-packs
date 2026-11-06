@@ -553,7 +553,6 @@
       ],
       "supports_redaction": true,
       "supports_loss_disclosure": true,
-      "supports_chain_of_custody": false,
       "capture_offers": [
         {
           "offer_id": "fixture-alert-trace",

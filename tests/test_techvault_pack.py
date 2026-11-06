@@ -38,6 +38,10 @@ from raes_contracts.vocabulary import (
     RealizationSupportMode,
     RealizationVerificationScope,
 )
+from raes_processor.capture_admission import (
+    capture_admission_diagnostics,
+    compile_scenario_capture_demands,
+)
 from raes_processor.compiler import compile_scenario_runtime_model
 from raes_processor.semantics.realization_observation_admission import (
     has_required_observation_support,
@@ -521,10 +525,9 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(requirement["retention"], "run_lifetime")
         self.assertEqual(requirement["loss_disclosure"], "required")
 
-        # The removed sidecar held its evidence where the participant could not
-        # reach it. That intent survives as a stated expectation rather than as
-        # a mechanism the pack ships.
-        self.assertEqual(requirement["integrity"], "chain_of_custody")
+        # The pack states an integrity expectation that RAES capture admission
+        # can verify. RAES 11 removed the chain_of_custody mode.
+        self.assertEqual(requirement["integrity"], "checksum")
         self.assertEqual(requirement["redaction"], "redact_secrets")
 
         for field in ("scope", "description"):
@@ -2178,6 +2181,21 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
                 self.assertEqual(placement.spec["credential_bindings"][0]["material"], {
                     "classification": "secret_fixture", "value": binding.material.value,
                 })
+
+    def test_raes_capture_admission_accepts_every_required_evidence_demand(self) -> None:
+        # With no backend offers, admission reports "offer-missing" for a
+        # demand only after the demand passes its reference and integrity
+        # checks. So each demand must get exactly that one diagnostic.
+        for pack_name in ("techvault", "techvault-participant-study"):
+            with self.subTest(pack=pack_name):
+                path = _ROOT / "packs" / pack_name / "sdl" / f"{pack_name}.sdl.yaml"
+                demands = compile_scenario_capture_demands(parse_sdl_file(path))
+                self.assertTrue(demands)
+                diagnostics = capture_admission_diagnostics(demands, None)
+                self.assertEqual(
+                    sorted((item.address, item.code) for item in diagnostics),
+                    sorted((demand.address, "capture.offer-missing") for demand in demands),
+                )
 
     def test_indexer_fixture_credentials_match_native_consumers(self) -> None:
         import bcrypt
