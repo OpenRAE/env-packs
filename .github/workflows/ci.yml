@@ -192,6 +192,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -209,6 +212,52 @@ jobs:
 
       - name: Assert the publication boundary
         run: python tools/check_docs_publication_boundary.py docs/public/_build/html
+
+      - name: Install pinned writing tools
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          version: 2026.10.2
+          install_args: --locked
+          cache: false
+
+      - name: Check changed Markdown prose
+        shell: bash
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          # NUL-delimited explicit paths include hidden directories and assets.
+          # Only release output, legal text, and exact test evidence are omitted.
+          base="$BASE"
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            base=$(git hash-object -t tree /dev/null)
+          fi
+          git diff --name-only -z --diff-filter=ACMR "$base" HEAD -- '*.md' \
+            ':(exclude)CHANGELOG.md' ':(exclude)CODE_OF_CONDUCT.md' \
+            ':(exclude)tests/fixtures/**' > "$RUNNER_TEMP/prose-changed"
+          mapfile -d '' -t paths < "$RUNNER_TEMP/prose-changed"
+          if (( ${#paths[@]} == 0 )); then
+            echo 'No changed Markdown prose.'
+            exit 0
+          fi
+          mise exec -- vale -- "${paths[@]}"
+          mise exec -- ste lint --config .ste.yml --no-baseline --fail-over 0 -- "${paths[@]}"
+
+      - name: Report the full Markdown corpus
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-files -z -- '*.md' \
+            ':(exclude)CHANGELOG.md' ':(exclude)CODE_OF_CONDUCT.md' \
+            ':(exclude)tests/fixtures/**' > "$RUNNER_TEMP/prose-corpus"
+          mapfile -d '' -t paths < "$RUNNER_TEMP/prose-corpus"
+          if (( ${#paths[@]} == 0 )); then exit 0; fi
+          # Findings are advisory until the content rewrites. Tool errors fail.
+          status=0
+          mise exec -- vale -- "${paths[@]}" || status=$?
+          if (( status > 1 )); then exit "$status"; fi
+          mise exec -- ste lint --config .ste.yml --no-baseline --fail-over -1 -- "${paths[@]}"
 
   sonar:
     runs-on: ubuntu-latest
