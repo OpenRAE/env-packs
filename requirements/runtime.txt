@@ -736,9 +736,9 @@ pyyaml==6.0.3 \
     #   -r requirements/runtime.in
     #   raes
     #   uvicorn
-raes==10.8.0 \
-    --hash=sha256:82377563ecea30fb9c1ce88597214ee7cbd95cdbbb8354e36d327fb20fa7bc74 \
-    --hash=sha256:c8a187f4d355025c78568b21282a596bc293fcc6646679c69e0235fd259221ba
+raes==11.0.0 \
+    --hash=sha256:8c6b6adfbf63c2ea31cb1af525e2ba1aaeb72a68ed4dd54608737901b2ba73f8 \
+    --hash=sha256:f66e5101cc46c036caba2502e1375b932aa2123e3a1607a940417fee8bb7487c
     # via -r requirements/runtime.in
 referencing==0.37.0 \
     --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231 \
