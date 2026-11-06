@@ -11,6 +11,13 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [7.2.4](https://github.com/OpenRAE/env-packs/compare/v7.2.3...v7.2.4) (2026-11-06)
+
+
+### Bug Fixes
+
+* remove chain_of_custody integrity from TechVault packs ([#652](https://github.com/OpenRAE/env-packs/issues/652)) ([e3e338d](https://github.com/OpenRAE/env-packs/commit/e3e338d4a57991b75da0e6879ac7a165d3a39d6c))
+
 ## [7.2.3](https://github.com/OpenRAE/env-packs/compare/v7.2.2...v7.2.3) (2026-11-06)
 
 
