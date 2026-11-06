@@ -23,7 +23,7 @@ classifiers = [
 # (raes.parse_sdl_file), never a local restatement, and the gate is fail-closed,
 # so RAES cannot be optional. ADR 0043 requires a minimum version; CI's
 # generated locks record the exact release tested.
-dependencies = ["PyYAML>=6", "raes>=10.6.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
+dependencies = ["PyYAML>=6", "raes>=11.0.0", "mcp>=2,<3", "jsonschema>=4", "anyio>=4,<5"]
 
 [project.optional-dependencies]
 test = ["bcrypt==5.0.0"]
