@@ -2,9 +2,19 @@
 
 This page lists the RAES operations that env-packs uses (#552, design 0007).
 The Go code calls each operation through the interfaces of `internal/raes`.
-One adapter implements the interfaces with the RAES Go module. The RAES Go
-module does not exist yet, so the adapter does not exist yet. A chunk that
-needs an operation waits for the RAES issue that delivers it.
+One adapter implements the interfaces with the RAES Go module.
+
+The RAES Go module exists at `github.com/OpenRAE/rae/implementations/go`.
+At upstream commit `665b747`, all implementation packages are internal.
+Upstream PR 1926 defines planned public API declarations.
+Issue #643 covers the concrete adapter and its real contract tests.
+This interface preparation does not require the cutover or public operation delivery.
+Consuming chunks require their adapter operations before end-to-end parity can pass.
+
+The [RAES API handoff](https://github.com/OpenRAE/rae/issues/1825#issuecomment-6573945905)
+records the operation list, the two runtime contract imports, and the remaining
+public API requirements.
+This handoff does not establish adapter compatibility.
 
 ## The rule for the interfaces
 
@@ -36,7 +46,7 @@ OpenRAE/rae#1825 defines the public Go API that RAES gives to its consumers.
 | Associated-artifact manifests | `Artifacts.DefaultManifestLimits`, `Artifacts.LoadManifest`, `Artifacts.ValidateManifest`, `Artifacts.SetDigest` | No RAES Go port issue names `raes_contracts.associated_artifacts`. |
 | Artifact requirements of a scenario | `Requirements.ArtifactRequirements` | No RAES Go port issue names `raes.artifact_requirements`. |
 | Compiled addresses | `Requirements.RequirementAddress`, `Requirements.CheckAddress` | OpenRAE/rae#1779 |
-| Validation of a document against a published contract | `ContractValidator.ValidateContract` | OpenRAE/rae#1780 |
+| Validation and normalization against a published contract | `ContractValidator.ValidateContract`, `ContractValidator.AdmitContract` | OpenRAE/rae#1780 |
 | Backend profiles | `BackendProfileLoader.LoadBackendProfile` | OpenRAE/rae#1790 |
 | Scenario families and binding targets | `Experiments.AdmitScenarioFamily`, `Experiments.ValidateBindingTargets` | OpenRAE/rae#1785 (selected scenarios) |
 | Experiments and trial compilation | `Experiments.ParseExperimentSpec`, `Experiments.ValidateSelection`, `Experiments.TrialCompilationRequest` | OpenRAE/rae#1788 |
@@ -61,14 +71,15 @@ hosted packs call them today.
 | Build and plan with a custom backend manifest | `Planning.StubManifest`, `Planning.PlanWithManifest` | OpenRAE/rae#1787 and OpenRAE/rae#1790 |
 | Read realization concern descriptors | `Content.RealizationConcernDescriptors` | No RAES Go port issue names this operation. |
 | Check required observation support | `Content.HasRequiredObservationSupport` | OpenRAE/rae#1787 (processor semantics; exact public API remains a dependency) |
+| Validate and round-trip runtime inventory through a materialization archive, including RAES defaults | `ContractValidator.AdmitContract`, with serialization of its normalized document | No RAES issue names this exact operation; OpenRAE/rae#1780 covers contract bindings generally. |
 
 The content checks also read the RAES vocabulary (OpenRAE/rae#1781) and the
 apparatus models. No RAES Go port issue names `raes_contracts.apparatus`.
 
 ## Map of the RAES symbols
 
-The RAES 10.5 inventory covers 99 distinct imported symbols across application
-code, tools, and the twelve content-test modules retained by chunk 27.
+The RAES 10.5 inventory covers 101 distinct imported symbols across application
+code, tools, twelve content-test modules, and `test_raes_runtime_contracts.py`.
 It includes `raes_backend_protocols`, which the earlier inventory omitted.
 The map records intended adapter responsibilities, not implemented Go parity.
 Published document fields and vocabulary stay RAES contracts. The adapter
@@ -80,7 +91,8 @@ and these retained tests: `test_techvault_pack`, `test_techvault_study_pack`,
 `test_kit_compute_substrate`, `test_published_kits`,
 `test_hosted_pack_content_binding`, `test_hosted_pack_byte_binding`,
 `test_raes_reference_eligibility`, `test_bundled_kits`, and
-`test_techvault_route_authentication`.
+`test_techvault_route_authentication`, plus `test_raes_runtime_contracts`.
+`tests/test_raes_operations.py` checks that each scoped import has a map entry.
 
 | RAES Python symbol | Go replacement | Used by |
 | --- | --- | --- |
@@ -140,23 +152,24 @@ and these retained tests: `test_techvault_pack`, `test_techvault_study_pack`,
 | `raes_contracts.backend_profiles.BackendProfileIdentityError` | `BackendProfileLoader.LoadBackendProfile`: an `*Error` | `publication.py` |
 | `raes_contracts.backend_profiles.load_backend_profile` | `BackendProfileLoader.LoadBackendProfile` | `publication.py` |
 | `raes_contracts.canonical.canonical_json_digest` | `Digests.JSONDigest` | `_experiment_set.py` |
-| `raes_contracts.contracts.AdmittedApparatusBindingModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.AdmittedTrialPlanInputRefsModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.AdmittedApparatusBindingModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.AdmittedTrialPlanInputRefsModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
 | `raes_contracts.contracts.AssociatedArtifactManifestModel` | the JSON form of a manifest | `digest.py`, `kits.py` |
 | `raes_contracts.contracts.ExperimentArtifactRefModel` | `ContractValidator.ValidateContract` | `digest.py` |
-| `raes_contracts.contracts.ExperimentBindingDescriptorSetModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.ExperimentCaptureSpecModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.ExperimentFactorialTreatmentDesignModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.ExperimentReferenceModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.ExperimentScenarioFamilyReferenceModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.ExperimentSpecModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.ExperimentTaskModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.ExperimentBindingDescriptorSetModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.ExperimentCaptureSpecModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.ExperimentFactorialTreatmentDesignModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.ExperimentReferenceModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.ExperimentScenarioFamilyReferenceModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.ExperimentSpecModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.ExperimentTaskModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
 | `raes_contracts.contracts.ExternalConceptBindingDocumentModel` | `Concepts.AdmitConceptBindings` | `validation.py` |
-| `raes_contracts.contracts.ParticipantImplementationManifestModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.ScenarioBindingTargetModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.TrialCompilationLimitsModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.TrialExecutionAuthorityModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
-| `raes_contracts.contracts.participant_configuration.ParticipantConfigurationValidator` | `Experiments.ValidateParticipantConfiguration` | `_experiment_set.py` |
+| `raes_contracts.contracts.ParticipantImplementationManifestModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.ScenarioBindingTargetModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.TrialCompilationLimitsModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.TrialExecutionAuthorityModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
+| `raes_contracts.contracts.materialization_attestation.MaterializationArchiveRecord` | `ContractValidator.AdmitContract` | `test_raes_runtime_contracts.py` |
+| `raes_contracts.contracts.participant_configuration.ParticipantConfigurationValidator` | `ParticipantConfigurationValidator`, `TrialInput.ParticipantConfigurationValidators` | `_experiment_set.py` |
 | `raes_contracts.diagnostics.Diagnostic` | `Diagnostic` | `digest.py` |
 | `raes_contracts.experiment_bindings.ApparatusManifest` | `Experiments.ValidateBindingTargets` (a manifest) | `_experiment_set.py` |
 | `raes_contracts.experiment_bindings.ApparatusManifestKey` | `Experiments.ValidateBindingTargets` (a manifest key) | `_experiment_set.py` |
@@ -169,7 +182,8 @@ and these retained tests: `test_techvault_pack`, `test_techvault_study_pack`,
 | `raes_contracts.external_concept_bindings.ExternalConceptSchemeSnapshotModel` | `Concepts.AdmitConceptBindings` | `validation.py` |
 | `raes_contracts.external_concept_bindings.admit_external_concept_bindings` | `Concepts.AdmitConceptBindings` | `validation.py` |
 | `raes_contracts.json_ingress.StrictJsonIngressError` | `Artifacts.LoadManifest`: an `*Error` | `digest.py`, `kits.py` |
-| `raes_contracts.realization_envelope.BackendRealizationEnvelopeModel` | `ContractValidator.ValidateContract` | `_experiment_set.py` |
+| `raes_contracts.materialization_inventory.RuntimeInventoryReport` | `ContractValidator.AdmitContract` | `test_raes_runtime_contracts.py` |
+| `raes_contracts.realization_envelope.BackendRealizationEnvelopeModel` | `ContractValidator.AdmitContract` | `_experiment_set.py` |
 | `raes_contracts.realization_structure.RealizationRelationStatus` | published status in the evaluation result; RAES owns the vocabulary | `test_techvault_route_authentication.py` |
 | `raes_contracts.realization_structure.evaluate_realization_constraint` | `Content.EvaluateRealizationConstraint` | `test_techvault_pack.py`, `test_techvault_route_authentication.py` |
 | `raes_contracts.vocabulary.ObservationStrength` | published vocabulary values in content fixtures; RAES owns admission | `test_kit_compute_substrate.py`, `test_techvault_pack.py` |
@@ -182,4 +196,4 @@ and these retained tests: `test_techvault_pack`, `test_techvault_study_pack`,
 | `raes_processor.semantics.realization.project_realization_concern` | `Content.ProjectRealizationConcern` | `test_techvault_route_authentication.py` |
 | `raes_processor.semantics.realization_concerns.realization_concern_descriptors` | `Content.RealizationConcernDescriptors` | `test_kit_compute_substrate.py` |
 | `raes_processor.semantics.realization_observation_admission.has_required_observation_support` | `Content.HasRequiredObservationSupport` | `test_techvault_pack.py` |
-| `raes_processor.trial_compiler.TrialCompilationRequest` | `Experiments.TrialCompilationRequest` | `_experiment_set.py` |
+| `raes_processor.trial_compiler.TrialCompilationRequest` | `Experiments.TrialCompilationRequest`, `TrialInput`, `TrialFamilyProvider` | `_experiment_set.py` |
