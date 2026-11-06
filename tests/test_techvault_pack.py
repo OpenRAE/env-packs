@@ -7,6 +7,7 @@ bindings without becoming a second source of RAES scenario semantics.
 from __future__ import annotations
 
 import copy
+import dataclasses
 import hashlib
 import io
 import json
@@ -28,15 +29,23 @@ from raes.realization_designation import (
     designation_records,
     resolve_realization_designation,
 )
+from raes_backend_protocols.capabilities import ObservationCapabilities
+from raes_backend_protocols.observation_capture import ObservationCaptureOffer
 from raes_contracts.apparatus import (
     RealizationObservationCapability,
     RealizationSupportDeclaration,
 )
+from raes_contracts.capture_dimensions import CAPTURE_SET_FIELDS
 from raes_contracts.realization_structure import evaluate_realization_constraint
 from raes_contracts.vocabulary import (
     ObservationStrength,
     RealizationSupportMode,
     RealizationVerificationScope,
+)
+from raes_processor.capture_admission import (
+    CaptureDemand,
+    capture_admission_diagnostics,
+    compile_scenario_capture_demands,
 )
 from raes_processor.compiler import compile_scenario_runtime_model
 from raes_processor.semantics.realization_observation_admission import (
@@ -159,6 +168,34 @@ _UNDERDECLARED_RUNTIME_NODES = frozenset(
         "ad",
     }
 )
+
+
+def _capture_offer_for(demand: CaptureDemand) -> ObservationCaptureOffer:
+    """Return a valid RAES capture offer with the dimensions of one demand.
+
+    A demand that leaves a dimension empty has no requirement on it. An offer
+    must fill some of those dimensions, so it uses the RAES wildcard there.
+    """
+
+    values = {
+        field.name: getattr(demand, field.name)
+        for field in dataclasses.fields(ObservationCaptureOffer)
+        if hasattr(demand, field.name)
+    }
+    values.update(
+        offer_id=f"offer-{demand.demand_id}",
+        offer_version="1.0.0",
+        output_contract=demand.output_contract or "experiment-evidence-record-v1",
+        field_selectors=demand.field_selectors or ("",),
+        media_types=demand.media_types or ("application/json",),
+        source_classes=demand.source_classes or ("*",),
+        scopes=demand.scopes or ("*",),
+        availability="available",
+        fidelity="complete",
+    )
+    for name in CAPTURE_SET_FIELDS:
+        values[name] = frozenset(values[name])
+    return ObservationCaptureOffer(**values)
 
 
 def _load_sdl() -> dict:
@@ -521,10 +558,9 @@ class TechVaultPackTests(unittest.TestCase):
         self.assertEqual(requirement["retention"], "run_lifetime")
         self.assertEqual(requirement["loss_disclosure"], "required")
 
-        # The removed sidecar held its evidence where the participant could not
-        # reach it. That intent survives as a stated expectation rather than as
-        # a mechanism the pack ships.
-        self.assertEqual(requirement["integrity"], "chain_of_custody")
+        # The pack states an integrity expectation that RAES capture admission
+        # can verify.
+        self.assertEqual(requirement["integrity"], "checksum")
         self.assertEqual(requirement["redaction"], "redact_secrets")
 
         for field in ("scope", "description"):
@@ -2178,6 +2214,28 @@ class TechVaultInWorldDeclarationTests(unittest.TestCase):
                 self.assertEqual(placement.spec["credential_bindings"][0]["material"], {
                     "classification": "secret_fixture", "value": binding.material.value,
                 })
+
+    def test_raes_capture_admission_accepts_every_required_evidence_demand(self) -> None:
+        # Capture offers belong to the backend. Each test offer copies the
+        # demand's own dimensions, so a diagnostic can come only from the
+        # demand: an unresolved reference, an unverifiable integrity mode, or
+        # a demand that no valid RAES capture offer can satisfy.
+        for pack_name in ("techvault", "techvault-participant-study"):
+            with self.subTest(pack=pack_name):
+                path = _ROOT / "packs" / pack_name / "sdl" / f"{pack_name}.sdl.yaml"
+                demands = compile_scenario_capture_demands(parse_sdl_file(path))
+                self.assertTrue(demands)
+                offers = tuple(_capture_offer_for(demand) for demand in demands)
+                observation = ObservationCapabilities(
+                    name="techvault-admission-test",
+                    supported_capture_kinds=frozenset(offer.capture_kind for offer in offers),
+                    supported_channel_kinds=frozenset().union(*(offer.channel_kinds for offer in offers)),
+                    supported_evidence_contracts=frozenset({"experiment-evidence-record-v1"}),
+                    supported_media_types=frozenset().union(*(offer.media_types for offer in offers)),
+                    supported_sealing_modes=frozenset({"digest"}),
+                    capture_offers=offers,
+                )
+                self.assertEqual(capture_admission_diagnostics(demands, observation), [])
 
     def test_indexer_fixture_credentials_match_native_consumers(self) -> None:
         import bcrypt
