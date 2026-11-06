@@ -1,0 +1,9 @@
+# ASD-STE100: a descriptive sentence has 25 words or fewer. A procedural
+# sentence has 20 words or fewer, but a tool cannot tell the two kinds apart,
+# so review checks the procedural limit.
+extends: occurrence
+message: "Write sentences of 25 words or fewer (found %s)."
+level: error
+scope: sentence
+max: 25
+token: '\b[\p{L}\p{N}_''-]+\b'

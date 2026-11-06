@@ -1,0 +1,30 @@
+# Configuration adapted from OpenRAE/lilrae at 28fc8f18c0866066ee450ae6e28ed234e93ca6b4.
+# MIT license and original notices: licenses/LilRAE-MIT.txt.
+# Upstream ste-cli v0.10.1; dictionary and analyzer stay off.
+# Advisory default; explicit-path gates must pass --fail-over 0.
+mode: flavored
+dictionary: false
+analyzer: false
+fail_over: -1
+rules:
+  STE-4.2: error
+  STE-5.1: error
+  STE-6.6: error
+disable_rules:
+  - STE-1.1
+  - STE-1.11
+  - STE-1.14
+  - STE-2.1
+  - STE-3.4
+  - STE-3.5
+  - STE-3.6
+  - STE-3.7
+  - STE-4.3
+  - STE-5.3
+  - STE-5.4
+  - STE-5.5
+  - STE-7.1
+  - STE-7.3
+  - STE-8.1
+  - STE-9.3
+  - STE-GR-6
