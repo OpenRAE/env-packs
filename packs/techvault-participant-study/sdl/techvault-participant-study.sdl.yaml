@@ -3298,7 +3298,7 @@ evidence_requirements:
     artifact_role: participant_session_transcript
     sensitivity: plain
     redaction: redact_secrets
-    integrity: chain_of_custody
+    integrity: checksum
     retention: run_lifetime
     loss_disclosure: required
   red-participant-start-delivery:
@@ -3311,7 +3311,7 @@ evidence_requirements:
     media_types: [application/json]
     sensitivity: plain
     redaction: redact_secrets
-    integrity: chain_of_custody
+    integrity: checksum
     retention: run_lifetime
     loss_disclosure: required
   red-participant-stop-delivery:
@@ -3324,7 +3324,7 @@ evidence_requirements:
     media_types: [application/json]
     sensitivity: plain
     redaction: redact_secrets
-    integrity: chain_of_custody
+    integrity: checksum
     retention: run_lifetime
     loss_disclosure: required
   blue-participant-start-delivery:
@@ -3337,7 +3337,7 @@ evidence_requirements:
     media_types: [application/json]
     sensitivity: plain
     redaction: redact_secrets
-    integrity: chain_of_custody
+    integrity: checksum
     retention: run_lifetime
     loss_disclosure: required
   blue-participant-stop-delivery:
@@ -3350,7 +3350,7 @@ evidence_requirements:
     media_types: [application/json]
     sensitivity: plain
     redaction: redact_secrets
-    integrity: chain_of_custody
+    integrity: checksum
     retention: run_lifetime
     loss_disclosure: required
 # AD roster: the deployment backend ensures these groups, users,
