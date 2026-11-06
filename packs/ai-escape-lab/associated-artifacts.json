@@ -1,7 +1,7 @@
 {
   "schema_version": "associated-artifact-manifest/v1",
   "manifest_id": "ai-escape-lab-associated-artifacts",
-  "manifest_version": "7.2.2",
+  "manifest_version": "7.2.3",
   "canonicalization_profile": "associated-artifact-set/v1",
   "scope": "scenario",
   "parent_ref": {
@@ -643,7 +643,7 @@
       "uri": "raes-environment-pack:/pack.compatibility.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "0dac38104cd14eb30a457278118b2ff71233c9619cd766b22956ca9f10043f08"
+        "value": "9c303b69587e83e941077e6e784eec5781db675952fe2a5d314271ee82c32ca0"
       },
       "size_bytes": 4928,
       "created_at": "2026-10-06T00:00:00Z",
@@ -659,7 +659,7 @@
       "uri": "raes-environment-pack:/pack.yaml",
       "checksum": {
         "algorithm": "sha256",
-        "value": "42e424fd472cd283e3b2d461daff23ef02c9d1642094ad605718befe431ded12"
+        "value": "a1003d2f13a8ce7d903f5dd1a3f28a1057f15a99672b758b9842903b88deeba5"
       },
       "size_bytes": 566,
       "created_at": "2026-10-06T00:00:00Z",
@@ -701,5 +701,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:fbf4b64c6f494bb0bb91ab08ce7949887ea0079b7ea5c652b2618dbaa7815547"
+  "set_digest": "sha256:6d28a5c8f00e4e1cb2e504e32e751037159fa16f55aa3c6b60139b6a5f6b65fb"
 }
