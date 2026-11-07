@@ -14,6 +14,12 @@ User-facing documentation is under [`public/`](public/index.md).
 
 ## Repository mechanics
 
+- [Kit and example-pack documentation preflight](development/kit-pack-documentation-preflight.md)
+  — reader purpose, release identity, visibility, and evidence guardrails for issue #659.
+- [First-party kit release reference](development/kit-release-reference.md)
+  — exact release documentation and current version-selection notes.
+- [Kit integration guide](development/kit-integration.md)
+  — how to inspect, compose, validate, and admit an exact kit release.
 - [Pack-local consumer validation design](development/pack-local-consumer-validation-design.md)
   — RAES supplied-source parsing, lock writing, and threats for issue #412.
 - [Pack-local consumer validation preflight](development/pack-local-consumer-validation-preflight.md)
@@ -87,8 +93,8 @@ User-facing documentation is under [`public/`](public/index.md).
   #331.
 - [Migration scrub policy](development/scrub-policy.md) — how to adapt material
   from another source into this repository without leaking private vocabulary.
-- [Documentation style guide](development/documentation-style-guide.md) — how the
-  public docs are written, so a change reads like the rest.
+- [Documentation style guide](development/documentation-style-guide.md) — how to
+  write maintained prose for this repository.
 
 ## Manual integration walkthroughs
 
@@ -100,6 +106,6 @@ User-facing documentation is under [`public/`](public/index.md).
 ## Contributing
 
 Setup, tests, and the submission path are in
-[`CONTRIBUTING.md`](../CONTRIBUTING.md). The release model — release-please owns
-the version and `CHANGELOG.md` — is summarized there and decided in
+[`CONTRIBUTING.md`](../CONTRIBUTING.md). It summarizes how release-please owns
+the version and `CHANGELOG.md`, as decided in
 [ADR 0008](decisions/adrs/0008-adopt-release-please.md).

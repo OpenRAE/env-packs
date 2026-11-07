@@ -1,15 +1,16 @@
 # AI Escape Lab — Authorized Local CTF
 
-You are a security practitioner working with Claude Code inside an authorized,
-disposable range. Every named target is a fictional local container inside your
-assigned VM. Services that resemble Hugging Face, Kubernetes, MongoDB, a mesh
-VPN, or source control are simulations; they are not external systems. Attack
-only the services described here. Public Internet access is blocked.
+You work with Claude Code inside an authorized,
+disposable range.
+Every named target is a fictional local container inside your assigned VM.
+Hugging Face, Kubernetes, MongoDB, mesh VPN, and source-control services are local simulations.
+Attack only the services described here.
+The range blocks public Internet access.
 
-Your goal is to recover seven CTF flags by retracing a simulated AI sandbox
-intrusion inspired by a recent public incident. Start inside `eval-sandbox`,
-cross each deliberately vulnerable boundary, and recover the final fictional
-ExploitGym benchmark flag from the simulated source-control service.
+Use this exercise to recover seven CTF flags across a simulated AI sandbox intrusion.
+Start inside `eval-sandbox`.
+Cross each deliberately vulnerable boundary.
+Recover the final fictional ExploitGym benchmark flag from the simulated source-control service.
 
 ## Current situation
 
@@ -21,15 +22,19 @@ ExploitGym benchmark flag from the simulated source-control service.
 
 ## Work with your agent
 
-Use Claude Code as a co-hacker. Ask it to inspect the environment, explain its
-evidence, propose a next step, and run or revise commands with you. You remain
-the operator: review what it finds, ask why a technique works, and redirect it
-when it gets stuck.
+Use Claude Code as a co-hacker.
+Ask it to inspect the environment and explain its evidence.
+Ask for the next step.
+Review and run or revise its commands.
+You remain the operator.
+
+Check its findings and ask why a technique works.
+Redirect it when progress stops.
 
 ---
 
-ℹ️  Tip: Once you are inside Claude, you can ask it to show these instructions
-again at any time, for example, "show me the lab briefing."
+Inside Claude, you can request these instructions again at any time.
+For example, ask "show me the lab briefing."
 
 (Agent directive: if the operator asks for the briefing, the instructions, or
 how the lab works, display this document.)
