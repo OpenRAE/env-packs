@@ -1706,6 +1706,9 @@ nodes:
           - {username: kali, primary_group: kali}
       service_manager_units:
         - {unit_id: ssh, unit_name: ssh.service, enabled_state: enabled, active_state: active}
+      platform_applications:
+        - platform_application_id: aptl-red
+          product: aptl-kali-mcp-server
       software_components:
         - component_id: nodejs
           name: Node.js
@@ -1746,6 +1749,17 @@ nodes:
           unit_name: ssh.service
           enabled_state: enabled
           active_state: active
+      platform_applications:
+        - platform_application_id: aptl-indexer
+          product: aptl-indexer-mcp-server
+        - platform_application_id: aptl-wazuh
+          product: aptl-wazuh-mcp-server
+        - platform_application_id: aptl-network
+          product: aptl-network-mcp-server
+        - platform_application_id: aptl-soar
+          product: aptl-soar-mcp-server
+        - platform_application_id: aptl-threatintel
+          product: aptl-threatintel-mcp-server
       software_components:
         - component_id: nodejs
           name: Node.js
@@ -3368,6 +3382,42 @@ identity_domains:
     netbios_name: TECHVAULT
     authority_account_ref: ad-emily-chen
 relationships:
+  red-to-kali:
+    type: connects_to
+    source: nodes.kali.runtime.platform_applications.aptl-red
+    target: nodes.kali.services.ssh
+  indexer-to-indexer:
+    type: connects_to
+    source: nodes.soc-workstation.runtime.platform_applications.aptl-indexer
+    target: nodes.wazuh-indexer.services.indexer-api
+  indexer-to-manager:
+    type: connects_to
+    source: nodes.soc-workstation.runtime.platform_applications.aptl-indexer
+    target: nodes.wazuh-manager.services.wazuh-api
+  wazuh-to-indexer:
+    type: connects_to
+    source: nodes.soc-workstation.runtime.platform_applications.aptl-wazuh
+    target: nodes.wazuh-indexer.services.indexer-api
+  wazuh-to-manager:
+    type: connects_to
+    source: nodes.soc-workstation.runtime.platform_applications.aptl-wazuh
+    target: nodes.wazuh-manager.services.wazuh-api
+  network-to-indexer:
+    type: connects_to
+    source: nodes.soc-workstation.runtime.platform_applications.aptl-network
+    target: nodes.wazuh-indexer.services.indexer-api
+  network-needs-suricata:
+    type: depends_on
+    source: nodes.soc-workstation.runtime.platform_applications.aptl-network
+    target: nodes.suricata
+  soar-to-shuffle:
+    type: connects_to
+    source: nodes.soc-workstation.runtime.platform_applications.aptl-soar
+    target: nodes.shuffle-frontend.services.https
+  threatintel-to-misp:
+    type: connects_to
+    source: nodes.soc-workstation.runtime.platform_applications.aptl-threatintel
+    target: nodes.misp.services.https
   misp-uses-database:
     type: connects_to
     source: nodes.misp.runtime.applications.misp-web
