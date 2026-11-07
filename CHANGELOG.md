@@ -11,6 +11,20 @@ this file at release-prep. See [`changelog.d/README.md`](changelog.d/README.md).
 
 <!-- towncrier release notes start -->
 
+## [7.3.0](https://github.com/OpenRAE/env-packs/compare/v7.2.4...v7.3.0) (2026-11-07)
+
+
+### Features
+
+* declare TechVault MCP application connections ([#667](https://github.com/OpenRAE/env-packs/issues/667)) ([c1cfcd6](https://github.com/OpenRAE/env-packs/commit/c1cfcd65efa71f78c46ab2b3b19e40f38bbe1918))
+
+
+### Documentation
+
+* adopt Diataxis and local STE checks ([7bc2ec6](https://github.com/OpenRAE/env-packs/commit/7bc2ec6b78c684e4fae2d1ab4e63124632122370))
+* apply Diataxis to kit and pack documentation ([#666](https://github.com/OpenRAE/env-packs/issues/666)) ([08ddb97](https://github.com/OpenRAE/env-packs/commit/08ddb9708cb7935e999f4bdbea64455e6062c8b0))
+* clarify kit and pack documentation ([08ddb97](https://github.com/OpenRAE/env-packs/commit/08ddb9708cb7935e999f4bdbea64455e6062c8b0))
+
 ## [7.2.4](https://github.com/OpenRAE/env-packs/compare/v7.2.3...v7.2.4) (2026-11-06)
 
 
