@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "df81bf67d9847872f50958aaca024b24dceebfc9db34ca6fbb2c6577cb44bea6"
+        "value": "1670a9ce70832b87d19879b8006e826c51d65a826b08c7ac8af9d7ece13b5672"
       },
-      "size_bytes": 10580,
+      "size_bytes": 10382,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -467,9 +467,9 @@
       "uri": "raes-environment-pack:/docs/attack-path.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "ddcdc7d5e98b881c3652333423164fec95d332b90ab227c6ffd3f2a21d37b09f"
+        "value": "67d51f98c8c9dba570fe84c18c7f59846a21e649d913a74649c81e844762d5cc"
       },
-      "size_bytes": 998,
+      "size_bytes": 926,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -483,9 +483,9 @@
       "uri": "raes-environment-pack:/docs/concepts.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "e301f76a954bdde7370b5ba641be2f99fb41277d0678c15f0dcbe86e54fbd7dd"
+        "value": "0842cb3280cc92348e71a4c434cd8ae82f6b52e1cbbb7c1c11755e7feaee8d52"
       },
-      "size_bytes": 2627,
+      "size_bytes": 2632,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -499,9 +499,9 @@
       "uri": "raes-environment-pack:/docs/golden-readiness-checklist.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "e63da555ffe5ca65258b2d1f41a140bdc7930095edb749f24aa7abeb8e9b6fd0"
+        "value": "7785b0ad414928070c3e814b2ba027c20a8493130fe1a232db610ee5eda21015"
       },
-      "size_bytes": 1318,
+      "size_bytes": 1750,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -515,9 +515,9 @@
       "uri": "raes-environment-pack:/docs/lineage.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "4bbc2c0b3564dd18fd2390e1c9abf7c0273ac039918917e6fa482d243b922b85"
+        "value": "34077a3c02ff426e5884541b0776affb14cf8a1915c2493a6154de23f2aedb85"
       },
-      "size_bytes": 3448,
+      "size_bytes": 3708,
       "created_at": "2026-08-02T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -701,5 +701,5 @@
       "description": "Exact defensive stdio MCP source packages for the SOC workstation."
     }
   },
-  "set_digest": "sha256:cac134be0c2d9a5a99266623c5438718c6cca7996cc80cbc7d8bbd5c4fff6b6a"
+  "set_digest": "sha256:747473457beb03822e05dd767c06fc74599b4540961a2a59df0821e53b7c6926"
 }

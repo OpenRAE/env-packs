@@ -19,9 +19,9 @@
       "uri": "raes-environment-pack:/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "140711d3e3e1af6b98115e6d8cb9e527c1626e4aeb91ca339b2ebba6f11d0f44"
+        "value": "338858d7f81a78dab8b11bcb03a3d8bcba33cbd9f2ba0f1c8cf5ac9638f0aacf"
       },
-      "size_bytes": 2233,
+      "size_bytes": 2209,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -259,9 +259,9 @@
       "uri": "raes-environment-pack:/build/runtime/participant-briefing.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "951dd1bfdae46b0c6d4b019e9280f15704dca49563610c77ef244cbab6bc538b"
+        "value": "daa4e992ddd0d1cfd06a73bf1ca86862aac9876c71455663fb9211e8599eef98"
       },
-      "size_bytes": 1593,
+      "size_bytes": 1463,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -371,9 +371,9 @@
       "uri": "raes-environment-pack:/build/shifter/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "da88b234a8ba44b6f9f0c9d1db5e1c175f82ff7840133442b5155399a46df68c"
+        "value": "b274e4c90b4c239ccbbe68364a27895b3908a21688a9664b5ceb9b5cb9a543bd"
       },
-      "size_bytes": 1373,
+      "size_bytes": 1775,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -435,9 +435,9 @@
       "uri": "raes-environment-pack:/ctfd/README.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "4833c62cb718d849f423e5c2ff36a0f0a951580e1cb05153b8aec64750e67310"
+        "value": "6b9ee84948054eecde4479416e9e12355b2bbf45b9d77ac88c238d892a323003"
       },
-      "size_bytes": 454,
+      "size_bytes": 997,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -483,9 +483,9 @@
       "uri": "raes-environment-pack:/docs/attack-path.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "7919eb36efffcf8646661efcbf676c06c0dbc08d7764552631f5e8ed67a208b2"
+        "value": "5fccfffa4e8627b59d5355dbc2a82076e6330e36cc7233bf77f5ee398c97cbac"
       },
-      "size_bytes": 929,
+      "size_bytes": 1131,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -499,9 +499,9 @@
       "uri": "raes-environment-pack:/docs/concepts.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "860d165be84957f5643635bbe28d05e97ddbd8bf6fc3c202c835409abe103a81"
+        "value": "9c43a101dcbbc2c61818e0f9e75c0e3c1d0d0e1724bf74b1293577f9824541bd"
       },
-      "size_bytes": 1126,
+      "size_bytes": 1116,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -531,9 +531,9 @@
       "uri": "raes-environment-pack:/docs/golden-readiness-checklist.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "6fddc38f7fdaf2f359773afb7be00f382d44adeba1e287bd3c9acb260dc2f01b"
+        "value": "cf89341e999739125c4cd0929d17bbba2cc83f7e8b1194b30a26d36fcbcb5507"
       },
-      "size_bytes": 3290,
+      "size_bytes": 3628,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -547,9 +547,9 @@
       "uri": "raes-environment-pack:/docs/lineage.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "1bbe5d9cac1e5bb5bd210abfd946a1268b64e30dbfff9189ef117f9a9a57b385"
+        "value": "9a6e256ba77033faa8a3e60a53d7486e92a682f71004a62c7f12e979c9930793"
       },
-      "size_bytes": 609,
+      "size_bytes": 922,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -563,9 +563,9 @@
       "uri": "raes-environment-pack:/docs/operator-runbook.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "6f6b2e1210de881cebf751ca6839066a5e429ba24e9990f46bdf7432db36354e"
+        "value": "8a1ee6f34622aaecd996b13679fa12bf37a4d0bd518e4ce8a64afee67e719268"
       },
-      "size_bytes": 7107,
+      "size_bytes": 7646,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -579,9 +579,9 @@
       "uri": "raes-environment-pack:/docs/participant-agent-entry.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "4b39e0585dd00b5c94c59e87566bf36a2283c16c142151b4af60d9be7056c1c6"
+        "value": "beed3c202054a9880303c0e16f0634a28da7ef9246977d790c7060ed7800cf9f"
       },
-      "size_bytes": 2801,
+      "size_bytes": 2994,
       "created_at": "2026-10-25T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -611,9 +611,9 @@
       "uri": "raes-environment-pack:/docs/walkthroughs/operator-solution.md",
       "checksum": {
         "algorithm": "sha256",
-        "value": "a202a04a0012851c309c23238ab544ab2822cbedbf64f3135b175fa82f657ab2"
+        "value": "1c420fef3e58133d7432b6984b77429d3627b97981e146854b33a77e88e6b84e"
       },
-      "size_bytes": 1815,
+      "size_bytes": 1985,
       "created_at": "2026-10-06T00:00:00Z",
       "source": "environment-pack-author",
       "satisfies_refs": [],
@@ -701,5 +701,5 @@
       "description": null
     }
   },
-  "set_digest": "sha256:980439678a8c09d733b281ffd2336de8acb3d16e00ad5b28b01c775d7a2556c1"
+  "set_digest": "sha256:758a3cb30a8cacf47ad796c4808da674005315abf3d8ce6e5185111d8246b121"
 }
