@@ -500,7 +500,7 @@ class TechVaultPackTests(unittest.TestCase):
             "assertions": 4,
             "evidence_requirements": 5,
             "identity_domains": 1,
-            "relationships": 2,
+            "relationships": 11,
             "accounts": 20,
             "variables": 10,
             "entities": 2,
