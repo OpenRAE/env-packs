@@ -10,7 +10,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.ping-tool",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -87,7 +87,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.debug",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -164,7 +164,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.debug",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -241,7 +241,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.api-token",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -318,7 +318,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.api-file",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -395,7 +395,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.api-user",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -472,7 +472,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.admin",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -549,7 +549,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.login",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -626,7 +626,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.search",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -703,7 +703,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.upload",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -780,7 +780,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.login",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -857,7 +857,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.api-token",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -934,7 +934,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.search",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
@@ -1011,7 +1011,7 @@
         "owning_contract_id": "sdl-authoring-input-v1",
         "lifecycle_phase": "normalized-authoring",
         "canonical_ref": "nodes.webapp.runtime.applications.techvault-portal.routes.comment",
-        "artifact_digest": "sha256:c649d9a9853d852b4a59833f6d11dac27c55dde30bb5f40f5064de8f63d604b1"
+        "artifact_digest": "sha256:b7a4cc699186585d10e80f7fff4f8427cc38e20788636f6a30bd284b47205c48"
       },
       "scheme": {
         "scheme_id": "mitre-cwe",
