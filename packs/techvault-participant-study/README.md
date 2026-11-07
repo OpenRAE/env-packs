@@ -124,6 +124,13 @@ Both hosts declare Node.js 22.
 The archives contain source, package/build manifests, the upstream MIT license, and source metadata.
 They contain no dependencies, generated builds, tests, backend configuration, or launch wrapper.
 
+The SDL identifies each logical MCP application under its workstation's `runtime.platform_applications` collection.
+Its `platform_application_id` is the consumer's explicit server identity.
+Top-level `relationships` connect that application to its named scenario services through `connects_to` edges.
+Read the target service's declared port and protocol; the relationship contains no duplicate port value.
+The `aptl-network` application also has a `depends_on` edge to the Suricata node without specifying a service or port.
+These connections grant no participant authority and select no backend host endpoint or launch method.
+
 Runtime Wazuh MCP configuration must send custom-rule writes to `PUT /rules/files/{filename}`.
 Those requests require Wazuh JWT authentication and `overwrite=true`.
 Runtime configuration supplies service URLs and credentials.

@@ -14,6 +14,8 @@ User-facing documentation is under [`public/`](public/index.md).
 
 ## Repository mechanics
 
+- [TechVault consumer facts preflight](development/techvault-consumer-facts-preflight.md)
+  — target associations, RAES ownership, and validation/release guardrails for issue #665.
 - [Kit and example-pack documentation preflight](development/kit-pack-documentation-preflight.md)
   — reader purpose, release identity, visibility, and evidence guardrails for issue #659.
 - [First-party kit release reference](development/kit-release-reference.md)
