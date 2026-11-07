@@ -3,8 +3,8 @@
 Thanks for helping improve the RAES environment-pack format and tooling.
 
 For a small fix — a typo, a broken link, a clear bug — open a pull request. For
-anything that changes the pack contract, a schema, the template, or tool
-behavior, open an issue first so the design can be agreed before you build it.
+a change to the pack contract, a schema, the template, or tool behavior, open an issue first.
+Agree on the design before you build it.
 
 ## Set up
 
@@ -39,12 +39,17 @@ consume it from RAES rather than restating it here.
 
 ## Documentation changes
 
-Public documentation lives in `docs/public/` and is the only tree published to the
-site. Maintainer records — decision records, CI, release mechanics — live
-elsewhere under `docs/` and are indexed in [docs/README.md](docs/README.md).
-Adding a page under `docs/public/` publishes it; a record anywhere else does not.
-Follow the [style guide](docs/development/documentation-style-guide.md), and note
-that the docs build is warning-strict and part of the merge gate.
+Use the [documentation style guide](docs/development/documentation-style-guide.md) for all maintained prose.
+It explains Diataxis purpose, STE, source verification, meaning preservation, and narrow exclusions for historical or exact records.
+Use the existing `documentation` skill if available; the guide also gives commands that need no personal skill installation.
+Run Vale and STE on explicit changed Markdown paths, including hidden directories and content assets.
+Record source paths, revisions, commands, results, and corrected differences in your pull request.
+Review purpose and meaning separately from checker findings.
+
+Only `docs/public/` publishes to the site.
+Developer records stay elsewhere under `docs/`; [docs/README.md](docs/README.md) indexes them.
+Keep the warning-strict Sphinx build and publication check.
+Keep current Python instructions until the separate Go migration and cutover land.
 
 ## Open the pull request
 
@@ -59,9 +64,9 @@ that the docs build is warning-strict and part of the merge gate.
 
 ## Releases
 
-Releases are managed by [release-please](https://github.com/googleapis/release-please)
-(see [ADR 0008](docs/decisions/adrs/0008-adopt-release-please.md)): merge-driven,
-nothing hand-run. Your **Conventional Commit PR title** decides the version:
+[release-please](https://github.com/googleapis/release-please)
+manages releases (see [ADR 0008](docs/decisions/adrs/0008-adopt-release-please.md)).
+Releases follow merges; do not run them by hand. Your **Conventional Commit PR title** decides the version:
 `feat:` → minor, `fix:`/`perf:` → patch, `feat!:`/`BREAKING CHANGE:` → major;
 `docs`/`chore`/`refactor`/`test`/`ci`/`build` do not release.
 
@@ -70,6 +75,6 @@ release-please maintains a `chore(main): release X.Y.Z` pull request; merging th
 one tags and publishes.
 
 Promote `dev` to `main` with `make devmain`, and merge that promotion with a
-**merge commit** — never squash or rebase it, or release-please loses the
-individual commit subjects it reads to build the changelog (see
+**merge commit** — never squash or rebase it.
+Otherwise, release-please loses the individual commit subjects that determine the changelog (see
 [ADR 0019](docs/decisions/adrs/0019-preserve-history-in-dev-main-promotions.md)).

@@ -1,0 +1,9 @@
+# Documentation tools only. Python remains the supported package toolchain.
+min_version = "2026.10.2"
+
+[settings]
+exec_auto_install = false
+
+[tools]
+"aqua:errata-ai/vale" = "3.25.1"
+"github:TudorAndrei/ste-cli" = "0.10.1"

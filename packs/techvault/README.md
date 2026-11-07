@@ -1,70 +1,74 @@
 # TechVault
 
-TechVault is the first-party RAES environment pack for the complete enterprise
-intrusion scenario authored in `sdl/techvault.sdl.yaml`. It includes the
-scenario's vulnerable customer portal, enterprise services, attacker host,
-defensive SOC, seeded data, and exact content artifacts. It declares the
-in-world state a conforming realization must provide without selecting how a
-backend constructs or exposes that state.
+TechVault is the first-party RAES environment pack for this enterprise intrusion scenario.
+It contains a vulnerable customer portal, enterprise services, an attacker host, and defensive SOC services.
+The pack includes seeded data and exact content artifacts.
+The SDL in `sdl/techvault.sdl.yaml` declares the required in-world state.
+The backend chooses how to realize it.
+The pack identity is `techvault`; backend and deployment product names are not part of its identity.
 
-The pack is named `techvault`; backend and deployment product names are not part
-of its identity. A consumer validates the pack and its associated-artifact
-manifest, then resolves each SDL `content.source` by opaque artifact id. No
-consumer is expected to recover content from this repository's checkout paths
-or from the former APTL source tree.
+This reference describes pack content and its limits.
+Read [concepts](docs/concepts.md) for the scenario explanation.
+The [lineage record](docs/lineage.md) and [provenance ledger](docs/provenance-ledger.yaml) retain historical source attribution.
+Their revisions describe the original sources, not new runtime qualification.
 
-Historical source attribution is recorded in `docs/lineage.md` and
-`docs/provenance-ledger.yaml`; no originating backend is part of TechVault's
-portable identity.
+## Preserved source material
+
+`assets/content/misp-sync-readme.md` preserves upstream APTL documentation used by the synchronization package.
+Its installation commands describe that upstream project.
+Use this pack's validation commands for the current source.
+The fileshare and workstation archives also contain fictional documents that form exact scenario content.
+Their text is scenario evidence, not authoring instructions.
+
+The lineage record describes earlier source choices.
+Its statement about credentials outside the pack does not describe the current synthetic account fixtures below.
+Current fixture declarations remain in the SDL.
 
 ## Maturity
 
-The pack is `built`: the complete scenario definition and byte-bound content
-are present, but this repository does not yet claim golden-range proof. Golden
-build, rehearsal, and participant walkthrough work is tracked separately in
-[issue #237](https://github.com/OpenRAE/env-packs/issues/237).
+The pack status is `built`.
+The scenario definition and byte-bound content are present, but this repository claims no golden-range proof.
+[Golden qualification work](https://github.com/OpenRAE/env-packs/issues/237) remains separate.
 
 ## Validation
 
-From the repository root:
+The following trusted-author commands run from the repository root in a virtual environment:
 
 ```sh
+python -m pip install -e ".[test]"
 raes-pack-validate --packs-root packs
 raes-pack-release check --packs-root packs
-python -m pip install -e ".[test]"
 python -m unittest tests.test_techvault_pack
 ```
 
-The pack-local satisfaction profile in
-`profiles/exact-artifact-copy-v1.json` defines the digest-bound copy route used
-by every exact content requirement. Tar assets are deterministic POSIX tar
-carriers whose members are materialized at the declared directory destination.
+These checks verify static declarations, content bindings, and release structure.
+They do not deploy the environment or demonstrate live readiness.
+The [exact-copy profile](profiles/exact-artifact-copy-v1.json) defines the digest-bound route for exact content requirements.
+Tar assets carry deterministic POSIX tar members for the declared directory destination.
+Consumers resolve each SDL `content.source` by opaque artifact ID.
+Checkout paths and the former APTL source tree are not content-resolution interfaces.
 
 ## Portable realization boundary
 
-TechVault uses an open realization designation and carries no substrate
-constraints, machine images, build recipes, host-port publications, launch
-commands, environment-variable delivery, capability grants, backend mounts, or
-restart policy. Product and protocol versions are declared through typed RAES
-runtime state when they are known. A backend remains free to choose its own
-implementation while preserving those in-world facts and exact content bytes.
-That state includes service credential posture, certificate trust, and the
-final ownership and modes of scenario-significant files; it does not prescribe
-how a backend supplies a secret, installs trust, or reaches that final state.
+TechVault leaves realization open.
+It supplies no substrate constraints, machine images, build recipes, host-port publications, launch commands, capability grants, backend mounts, or restart policy.
+It does not select environment-variable delivery.
+Typed RAES runtime state declares product and protocol versions where available.
+The backend must preserve those in-world facts and the exact content bytes.
 
-TechVault likewise does not select where realization evidence is collected.
-The backend must authoritatively corroborate the declared state at the RAES
-verification scope, but may use native control-plane readback, daemon
-observation, guest observation, or another admitted method. It selects the
-least intrusive complete method allowed by realization scope; omission of a
-collection-method floor does not make evidence optional.
+That state includes service credential posture, certificate trust, and final file ownership and modes.
+It does not prescribe secret delivery, trust installation, or the method that establishes the final state.
+The backend must corroborate declared state at the RAES verification scope.
+It can use native control-plane readback, daemon observation, guest observation, or another admitted method.
+It selects the least intrusive complete method that the realization scope permits.
+The absence of a collection-method floor does not make evidence optional.
 
 ## SOC credential fixtures
 
-All SOC console logins are in-world accounts. Their native RAES
-`accounts.<account-id>.credential_bindings` declare `secret_fixture` material
-with a value. Resolve a login by its account id and primary binding id; no
-backend environment variable or secret-store lookup supplies these values.
+SOC logins are in-world accounts.
+Their RAES `accounts.<account-id>.credential_bindings` contain synthetic `secret_fixture` values.
+Each primary binding has the name `<account-id>-primary`.
+No backend environment variable or secret-store lookup supplies these fixture values.
 
 | Surface | Account reference | Username |
 | --- | --- | --- |
@@ -75,91 +79,84 @@ backend environment variable or secret-store lookup supplies these values.
 | MISP console | `accounts.misp-administrator` | `admin@admin.test` |
 | MISP synchronization API | `accounts.misp-suricata-sync-api-key` | `techvault-suricata-sync` |
 
-Each primary binding is named `<account-id>-primary`. These intentionally public
-synthetic values belong to the scenario. The existing runtime MISP principal
-and API setting carry `redacted` posture because those RAES surfaces omit raw
-material; their account bindings carry the `secret_fixture` values. This does
-not make either identity an operator credential.
+The MISP runtime principal and API setting have `redacted` posture because those RAES surfaces omit raw material.
+Their account bindings contain the public synthetic fixtures.
+Neither identity is an operator credential.
+The synchronization key contains exactly 40 ASCII alphanumeric characters.
+[MISP's provisioning source](https://github.com/MISP/MISP/blob/2.5/app/Console/Command/UserShell.php) defines that format.
+The pack-local author validator rejects other lengths or characters without printing the rejected value.
 
-The MISP synchronization key is exactly 40 ASCII alphanumeric characters, as
-required by [MISP’s authentication-key provisioning](https://github.com/MISP/MISP/blob/2.5/app/Console/Command/UserShell.php).
-The pack-local author validator rejects primary fixture material with any other
-length or characters, without including the rejected value in diagnostics.
+Filebeat and dashboard configurations contain passwords that match the bindings.
+The indexer hashes match those values.
+Tests check correct-password matches and incorrect-password rejection.
+Credential files declare restricted ownership and modes.
+The Filebeat configuration follows the [Wazuh 4.12.0 source](https://github.com/wazuh/wazuh/blob/v4.12.0/extensions/filebeat/7.x/filebeat.yml).
+It retains the Wazuh module, index-template behavior, and certificate-verified HTTPS to the declared indexer.
 
-Filebeat and the dashboard's native configurations carry passwords matching
-the declared bindings. The indexer hashes match the same authored values;
-tests verify both matches and incorrect-password rejection. Credential files
-have restricted owner/mode declarations. The Filebeat configuration follows
-[Wazuh's 4.12.0 configuration](https://github.com/wazuh/wazuh/blob/v4.12.0/extensions/filebeat/7.x/filebeat.yml)
-for its Wazuh module and index-template behavior, retaining certificate-verified
-HTTPS to the declared indexer.
-
-The indexer's internal-users file defines initialization content. A retained
-security index may still contain earlier state; the backend must corroborate
-the declared credentials during realization and handle retained state through
-its own migration policy. Static validation does not prove live authentication
-or migrate retained data.
+The internal-users file supplies initialization content.
+A retained security index can contain earlier state.
+The backend must corroborate credentials during realization and handle retained state through its migration policy.
+Static validation neither proves live authentication nor migrates retained data.
 
 ## Flag values
 
-Each of `victim`, `workstation`, `webapp`, `fileshare`, and `ad` declares a user
-flag and a root flag in the SDL. The backend supplies fresh values for all ten
-required string variables (`flag_<host>_user` and `flag_<host>_root`) when it
-instantiates a run. These variables have no defaults. Sensitive `content` files
-place the values; each host's `filesystem_inventory` declares their ownership
-and permissions. User flags retain mode `0644`, with `labadmin` ownership on
-`victim`, `dev-user` on `workstation`, and `root` on the other hosts. Root flags
-are owned by `root:root` with mode `0600` at `/root/root.txt`.
+Each of `victim`, `workstation`, `webapp`, `fileshare`, and `ad` declares one user flag and one root flag.
+The backend supplies fresh values for all ten required string variables when it instantiates a run.
+The variable names are `flag_<host>_user` and `flag_<host>_root`; they have no defaults.
+Sensitive `content` files place the values.
+Each host's `filesystem_inventory` declares ownership and permissions.
 
-Generation, signing, and verification belong to the backend. The pack supplies
-no flag generator, signing keys, token format, or flag-generation service.
-Required variables express the backend-supplied values while RAES's native
-per-run generated-value declaration is tracked in
-[rae#1276](https://github.com/OpenRAE/rae/issues/1276). The SDL owns these file
-declarations; TechVault does not duplicate them in a flag placement map.
+User flags have mode `0644`.
+Their owners are `labadmin` on `victim`, `dev-user` on `workstation`, and `root` on the other hosts.
+Root flags have owner `root:root`, mode `0600`, and path `/root/root.txt`.
+The SDL owns these declarations; the pack has no duplicate flag-placement map.
+
+Flag generation, signing, and verification belong to the backend.
+The pack provides no flag generator, signing key, token format, or flag-generation service.
+Required variables express backend-supplied values.
+[RAE's generated-value work](https://github.com/OpenRAE/rae/issues/1276) remains a separate upstream concern.
 
 ## Participant MCP sources
 
-TechVault ships immutable source bundles for the participant tools based on APTL
-commit `7c673a19f9fb6a3eb1d17305104196b600bd59cc`. The Kali workstation receives
-`aptl-mcp-common` and `mcp-red`; the separate SOC workstation receives the
-common package plus the six defensive MCP packages. Each host declares a
-Node.js 22 runtime. The archives contain only source, package/build manifests,
-the upstream MIT license, and source metadata—no dependencies, generated build
-output, tests, backend configuration, or launch wrapper.
+The participant tool bundles derive from APTL commit `7c673a19f9fb6a3eb1d17305104196b600bd59cc`.
+Kali receives `aptl-mcp-common` and `mcp-red`.
+The separate SOC workstation receives the common package and six defensive MCP packages.
+Both hosts declare Node.js 22.
+The archives contain source, package/build manifests, the upstream MIT license, and source metadata.
+They contain no dependencies, generated builds, tests, backend configuration, or launch wrapper.
 
-Runtime Wazuh MCP configuration must send custom-rule writes to
-`PUT /rules/files/{filename}` with Wazuh JWT authentication and
-`overwrite=true`. Runtime configuration supplies service URLs and credentials.
+The SDL identifies each logical MCP application under its workstation's `runtime.platform_applications` collection.
+Its `platform_application_id` is the consumer's explicit server identity.
+Top-level `relationships` connect that application to its named scenario services through `connects_to` edges.
+Read the target service's declared port and protocol; the relationship contains no duplicate port value.
+The `aptl-network` application also has a `depends_on` edge to the Suricata node without specifying a service or port.
+These connections grant no participant authority and select no backend host endpoint or launch method.
 
-The shared telemetry wrapper is adapted to emit only tool identity and status metadata; it never
-exports request, response, or error content. The SDL selects no installation or
-process-management method.
+Runtime Wazuh MCP configuration must send custom-rule writes to `PUT /rules/files/{filename}`.
+Those requests require Wazuh JWT authentication and `overwrite=true`.
+Runtime configuration supplies service URLs and credentials.
+The adapted telemetry wrapper exports only tool identity and status metadata.
+It never exports request, response, or error content.
+The SDL selects no installation or process-management method.
 
 ## Suricata content contract
 
-The Suricata configuration and 16-rule TechVault local corpus are exact pack
-artifacts. Product-provided built-in rules remain a separate source. The four
-empty MISP files are clean-start seeds in an ephemeral shared volume; the
-declared MISP forwarding agent may replace them and reload the engine through
-the private Unix socket. A consumer must not source or copy replacement files
-from an APTL/LilRAE checkout.
+The Suricata configuration and 16-rule TechVault local corpus are exact artifacts.
+Product-provided built-in rules have a separate source.
+The four empty MISP files seed an ephemeral shared volume.
+The declared forwarding agent can replace them and reload Suricata through its private Unix socket.
+A consumer must not obtain replacement files from an APTL or LilRAE checkout.
 
-Static validation joins the artifact identities, content placements, selected
-rule files, variables, engine inventory, generated-output path, SID namespace,
-shared volumes, reload target, and evidence requirements. Live readiness still
-requires realized evidence showing a successful Suricata configuration and the
-selected sources and 16 active local SIDs. The declared behavioral probe sends
-a participant-equivalent SQL-injection request to `/login` and requires
-Suricata SID `1000010` plus the existing Wazuh correlation rule `303020`.
-Passing static validation does not by itself establish that live result.
+Static validation checks artifact identities, placements, selected rule files, variables, engine inventory, output paths, SID namespace, shared volumes, reload target, and evidence requirements.
+Live readiness requires evidence of successful configuration, selected sources, and 16 active local SIDs.
+The declared SQL-injection probe sends a participant-equivalent request to `/login`.
+It requires Suricata SID `1000010` and Wazuh correlation rule `303020`.
+Static validation alone does not establish that result.
 
 ## Red-team session evidence
 
-TechVault requires a transcript of every interactive session on the red-team
-workstation, covering the commands issued and responses returned. The SDL's
-`redteam-session-transcript` evidence requirement defines its scope, lifetime,
-redaction, integrity, and loss-disclosure posture without selecting a capture
-mechanism. A realizing backend decides how to satisfy that requirement and must
-report evidence loss rather than silently treating an uncaptured session as
-captured.
+TechVault requires a transcript of every interactive red-team workstation session, including commands and responses.
+The SDL's `redteam-session-transcript` requirement defines scope, lifetime, redaction, integrity, and loss disclosure.
+It does not select a capture mechanism.
+The backend must satisfy the requirement and report evidence loss.
+It must not describe an uncaptured session as captured.
