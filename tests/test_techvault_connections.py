@@ -91,8 +91,9 @@ class TechVaultConnectionTests(unittest.TestCase):
                 changed["relationships"]["probe"] = {
                     "type": "connects_to", "source": source, "target": target,
                 }
+                source_text = yaml.safe_dump(changed, sort_keys=False)
                 with self.assertRaises(SDLError):
-                    parse_sdl(yaml.safe_dump(changed, sort_keys=False))
+                    parse_sdl(source_text)
 
     def test_regression_detects_omitted_edges_and_wrong_ports(self):
         scenario = parse_sdl_file(_PACKS / "techvault/sdl/techvault.sdl.yaml")
