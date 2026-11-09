@@ -42,7 +42,7 @@ OpenRAE/rae#1825 defines the public Go API that RAES gives to its consumers.
 | SDL language services | `Language.Edit`, `Language.Completions`, `Language.Diagnostics`, `Language.Format` | OpenRAE/rae#1786 |
 | Module lock and resolution | `Modules.LockfileName`, `Modules.LoadLockfile`, `Modules.ResolveLock` | OpenRAE/rae#1785 |
 | External concept bindings | `Concepts.AdmitConceptBindings` | OpenRAE/rae#1781 |
-| Governed vocabulary terms | `Vocabularies.VocabularyTerms` | OpenRAE/rae#1781 and OpenRAE/rae#1825 |
+| Governed vocabulary terms | `VocabularyReader.VocabularyTerms` | OpenRAE/rae#1781 and OpenRAE/rae#1825 |
 | External concept subjects of a scenario | `Concepts.ConceptSubjects` | No RAES Go port issue names `raes.external_concept_subjects`. |
 | Associated-artifact manifests | `Artifacts.DefaultManifestLimits`, `Artifacts.LoadManifest`, `Artifacts.ValidateManifest`, `Artifacts.SetDigest` | No RAES Go port issue names `raes_contracts.associated_artifacts`. |
 | Artifact requirements of a scenario | `Requirements.ArtifactRequirements` | No RAES Go port issue names `raes.artifact_requirements`. |
@@ -97,7 +97,7 @@ and these retained tests: `test_techvault_pack`, `test_techvault_study_pack`,
 
 | RAES Python symbol | Go replacement | Used by |
 | --- | --- | --- |
-| `raes_contracts.controlled_vocabularies.load_controlled_vocabulary_catalog` | `Vocabularies.VocabularyTerms` | `test_concept_authority_alignment.py` |
+| `raes_contracts.controlled_vocabularies.load_controlled_vocabulary_catalog` | `VocabularyReader.VocabularyTerms` | `test_concept_authority_alignment.py` |
 | `raes.SDLError` | `SDL` methods: an `*Error` | `_experiment_set.py`, `authoring.py`, `component_boundary.py`, `content_ci.py`, `digest.py`, `kits.py`, `release.py`, `validation.py`, `test_raes_reference_eligibility.py` |
 | `raes.SDLImportError` | `SDL.ParseSources`: an `*Error` with `Located` | `validation.py` |
 | `raes.SDLImportErrorCode` | `Error.Code` | `validation.py` |

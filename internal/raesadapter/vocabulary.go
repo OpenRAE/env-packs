@@ -10,7 +10,7 @@ import (
 
 // NewVocabularies loads the immutable catalog from the pinned RAES module.
 // A damaged corpus returns a structured error without authored values.
-func NewVocabularies() (raes.Vocabularies, error) {
+func NewVocabularies() (raes.VocabularyReader, error) {
 	schemas, err := validation.New(nil)
 	if err != nil {
 		return nil, &raes.Error{Code: "concept-catalog-unavailable"}

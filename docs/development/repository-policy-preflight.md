@@ -222,7 +222,7 @@ rules globally or restore historical release exceptions to accommodate migration
 The alignment tests need two upstream facts: the lock filename and controlled
 tactic terms. `Modules.LockfileName` declares the former.
 The initial interface lacked vocabulary access and the Python import mapping.
-Design 0012 adds `Vocabularies.VocabularyTerms` and updates the
+Design 0012 adds `VocabularyReader.VocabularyTerms` and updates the
 [operation map](raes-operations.md).
 The adapter reads the public catalog at upstream revision `17bf4515bf12`.
 
