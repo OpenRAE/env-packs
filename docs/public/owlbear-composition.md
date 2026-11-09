@@ -21,9 +21,10 @@ python -m pip install "raes-env-packs==7.0.0" "raes==10.0.0"
 ```
 
 Use an admitted `OpenRAE/env-packs` checkout containing
-`kits/infrastructure.owlbear-protected-target/1.0.0/` as the source.
-That kit first appears in commit `a5a423bed99215b639ae10a0465ce238f3d35226`.
-The 7.0.0 package's bundled collection does not contain it.
+`kits/infrastructure.owlbear-protected-target/1.1.0/` as the source.
+Release `1.0.0` first appears in commit `a5a423bed99215b639ae10a0465ce238f3d35226`.
+Release `1.1.0` first appears in a later commit.
+The 7.0.0 package's bundled collection contains neither release.
 The released CLI can compose this separately admitted content.
 Recording a source revision does not establish trust in that source.
 
@@ -38,18 +39,21 @@ raes-pack-kit search "$catalog_root" owlbear \
   --source-id openrae-env-packs --source-revision "$catalog_revision"
 ```
 
-The search returns:
+The search returns both releases:
 
 ```text
 infrastructure.owlbear-protected-target@1.0.0 — Owlbear protected target
+infrastructure.owlbear-protected-target@1.1.0 — Owlbear protected target
 ```
+
+This guide uses `1.1.0`. Release `1.0.0` stays available and pins an earlier Owlbear revision.
 
 Inspect that exact release:
 
 ```sh
 raes-pack-kit inspect "$catalog_root" \
   --source-id openrae-env-packs --source-revision "$catalog_revision" \
-  "$kit" 1.0.0 --json
+  "$kit" 1.1.0 --json
 ```
 
 Review the parameters, exports, external prerequisites, component inventory,
@@ -65,9 +69,13 @@ and limitations. The selected release declares:
 | Supporting assets | Operator-visible integration, seed, and provenance files under `assets/kits/owlbear-protected-target/` |
 
 The file selectors name build outputs from upstream revision
-`fa4497f3273517611e2d62f5fb32c620a00a9681`.
+`652df5d6883809664917e6c734eec32a14fa40c4`.
 They do not identify admitted binary bytes or promise published binaries.
-Review the immutable release's
+That revision adds versioned research-artifact builds and local experiment interfaces.
+Review the release's
+[integration material](https://github.com/OpenRAE/env-packs/blob/dev/kits/infrastructure.owlbear-protected-target/1.1.0/assets/integration.md)
+and [provenance](https://github.com/OpenRAE/env-packs/blob/dev/kits/infrastructure.owlbear-protected-target/1.1.0/assets/provenance.md).
+Release `1.0.0` keeps its own
 [integration material](https://github.com/OpenRAE/env-packs/blob/a5a423bed99215b639ae10a0465ce238f3d35226/kits/infrastructure.owlbear-protected-target/1.0.0/assets/integration.md)
 and [provenance](https://github.com/OpenRAE/env-packs/blob/a5a423bed99215b639ae10a0465ce238f3d35226/kits/infrastructure.owlbear-protected-target/1.0.0/assets/provenance.md).
 
@@ -122,14 +130,14 @@ EOF
 
 ## Preview, compose, and validate
 
-First, preview a target whose daemon is required to be inactive:
+First, preview a target that requires an inactive daemon:
 
 ```sh
 printf '%s\n' \
   '{"deployment_profile":"compact","service_label":"synthetic-study","daemon_active_state":"inactive"}' |
   raes-pack-kit add "$pack" "$catalog_root" \
     --source-id openrae-env-packs --source-revision "$catalog_revision" \
-    "$kit" 1.0.0 --namespace protected \
+    "$kit" 1.1.0 --namespace protected \
     --target-sdl sdl/owlbear-study.sdl.yaml --parameters - --preview --json
 ```
 
@@ -143,7 +151,7 @@ printf '%s\n' \
   '{"deployment_profile":"compact","service_label":"synthetic-study","daemon_active_state":"inactive"}' |
   raes-pack-kit add "$pack" "$catalog_root" \
     --source-id openrae-env-packs --source-revision "$catalog_revision" \
-    "$kit" 1.0.0 --namespace protected \
+    "$kit" 1.1.0 --namespace protected \
     --target-sdl sdl/owlbear-study.sdl.yaml --parameters - --json
 
 raes-pack-validate --pack "$pack"
@@ -181,14 +189,14 @@ The commands do not acquire Owlbear binaries, start a service, or load kernel co
 ## Update the declared daemon state
 
 The materialization ID is the namespace `protected` selected during add.
-Keep the kit version at `1.0.0` and change its bounded parameters:
+Keep the kit version at `1.1.0` and change its bounded parameters:
 
 ```sh
 printf '%s\n' \
   '{"deployment_profile":"compact","service_label":"synthetic-study","daemon_active_state":"active"}' |
   raes-pack-kit update "$pack" "$catalog_root" \
     --source-id openrae-env-packs --source-revision "$catalog_revision" \
-    "$kit" 1.0.0 protected --parameters - --preview --json
+    "$kit" 1.1.0 protected --parameters - --preview --json
 ```
 
 Apply the reviewed update and validate again:
@@ -198,7 +206,7 @@ printf '%s\n' \
   '{"deployment_profile":"compact","service_label":"synthetic-study","daemon_active_state":"active"}' |
   raes-pack-kit update "$pack" "$catalog_root" \
     --source-id openrae-env-packs --source-revision "$catalog_revision" \
-    "$kit" 1.0.0 protected --parameters - --json
+    "$kit" 1.1.0 protected --parameters - --json
 
 raes-pack-validate --pack "$pack"
 raes-pack-release check --pack "$pack"
@@ -227,9 +235,13 @@ Use the selected backend's own installation and admission procedure.
 | Static source and runtime declarations | Verify kernel ABI compatibility, module policy, BTF, BPF LSM availability, and successful loading and attachment. Refuse unsupported targets before privileged preparation. |
 | Requested activity | Observe actual service and process state. Verify enforcement independently; activity alone does not establish protection. |
 | Isolated study environment | Verify containment and teardown, including daemon and kernel state. Retain backend/adapter versions, target configuration, and observed qualification results. |
+| Upstream build identity | Verify the upstream `SHA256SUMS` and build manifest before extraction. Admit only outputs whose reported `source_commit` equals the pinned revision. |
+| Experiment interfaces | Select BPF sensor groups, a new control socket path, and a new event file path for each run. None of these is a kit parameter. |
 
 The upstream reference is a non-production prototype on Ubuntu 24.04 with
-kernel 6.17. Other kernel builds have no compatibility claim here.
+kernel 6.17. The unsigned module requires the exact kernel release that its
+build manifest records. Other kernel builds have no compatibility claim here.
+The upstream repository's backend-specific adapter is not kit content.
 A container with insufficient kernel access cannot satisfy the target requirements.
 A privileged container alone does not establish isolation or backend suitability.
 

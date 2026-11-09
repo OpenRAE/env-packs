@@ -41,7 +41,7 @@ A newer version does not qualify a backend or prove runtime readiness.
 | Notebook environment | [1.0.0](../../kits/infrastructure.notebook-environment/1.0.0/README.md), [1.1.0](../../kits/infrastructure.notebook-environment/1.1.0/README.md), [1.2.0](../../kits/infrastructure.notebook-environment/1.2.0/README.md) | [1.2.0 integration](../../kits/infrastructure.notebook-environment/1.2.0/assets/integration.md) | `workspace_name` |
 | Observability/evidence store | [1.0.0](../../kits/infrastructure.observability-evidence-store/1.0.0/README.md), [1.1.0](../../kits/infrastructure.observability-evidence-store/1.1.0/README.md), [1.2.0](../../kits/infrastructure.observability-evidence-store/1.2.0/README.md) | [1.2.0 integration](../../kits/infrastructure.observability-evidence-store/1.2.0/assets/integration.md) | `retention_profile` |
 | OIDC identity provider | [1.0.0](../../kits/infrastructure.oidc-identity-provider/1.0.0/README.md), [1.1.0](../../kits/infrastructure.oidc-identity-provider/1.1.0/README.md), [1.2.0](../../kits/infrastructure.oidc-identity-provider/1.2.0/README.md) | [1.2.0 integration](../../kits/infrastructure.oidc-identity-provider/1.2.0/assets/integration.md) | `realm_name` |
-| Owlbear protected target | [1.0.0](../../kits/infrastructure.owlbear-protected-target/1.0.0/README.md) | [1.0.0 integration](../../kits/infrastructure.owlbear-protected-target/1.0.0/assets/integration.md) | `daemon_active_state` |
+| Owlbear protected target | [1.0.0](../../kits/infrastructure.owlbear-protected-target/1.0.0/README.md), [1.1.0](../../kits/infrastructure.owlbear-protected-target/1.1.0/README.md) | [1.1.0 integration](../../kits/infrastructure.owlbear-protected-target/1.1.0/assets/integration.md) | `daemon_active_state` |
 | Policy engine | [1.0.0](../../kits/infrastructure.policy-engine/1.0.0/README.md), [1.1.0](../../kits/infrastructure.policy-engine/1.1.0/README.md), [1.2.0](../../kits/infrastructure.policy-engine/1.2.0/README.md) | [1.2.0 integration](../../kits/infrastructure.policy-engine/1.2.0/assets/integration.md) | `policy_bundle` |
 | PostgreSQL database | [1.0.0](../../kits/infrastructure.postgresql-database/1.0.0/README.md), [1.1.0](../../kits/infrastructure.postgresql-database/1.1.0/README.md), [1.2.0](../../kits/infrastructure.postgresql-database/1.2.0/README.md) | [1.2.0 integration](../../kits/infrastructure.postgresql-database/1.2.0/assets/integration.md) | `database_name` |
 | Python evaluation worker | [1.0.0](../../kits/infrastructure.python-evaluation-worker/1.0.0/README.md), [1.1.0](../../kits/infrastructure.python-evaluation-worker/1.1.0/README.md), [1.2.0](../../kits/infrastructure.python-evaluation-worker/1.2.0/README.md) | [1.2.0 integration](../../kits/infrastructure.python-evaluation-worker/1.2.0/assets/integration.md) | `queue_name` |
@@ -75,6 +75,7 @@ Do not edit a versioned directory to update current instructions.
 Linux releases from `1.1.0` generally leave the compute substrate open.
 Earlier `1.0.0` releases generally require virtual machines.
 Owlbear `1.0.0` is an exception: it leaves the substrate open and requires independent kernel-capability admission.
+Owlbear `1.1.0` also leaves the substrate open.
 The three Windows kit families retain virtual-machine requirements.
 Open substrate selection does not grant host privileges or establish container compatibility.
 
@@ -83,6 +84,9 @@ Copied seed and integration files can still describe the default parameter value
 Inspect the proposal's SDL and copied assets separately.
 PostgreSQL `1.2.0` includes inline JSON seed data that follows `database_name`.
 SMTP/IMAP `1.3.0` is a separate release; consult its exact module and integration reference before selection.
+
+Owlbear `1.1.0` pins a later Owlbear source revision than `1.0.0`.
+Its provenance describes the upstream research-artifact build identity and the local experiment interfaces.
 
 ## Static checks and runtime evidence
 

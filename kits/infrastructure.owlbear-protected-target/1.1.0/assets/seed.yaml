@@ -1,0 +1,20 @@
+schema_version: environment-kit-seed/v1
+kit: infrastructure.owlbear-protected-target
+configuration:
+  deployment_profile: standard
+  service_label: owlbear-protected-target
+  daemon_active_state: active
+declared_objects:
+- id: protected_workload
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: protection_components
+  kind: infrastructure-seed
+  sensitivity: non-secret
+- id: runtime_posture
+  kind: infrastructure-seed
+  sensitivity: non-secret
+integration_requirements:
+- 'Defaults only: typed module parameters control the composed runtime requirements.'
+- Admit compatible Owlbear binaries and bind the service unit before realization.
+- Connect independent services at the consuming pack root.
