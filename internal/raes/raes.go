@@ -162,6 +162,10 @@ type Concepts interface {
 type ManifestLimits struct {
 	// MaxArtifacts is the most artifacts that a manifest can have.
 	MaxArtifacts int
+	// MaxArtifactBytes bounds each artifact. Zero permits only empty artifacts.
+	MaxArtifactBytes int64
+	// MaxTotalBytes bounds the combined artifacts. Zero permits no artifact bytes.
+	MaxTotalBytes int64
 }
 
 // Artifacts validates associated-artifact manifests. A manifest is its
@@ -205,6 +209,51 @@ type ContractValidator interface {
 	// name contract, such as an artifact identity or an experiment
 	// specification.
 	ValidateContract(contract string, value any) ([]Diagnostic, error)
+	// AdmitContract validates and normalizes value through RAES. The result
+	// includes RAES defaults and preserves JSON number precision. It is a fresh
+	// published document suitable for serialization and subsequent admission.
+	// A non-nil error makes the document unusable; diagnostics remain available.
+	AdmitContract(contract string, value any) (map[string]any, []Diagnostic, error)
+}
+
+// A ManifestKey indexes caller-supplied manifests and validators by identity.
+// It carries no local identity grammar or validation rule.
+type ManifestKey struct {
+	ID      string
+	Version string
+}
+
+// A ParticipantConfigurationValidator is trusted behavior supplied by the caller.
+// It preserves the upstream same-type normalization and validation contract.
+type ParticipantConfigurationValidator interface {
+	// ValidateAndNormalize returns the checked configuration with owner defaults.
+	ValidateAndNormalize(configuration map[string]any) (map[string]any, error)
+}
+
+// TrialInput is the context that the pack caller gives to RAES for one trial
+// compilation request. Documents retain their published RAES JSON forms.
+// The family handle and validators are values, not serialized documents.
+type TrialInput struct {
+	Family                             Scenario
+	Experiment                         map[string]any
+	Task                               map[string]any
+	InputRefs                          map[string]any
+	Apparatus                          map[string]any
+	RealizationEnvelope                map[string]any
+	ExecutionAuthority                 map[string]any
+	ApparatusManifests                 map[ManifestKey]map[string]any
+	CaptureSpecs                       map[string]map[string]any
+	ParticipantManifests               map[ManifestKey]map[string]any
+	Limits                             map[string]any
+	ParticipantConfigurationValidators map[ManifestKey]ParticipantConfigurationValidator
+}
+
+// A TrialFamilyProvider exposes the family of an adapter-owned RAES trial request.
+// The adapter retains its admitted context, including trusted validator behavior.
+// Only the adapter that made the request accepts it for further RAES operations.
+type TrialFamilyProvider interface {
+	// Family returns the admitted family retained by the request.
+	Family() Scenario
 }
 
 // A BackendProfileLoader loads the backend profiles of RAES.
@@ -232,7 +281,7 @@ type Experiments interface {
 	ValidateParticipantConfiguration(manifest, configuration any) error
 	// TrialCompilationRequest builds and checks the trial compilation request
 	// of an experiment.
-	TrialCompilationRequest(request any) (map[string]any, error)
+	TrialCompilationRequest(input TrialInput) (TrialFamilyProvider, error)
 }
 
 // A Compilation is a scenario that RAES compiled. It is a handle: only the
