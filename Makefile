@@ -187,3 +187,15 @@ go-mutation-all: ## Mutation testing on each Go file
 # on the merge base.
 go-regression: ## Prove that each new regression test fails before its fix
 	$(GO) run ./tools/testgate regression -base "$(BASE)"
+
+# One policy entry point for local use, CI, and Ground Control (design 0012).
+.PHONY: policy policy-test
+policy-test: ## Test each repository policy against passing and failing cases
+	$(MISE) exec -- conftest verify --config-file policy/runtime.json --rego-version v1 --policy policy --namespace main --data policy/testdata --trace=false
+
+policy: policy-test ## Check repository governance and RAES contract alignment
+	@set -eu; input=$$(mktemp); trap 'rm -f "$$input"' EXIT; \
+	  $(GO) run ./tools/policyinput > "$$input"; \
+	  $(MISE) exec -- conftest test --config-file policy/runtime.json --rego-version v1 --policy policy --namespace main --parser json --data policy/runtime.json --no-fail=false --update= --ignore= --trace=false "$$input"
+	$(MISE) exec -- actionlint -shellcheck= -pyflakes=
+	$(GO) test ./tools/policyinput ./internal/contractalignment ./internal/raesadapter -count=1

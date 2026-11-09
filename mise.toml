@@ -10,3 +10,5 @@ exec_auto_install = false
 "aqua:errata-ai/vale" = "3.25.1"
 "go:github.com/avito-tech/go-mutesting/cmd/go-mutesting" = "v0.0.0-20261002081621-9ce5f731e321"
 "go:golang.org/x/vuln/cmd/govulncheck" = "v1.9.0"
+"aqua:open-policy-agent/conftest" = "0.71.1"
+"aqua:rhysd/actionlint" = "1.7.12"

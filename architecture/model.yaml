@@ -197,6 +197,27 @@ components:
     modules:
       - github.com/rogpeppe/go-internal
 
+  - id: repository-policy
+    container: repository-tools
+    description: Collects local repository inputs for Conftest without evaluating policy.
+    packages:
+      - github.com/OpenRAE/env-packs/tools/policyinput
+    depends_on: [strict-yaml, report, outcome, terminal]
+    modules: [github.com/pelletier/go-toml/v2, mvdan.cc/sh/v3]
+  - id: contract-alignment
+    container: repository-tools
+    description: Tests repository identity and the RAES concept and provenance boundaries.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/contractalignment
+    depends_on: [raes-adapter, raes-interface, schema, document, root]
+  - id: raes-adapter
+    container: library
+    description: Calls public RAES Go operations through the RAES interfaces.
+    packages:
+      - github.com/OpenRAE/env-packs/internal/raesadapter
+    depends_on: [raes-interface]
+    modules: [github.com/OpenRAE/rae/implementations/go]
+
 test_modules:
   - github.com/google/go-cmp
 
@@ -277,12 +298,12 @@ rules:
   - id: raes-through-adapter
     description: >-
       Only the adapter of the RAES interface imports the RAES Go module (ADR
-      0047, design 0007). The adapter does not exist yet, so no package
-      imports the module.
+      0047, designs 0007 and 0012).
     scope:
       containers: [commands, library, repository-tools]
       main_packages: true
       test_files: true
+    except_components: [raes-adapter]
     forbid_imports: [github.com/OpenRAE/rae/...]
     fix: >-
       Call RAES through the interfaces of internal/raes. The design record of

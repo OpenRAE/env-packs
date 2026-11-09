@@ -5,10 +5,10 @@ The Go code calls each operation through the interfaces of `internal/raes`.
 One adapter implements the interfaces with the RAES Go module.
 
 The RAES Go module exists at `github.com/OpenRAE/rae/implementations/go`.
-At upstream commit `665b747`, all implementation packages are internal.
-Upstream PR 1926 defines planned public API declarations.
-Issue #643 covers the concrete adapter and its real contract tests.
-This interface preparation does not require the cutover or public operation delivery.
+The pinned upstream revision `17bf4515bf12` exposes public contract packages.
+`internal/raesadapter` implements vocabulary access with `contract/concept` and
+`contract/validation`. Its tests read the real packaged catalog.
+Issue #643 covers the other adapter operations and their real contract tests.
 Consuming chunks require their adapter operations before end-to-end parity can pass.
 
 The [RAES API handoff](https://github.com/OpenRAE/rae/issues/1825#issuecomment-6573945905)
@@ -42,6 +42,7 @@ OpenRAE/rae#1825 defines the public Go API that RAES gives to its consumers.
 | SDL language services | `Language.Edit`, `Language.Completions`, `Language.Diagnostics`, `Language.Format` | OpenRAE/rae#1786 |
 | Module lock and resolution | `Modules.LockfileName`, `Modules.LoadLockfile`, `Modules.ResolveLock` | OpenRAE/rae#1785 |
 | External concept bindings | `Concepts.AdmitConceptBindings` | OpenRAE/rae#1781 |
+| Governed vocabulary terms | `Vocabularies.VocabularyTerms` | OpenRAE/rae#1781 and OpenRAE/rae#1825 |
 | External concept subjects of a scenario | `Concepts.ConceptSubjects` | No RAES Go port issue names `raes.external_concept_subjects`. |
 | Associated-artifact manifests | `Artifacts.DefaultManifestLimits`, `Artifacts.LoadManifest`, `Artifacts.ValidateManifest`, `Artifacts.SetDigest` | No RAES Go port issue names `raes_contracts.associated_artifacts`. |
 | Artifact requirements of a scenario | `Requirements.ArtifactRequirements` | No RAES Go port issue names `raes.artifact_requirements`. |
@@ -96,6 +97,7 @@ and these retained tests: `test_techvault_pack`, `test_techvault_study_pack`,
 
 | RAES Python symbol | Go replacement | Used by |
 | --- | --- | --- |
+| `raes_contracts.controlled_vocabularies.load_controlled_vocabulary_catalog` | `Vocabularies.VocabularyTerms` | `test_concept_authority_alignment.py` |
 | `raes.SDLError` | `SDL` methods: an `*Error` | `_experiment_set.py`, `authoring.py`, `component_boundary.py`, `content_ci.py`, `digest.py`, `kits.py`, `release.py`, `validation.py`, `test_raes_reference_eligibility.py` |
 | `raes.SDLImportError` | `SDL.ParseSources`: an `*Error` with `Located` | `validation.py` |
 | `raes.SDLImportErrorCode` | `Error.Code` | `validation.py` |

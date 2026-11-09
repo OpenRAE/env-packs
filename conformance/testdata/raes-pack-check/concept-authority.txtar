@@ -1,0 +1,29 @@
+# Pack presentation must not declare RAES-governed challenge categories.
+mkdir bad/challenges good/challenges
+cp pack.yaml bad/pack.yaml
+cp pack.yaml good/pack.yaml
+cp categorized.yaml bad/challenges/challenges.yaml
+cp uncategorized.yaml good/challenges/challenges.yaml
+
+exits 1 raes-pack-check --json bad
+stdout '"code": "challenges.category.forbidden"'
+stdout '"field": "challenges\[0\].category"'
+! stderr .
+
+# Other missing pack files may block; none may invent a category diagnostic.
+exits 1 raes-pack-check --json good
+! stdout 'challenges.category.forbidden'
+! stderr .
+
+-- pack.yaml --
+name: alignment-fixture
+title: Alignment fixture
+version: 0.1.0
+-- categorized.yaml --
+challenges:
+  - flag_id: f1
+    category: corporate
+-- uncategorized.yaml --
+challenges:
+  - flag_id: f1
+    title: Mind the Mailbox
