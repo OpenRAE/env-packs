@@ -14,19 +14,28 @@ import (
 )
 
 func TestWorkflowShapes(t *testing.T) {
-	for _, text := range []string{"{}", "jobs: null", "jobs: []", "jobs: {bad: 3}", "jobs: {bad: {steps: null}}", "jobs: {bad: {steps: [3]}}", "jobs: {bad: {steps: [{run: \"'\"}]}}"} {
-		doc, err := decodeInput("w.yml", []byte(text))
+	for _, tc := range []struct{ text, message string }{
+		{"{}", "workflow jobs must be an object"},
+		{"jobs: null", "workflow jobs must be an object"},
+		{"jobs: []", "workflow jobs must be an object"},
+		{"jobs: {bad: 3}", "workflow job must be an object"},
+		{"jobs: {bad: {steps: null}}", "workflow steps must be an array"},
+		{"jobs: {bad: {steps: [3]}}", "workflow step must be an object"},
+		{"jobs: {bad: {steps: [{run: 3}]}}", "workflow run must be a string"},
+		{"jobs: {bad: {steps: [{run: \"'\"}]}}", `invalid shell syntax in "w.yml" job "bad"`},
+	} {
+		doc, err := decodeInput("w.yml", []byte(tc.text))
 		if err != nil {
 			t.Fatal(err)
 		}
 		var input repositoryInput
-		if err := input.addCommands("w.yml", doc); err == nil {
-			t.Errorf("addCommands(%q) error = nil, want refusal", text)
+		if err := input.addCommands("w.yml", doc); err == nil || err.Error() != tc.message {
+			t.Errorf("addCommands(%q) error = %v, want %q", tc.text, err, tc.message)
 		}
 	}
 	var input repositoryInput
-	if err := input.addCommands("w.yml", []any{}); err == nil {
-		t.Error("non-object workflow accepted")
+	if err := input.addCommands("w.yml", []any{}); err == nil || err.Error() != "workflow must be an object" {
+		t.Errorf("non-object workflow error = %v", err)
 	}
 	doc, err := decodeInput("w.yml", []byte("jobs:\n  z: {uses: './reusable.yml'}\n  b: {steps: [{uses: './action'}, {run: 'echo b'}]}\n  a: {steps: [{run: 'echo a'}]}\n"))
 	if err != nil {

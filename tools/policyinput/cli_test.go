@@ -12,8 +12,7 @@ import (
 )
 
 func TestCollectorProcess(t *testing.T) {
-	if os.Getenv("POLICYINPUT_TEST_PROCESS") == "1" {
-		main()
+	if runTestProcess(t) {
 		return
 	}
 	program, err := os.Executable()
@@ -45,6 +44,49 @@ func TestCollectorProcess(t *testing.T) {
 		if tc.valid && value["documents"] == nil {
 			t.Error("successful collector omitted documents")
 		}
+	}
+}
+
+func runTestProcess(t *testing.T) bool {
+	t.Helper()
+	mode := os.Getenv("POLICYINPUT_TEST_PROCESS")
+	if mode == "" {
+		return false
+	}
+	if mode == "deny" {
+		if err := os.Chmod(".", 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	main()
+	return true
+}
+
+func TestCollectorRootFailure(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses the directory permission refusal")
+	}
+	dir := t.TempDir()
+	t.Cleanup(func() {
+		//nolint:gosec // G302: restore owner access to this test's temporary directory.
+		if err := os.Chmod(dir, 0o700); err != nil {
+			t.Error(err)
+		}
+	})
+	program, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	//nolint:gosec // G204: execute this test binary with fixed arguments and no credentials.
+	cmd := exec.CommandContext(ctx, program, "-test.run=^TestCollectorProcess$")
+	cmd.Dir = dir
+	cmd.Env = []string{"PATH=/usr/bin:/bin", "POLICYINPUT_TEST_PROCESS=deny"}
+	output, err := cmd.Output()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 3 || len(output) != 0 {
+		t.Fatalf("inaccessible root = %v, %q, want status 3 and no output", err, output)
 	}
 }
 

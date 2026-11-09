@@ -169,9 +169,13 @@ func (input *repositoryInput) addJobCommands(name, jobName string, rawJob any) e
 		if !ok {
 			return errors.New("workflow step must be an object")
 		}
-		run, ok := step["run"].(string)
-		if !ok {
+		rawRun, exists := step["run"]
+		if !exists {
 			continue
+		}
+		run, ok := rawRun.(string)
+		if !ok {
+			return errors.New("workflow run must be a string")
 		}
 		commands, err := shellCommands(run)
 		if err != nil {
@@ -185,14 +189,14 @@ func (input *repositoryInput) addJobCommands(name, jobName string, rawJob any) e
 }
 
 func decodeInput(name string, data []byte) (any, error) {
+	if path.Ext(name) == ".json" && !json.Valid(data) {
+		return nil, fmt.Errorf("invalid structured input %q", name)
+	}
 	var doc map[string]any
 	var err error
-	switch {
-	case path.Ext(name) == ".toml":
+	if path.Ext(name) == ".toml" {
 		err = toml.Unmarshal(data, &doc)
-	case path.Ext(name) == ".json" && !json.Valid(data):
-		err = errors.New("invalid JSON syntax")
-	default:
+	} else {
 		err = strictyaml.Decode(data, &doc)
 	}
 	if err != nil || doc == nil {

@@ -50,6 +50,10 @@ The behavior tests use disposable fixtures and fake external commands.
 They run the actual Makefile and aggregate script without credentials or GitHub writes.
 They check successful results and each failed, cancelled, skipped, or empty mandatory result.
 The tests also check command failures and discovery failures.
+Collector tests distinguish each malformed workflow shape and reject non-string commands.
+They check the read budget, missing required files, inaccessible roots, and JSON encoding failures.
+`mutation.yaml` records only equivalent changes that no parsed input can observe.
+Each record states the exact pinned-library or owned-resource reason.
 
 The RAES vocabulary test uses the public Go catalog through the sole adapter.
 The module revision and sums select the corpus; a network vocabulary lookup does not.

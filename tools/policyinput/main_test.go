@@ -34,6 +34,7 @@ func TestShellCommands(t *testing.T) {
 		{"two commands", "pip install a; pip install b", [][]string{{"pip", "install", "a"}, {"pip", "install", "b"}}},
 		{"expansion stays data", "pip install \"$PACKAGE\"", [][]string{{"pip", "install", "$PACKAGE"}}},
 		{"wheel glob", "pip install dist/*.whl", [][]string{{"pip", "install", "dist/*.whl"}}},
+		{"assignment and no arguments", "VALUE=fact\ntrue", [][]string{{"true"}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := shellCommands(tc.script)
@@ -66,6 +67,7 @@ func TestReadInput(t *testing.T) {
 		{"yaml in json", "config.json", "enabled: true", nil, true},
 		{"json duplicate", "config.json", `{"enabled":true,"enabled":false}`, nil, true},
 		{"json trailing", "config.json", `{"enabled":true} {}`, nil, true},
+		{"json null", "config.json", `null`, nil, true},
 		{"empty", "w.yml", "", nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -125,4 +127,15 @@ func (f hiddenFS) Open(name string) (fs.File, error) {
 		return nil, fs.ErrNotExist
 	}
 	return f.FS.Open(name)
+}
+
+func (f hiddenFS) ReadDir(name string) ([]fs.DirEntry, error) {
+	entries, err := fs.ReadDir(f.FS, name)
+	var visible []fs.DirEntry
+	for _, entry := range entries {
+		if name+"/"+entry.Name() != f.hidden {
+			visible = append(visible, entry)
+		}
+	}
+	return visible, err
 }
