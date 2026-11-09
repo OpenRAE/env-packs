@@ -1,0 +1,3905 @@
+{
+  "policy_baseline": {
+    "documents": {
+      ".github/codeql/codeql-config.yml": {
+        "name": "Environment-pack tooling"
+      },
+      ".github/dependabot.yml": {
+        "updates": [
+          {
+            "commit-message": {
+              "include": "scope",
+              "prefix": "chore"
+            },
+            "directory": "/",
+            "groups": {
+              "github-actions": {
+                "patterns": [
+                  "*"
+                ]
+              }
+            },
+            "labels": [
+              "dependencies"
+            ],
+            "open-pull-requests-limit": 5,
+            "package-ecosystem": "github-actions",
+            "schedule": {
+              "interval": "weekly"
+            },
+            "target-branch": "dev"
+          },
+          {
+            "commit-message": {
+              "include": "scope",
+              "prefix": "chore"
+            },
+            "directory": "/requirements",
+            "groups": {
+              "ci-toolchain": {
+                "patterns": [
+                  "*"
+                ]
+              }
+            },
+            "ignore": [
+              {
+                "dependency-name": "PyYAML"
+              },
+              {
+                "dependency-name": "raes"
+              },
+              {
+                "dependency-name": "mcp"
+              },
+              {
+                "dependency-name": "jsonschema"
+              },
+              {
+                "dependency-name": "anyio"
+              },
+              {
+                "dependency-name": "z3-solver"
+              }
+            ],
+            "labels": [
+              "dependencies"
+            ],
+            "open-pull-requests-limit": 5,
+            "package-ecosystem": "pip",
+            "schedule": {
+              "interval": "weekly"
+            },
+            "target-branch": "dev"
+          },
+          {
+            "commit-message": {
+              "include": "scope",
+              "prefix": "build"
+            },
+            "directory": "/",
+            "labels": [
+              "dependencies"
+            ],
+            "open-pull-requests-limit": 5,
+            "package-ecosystem": "gomod",
+            "schedule": {
+              "interval": "weekly"
+            },
+            "target-branch": "go-cutover"
+          },
+          {
+            "allow": [
+              {
+                "dependency-name": "PyYAML"
+              },
+              {
+                "dependency-name": "raes"
+              },
+              {
+                "dependency-name": "mcp"
+              },
+              {
+                "dependency-name": "jsonschema"
+              },
+              {
+                "dependency-name": "anyio"
+              }
+            ],
+            "commit-message": {
+              "include": "scope",
+              "prefix": "fix"
+            },
+            "directory": "/",
+            "labels": [
+              "dependencies"
+            ],
+            "open-pull-requests-limit": 5,
+            "package-ecosystem": "pip",
+            "schedule": {
+              "interval": "weekly"
+            },
+            "target-branch": "dev"
+          }
+        ],
+        "version": 2
+      },
+      ".github/workflows/ci.yml": {
+        "concurrency": {
+          "cancel-in-progress": true,
+          "group": "ci-${{ github.ref }}"
+        },
+        "jobs": {
+          "audit": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "cache": "pip",
+                  "cache-dependency-path": "requirements/runtime.txt\nrequirements/build.txt\nrequirements/pip-audit.txt\n",
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Install package",
+                "run": "# Hash-locked dependency closure and build backend first, then the\n# package itself, so nothing unpinned can enter the environment (#142).\n# --no-build-isolation keeps the editable install's PEP 517 build from\n# fetching hatchling unpinned.\npython -m pip install --require-hashes \\\n  -r requirements/runtime.txt -r requirements/build.txt\npython -m pip install --no-deps --no-build-isolation -e .\n"
+              },
+              {
+                "name": "Dependency vulnerability audit",
+                "run": "# Hash-locked audit tool for reproducible CI runs (#60, #142).\npython -m pip install --require-hashes -r requirements/pip-audit.txt\n# Retry: the advisory API is network-dependent, so a transient blip\n# should not fail the build. A real vulnerability fails all attempts.\nfor i in 1 2 3; do\n  if pip-audit; then exit 0; fi\n  echo \"pip-audit attempt $i failed; retrying in 10s...\"\n  sleep 10\ndone\necho \"pip-audit failed after 3 attempts\"\nexit 1\n"
+              }
+            ]
+          },
+          "compile": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Compile sources and tests",
+                "run": "python -m compileall src tests"
+              }
+            ]
+          },
+          "conformance": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "cache": "pip",
+                  "cache-dependency-path": "requirements/runtime.txt\nrequirements/build.txt\n",
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Install package",
+                "run": "# Hash-locked dependency closure and build backend first, then the\n# package itself, so nothing unpinned can enter the environment (#142).\npython -m pip install --require-hashes \\\n  -r requirements/runtime.txt -r requirements/build.txt\npython -m pip install --no-deps --no-build-isolation -e .\n"
+              },
+              {
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "name": "Run the conformance corpus against Python",
+                "run": "make conformance"
+              }
+            ]
+          },
+          "conformance-go": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "name": "Run the conformance cases of the Go commands",
+                "run": "make conformance-go"
+              }
+            ]
+          },
+          "content": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "cache": "pip",
+                  "cache-dependency-path": "requirements/runtime.txt\nrequirements/build.txt\n",
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Install package",
+                "run": "python -m pip install --require-hashes \\\n  -r requirements/runtime.txt -r requirements/build.txt\npython -m pip install --no-deps --no-build-isolation -e .\n"
+              },
+              {
+                "name": "Environment-pack-content gate",
+                "run": "raes-pack-validate --repo ."
+              },
+              {
+                "name": "Pack release gate",
+                "run": "raes-pack-release check --all"
+              },
+              {
+                "name": "First-party pack content gate",
+                "run": "raes-pack-validate --packs-root packs"
+              },
+              {
+                "name": "First-party pack release gate",
+                "run": "raes-pack-release check --packs-root packs"
+              }
+            ]
+          },
+          "docs": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "fetch-depth": 0,
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "cache": "pip",
+                  "cache-dependency-path": "requirements/docs.txt\n",
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Install the hash-locked docs toolchain",
+                "run": "python -m pip install --require-hashes -r requirements/docs.txt"
+              },
+              {
+                "name": "Build the public docs (warning-strict)",
+                "run": "python -m sphinx -W -b html docs/public docs/public/_build/html"
+              },
+              {
+                "name": "Assert the publication boundary",
+                "run": "python tools/check_docs_publication_boundary.py docs/public/_build/html"
+              },
+              {
+                "name": "Install the pinned Vale",
+                "uses": "jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195",
+                "with": {
+                  "cache": false,
+                  "install_args": "aqua:errata-ai/vale",
+                  "version": "2026.10.2"
+                }
+              },
+              {
+                "env": {
+                  "BASE": "${{ github.event.pull_request.base.sha || github.event.before }}"
+                },
+                "name": "Check the prose of the changed Markdown files",
+                "run": "make prose BASE=\"$BASE\""
+              }
+            ]
+          },
+          "go": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "name": "Build, vet, and test the Go code",
+                "run": "make go-check"
+              },
+              {
+                "name": "Upload Go coverage profile",
+                "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "with": {
+                  "if-no-files-found": "error",
+                  "name": "coverage-go",
+                  "path": "coverage-go.out",
+                  "retention-days": 1
+                }
+              }
+            ]
+          },
+          "go-arch": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "fetch-depth": 0,
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "name": "Check the architecture",
+                "run": "make go-arch"
+              },
+              {
+                "env": {
+                  "BASE": "${{ github.event.pull_request.base.sha || github.event.before }}"
+                },
+                "name": "Require a design record for model changes",
+                "run": "make go-arch-change BASE=\"$BASE\""
+              }
+            ]
+          },
+          "go-audit": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "name": "Install the pinned govulncheck",
+                "uses": "jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195",
+                "with": {
+                  "cache": false,
+                  "install_args": "go:golang.org/x/vuln/cmd/govulncheck",
+                  "version": "2026.10.2"
+                }
+              },
+              {
+                "name": "Verify the modules and check for vulnerabilities",
+                "run": "for i in 1 2 3; do\n  if make go-audit; then exit 0; fi\n  echo \"go-audit attempt $i failed; retrying in 10s...\"\n  sleep 10\ndone\necho \"go-audit failed after 3 attempts\"\nexit 1\n"
+              }
+            ]
+          },
+          "go-lint": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "name": "Install the pinned linter",
+                "uses": "jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195",
+                "with": {
+                  "cache": false,
+                  "install_args": "aqua:golangci/golangci-lint",
+                  "version": "2026.10.2"
+                }
+              },
+              {
+                "name": "Lint the Go code",
+                "run": "make go-lint"
+              }
+            ]
+          },
+          "go-mutation": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "fetch-depth": 0,
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "name": "Install the pinned go-mutesting",
+                "uses": "jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195",
+                "with": {
+                  "cache": false,
+                  "install_args": "go:github.com/avito-tech/go-mutesting/cmd/go-mutesting",
+                  "version": "2026.10.2"
+                }
+              },
+              {
+                "env": {
+                  "BASE": "${{ github.event.pull_request.base.sha || github.event.before }}"
+                },
+                "name": "Run mutation testing on the changed lines",
+                "run": "make go-mutation BASE=\"$BASE\""
+              }
+            ],
+            "timeout-minutes": 90
+          },
+          "go-regression": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "fetch-depth": 0,
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "env": {
+                  "BASE": "${{ github.event.pull_request.base.sha || github.event.before }}"
+                },
+                "name": "Prove the regression tests",
+                "run": "make go-regression BASE=\"$BASE\""
+              }
+            ]
+          },
+          "sonar": {
+            "if": "github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository &&\n github.actor != 'dependabot[bot]')",
+            "needs": [
+              "tests",
+              "go"
+            ],
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "fetch-depth": 0
+                }
+              },
+              {
+                "name": "Download coverage report",
+                "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+                "with": {
+                  "name": "coverage-xml"
+                }
+              },
+              {
+                "name": "Download Go coverage profile",
+                "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+                "with": {
+                  "name": "coverage-go"
+                }
+              },
+              {
+                "env": {
+                  "SONAR_TOKEN": "${{ secrets.SONAR_TOKEN }}"
+                },
+                "name": "SonarCloud Scan",
+                "uses": "SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304"
+              }
+            ]
+          },
+          "tests": {
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "cache": "pip",
+                  "cache-dependency-path": "requirements/runtime.txt\nrequirements/coverage.txt\nrequirements/build.txt\n",
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Install package with coverage tooling",
+                "run": "# Hash-locked runtime + coverage + build backend, then the package\n# (#142). `coverage` was previously unversioned entirely, and\n# --no-build-isolation keeps the editable install's PEP 517 build from\n# fetching hatchling unpinned.\npython -m pip install --require-hashes \\\n  -r requirements/runtime.txt -r requirements/coverage.txt \\\n  -r requirements/build.txt\npython -m pip install --no-deps --no-build-isolation -e .\n"
+              },
+              {
+                "name": "Run unit tests with coverage",
+                "run": "# `coverage run` propagates the unittest exit code, so a failing test\n# fails this job just as a bare `unittest discover` would; coverage xml\n# then renders the report .coveragerc scopes to src/raes_env_packs.\ncoverage run -m unittest discover -s tests\ncoverage xml\n"
+              },
+              {
+                "name": "Upload coverage report",
+                "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "with": {
+                  "if-no-files-found": "error",
+                  "name": "coverage-xml",
+                  "path": "coverage.xml",
+                  "retention-days": 1
+                }
+              }
+            ]
+          },
+          "verify": {
+            "if": "always()",
+            "needs": [
+              "compile",
+              "tests",
+              "audit",
+              "content",
+              "docs",
+              "conformance",
+              "conformance-go",
+              "go",
+              "go-lint",
+              "go-audit",
+              "go-arch",
+              "go-mutation",
+              "go-regression",
+              "policy"
+            ],
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "env": {
+                  "AUDIT": "${{ needs.audit.result }}",
+                  "COMPILE": "${{ needs.compile.result }}",
+                  "CONFORMANCE": "${{ needs.conformance.result }}",
+                  "CONFORMANCE_GO": "${{ needs.conformance-go.result }}",
+                  "CONTENT": "${{ needs.content.result }}",
+                  "DOCS": "${{ needs.docs.result }}",
+                  "GO": "${{ needs.go.result }}",
+                  "GO_ARCH": "${{ needs.go-arch.result }}",
+                  "GO_AUDIT": "${{ needs.go-audit.result }}",
+                  "GO_LINT": "${{ needs.go-lint.result }}",
+                  "GO_MUTATION": "${{ needs.go-mutation.result }}",
+                  "GO_REGRESSION": "${{ needs.go-regression.result }}",
+                  "TESTS": "${{ needs.tests.result }}",
+                  "POLICY": "${{ needs.policy.result }}"
+                },
+                "name": "Require every mandatory verification job to pass",
+                "run": "echo \"compile=$COMPILE tests=$TESTS audit=$AUDIT content=$CONTENT docs=$DOCS conformance=$CONFORMANCE conformance-go=$CONFORMANCE_GO go=$GO go-lint=$GO_LINT go-audit=$GO_AUDIT go-arch=$GO_ARCH go-mutation=$GO_MUTATION go-regression=$GO_REGRESSION\"\nfor result in \"$COMPILE\" \"$TESTS\" \"$AUDIT\" \"$CONTENT\" \"$DOCS\" \"$CONFORMANCE\" \"$CONFORMANCE_GO\" \"$GO\" \"$GO_LINT\" \"$GO_AUDIT\" \"$GO_ARCH\" \"$GO_MUTATION\" \"$GO_REGRESSION\"; do\n  if [ \"$result\" != \"success\" ]; then\n    echo \"::error::A mandatory verification job did not succeed; blocking merge.\"\n    exit 1\n  fi\ndone\necho \"All mandatory verification jobs passed.\"\n"
+              }
+            ]
+          },
+          "policy": {
+            "steps": [
+              {
+                "run": "make policy"
+              }
+            ]
+          }
+        },
+        "name": "CI",
+        "on": {
+          "pull_request": null,
+          "push": {
+            "branches": [
+              "main",
+              "dev",
+              "go-cutover"
+            ]
+          }
+        },
+        "permissions": "read-all"
+      },
+      ".github/workflows/codeql.yml": {
+        "concurrency": {
+          "cancel-in-progress": true,
+          "group": "codeql-${{ github.ref }}"
+        },
+        "jobs": {
+          "analyze": {
+            "name": "Analyze (${{ matrix.language }})",
+            "permissions": {
+              "contents": "read",
+              "security-events": "write"
+            },
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+              },
+              {
+                "if": "matrix.language == 'go'",
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "name": "Initialize CodeQL",
+                "uses": "github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
+                "with": {
+                  "build-mode": "${{ matrix.build-mode }}",
+                  "config-file": "./.github/codeql/codeql-config.yml",
+                  "languages": "${{ matrix.language }}"
+                }
+              },
+              {
+                "name": "Perform CodeQL analysis",
+                "uses": "github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
+                "with": {
+                  "category": "/language:${{ matrix.language }}"
+                }
+              }
+            ],
+            "strategy": {
+              "fail-fast": false,
+              "matrix": {
+                "include": [
+                  {
+                    "build-mode": "none",
+                    "language": "python"
+                  },
+                  {
+                    "build-mode": "autobuild",
+                    "language": "go"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "name": "CodeQL",
+        "on": {
+          "pull_request": null,
+          "schedule": [
+            {
+              "cron": "23 7 * * 1"
+            }
+          ]
+        },
+        "permissions": "read-all"
+      },
+      ".github/workflows/fuzz.yml": {
+        "concurrency": {
+          "cancel-in-progress": true,
+          "group": "fuzz-${{ github.ref }}"
+        },
+        "jobs": {
+          "fuzz": {
+            "name": "Fuzz validate_pack",
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Install fuzzing toolchain and package",
+                "run": "# Hash-locked, like every other install in this repo (#142). Atheris\n# ships a cp312 manylinux wheel, so no local build is needed.\n# --no-build-isolation keeps the editable install's PEP 517 build from\n# fetching the hatchling backend unpinned; it comes from build.txt.\npython -m pip install --require-hashes \\\n  -r requirements/runtime.txt -r requirements/fuzz.txt \\\n  -r requirements/build.txt\npython -m pip install --no-deps --no-build-isolation -e .\n"
+              },
+              {
+                "env": {
+                  "FUZZ_SECONDS": "${{ github.event_name == 'schedule' && '600' || '120' }}"
+                },
+                "name": "Fuzz the pack-validation boundary",
+                "run": "set -euo pipefail\nmkdir -p fuzz-artifacts\npython fuzz/fuzz_validate_pack.py \\\n  -max_total_time=\"${FUZZ_SECONDS}\" \\\n  -rss_limit_mb=4096 \\\n  -timeout=60 \\\n  -artifact_prefix=fuzz-artifacts/\n"
+              },
+              {
+                "if": "failure()",
+                "name": "Upload crash reproducers",
+                "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "with": {
+                  "if-no-files-found": "ignore",
+                  "name": "fuzz-crash-reproducers",
+                  "path": "fuzz-artifacts/",
+                  "retention-days": 14
+                }
+              }
+            ],
+            "timeout-minutes": 20
+          },
+          "go-fuzz": {
+            "name": "Fuzz Go targets",
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "env": {
+                  "FUZZTIME": "${{ github.event_name == 'schedule' && '10m' || '30s' }}"
+                },
+                "name": "Fuzz every Go target",
+                "run": "make go-fuzz FUZZTIME=\"$FUZZTIME\""
+              },
+              {
+                "if": "failure()",
+                "name": "Upload failing fuzz inputs",
+                "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "with": {
+                  "if-no-files-found": "ignore",
+                  "name": "go-fuzz-failing-inputs",
+                  "path": "**/testdata/fuzz/**",
+                  "retention-days": 14
+                }
+              }
+            ],
+            "timeout-minutes": "${{ github.event_name == 'schedule' && 300 || 30 }}"
+          }
+        },
+        "name": "Fuzz",
+        "on": {
+          "pull_request": null,
+          "schedule": [
+            {
+              "cron": "37 6 * * 3"
+            }
+          ]
+        },
+        "permissions": "read-all"
+      },
+      ".github/workflows/ground-control-phase-e.yml": {
+        "concurrency": {
+          "cancel-in-progress": false,
+          "group": "gc-phase-e-${{ github.event.pull_request.number || inputs.pr }}"
+        },
+        "jobs": {
+          "finalize": {
+            "if": "${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}",
+            "permissions": {
+              "actions": "read",
+              "contents": "read",
+              "issues": "write",
+              "pull-requests": "read"
+            },
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "fetch-depth": 0,
+                  "persist-credentials": false,
+                  "ref": "${{ github.event.pull_request.merge_commit_sha || github.sha }}"
+                }
+              },
+              {
+                "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+                "with": {
+                  "node-version": 22
+                }
+              },
+              {
+                "env": {
+                  "GH_TOKEN": "${{ github.token }}",
+                  "PR": "${{ github.event.pull_request.number || inputs.pr }}"
+                },
+                "name": "Finalize the merged delivery",
+                "run": "npx --yes grndctl@1.2.1 finalize-merged-pr --pr \"$PR\""
+              }
+            ]
+          }
+        },
+        "name": "Ground Control Phase E",
+        "on": {
+          "pull_request": {
+            "branches": [
+              "main",
+              "dev"
+            ],
+            "types": [
+              "closed"
+            ]
+          },
+          "workflow_dispatch": {
+            "inputs": {
+              "pr": {
+                "description": "Pull request number to finalize (maintainer repair path)",
+                "required": true,
+                "type": "string"
+              }
+            }
+          }
+        },
+        "permissions": "read-all",
+        "run-name": "Ground Control Phase E for PR ${{ github.event.pull_request.number || inputs.pr }}"
+      },
+      ".github/workflows/mutation.yml": {
+        "concurrency": {
+          "cancel-in-progress": true,
+          "group": "mutation-${{ github.ref }}"
+        },
+        "jobs": {
+          "go-mutation-all": {
+            "name": "Mutation testing on each Go file",
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Go",
+                "uses": "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+                "with": {
+                  "cache": false,
+                  "go-version-file": "go.mod"
+                }
+              },
+              {
+                "name": "Install the pinned go-mutesting",
+                "uses": "jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195",
+                "with": {
+                  "cache": false,
+                  "install_args": "go:github.com/avito-tech/go-mutesting/cmd/go-mutesting",
+                  "version": "2026.10.2"
+                }
+              },
+              {
+                "name": "Run mutation testing on each Go file",
+                "run": "make go-mutation-all"
+              }
+            ],
+            "timeout-minutes": 300
+          }
+        },
+        "name": "Mutation",
+        "on": {
+          "schedule": [
+            {
+              "cron": "43 5 * * 4"
+            }
+          ],
+          "workflow_dispatch": null
+        },
+        "permissions": "read-all"
+      },
+      ".github/workflows/pack-distribution.yml": {
+        "concurrency": {
+          "cancel-in-progress": true,
+          "group": "pack-distribution-${{ github.ref }}"
+        },
+        "jobs": {
+          "rehearse": {
+            "env": {
+              "REHEARSAL_CERT_IDENTITY_REGEXP": "https://github.com/${{ github.repository }}/.+",
+              "REHEARSAL_CERT_OIDC_ISSUER": "https://token.actions.githubusercontent.com",
+              "REHEARSAL_REGISTRY": "localhost:5000"
+            },
+            "name": "Publish, sign, install, and verify a pack release",
+            "permissions": {
+              "contents": "read",
+              "id-token": "write"
+            },
+            "runs-on": "ubuntu-latest",
+            "services": {
+              "registry": {
+                "image": "registry:2",
+                "ports": [
+                  "5000:5000"
+                ]
+              }
+            },
+            "steps": [
+              {
+                "name": "Check out the repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Install cosign",
+                "uses": "sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6"
+              },
+              {
+                "name": "Install oras",
+                "uses": "oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63",
+                "with": {
+                  "version": "1.3.3"
+                }
+              },
+              {
+                "name": "Install runtime dependencies and the package",
+                "run": "set -euo pipefail\npython -m pip install --require-hashes -r requirements/runtime.txt\npython -m pip install --no-deps -e .\n"
+              },
+              {
+                "env": {
+                  "REHEARSAL_PACK": "${{ inputs.pack }}"
+                },
+                "name": "Run the pack-distribution rehearsal",
+                "run": "python tests_integration/distribution_rehearsal.py"
+              }
+            ]
+          }
+        },
+        "name": "Pack distribution rehearsal",
+        "on": {
+          "workflow_dispatch": {
+            "inputs": {
+              "pack": {
+                "default": "packs/techvault",
+                "description": "Pack directory to rehearse",
+                "required": false
+              }
+            }
+          }
+        },
+        "permissions": "read-all"
+      },
+      ".github/workflows/pr-title.yml": {
+        "concurrency": {
+          "cancel-in-progress": true,
+          "group": "pr-title-${{ github.event.pull_request.number }}"
+        },
+        "jobs": {
+          "pr-title-guard": {
+            "if": "github.event.pull_request.base.ref != 'main'",
+            "name": "PR title guard",
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out base ref (trusted policy copy)",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "ref": "${{ github.event.pull_request.base.sha }}"
+                }
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Validate PR title",
+                "run": "if [ ! -f tools/check_pr_title.py ]; then\n  echo \"::notice::tools/check_pr_title.py is not on the base ref yet; skipping (bootstrap for the PR that introduces the guard). Enforcement is active for every subsequent PR.\"\n  exit 0\nfi\npython tools/check_pr_title.py\n"
+              }
+            ]
+          }
+        },
+        "name": "PR Title",
+        "on": {
+          "pull_request": {
+            "types": [
+              "opened",
+              "edited",
+              "synchronize",
+              "reopened"
+            ]
+          }
+        },
+        "permissions": {
+          "contents": "read"
+        }
+      },
+      ".github/workflows/release-please.yml": {
+        "concurrency": {
+          "cancel-in-progress": false,
+          "group": "release"
+        },
+        "env": {
+          "CERT_IDENTITY": "https://github.com/OpenRAE/env-packs/.github/workflows/release-please.yml@refs/heads/main",
+          "CERT_OIDC_ISSUER": "https://token.actions.githubusercontent.com",
+          "GITSIGN_SHA256": "8712be2e5fe89c9728c50beed20f1d37340b9f2dc3306cfb8830ef975549e170",
+          "GITSIGN_VERSION_FLOOR": "0.15.0",
+          "GITSIGN_VERSION_PIN": "0.15.1"
+        },
+        "jobs": {
+          "detect-release": {
+            "name": "Detect authorized release",
+            "outputs": {
+              "pr": "${{ steps.pr.outputs.number }}",
+              "release": "${{ steps.gate.outputs.release }}",
+              "tag": "${{ steps.gate.outputs.tag }}",
+              "target": "${{ steps.pr.outputs.after }}",
+              "version": "${{ steps.gate.outputs.version }}"
+            },
+            "permissions": {
+              "contents": "read",
+              "pull-requests": "read"
+            },
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "fetch-depth": 0,
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "env": {
+                  "GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
+                  "PUSH_AFTER": "${{ github.sha }}",
+                  "PUSH_BEFORE": "${{ github.event.before }}",
+                  "RECOVERY_PR": "${{ inputs.release_pr || '' }}"
+                },
+                "id": "pr",
+                "name": "Resolve the merged pull request",
+                "run": "set -euo pipefail\nif [ -n \"${RECOVERY_PR}\" ]; then\n  case \"${RECOVERY_PR}\" in\n    *[!0-9]*)\n      echo \"release_pr must be a positive integer.\" >&2\n      exit 1\n      ;;\n  esac\n  api=\"repos/${GITHUB_REPOSITORY}/pulls/${RECOVERY_PR}\"\n  state=\"$(gh api \"${api}\" --jq '.state')\"\n  merged_at=\"$(gh api \"${api}\" --jq '.merged_at // \"\"')\"\n  base_ref=\"$(gh api \"${api}\" --jq '.base.ref')\"\n  if [ \"${state}\" != \"closed\" ] || [ -z \"${merged_at}\" ] || [ \"${base_ref}\" != \"main\" ]; then\n    echo \"Recovery requires a merged pull request into main.\" >&2\n    exit 1\n  fi\n  after=\"$(gh api \"${api}\" --jq '.merge_commit_sha // \"\"')\"\n  git cat-file -e \"${after}^{commit}\"\n  before=\"$(git rev-parse \"${after}^\")\"\n  gh api \"${api}\" --jq '.labels[].name' > pr-labels.txt\n  number=\"${RECOVERY_PR}\"\nelse\n  api=\"repos/${GITHUB_REPOSITORY}/commits/${PUSH_AFTER}/pulls\"\n  gh api \"${api}\" \\\n    --jq '[.[] | select(.merge_commit_sha == env.PUSH_AFTER) | .labels[].name] | .[]' \\\n    > pr-labels.txt || true\n  number=\"$(gh api \"${api}\" \\\n    --jq 'map(select(.merge_commit_sha == env.PUSH_AFTER)) | (.[0].number // \"\" | tostring)' \\\n    || true)\"\n  before=\"${PUSH_BEFORE}\"\n  after=\"${PUSH_AFTER}\"\nfi\n{\n  echo \"number=${number}\"\n  echo \"before=${before}\"\n  echo \"after=${after}\"\n} >> \"${GITHUB_OUTPUT}\"\n"
+              },
+              {
+                "env": {
+                  "AFTER_SHA": "${{ steps.pr.outputs.after }}",
+                  "BEFORE_SHA": "${{ steps.pr.outputs.before }}"
+                },
+                "id": "gate",
+                "name": "Detect authorized release",
+                "run": "python tools/release_tag_gate.py check \\\n  --before \"${BEFORE_SHA}\" \\\n  --after \"${AFTER_SHA}\" \\\n  --merged-pr-labels-file pr-labels.txt \\\n  --github-output \"${GITHUB_OUTPUT}\"\n"
+              }
+            ]
+          },
+          "publish": {
+            "env": {
+              "TAG": "${{ needs.detect-release.outputs.tag }}",
+              "TARGET_SHA": "${{ needs.detect-release.outputs.target }}",
+              "VERSION": "${{ needs.detect-release.outputs.version }}"
+            },
+            "environment": "pypi",
+            "if": "needs.detect-release.outputs.release == 'true'",
+            "name": "Sign tag, build, attest, SBOM, and publish",
+            "needs": [
+              "detect-release",
+              "verify-pack-versions"
+            ],
+            "permissions": {
+              "attestations": "write",
+              "contents": "write",
+              "id-token": "write",
+              "pull-requests": "write"
+            },
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "fetch-depth": 0,
+                  "persist-credentials": false,
+                  "ref": "${{ needs.detect-release.outputs.target }}"
+                }
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Materialize hash-locked release tooling",
+                "run": "set -euo pipefail\nmkdir -p requirements\nif ! git cat-file -e \"${TARGET_SHA}:requirements/build.txt\" \\\n  || ! git cat-file -e \"${TARGET_SHA}:requirements/runtime.txt\" \\\n  || ! git cat-file -e \"${TARGET_SHA}:requirements/sbom.txt\"; then\n  echo \"Release target ${TARGET_SHA} has no hash-locked release tooling.\" >&2\n  exit 1\nfi\ngit show \"${TARGET_SHA}:requirements/build.txt\" > requirements/build.txt\ngit show \"${TARGET_SHA}:requirements/runtime.txt\" > requirements/runtime.txt\ngit show \"${TARGET_SHA}:requirements/sbom.txt\" > requirements/sbom.txt\n"
+              },
+              {
+                "name": "Install digest-verified gitsign",
+                "run": "set -euo pipefail\nbinary=\"${RUNNER_TEMP}/gitsign\"\ncurl --fail --silent --show-error --location \\\n  --proto '=https' --tlsv1.2 --retry 3 \\\n  --output \"${binary}\" \\\n  \"https://github.com/sigstore/gitsign/releases/download/v${GITSIGN_VERSION_PIN}/gitsign_${GITSIGN_VERSION_PIN}_linux_amd64\"\nprintf '%s  %s\\n' \"${GITSIGN_SHA256}\" \"${binary}\" \\\n  | sha256sum --check --strict\nchmod 0755 \"${binary}\"\nprintf 'GITSIGN_BIN=%s\\n' \"${binary}\" >> \"${GITHUB_ENV}\"\n"
+              },
+              {
+                "name": "Enforce gitsign version floor",
+                "run": "set -euo pipefail\ninstalled=\"$(\"${GITSIGN_BIN}\" version 2>&1 | grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+' | head -n1 || true)\"\nif [ -z \"${installed}\" ]; then\n  echo \"Could not determine the installed gitsign version.\" >&2\n  exit 1\nfi\nlowest=\"$(printf '%s\\n%s\\n' \"${installed}\" \"${GITSIGN_VERSION_FLOOR}\" | sort -V | head -n1)\"\nif [ \"${lowest}\" != \"${GITSIGN_VERSION_FLOOR}\" ]; then\n  echo \"gitsign ${installed} is below the required floor ${GITSIGN_VERSION_FLOOR} (CVE-2026-44310).\" >&2\n  exit 1\nfi\necho \"gitsign ${installed} satisfies the >= ${GITSIGN_VERSION_FLOOR} floor.\"\n"
+              },
+              {
+                "env": {
+                  "GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                },
+                "id": "signed-tag",
+                "name": "Create, verify, and push the signed tag",
+                "run": "set -euo pipefail\ngit config user.name \"github-actions[bot]\"\ngit config user.email \"41898282+github-actions[bot]@users.noreply.github.com\"\ngit config gpg.x509.program \"${GITSIGN_BIN}\"\ngit config gpg.format x509\n\nverify_tag() {\n  for attempt in 1 2 3 4 5; do\n    if \"${GITSIGN_BIN}\" verify-tag \\\n      --certificate-identity=\"${CERT_IDENTITY}\" \\\n      --certificate-oidc-issuer=\"${CERT_OIDC_ISSUER}\" \\\n      \"${TAG}\"; then\n      return 0\n    fi\n    if [ \"${attempt}\" -eq 5 ]; then\n      echo \"Signed tag verification failed after ${attempt} attempts.\" >&2\n      return 1\n    fi\n    delay=\"$((attempt * 5))\"\n    echo \"Transparency-log verification not ready; retrying in ${delay}s.\" >&2\n    sleep \"${delay}\"\n  done\n}\n\nif git ls-remote --exit-code --tags origin \"refs/tags/${TAG}\" >/dev/null 2>&1; then\n  echo \"Tag ${TAG} already exists on origin; validating for rerun.\"\n  git fetch --no-tags origin \"refs/tags/${TAG}:refs/tags/${TAG}\"\n  target=\"$(git rev-list -n 1 \"${TAG}\")\"\n  if [ \"${target}\" != \"${TARGET_SHA}\" ]; then\n    echo \"Existing tag ${TAG} points at ${target}, not ${TARGET_SHA}; refusing.\" >&2\n    exit 1\n  fi\n  verify_tag\n  echo \"Reusing existing verified tag ${TAG}.\"\nelse\n  git tag -s \"${TAG}\" \"${TARGET_SHA}\" -m \"Release ${TAG}\"\n  verify_tag\n  printf 'verified=true\\n' >> \"${GITHUB_OUTPUT}\"\n  gh auth setup-git\n  git push origin \"refs/tags/${TAG}\"\nfi\n"
+              },
+              {
+                "if": "${{ failure() && steps.signed-tag.outcome == 'failure' && steps.signed-tag.outputs.verified == 'true' }}",
+                "name": "Export verified tag after a rejected push",
+                "run": "set -euo pipefail\nartifact_dir=\"${RUNNER_TEMP}/signed-release-tag\"\nmkdir -p \"${artifact_dir}\"\ngit cat-file -e \"${TAG}^{tag}\"\ngit cat-file tag \"${TAG}\" > \"${artifact_dir}/${TAG}.tag\"\ngit rev-parse \"${TAG}^{tag}\" > \"${artifact_dir}/${TAG}.object-sha\"\ngit rev-list -n 1 \"${TAG}\" > \"${artifact_dir}/${TAG}.target-sha\"\n"
+              },
+              {
+                "if": "${{ failure() && steps.signed-tag.outcome == 'failure' && steps.signed-tag.outputs.verified == 'true' }}",
+                "name": "Upload verified tag for manual recovery",
+                "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "with": {
+                  "if-no-files-found": "error",
+                  "name": "verified-signed-tag-${{ needs.detect-release.outputs.tag }}",
+                  "path": "${{ runner.temp }}/signed-release-tag",
+                  "retention-days": 1
+                }
+              },
+              {
+                "name": "Build sdist + wheel",
+                "run": "# Hash-locked build tooling for reproducible, tamper-resistant\n# releases (#60, #142). --no-isolation is deliberate: the default\n# isolated build would resolve and download the hatchling backend at\n# build time, unpinned, defeating the lock. The backend is pinned in\n# requirements/build.txt and installed above instead.\npython -m pip install --require-hashes -r requirements/build.txt\npython -m build --no-isolation --outdir dist\n"
+              },
+              {
+                "name": "Attest build provenance for wheel + sdist",
+                "uses": "actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8",
+                "with": {
+                  "subject-path": "dist/*.whl\ndist/*.tar.gz\n"
+                }
+              },
+              {
+                "name": "Generate CycloneDX SBOM",
+                "run": "set -euo pipefail\n# Hash-locked runtime closure + SBOM generator, then the just-built\n# wheel with --no-deps (#60, #142). Same resulting environment as the\n# previous single unpinned install, so the SBOM contents are unchanged.\npython -m pip install --require-hashes \\\n  -r requirements/runtime.txt -r requirements/sbom.txt\npython -m pip install --no-deps dist/*.whl\nmkdir -p sbom\ndistribution=\"$(python -c 'import tomllib; print(tomllib.load(open(\"pyproject.toml\", \"rb\"))[\"project\"][\"name\"])')\"\ncyclonedx-py environment \\\n  --output-format JSON \\\n  --output-file \"sbom/${distribution}.cdx.json\"\n"
+              },
+              {
+                "name": "Extract release notes",
+                "run": "python tools/release_tag_gate.py notes \\\n  --version \"${VERSION}\" \\\n  --changelog CHANGELOG.md \\\n  --output release-notes.md\n"
+              },
+              {
+                "id": "pypi-policy",
+                "name": "Authorize the PyPI distribution",
+                "run": "set -euo pipefail\ndistribution=\"$(python -c 'import tomllib; print(tomllib.load(open(\"pyproject.toml\", \"rb\"))[\"project\"][\"name\"])')\"\nif [ \"${distribution}\" != \"raes-env-packs\" ]; then\n  echo \"Distribution ${distribution} is not authorized for PyPI publication.\" >&2\n  exit 1\nfi\n"
+              },
+              {
+                "env": {
+                  "GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                },
+                "name": "Create the GitHub Release from the signed tag",
+                "run": "set -euo pipefail\nif gh release view \"${TAG}\" >/dev/null 2>&1; then\n  echo \"GitHub Release ${TAG} already exists; reusing it (rerun-safe).\"\nelse\n  gh release create \"${TAG}\" \\\n    --verify-tag \\\n    --title \"${TAG}\" \\\n    --notes-file release-notes.md\nfi\n"
+              },
+              {
+                "name": "Publish to PyPI (OIDC trusted publishing)",
+                "uses": "pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086",
+                "with": {
+                  "packages-dir": "dist",
+                  "skip-existing": true
+                }
+              },
+              {
+                "env": {
+                  "GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                },
+                "name": "Attach dist + SBOM to the GitHub Release",
+                "run": "gh release upload \"${TAG}\" dist/* sbom/*.cdx.json --clobber"
+              },
+              {
+                "env": {
+                  "GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
+                  "PR": "${{ needs.detect-release.outputs.pr }}"
+                },
+                "if": "needs.detect-release.outputs.pr != ''",
+                "name": "Mark the release PR tagged",
+                "run": "set -euo pipefail\ngh pr edit \"${PR}\" --add-label \"autorelease: tagged\"\ngh pr edit \"${PR}\" --remove-label \"autorelease: pending\" 2>/dev/null || true\n"
+              }
+            ]
+          },
+          "release-please": {
+            "if": "github.event_name == 'push' && needs.detect-release.outputs.release != 'true'",
+            "name": "Maintain release PR",
+            "needs": [
+              "detect-release"
+            ],
+            "permissions": {
+              "contents": "write",
+              "pull-requests": "write"
+            },
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Run release-please (PR-only mode)",
+                "uses": "googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7",
+                "with": {
+                  "config-file": "release-please-config.json",
+                  "manifest-file": ".release-please-manifest.json",
+                  "token": "${{ secrets.GITHUB_TOKEN }}"
+                }
+              }
+            ]
+          },
+          "resume-release-please": {
+            "if": "github.event_name == 'workflow_dispatch' && needs.publish.result == 'success'",
+            "name": "Resume release PR maintenance",
+            "needs": [
+              "publish"
+            ],
+            "permissions": {
+              "contents": "write",
+              "pull-requests": "write"
+            },
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Run release-please after recovery",
+                "uses": "googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7",
+                "with": {
+                  "config-file": "release-please-config.json",
+                  "manifest-file": ".release-please-manifest.json",
+                  "token": "${{ secrets.GITHUB_TOKEN }}"
+                }
+              }
+            ]
+          },
+          "sync-pack-versions": {
+            "env": {
+              "RELEASE_BRANCH": "release-please--branches--main--components--raes-env-packs"
+            },
+            "if": "!cancelled() && (needs.release-please.result == 'success' ||\n needs.resume-release-please.result == 'success')",
+            "name": "Match pack versions to the release PR",
+            "needs": [
+              "release-please",
+              "resume-release-please"
+            ],
+            "permissions": {
+              "contents": "write",
+              "pull-requests": "read"
+            },
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "env": {
+                  "GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                },
+                "id": "release-pr",
+                "name": "Find the open release PR",
+                "run": "set -euo pipefail\ncount=\"$(gh pr list --repo \"${GITHUB_REPOSITORY}\" --state open --base main \\\n  --head \"${RELEASE_BRANCH}\" --json number --jq 'length')\"\nprintf 'open=%s\\n' \"$([ \"${count}\" -gt 0 ] && echo true || echo false)\" >> \"${GITHUB_OUTPUT}\"\n"
+              },
+              {
+                "if": "steps.release-pr.outputs.open == 'true'",
+                "name": "Check out the release PR branch",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false,
+                  "ref": "${{ env.RELEASE_BRANCH }}"
+                }
+              },
+              {
+                "if": "steps.release-pr.outputs.open == 'true'",
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "if": "steps.release-pr.outputs.open == 'true'",
+                "name": "Install hash-locked tooling and the package",
+                "run": "set -euo pipefail\npython -m pip install --require-hashes -r requirements/runtime.txt\npython -m pip install --require-hashes -r requirements/build.txt\npython -m pip install --no-deps --no-build-isolation -e .\n"
+              },
+              {
+                "if": "steps.release-pr.outputs.open == 'true'",
+                "name": "Write the release version into every pack",
+                "run": "python tools/sync_pack_versions.py"
+              },
+              {
+                "env": {
+                  "GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                },
+                "if": "steps.release-pr.outputs.open == 'true'",
+                "name": "Push the pack versions to the release PR",
+                "run": "set -euo pipefail\nif git diff --quiet; then\n  echo \"Every pack already carries the release version.\"\n  exit 0\nfi\nversion=\"$(python -c 'import tomllib; print(tomllib.load(open(\"pyproject.toml\", \"rb\"))[\"project\"][\"version\"])')\"\ngit config user.name \"github-actions[bot]\"\ngit config user.email \"41898282+github-actions[bot]@users.noreply.github.com\"\ngit add packs\ngit commit -m \"chore: set pack versions to ${version}\"\ngh auth setup-git\ngit push origin \"HEAD:refs/heads/${RELEASE_BRANCH}\"\n"
+              }
+            ]
+          },
+          "verify-pack-versions": {
+            "if": "needs.detect-release.outputs.release == 'true'",
+            "name": "Verify pack versions match the release",
+            "needs": [
+              "detect-release"
+            ],
+            "permissions": {
+              "contents": "read"
+            },
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false,
+                  "ref": "${{ needs.detect-release.outputs.target }}"
+                }
+              },
+              {
+                "name": "Set up Python",
+                "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+                "with": {
+                  "python-version": "3.14"
+                }
+              },
+              {
+                "name": "Install hash-locked tooling and the package",
+                "run": "set -euo pipefail\npython -m pip install --require-hashes -r requirements/runtime.txt\npython -m pip install --require-hashes -r requirements/build.txt\npython -m pip install --no-deps --no-build-isolation -e .\n"
+              },
+              {
+                "name": "Check every pack carries the release version",
+                "run": "python tools/sync_pack_versions.py --check"
+              }
+            ]
+          }
+        },
+        "name": "Release Please",
+        "on": {
+          "push": {
+            "branches": [
+              "main"
+            ]
+          },
+          "workflow_dispatch": {
+            "inputs": {
+              "release_pr": {
+                "description": "Merged release PR to recover (for example, 135)",
+                "required": true,
+                "type": "string"
+              }
+            }
+          }
+        },
+        "permissions": "read-all"
+      },
+      ".github/workflows/scorecard.yml": {
+        "concurrency": {
+          "cancel-in-progress": true,
+          "group": "scorecard-${{ github.ref }}"
+        },
+        "jobs": {
+          "analysis": {
+            "name": "Scorecard analysis",
+            "permissions": {
+              "id-token": "write",
+              "security-events": "write"
+            },
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out repository",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "persist-credentials": false
+                }
+              },
+              {
+                "name": "Run Scorecard analysis",
+                "uses": "ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e",
+                "with": {
+                  "publish_results": true,
+                  "results_file": "results.sarif",
+                  "results_format": "sarif"
+                }
+              },
+              {
+                "name": "Upload SARIF artifact",
+                "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "with": {
+                  "name": "scorecard-sarif",
+                  "path": "results.sarif",
+                  "retention-days": 5
+                }
+              },
+              {
+                "name": "Upload SARIF to code scanning",
+                "uses": "github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
+                "with": {
+                  "sarif_file": "results.sarif"
+                }
+              }
+            ]
+          }
+        },
+        "name": "Scorecard",
+        "on": {
+          "push": {
+            "branches": [
+              "main"
+            ]
+          },
+          "schedule": [
+            {
+              "cron": "41 5 * * 2"
+            }
+          ]
+        },
+        "permissions": "read-all"
+      },
+      ".github/workflows/sync-main-to-dev.yml": {
+        "concurrency": {
+          "cancel-in-progress": false,
+          "group": "sync-main-to-dev"
+        },
+        "jobs": {
+          "backmerge": {
+            "name": "Open main -> dev back-merge PR",
+            "permissions": {
+              "contents": "write",
+              "pull-requests": "write"
+            },
+            "runs-on": "ubuntu-latest",
+            "steps": [
+              {
+                "name": "Check out",
+                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "with": {
+                  "fetch-depth": 0
+                }
+              },
+              {
+                "env": {
+                  "GH_TOKEN": "${{ github.token }}"
+                },
+                "name": "Open or update the back-merge PR",
+                "run": "set -euo pipefail\ngit fetch --quiet origin main dev\n\n# Nothing to do when dev already has main's content (e.g. right after a\n# dev -> main promotion, where trees match but topology differs).\nif git diff --quiet origin/dev origin/main; then\n  echo \"dev and main content already match; nothing to sync.\"\n  exit 0\nfi\n\nbranch=\"sync/main-to-dev\"\ngit push --force origin \"origin/main:refs/heads/${branch}\"\n\nexisting=\"$(gh pr list --head \"${branch}\" --base dev --state open \\\n  --json number --jq '.[0].number // empty')\"\nif [ -n \"${existing}\" ]; then\n  echo \"Back-merge PR #${existing} already open; its branch now points at latest main.\"\nelse\n  gh pr create --base dev --head \"${branch}\" \\\n    --title \"chore: sync main -> dev\" \\\n    --body \"Automated back-merge (ADR 0008): brings release commit(s) from \\`main\\` into \\`dev\\` so the branches stay in sync. Merge to keep dev current.\"\nfi\n"
+              }
+            ]
+          }
+        },
+        "name": "Sync main -> dev",
+        "on": {
+          "push": {
+            "branches": [
+              "main"
+            ]
+          },
+          "workflow_dispatch": null
+        },
+        "permissions": "read-all"
+      },
+      ".ground-control.yaml": {
+        "architecture": {
+          "vocabulary": {
+            "anti_recommendations": [
+              "Do not define or extend RAES semantics here (SDL, objectives, conditions, evidence, scoring, telemetry, oracle/validation models); consume them from RAES. See ADR 0009.",
+              "Do not encode downstream catalog vocabulary into canonical pack terminology."
+            ],
+            "binding_adrs": [
+              {
+                "id": "ADR-036",
+                "one_liner": "first-party kits and major example packs publish here while RAES owns semantics"
+              }
+            ],
+            "boundary_contract": {
+              "description": "This repository is subordinate to RAES core (raes). RAES owns all scenario semantics (the SDL and its objectives, conditions, evidence, and participant/attacker behaviour); this repository owns the environment-pack layout and tooling, publishes first-party kits under kits/, hosts major example packs under packs/, and defines zero extensions to RAES semantics. See ADR 0009 and ADR 0036."
+            },
+            "patterns": [
+              {
+                "applies_to": "environment-pack layout and authoring/validation/release tooling",
+                "example_path": "docs/public/environment-packs.md",
+                "name": "RAES-subordinate pack tooling"
+              }
+            ]
+          }
+        },
+        "docs": {
+          "adr_dir": "docs/decisions/adrs/",
+          "workflow_reference": "docs/public/environment-packs.md"
+        },
+        "example_paths": {
+          "source": "src/raes_env_packs/",
+          "test": "tests/"
+        },
+        "github_repo": "OpenRAE/env-packs",
+        "requirements": {
+          "uid_examples": [
+            "ASP-0001",
+            "ASP-0002"
+          ]
+        },
+        "rules": {
+          "plan_rules": ".gc/plan-rules.md"
+        },
+        "schema_version": 1,
+        "short_code": "ASP",
+        "sonarcloud": {
+          "organization": "raesystem",
+          "project_key": "OpenRAE_env-packs"
+        },
+        "workflow": {
+          "base_branch": "go-cutover",
+          "codex_review": {
+            "pre_push_cap": 1
+          },
+          "completion_command": "PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); export PATH=\".venv/bin:$PATH\"; \"$PY\" -m unittest discover -s tests && raes-pack-validate --repo . && raes-pack-release check --all && raes-pack-validate --packs-root packs && raes-pack-release check --packs-root packs && make conformance && make go-check && make go-lint && make go-audit && make go-arch && make go-mutation && make go-regression && make prose",
+          "format_command": "python3 -m compileall src tests && mise exec -- golangci-lint fmt ./...",
+          "lint_command": "python3 -m compileall src tests && make go-lint",
+          "policy_command": "make policy",
+          "pr_title": {
+            "require_scope": false,
+            "types": [
+              "feat",
+              "fix",
+              "docs",
+              "style",
+              "refactor",
+              "perf",
+              "test",
+              "build",
+              "ci",
+              "chore",
+              "revert"
+            ]
+          },
+          "precommit_command": "PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); \"$PY\" -m compileall -q src tests && git diff --check HEAD",
+          "review_disposition": {
+            "enabled": false,
+            "judge": {
+              "enabled": false
+            },
+            "max_auto_overrides": 0,
+            "mode": "shadow"
+          },
+          "test_command": "PY=$( [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3 ); \"$PY\" -m unittest discover -s tests && make go-check"
+        }
+      },
+      ".readthedocs.yaml": {
+        "build": {
+          "os": "ubuntu-24.04",
+          "tools": {
+            "python": "3.14"
+          }
+        },
+        "formats": [
+          "pdf"
+        ],
+        "python": {
+          "install": [
+            {
+              "requirements": "requirements/docs.txt"
+            }
+          ]
+        },
+        "sphinx": {
+          "configuration": "docs/public/conf.py",
+          "fail_on_warning": true
+        },
+        "version": 2
+      },
+      "mise.toml": {
+        "min_version": "2026.10.2",
+        "settings": {
+          "exec_auto_install": false
+        },
+        "tools": {
+          "aqua:errata-ai/vale": "3.25.1",
+          "aqua:golangci/golangci-lint": "2.15.0",
+          "aqua:open-policy-agent/conftest": "0.71.1",
+          "aqua:rhysd/actionlint": "1.7.12",
+          "go:github.com/avito-tech/go-mutesting/cmd/go-mutesting": "v0.0.0-20261002081621-9ce5f731e321",
+          "go:golang.org/x/vuln/cmd/govulncheck": "v1.9.0"
+        }
+      },
+      "pyproject.toml": {
+        "build-system": {
+          "build-backend": "hatchling.build",
+          "requires": [
+            "hatchling"
+          ]
+        },
+        "project": {
+          "authors": [
+            {
+              "name": "Brad Edwards"
+            }
+          ],
+          "classifiers": [
+            "License :: OSI Approved :: MIT License",
+            "Programming Language :: Python :: 3",
+            "Topic :: Security"
+          ],
+          "dependencies": [
+            "PyYAML>=6",
+            "raes==10.5.0",
+            "mcp>=2,<3",
+            "jsonschema>=4",
+            "anyio>=4,<5"
+          ],
+          "description": "RAES environment-pack definition, schemas, template, and authoring/validation tooling.",
+          "keywords": [
+            "raes",
+            "environment-pack",
+            "cyber-range",
+            "security"
+          ],
+          "license": {
+            "text": "MIT"
+          },
+          "name": "raes-env-packs",
+          "optional-dependencies": {
+            "test": [
+              "bcrypt==5.0.0"
+            ]
+          },
+          "readme": "README.md",
+          "requires-python": ">=3.14,<3.15",
+          "scripts": {
+            "raes-new-pack": "raes_env_packs.wizard:main",
+            "raes-pack-catalog": "raes_env_packs.catalog:main",
+            "raes-pack-check": "raes_env_packs.check:main",
+            "raes-pack-dist": "raes_env_packs.distribution:main",
+            "raes-pack-issue-skeleton": "raes_env_packs.issue_skeleton:main",
+            "raes-pack-kit": "raes_env_packs.kit_cli:main",
+            "raes-pack-mcp": "raes_env_packs.mcp_server:main",
+            "raes-pack-new": "raes_env_packs.wizard:main",
+            "raes-pack-release": "raes_env_packs.release:main",
+            "raes-pack-validate": "raes_env_packs.content_ci:main",
+            "raes-pack-verify": "raes_env_packs.verify:main"
+          },
+          "urls": {
+            "Homepage": "https://github.com/OpenRAE/env-packs",
+            "Repository": "https://github.com/OpenRAE/env-packs"
+          },
+          "version": "7.2.1"
+        },
+        "tool": {
+          "hatch": {
+            "build": {
+              "targets": {
+                "sdist": {
+                  "include": [
+                    "/src/raes_env_packs",
+                    "/kits",
+                    "/packs/techvault",
+                    "/packs/techvault-participant-study",
+                    "/packs/ai-escape-lab",
+                    "/docs",
+                    "/tests",
+                    "/README.md",
+                    "/LICENSE",
+                    "/CHANGELOG.md"
+                  ]
+                },
+                "wheel": {
+                  "force-include": {
+                    "kits": "raes_env_packs/resources/kits",
+                    "packs/ai-escape-lab": "raes_env_packs/resources/packs/ai-escape-lab",
+                    "packs/techvault": "raes_env_packs/resources/packs/techvault",
+                    "packs/techvault-participant-study": "raes_env_packs/resources/packs/techvault-participant-study"
+                  },
+                  "packages": [
+                    "src/raes_env_packs"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "release-please-config.json": {
+        "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+        "include-component-in-tag": false,
+        "packages": {
+          ".": {
+            "package-name": "raes-env-packs",
+            "release-type": "python",
+            "skip-github-release": true
+          }
+        }
+      }
+    },
+    "text": {
+      ".gc/plan-rules.md": "# Implementation plan rules\n\nRepo-specific rules the `/implement` workflow MUST follow here, in addition to\nthe generic workflow. Ground Control injects this file into planning via\n`.ground-control.yaml` (`rules.plan_rules`).\n\n## Releases & versioning (ADR 0008 \u2014 hard requirement)\n\n- **Never hand-edit the version or changelog.** The version lives in\n  `pyproject.toml` (`[project].version`) and only **release-please** updates it;\n  `__version__` derives from installed metadata. Do **not** edit `[project].version`,\n  `__version__`, or `CHANGELOG.md` in a feature PR \u2014 release-please owns them. A PR\n  that does is wrong; drop that change.\n- **Never hand-edit a pack version.** Every pack under `packs/` carries the\n  package version. The `sync-pack-versions` release job writes it and refreshes\n  the pack digests (ADR 0045).\n- **The PR title (Conventional Commit) is the release decision** \u2014 there are no\n  changelog fragments and no scripts to run. Rubric: `feat:`\u2192minor,\n  `fix:`/`perf:`\u2192patch, `feat!:`/`BREAKING CHANGE:`\u2192major;\n  `docs`/`chore`/`refactor`/`test`/`ci`/`build`\u2192no release.\n- **PR titles MUST be Conventional Commits** \u2014 a required CI check\n  (`PR title guard`, `tools/check_pr_title.py`) blocks non-conforming titles and\n  bans agent/tool prefixes like `[claude]`/`[codex]`.\n- **Do not add ad hoc release/tag/publish paths to ordinary feature work.**\n  release-please maintains the `chore(main): release X.Y.Z` PR automatically; a\n  human merges it to publish. An issue that changes release architecture must keep the logic in\n  `.github/workflows/release-please.yml`. It must amend the governing ADR instead\n  of adding a parallel workflow (ADR 0017).\n- **Merge habits:** feature PRs are **squash-merged** (the title becomes the\n  Conventional Commit release-please reads). Open `dev`\u2192`main` promotions with\n  `make devmain` and merge them with a **merge commit**, never squash or rebase,\n  so release-please retains every promoted Conventional Commit subject.\n\nSee [ADR 0008](../docs/decisions/adrs/0008-adopt-release-please.md).\n\n## Go port (ADR 0047)\n\n- **Pull requests for the port target `go-cutover`.** A pull request that needs\n  an unmerged chunk uses the branch of that chunk as its base. `dev` keeps the\n  Python product until one pull request merges `go-cutover` into `dev`.\n- **A pull request for the port uses a type that does not release:** `build`,\n  `ci`, `docs`, `refactor`, `test`, or `chore`. Only the chunk that removes the\n  Python implementation has a breaking-change title.\n- **Start each Go change with the design step.** Before the code, write a design\n  record in `docs/development/designs/`, change `architecture/model.yaml` to\n  match, and pass `make go-arch-design`. The plan names the design record, the\n  component that owns each new package, and each new dependency. Then write the\n  code and pass `make go-arch`.\n- **Limit Python changes on `dev` to fixes, security updates, and RAES\n  dependency updates.** A sync pull request brings `dev` into `go-cutover`. When\n  a `dev` change alters a contract, the sync pull request also changes the\n  conformance corpus.\n\n## Repository boundary\n\n- This repo **defines and validates** the environment-pack format, publishes\n  first-party infrastructure kits under `kits/`, and publishes major example\n  packs under `packs/`. Co-location gives those packs no runtime role and no\n  authority over RAES semantics. Keep changes within that boundary (see\n  [`environment-packs.md`](../docs/public/environment-packs.md), ADR 0009, and\n  ADR 0036).\n",
+      "CONTRIBUTING.md": "docs/README.md",
+      "Makefile": "# Repository task shortcuts.\n#\n# `devmain` is the only target that acts on anything. The default goal is\n# deliberately `help`: Make runs the *first* target when invoked with no goal,\n# and the acting target here opens a pull request against `main`. A bare `make`\n# must never do that, so the default goal is pinned rather than left to file\n# order (ADR 0019).\n#\n# The local verification loop -- unittest, raes-pack-validate,\n# raes-pack-release, compileall -- is intentionally NOT restated here. AGENTS.md,\n# .ground-control.yaml, and .github/workflows/ci.yml already each hold that list;\n# a fourth copy would drift out of step with them.\n#\n# The Go checks of the port (ADR 0047) are the exception. CI runs `make\n# go-check`, so this target is their one definition, and the other lists call it.\n\n# Substitutable so the contract test in tests/test_makefile.py can drive the\n# promotion target without touching GitHub.\nGH ?= gh\n\n# Substitutable so a caller can select a specific Go toolchain binary.\nGO ?= go\n\n# Substitutable so a caller can use a mise binary that is not on PATH. mise\n# installs the tool versions that mise.toml pins and mise.lock verifies.\nMISE ?= mise\n\n.DEFAULT_GOAL := help\n\n.PHONY: help devmain prose conformance conformance-go go-check go-lint go-audit go-fuzz go-arch \\\n\tgo-arch-design go-arch-dsl go-mutation go-mutation-all go-regression\n\nhelp: ## List the available targets\n\t@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \\\n\t  | awk 'BEGIN {FS = \":.*?## \"}; {printf \"  %-15s %s\\n\", $$1, $$2}'\n\n# The promotion PR body, kept in an exported variable so the recipe passes it as\n# one literal argument: no shell metacharacters, no interpolation, and no editor\n# or --fill, which would let .github/PULL_REQUEST_TEMPLATE.md supply the blank\n# sections and unticked boxes that the hand-opened promotions carried.\ndefine DEVMAIN_BODY\nPromotes dev to main.\n\nMerge this with a merge commit. Do not squash it and do not rebase it.\n\nmain is where release-please reads Conventional Commit history to decide the\nversion bump and build CHANGELOG.md (ADR 0008, ADR 0019). Squashing or rebasing\ncollapses every promoted subject into a single one, and the next release loses\nboth its changelog entries and its version decision.\nendef\nexport DEVMAIN_BODY\n\n# Opens the PR and stops there. GitHub stays the authority on everything else:\n# it rejects a second open PR for the same head/base pair, and branch protection\n# on `main` still requires an approving review plus `verify`. That refusal is a\n# visible nonzero error and is deliberately left to propagate.\ndevmain: ## Open the dev -> main promotion PR\n\t@$(GH) pr create --base main --head dev \\\n\t  --title \"chore: promote dev to main\" \\\n\t  --body \"$$DEVMAIN_BODY\"\n\n# Builds, vets, and tests every Go package with the toolchain that go.mod pins.\n# The tests run with the race detector and in shuffled order, and write the\n# coverage profile that CI sends to SonarCloud (docs/development/go-test-standard.md).\ngo-check: ## Build, vet, and test the Go code\n\t$(GO) build ./...\n\t$(GO) vet ./...\n\t$(GO) test -race -shuffle=on -coverprofile=coverage-go.out ./...\n\n# Lints the Go code with the pinned golangci-lint once for each release\n# platform of the architecture model, so that each build-constrained file is\n# linted. Then it checks the formatting, and checks that go.mod and go.sum are\n# tidy (docs/development/go-style-map.md).\ngo-lint: ## Lint the Go code and check formatting and tidiness\n\t@set -eu; \\\n\tplatforms=$$($(GO) run ./tools/archcheck platforms); \\\n\tfor platform in $$platforms; do \\\n\t  echo \"go-lint: $$platform\"; \\\n\t  GOOS=$${platform%/*} GOARCH=$${platform#*/} CGO_ENABLED=0 \\\n\t    $(MISE) exec -- golangci-lint run ./...; \\\n\tdone\n\t$(MISE) exec -- golangci-lint fmt --diff ./...\n\t$(GO) mod tidy -diff\n\n# Checks the downloaded modules against go.sum, and reports each known\n# vulnerability that the code can reach, with the govulncheck version that\n# mise.toml pins. govulncheck reads the Go vulnerability database on the\n# network.\ngo-audit: ## Verify the Go modules and check them for known vulnerabilities\n\t$(GO) mod verify\n\t@set -eu; \\\n\tplatforms=$$($(GO) run ./tools/archcheck platforms); \\\n\tfor platform in $$platforms; do \\\n\t  echo \"go-audit: $$platform\"; \\\n\t  GOOS=$${platform%/*} GOARCH=$${platform#*/} CGO_ENABLED=0 \\\n\t    $(MISE) exec -- govulncheck ./...; \\\n\tdone\n\n# The fuzz time for each target. The weekly CI schedule raises it.\nFUZZTIME ?= 30s\n\n# Runs every native fuzz target in the module, one target at a time, for\n# FUZZTIME each (docs/development/go-test-standard.md). The package list and\n# each target list are captured first, so a failed command stops the run\n# instead of leaving a loop with nothing to fuzz.\ngo-fuzz: ## Run every Go fuzz target for FUZZTIME (default 30s)\n\t@set -eu; \\\n\tpkgs=$$($(GO) list ./...); \\\n\tfor pkg in $$pkgs; do \\\n\t  listing=$$($(GO) test -list '^Fuzz' \"$$pkg\"); \\\n\t  for target in $$(printf '%s\\n' \"$$listing\" | grep '^Fuzz' || true); do \\\n\t    echo \"go-fuzz: $$pkg $$target\"; \\\n\t    $(GO) test -run '^$$' -fuzz \"^$$target$$\" -fuzztime \"$(FUZZTIME)\" \"$$pkg\"; \\\n\t  done; \\\n\tdone\n\n# Checks the code, the design records, and the C4 view against the\n# architecture model (docs/development/designs/README.md).\ngo-arch: ## Check the code and design records against the architecture model\n\t$(GO) run ./tools/archcheck check\n\n# Git owns the diff. Include rule bodies, scopes, exceptions, and platforms,\n# as well as the structure that the design-record replay checks.\n.PHONY: go-arch-change\ngo-arch-change: ## Require a new design record for each committed model change\n\t@set -eu; \\\n\tchanged=$$(git diff --name-only --merge-base \"$(BASE)\" HEAD -- architecture/model.yaml); \\\n\tif [ -n \"$$changed\" ]; then \\\n\t  records=$$(git diff --name-only --diff-filter=A --merge-base \"$(BASE)\" HEAD -- 'docs/development/designs/[0-9][0-9][0-9][0-9]-*.md'); \\\n\t  if [ -z \"$$records\" ]; then \\\n\t    echo 'architecture/model.yaml: design-change: add a new numbered design record for the model change' >&2; \\\n\t    exit 1; \\\n\t  fi; \\\n\tfi\n\n# The design step: checks the model and the design records before the code\n# exists.\ngo-arch-design: ## Check the design records against the architecture model\n\t$(GO) run ./tools/archcheck design\n\n# Renders architecture/workspace.dsl from the architecture model.\ngo-arch-dsl: ## Render the C4 view of the architecture model\n\t$(GO) run ./tools/archcheck dsl -write\n\n# The base commit of the gates on the changed lines: the integration branch of\n# the Go port (ADR 0047). The cutover changes it to origin/dev. The gates read\n# only committed code, so commit the work before you run them.\nBASE ?= origin/go-cutover\n\n# Runs the conformance corpus against the Python console scripts on PATH\n# (docs/development/designs/0003-conformance-corpus.md). The corpus starts the\n# commands, so the test results do not come from the cache.\nconformance: ## Run the conformance corpus against the Python implementation\n\t$(GO) test ./conformance -count=1 -args -impl=python\n\n# Builds each Go command under cmd/ and runs its conformance cases against it.\n# The other commands have no Go implementation yet (design 0008).\nconformance-go: ## Run the conformance cases of the Go commands against Go\n\t@set -eu; bin=$$(mktemp -d); trap 'rm -rf \"$$bin\"' EXIT; \\\n\t$(GO) build -o \"$$bin/\" ./cmd/...; \\\n\tcommands=$$(ls cmd | paste -sd '|' -); \\\n\t$(GO) test ./conformance -count=1 -run \"TestCorpus/^($$commands)$$/\" -args -impl=go -bin \"$$bin\"\n\n# Checks the prose of each Markdown file that HEAD adds or changes since BASE,\n# with the Vale version that mise.toml pins and the rules in .vale/styles/STE\n# (docs/development/documentation-style-guide.md). It skips CHANGELOG.md, test\n# fixtures, and the assets of packs and kits.\nprose: ## Check the prose of the Markdown files changed since BASE\n\t@set -eu; \\\n\tfiles=$$(git diff --name-only --diff-filter=d --merge-base \"$(BASE)\" HEAD -- '*.md' \\\n\t  ':(exclude)CHANGELOG.md' ':(exclude,glob)**/testdata/**' ':(exclude)tests/fixtures' \\\n\t  ':(exclude,glob)packs/*/assets/**' ':(exclude,glob)kits/*/*/assets/**'); \\\n\tif [ -z \"$$files\" ]; then echo \"prose: no changed Markdown file\"; exit 0; fi; \\\n\t$(MISE) exec -- vale $$files\n\n# Mutation testing on the Go lines that HEAD changes since BASE, with the\n# go-mutesting version that mise.toml pins\n# (docs/development/go-test-standard.md).\ngo-mutation: ## Mutation testing on the Go lines changed since BASE\n\t$(MISE) exec -- $(GO) run ./tools/testgate mutation -base \"$(BASE)\"\n\n# Mutation testing on each Go file. A weekly workflow runs it.\ngo-mutation-all: ## Mutation testing on each Go file\n\t$(MISE) exec -- $(GO) run ./tools/testgate mutation -all\n\n# Proves that each regression test that HEAD adds or changes since BASE fails\n# on the merge base.\ngo-regression: ## Prove that each new regression test fails before its fix\n\t$(GO) run ./tools/testgate regression -base \"$(BASE)\"\n\npolicy:\n\tconftest verify\n\tconftest test\n\tactionlint\n",
+      "README.md": "# RAES Environment Packs\n\n[![PyPI](https://img.shields.io/pypi/v/raes-env-packs)](https://pypi.org/project/raes-env-packs/)\n[![Python](https://img.shields.io/pypi/pyversions/raes-env-packs)](https://pypi.org/project/raes-env-packs/)\n[![Documentation](https://app.readthedocs.org/projects/raes-environment-packs/badge/?version=latest)](https://raes-environment-packs.readthedocs.io/en/latest/)\n[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)\n[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/OpenRAE/env-packs/badge)](https://scorecard.dev/viewer/?uri=github.com/OpenRAE/env-packs)\n[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13833/badge)](https://www.bestpractices.dev/projects/13833)\n\nRAES environment packs give a scenario a standard shape. This package defines that\nshape and gives you the tools to build, check, and ship a pack.\n\nA pack holds the declarative content for one reference environment: the scenario\nstart state, its assets, and a record of where the content came from. Authors\nbuild packs; consumers validate a pack before they trust it. The format and the\ntools ship together, so you validate a pack against the same version you built it\nagainst.\n\nThis repository defines and validates the format, publishes the first-party\ninfrastructure-kit collection under `kits/`, and hosts major example packs under\n`packs/`. Third-party catalogs consume the same package and contracts.\n\n## What a pack looks like\n\n```\nexample-pack/\n\u251c\u2500\u2500 pack.yaml                  # identity: name, title, version, status\n\u251c\u2500\u2500 sdl/example.sdl.yaml       # the scenario start state (RAES SDL)\n\u2514\u2500\u2500 docs/\n    \u2514\u2500\u2500 provenance-ledger.yaml # where the content came from\n```\n\nThe start state is small to begin with:\n\n```yaml\nname: example-pack\nnodes:\n  target:\n    type: vm\n```\n\n## Install\n\n```sh\npip install raes-env-packs\n```\n\nThat installs the command-line tools and the importable library:\n\n- `raes-pack-new` \u2014 scaffold a new pack with a progressive wizard.\n- `raes-pack-mcp` \u2014 expose local, host-scoped [pack authoring tools](docs/public/mcp.md).\n- `raes-pack-validate` \u2014 the author-CI check for a catalog checkout.\n- `raes-pack-release` \u2014 build, lint, and release-gate a pack.\n- `raes-pack-kit` \u2014 discover, inspect, preview, add, update, replace, and remove\n  reusable infrastructure kits.\n- `raes-pack-issue-skeleton` \u2014 generate a pack's starter GitHub issues.\n\nIt also includes every first-party kit release. Pin the package version and\nuse `bundled_kit_source()` to discover and validate the installed collection\nwithout a Git checkout. See [using released kits](docs/public/kits.md#use-a-pinned-package-release).\n\n## Validate your first pack\n\nScaffold a valid minimal pack in your catalog repository and check it. The\nwizard generates only the files the pack needs, formats the scenario identity\nthrough RAES, and validates the result before it lands:\n\n```sh\nraes-pack-new example-pack --route minimal --yes\npython -c \"from raes_env_packs import validate_pack; print(validate_pack('environments/example-pack').ok)\"\n```\n\n```\nTrue\n```\n\nCreating a pack needs Linux: the wizard publishes it with the Linux `renameat2`\nsystem call, which macOS does not provide. Kit changes and\n`raes-pack-dist install --apply` need Linux for the same reason.\n\n`validate_pack` is the check a consumer runs before trusting a pack: it reads the\nstaged files, returns a result, prints nothing, and never runs the pack's code.\nThe [quickstart](https://raes-environment-packs.readthedocs.io/en/latest/quickstart.html) walks\nthrough it step by step.\n\n## Choose your route\n\n- **Author a pack** \u2014 start with the [quickstart](https://raes-environment-packs.readthedocs.io/en/latest/quickstart.html)\n  and the [pack reference](https://raes-environment-packs.readthedocs.io/en/latest/environment-packs.html),\n  then compose common infrastructure from [kits](https://raes-environment-packs.readthedocs.io/en/latest/kits.html).\n- **Consume a pack** \u2014 see [validating a pack](https://raes-environment-packs.readthedocs.io/en/latest/validating.html).\n- **Contribute** \u2014 read [CONTRIBUTING.md](CONTRIBUTING.md).\n\nFull documentation is on [Read the Docs](https://raes-environment-packs.readthedocs.io/en/latest/).\n\n## What this is and is not\n\nThis project defines the pack format and tools, publishes first-party reusable\nkits, and hosts major example packs. It does **not** run a scenario or define\nscenario meaning \u2014 the RAES scenario language and its semantics belong to\n[RAES](https://github.com/OpenRAE/rae), and this project consumes them from a\n`raes` release at or above a minimum version. It is a single-maintainer project with no support\nSLA. See the\n[limitations](https://raes-environment-packs.readthedocs.io/en/latest/limitations.html) for the\nfull picture.\n\n## Contributing\n\n```sh\npython3 -m venv .venv\n. .venv/bin/activate\npip install -e \".[test]\"\npython -m unittest discover -s tests\n```\n\n[CONTRIBUTING.md](CONTRIBUTING.md) has the full setup, test, and submission path.\nMaintainer records \u2014 decision records, CI, and release mechanics \u2014 are indexed in\n[docs/README.md](docs/README.md).\n\n## Releases\n\nReleases are managed by [release-please](https://github.com/googleapis/release-please):\nmerge-driven, nothing hand-run. Your **Conventional Commit PR title** is the\nrelease decision \u2014 `feat:` is a minor bump, `fix:` a patch, `docs:`/`chore:` no\nrelease. You never edit the version or `CHANGELOG.md`; release-please owns both.\nSee [CONTRIBUTING.md](CONTRIBUTING.md#releases) for the details.\n\n## License\n\nMIT \u2014 see [LICENSE](LICENSE).\n",
+      "docs/README.md": "decisions/adrs/README.md development/ci.md development/scrub-policy.md",
+      "docs/decisions/adrs/README.md": "# Maintainer record\n",
+      "docs/development/ci.md": "# Maintainer record\n",
+      "docs/development/scrub-policy.md": "# Maintainer record\n",
+      "docs/public/catalog.md": "# Public page\n",
+      "docs/public/checking.md": "# Public page\n",
+      "docs/public/concepts.md": "# Public page\n",
+      "docs/public/conf.py": "\"\"\"Sphinx configuration for the public documentation site (ADR 0030, issue #154).\n\n``docs/public/`` is the sole Sphinx source root. Everything else under ``docs/``\n-- ADRs, CI and release notes, and other maintainer records -- lives outside this\ndirectory and is never built, indexed, sitemapped, or previewed. Adding a page\nhere publishes it; adding a record elsewhere cannot publish it by accident.\n\nThe pages are plain CommonMark, cross-linked with relative ``.md`` paths so they\nstay readable on GitHub too. MyST parses that markdown directly, and\n``myst_heading_anchors`` keeps intra-page anchor links working.\n\nThe package is deliberately **not** installed for the docs build. These pages are\nnarrative -- there is no autodoc -- and installing would drag in the whole pinned\n``raes`` runtime closure to render markdown. The version is read straight from\n``pyproject.toml`` instead, which keeps the build fast, hermetic, and independent\nof the runtime stack.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport pathlib\nimport tomllib\n\n# docs/public/conf.py -> parents[2] is the repository root.\n_ROOT = pathlib.Path(__file__).resolve().parents[2]\n_PYPROJECT = tomllib.loads((_ROOT / \"pyproject.toml\").read_text(encoding=\"utf-8\"))\n\n# -- Project information -----------------------------------------------------\n\nproject = \"RAES Environment Packs\"\nauthor = _PYPROJECT[\"project\"][\"authors\"][0][\"name\"]\ncopyright = f\"{author}, MIT licensed\"  # noqa: A001 - Sphinx requires this name.\n\n# release-please owns [project].version (ADR 0008); never hand-edit it here.\nrelease = _PYPROJECT[\"project\"][\"version\"]\nversion = release\n\n# -- General configuration ---------------------------------------------------\n\nextensions = [\n    \"myst_parser\",\n]\n\n# Anchors are generated down to h3 so intra-page links resolve.\nmyst_heading_anchors = 3\n\nmyst_enable_extensions = [\n    \"colon_fence\",\n    \"deflist\",\n]\n\nsource_suffix = {\n    \".md\": \"markdown\",\n}\n\nexclude_patterns = [\n    \"_build\",\n]\n\n# A missing cross-reference should fail the build rather than silently publish a\n# broken link. Read the Docs surfaces the failure on the PR preview.\nnitpicky = True\n\n# -- HTML output -------------------------------------------------------------\n\nhtml_theme = \"furo\"\nhtml_title = f\"{project} {release}\"\n\n# The \"Edit this page\" links point back into the public source root only, so a\n# reader never lands on an internal record from the published site (ADR 0030).\nhtml_theme_options = {\n    \"source_repository\": \"https://github.com/OpenRAE/env-packs\",\n    \"source_branch\": \"main\",\n    \"source_directory\": \"docs/public/\",\n}\n\n# No custom static assets yet; declaring the (empty) list keeps Sphinx from\n# warning about a missing _static directory.\nhtml_static_path = []\n",
+      "docs/public/defensive-tooling-composition.md": "# Public page\n",
+      "docs/public/distribution.md": "# Public page\n",
+      "docs/public/environment-packs.md": "# Pack reference\n\nThis page is the map of an environment pack: what each part is for, and where the\nexact rules live. The normative contract \u2014 every field and its constraints \u2014\nships inside the package as `contract/pack-layout.md`. This page explains it;\nthat file decides it.\n\nFor a gentler introduction, start with [what an environment pack is](concepts.md).\n\n## The layout\n\nA pack is a directory. It has a required core and optional layers you add when\nthe scenario needs them.\n\n```\nexample-pack/\n\u251c\u2500\u2500 pack.yaml                      # identity and metadata\n\u251c\u2500\u2500 sdl/                           # the scenario start state (RAES SDL)\n\u251c\u2500\u2500 docs/\n\u2502   \u251c\u2500\u2500 provenance-ledger.yaml     # where the content came from\n\u2502   \u2514\u2500\u2500 golden-readiness-checklist.md\n\u251c\u2500\u2500 assets/                        # custom files, planted content, briefings\n\u251c\u2500\u2500 build/  tests/  docs/walkthroughs/   # the reference triangle (optional)\n\u251c\u2500\u2500 flags/  challenges/  ctfd/     # the flag layer (optional, all-or-nothing)\n\u251c\u2500\u2500 experiments/                   # RAES experiment artifact set (optional)\n\u2514\u2500\u2500 profiles/                      # delivery bundles (optional)\n```\n\n## Identity: `pack.yaml`\n\n`pack.yaml` names the pack and points at its other files. It carries the pack's\n`name` (which must match the directory), `title`, `version`, and `status`, and it\nrecords which optional layers ship. It is metadata, not a runtime contract.\n\n## The scenario start state\n\nThe `sdl/` directory holds the authored environment as one or more\n`<name>.sdl.yaml` documents, written in RAES SDL. This is the heart of a pack.\n\nThe validator parses **every** `sdl/*.sdl.yaml` through the installed `raes`\nrelease, with full semantic validation. A pack that ships no start-state document,\nor any document RAES rejects, fails. SDL is validated *through RAES* \u2014 this\nproject restates none of the SDL schema.\n\nRAES resolves SDL modules and records them in its lockfile, `raes.lock.json`. A\npack's resolver cache lives under `sdl/.raes/module-cache/` and is excluded from\nthe pack's content identity.\n\nBecause SDL is the scenario specification, the smallest valid start state is\nsmall:\n\n```yaml\nname: example-pack\nnodes:\n  target:\n    type: compute\n```\n\n## Provenance ledger\n\nEvery pack ships `docs/provenance-ledger.yaml`, referenced from `pack.yaml`. It is\nthe machine-readable record of a pack's content origins:\n\n- **`sources`** \u2014 every upstream corpus, tool, dataset, or original design the\n  pack draws on, each with a license and how it was used.\n- **`artifacts`** \u2014 the pack's files, classified by how they may be distributed.\n- **`content_safety`** \u2014 attestations that the pack carries no real malware,\n  live targets, credentials, or sensitive data. All must be true.\n- **`review`** \u2014 the licensing, attribution, sensitive-data, and offensive-tooling\n  review gates, modeled as data.\n\nRAES owns pack *trust* \u2014 integrity and authenticity \u2014 under its\n`reusable-asset-trust-policy`. Governed vocabularies, such as attack tactics and\nthe controlled concept families, stay in the RAES `concept-authority`. The ledger\nrecords only the content-origin facts RAES does not define, and names those RAES\nauthorities rather than restating them.\n\n## Compatibility manifest\n\nA pack that needs to describe how it maps onto runtime profiles, delivery\nbundles, and artifact boundaries adds `pack.compatibility.yaml` and points at it\nfrom `pack.yaml`. The validator checks it against the packaged schema. It carries\nno scenario semantics \u2014 scoring, oracles, and telemetry are RAES and runtime\nconcerns, not pack layers.\n\n## Content identity\n\nA pack can opt into a content identity so a consumer can prove which exact bytes\nan identity covers. The pack points at a RAES associated-artifact manifest from\n`pack.yaml`; RAES owns the identity model, and this package resolves the pack's\nfiles and hands the bytes to RAES to bind.\n\nSet identity, scenario meaning, and trust are separate claims: proving which\nbytes a pack is does not prove the scenario's semantics, nor that the pack is\nauthentic or safe to run. See [validating a pack](validating.md) for the API.\n\n## Experiments\n\nA pack can carry the RAES documents that define an experiment over its scenario\nfamily. Put them in `experiments/`:\n\n| File | RAES contract |\n| --- | --- |\n| `<name>.exp.yaml` | `experiment-authoring-input-v1` |\n| `<name>.task.json` | `experiment-task-v1` |\n| `<name>.capture.json` | `experiment-capture-spec-v1` |\n\nThe scenario family is an `sdl/*.sdl.yaml` document with RAES variation points.\nEach experiment names it with an id-only `intended_scenario_ref`:\n\n```yaml\nintended_scenario_ref:\n  ref_kind: scenario\n  ref_id: example-pack   # the SDL document's name\n```\n\nThe documents join through their RAES references. `task_ref` and\n`capture_spec_refs` resolve by id and version, never by file name. Several\nexperiments can share one task or capture specification.\n\nThe validator admits every document and the family through RAES. It checks\nselection policies, typed treatments such as `factorial-treatments-v1`, and\nscenario bindings against the family. A typed treatment pins the family's\ncanonical digest, so edit the pins after you edit the family.\n\nParticipant targets, apparatus compatibility, and every requested combination\nneed the consumer's manifests. The RAES trial compiler checks them, so a valid\npack is not yet an admitted trial plan. See\n[loading an experiment](validating.md#loading-an-experiment).\n\nClassify `experiments/` in the compatibility manifest's artifact boundaries.\nTreatment labels and prompt commitments can reveal the design to participants.\nPrompt content stays outside the pack; the family SDL carries only its\ncommitments.\n\nThis support requires `raes>=10.0.0` on CPython 3.14 and layout contract\nversion 8.\n\n## Status\n\n`pack.yaml` records a `status`:\n\n- **`draft`** \u2014 design and source only; the live scenario is not stood up.\n- **`built`** \u2014 it stands up, but its participant behavior is not yet proven end\n  to end.\n- **`golden`** \u2014 the live reference build exists and has participant-equivalent\n  proof.\n\n`golden` is a participant claim, not a management-plane one. See\n[golden readiness](golden-readiness.md) for the bar.\n\n## Optional layers\n\n- **Reference triangle** \u2014 `build/` stands the environment up, `tests/` exercises\n  its required behavior, and `docs/walkthroughs/` is the human, command-by-command\n  version. The three must agree; a mismatch is a defect.\n- **Flag layer** \u2014 `flags/`, `challenges/`, and `ctfd/` ship together or not at\n  all, for capture-the-flag content.\n- **Delivery profiles** \u2014 `profiles/` selects which participant, facilitator, or\n  presenter files a given audience sees. It changes exposure, not the scenario.\n\n## Build and release\n\n`raes-pack-release` is the repository-wide, read-only gate that lints a pack,\nbuilds a boundary-split release tree, leak-scans the participant tier, and emits a\nvalidated publication profile. Run `raes-pack-release check --all` in a catalog\nyou control.\n\nThis repository's selected first-party packs live under `packs/` and are gated\nexplicitly with `raes-pack-validate --packs-root packs` and\n`raes-pack-release check --packs-root packs`. The explicit root prevents the\nlegacy external-catalog default (`environments/`) from hiding hosted packs.\n\nTo *publish* a release \u2014 content identity, a CycloneDX SBOM, and provenance a\nconsumer can verify before install \u2014 run `raes-pack-release build --publish` and\nfollow [distribute and verify](distribution.md). Publishing requires the pack to\nopt into [content identity](#content-identity); the SBOM is generated from the\npack's component boundary and bound to that identity.\n\n## Catalog projection\n\n`raes-pack-catalog` renders a versioned, machine-readable\n[catalog projection](catalog.md) of a pack \u2014 its \"card\" \u2014 and aggregates cards\nfrom many repositories into one static index. It is a generated read model over\nthe facts above; it adds no new pack fields and no scenario semantics.\n\n## The boundary\n\nOwning the format is not owning a scenario authored in it, and not realizing that\nscenario at runtime. The [ownership boundary](ownership-boundary.md) sets out the\nfour owners \u2014 RAES, this repository, the downstream scenario owner, and the\nruntime \u2014 and what each may not decide for the others.\n\n## The normative sources\n\nThis page explains the format. These decide it:\n\n- `contract/pack-layout.md`, bundled in the package \u2014 the field-by-field layout\n  contract.\n- The packaged schemas under `schemas/` \u2014 provenance and compatibility.\n- The installed `raes` release, at or above the package's minimum version \u2014 all\n  SDL semantics.\n",
+      "docs/public/golden-readiness.md": "# Public page\n",
+      "docs/public/index.md": "{toctree}\ncatalog\nchecking\nconcepts\ndefensive-tooling-composition\ndistribution\nenvironment-packs\ngolden-readiness\nindex\nkit-content-strategy\nkits\nlimitations\nmcp\nnew-pack-script\nowlbear-composition\nownership-boundary\npack-issue-skeleton-script\nquickstart\nraes-migration\ntwo-audience-bundles\nvalidating",
+      "docs/public/kit-content-strategy.md": "# Public page\n",
+      "docs/public/kits.md": "# Public page\n",
+      "docs/public/limitations.md": "# Public page\n",
+      "docs/public/mcp.md": "# Public page\n",
+      "docs/public/new-pack-script.md": "# Public page\n",
+      "docs/public/owlbear-composition.md": "# Public page\n",
+      "docs/public/ownership-boundary.md": "# Ownership boundary\n\nA pack is shaped here, filled in by whoever authors a scenario, and realized at\nruntime by a lab platform such as LilRAE. APTL is being renamed to LilRAE: those\nnames identify one project across a rename, not separate products or layers.\nFour owners meet at the pack/runtime seam. Keeping their jobs separate is what\nlets one pack run on more than one backend \u2014 and what stops a portable format\nfrom quietly acquiring a runtime dependency.\n\nThis is the env-packs side of a boundary the LilRAE project recorded under its\nAPTL-era issue #589. The two records are meant to agree and be read together.\n\n## Four owners\n\n| Concern | Owner |\n| --- | --- |\n| Portable scenario, workflow, capture, evidence, and inventory semantics | RAES |\n| Environment-pack format, templates, schemas, validation, release tooling, adoption guidance, and selected first-party pack content | `OpenRAE/env-packs` (this repository) |\n| A particular scenario's in-game content, experiment and trial design, and required data/evidence | Its declared pack owner, which may be this repository or an external catalog |\n| Admitted-plan realization, lab lifecycle, trusted source acquisition, backend observation, and local evidence persistence | LilRAE (formerly APTL) |\n\n### RAES owns the meaning\n\nRAES owns portable scenario, workflow, capture, evidence, and inventory meaning:\nthe SDL and its objectives, conditions, evidence requirements, and\nparticipant/attacker behavior, along with the controlled vocabularies and\ndiagnostics. This repository consumes those from the installed `raes`\npackage and defines zero extensions to them. Where a scenario needs expressivity\nRAES lacks, that gap is fixed upstream in RAES, never worked around in the pack\nformat.\n\n### This repository owns the format and selected first-party scenarios\n\n`OpenRAE/env-packs` owns the environment-pack format: the layout contract,\ntemplates, schemas, validation, release tooling, and adoption guidance. Under\nADR 0036 it may also own selected first-party scenario packs under `packs/`.\nThose packs remain RAES inputs and receive no special semantics or runtime\nprivileges from being colocated with the tooling.\n\n### The downstream owner owns the scenario\n\nWhoever owns a particular pack owns its in-game content, experiment and trial\ndesign, and the data and evidence the experiment requires. That includes which\nRAES scenario is authored, what participants encounter, how many trials the\nexperiment requests, which capture requirements are declared, and what the run\nis meant to show. Those are RAES inputs expressed within this format. They are\nnot authority over RAES semantics, and not authority over runtime detail.\n\n### LilRAE owns runtime realization, not pack content\n\nLilRAE owns admitted-plan realization, lab lifecycle, trusted source acquisition,\nbackend observation, and LilRAE-local evidence persistence. It lowers an admitted\nRAES execution plan onto real infrastructure and records what it observed. Those\nare runtime facts about one lab, not portable pack content: a run record is not a\nRAES inventory result, and a healthy container is not proof of a scenario\nobjective.\n\n## A pack does not select runtime implementation\n\nThe format carries declarative RAES content. It has no mechanism \u2014 and must never\nacquire one \u2014 for a pack to select:\n\n- LilRAE shell commands, container names, or compose fragments;\n- backend-native identities or realization-only bootstrap configuration;\n- host paths, output paths, or backend-specific persistence paths;\n- collector implementations, registration ids, or import paths;\n- credentials, secret sources, environment-variable keys, or trust roots.\n\nA pack declares RAES capture *requirements*. The runtime matches them to\ncode-owned collectors through its own trusted registry, fail-closed. A\nrequirement that exceeds the declared runtime capability is a diagnostic raised\nbefore any side effect \u2014 not a fallback, and not a pack-supplied override.\n\n## Reference\n\n- The LilRAE project's APTL-era ownership record for this boundary:\n  [OpenRAE/lilrae#589](https://github.com/OpenRAE/lilrae/issues/589) and the\n  note it produced before the rename,\n  [scenario-pack capture ownership](https://github.com/OpenRAE/lilrae/blob/main/docs/architecture/issue-589-scenario-pack-capture-ownership-preflight.md).\n- The decision records for this repository's purpose and boundary live in the\n  [developer decision log](https://github.com/OpenRAE/env-packs/blob/main/docs/decisions/adrs/README.md).\n",
+      "docs/public/pack-issue-skeleton-script.md": "# Public page\n",
+      "docs/public/quickstart.md": "# Public page\n",
+      "docs/public/raes-migration.md": "# Public page\n",
+      "docs/public/two-audience-bundles.md": "# Public page\n",
+      "docs/public/validating.md": "# Public page\n",
+      "go.mod": "module github.com/OpenRAE/env-packs\n\ngo 1.27.3\n\nrequire (\n\tgithub.com/OpenRAE/rae/implementations/go v0.0.0-20261109005947-17bf4515bf12\n\tgithub.com/bluekeyes/go-gitdiff v0.9.0\n\tgithub.com/google/go-cmp v0.7.0\n\tgithub.com/pelletier/go-toml/v2 v2.4.3\n\tgithub.com/rogpeppe/go-internal v1.16.0\n\tgithub.com/santhosh-tekuri/jsonschema/v6 v6.0.3\n\tgo.yaml.in/yaml/v3 v3.0.6\n\tgolang.org/x/mod v0.42.0\n\tgolang.org/x/sys v0.49.0\n\tgolang.org/x/text v0.43.0\n\tgolang.org/x/tools v0.52.0\n\tmvdan.cc/sh/v3 v3.14.1\n)\n\nrequire (\n\tgithub.com/gowebpki/jcs v1.0.2 // indirect\n\tgithub.com/klauspost/cpuid/v2 v2.0.12 // indirect\n\tgithub.com/zeebo/blake3 v0.2.4 // indirect\n\tgolang.org/x/sync v0.24.0 // indirect\n)\n",
+      "go.sum": "github.com/OpenRAE/rae/implementations/go v0.0.0-20261109005947-17bf4515bf12 h1:qcDgSEL9kJxq+90UK6axC5TdI4R/7aYyym3uF1dbB0M=\ngithub.com/OpenRAE/rae/implementations/go v0.0.0-20261109005947-17bf4515bf12/go.mod h1:UXAoQLNtp8BFfvthmdS4GOmZ3MaR822KWBv9n3ddZbs=\ngithub.com/bluekeyes/go-gitdiff v0.9.0 h1:w+O6lkRBOqfGcwF0Lf6FFHQrhmxM0hCJW5+rbilGuSs=\ngithub.com/bluekeyes/go-gitdiff v0.9.0/go.mod h1:WWAk1Mc6EgWarCrPFO+xeYlujPu98VuLW3Tu+B/85AE=\ngithub.com/dlclark/regexp2 v1.11.0 h1:G/nrcoOa7ZXlpoa/91N3X7mM3r8eIlMBBJZvsz/mxKI=\ngithub.com/dlclark/regexp2 v1.11.0/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=\ngithub.com/go-quicktest/qt v1.102.0 h1:HSQxCeh5YZH3EL3W39ixjtyaEhcWSXQHtHnMBzSs474=\ngithub.com/go-quicktest/qt v1.102.0/go.mod h1:p4lGIVX+8Wa6ZPNDvqcxq36XpUDLh42FLetFU7odllI=\ngithub.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=\ngithub.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=\ngithub.com/gowebpki/jcs v1.0.2 h1:IY0Iv76ThSvocWinl2rphYmGLhMufS3ZD1giKqkI6ps=\ngithub.com/gowebpki/jcs v1.0.2/go.mod h1:caHbxgiKxrUu6KNItCUKoggR5/ZUSNxVCm9ZxWJXR0U=\ngithub.com/klauspost/cpuid/v2 v2.0.12 h1:p9dKCg8i4gmOxtv35DvrYoWqYzQrvEVdjQ762Y0OqZE=\ngithub.com/klauspost/cpuid/v2 v2.0.12/go.mod h1:g2LTdtYhdyuGPqyWyv7qRAmj1WBqxuObKfj5c0PQa7c=\ngithub.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=\ngithub.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=\ngithub.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=\ngithub.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=\ngithub.com/pelletier/go-toml/v2 v2.4.3 h1:GTRvJQutkOSftxIFD5xw9aepkYNuPWmVJpffdDPYVpY=\ngithub.com/pelletier/go-toml/v2 v2.4.3/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=\ngithub.com/rogpeppe/go-internal v1.16.0 h1:O9DK+vNMDVGLr2BeZqmpLeMjiMNkuXfcqntWbZV6S5g=\ngithub.com/rogpeppe/go-internal v1.16.0/go.mod h1:DrUVZyrJU+txYW5/1kwtXQSMFio52ZOxX7yM1VHvnxs=\ngithub.com/santhosh-tekuri/jsonschema/v6 v6.0.3 h1:1EYB5IzjZawrrnELUi78f9fPu57HuXjmddZPjrls/28=\ngithub.com/santhosh-tekuri/jsonschema/v6 v6.0.3/go.mod h1:JXeL+ps8p7/KNMjDQk3TCwPpBy0wYklyWTfbkIzdIFU=\ngithub.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=\ngithub.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=\ngithub.com/zeebo/assert v1.1.0 h1:hU1L1vLTHsnO8x8c9KAR5GmM5QscxHg5RNU5z5qbUWY=\ngithub.com/zeebo/assert v1.1.0/go.mod h1:Pq9JiuJQpG8JLJdtkwrJESF0Foym2/D9XMU5ciN/wJ0=\ngithub.com/zeebo/blake3 v0.2.4 h1:KYQPkhpRtcqh0ssGYcKLG1JYvddkEA8QwCM/yBqhaZI=\ngithub.com/zeebo/blake3 v0.2.4/go.mod h1:7eeQ6d2iXWRGF6npfaxl2CU+xy2Fjo2gxeyZGCRUjcE=\ngithub.com/zeebo/pcg v1.0.1 h1:lyqfGeWiv4ahac6ttHs+I5hwtH/+1mrhlCtVNQM2kHo=\ngithub.com/zeebo/pcg v1.0.1/go.mod h1:09F0S9iiKrwn9rlI5yjLkmrug154/YRW6KnnXVDM/l4=\ngo.yaml.in/yaml/v3 v3.0.6 h1:zcDfvjXEqTQmpjniUBLc91xYJMB2c4QOFxEF/LCEckM=\ngo.yaml.in/yaml/v3 v3.0.6/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=\ngolang.org/x/mod v0.42.0 h1:ICeL3t2L30ljSPHHxDnR4fqVcBt/zR2zJAb9juavmQg=\ngolang.org/x/mod v0.42.0/go.mod h1:u5fzIrRInkL8MaO1cbRkUHT64v303YIT5KEqpNr7jRs=\ngolang.org/x/sync v0.24.0 h1:iqiDrGoDgyuvAKrhLQthUEzU/R378N78gXbBjxed7oA=\ngolang.org/x/sync v0.24.0/go.mod h1:sUUOizhqBxiL6pEWpqNLUiaJn1ShEbZ6BBqskPbjZm0=\ngolang.org/x/sys v0.49.0 h1:XbzkgYJHdqh/8m2Uu0W/dQv8nktxx4BFHp1M0gROTXA=\ngolang.org/x/sys v0.49.0/go.mod h1:hNLxWAXmnKAxqDtdwIYC4bM9oQPEecfsnNMuSxOs3og=\ngolang.org/x/text v0.43.0 h1:1QivrlhwAsnMOcqgOdl9my7s9OyZl8O5/UGUTJVXoWc=\ngolang.org/x/text v0.43.0/go.mod h1:hbSIYA/amXcRXTFSZqh8tWHEoqRvvbKPJ2uz/KU+a+s=\ngolang.org/x/tools v0.52.0 h1:ryxg4U63oaUYk7uOLTF37n43f4qgtGvqV4Ioit1BaEs=\ngolang.org/x/tools v0.52.0/go.mod h1:ItcP5UNaVGG+Yc4eIYmaFLNJ4soEopkx5Y2d4lcEurs=\nmvdan.cc/sh/v3 v3.14.1 h1:bXkhQWNHCs0KZEChF8hYS6FC+T2N9mUZLbQv9blditI=\nmvdan.cc/sh/v3 v3.14.1/go.mod h1:syYCoFET8w9tvevxiXUtY8/ICrU+l26jHmhJDra3Vwo=\n",
+      "packs/techvault/README.md": "# TechVault\n\nTechVault is the first-party RAES environment pack for the complete enterprise\nintrusion scenario authored in `sdl/techvault.sdl.yaml`. It includes the\nscenario's vulnerable customer portal, enterprise services, attacker host,\ndefensive SOC, seeded data, and exact content artifacts. It declares the\nin-world state a conforming realization must provide without selecting how a\nbackend constructs or exposes that state.\n\nThe pack is named `techvault`; backend and deployment product names are not part\nof its identity. A consumer validates the pack and its associated-artifact\nmanifest, then resolves each SDL `content.source` by opaque artifact id. No\nconsumer is expected to recover content from this repository's checkout paths\nor from the former APTL source tree.\n\nHistorical source attribution is recorded in `docs/lineage.md` and\n`docs/provenance-ledger.yaml`; no originating backend is part of TechVault's\nportable identity.\n\n## Maturity\n\nThe pack is `built`: the complete scenario definition and byte-bound content\nare present, but this repository does not yet claim golden-range proof. Golden\nbuild, rehearsal, and participant walkthrough work is tracked separately in\n[issue #237](https://github.com/OpenRAE/env-packs/issues/237).\n\n## Validation\n\nFrom the repository root:\n\n```sh\nraes-pack-validate --packs-root packs\nraes-pack-release check --packs-root packs\npython -m pip install -e \".[test]\"\npython -m unittest tests.test_techvault_pack\n```\n\nThe pack-local satisfaction profile in\n`profiles/exact-artifact-copy-v1.json` defines the digest-bound copy route used\nby every exact content requirement. Tar assets are deterministic POSIX tar\ncarriers whose members are materialized at the declared directory destination.\n\n## Portable realization boundary\n\nTechVault uses an open realization designation and carries no substrate\nconstraints, machine images, build recipes, host-port publications, launch\ncommands, environment-variable delivery, capability grants, backend mounts, or\nrestart policy. Product and protocol versions are declared through typed RAES\nruntime state when they are known. A backend remains free to choose its own\nimplementation while preserving those in-world facts and exact content bytes.\nThat state includes service credential posture, certificate trust, and the\nfinal ownership and modes of scenario-significant files; it does not prescribe\nhow a backend supplies a secret, installs trust, or reaches that final state.\n\nTechVault likewise does not select where realization evidence is collected.\nThe backend must authoritatively corroborate the declared state at the RAES\nverification scope, but may use native control-plane readback, daemon\nobservation, guest observation, or another admitted method. It selects the\nleast intrusive complete method allowed by realization scope; omission of a\ncollection-method floor does not make evidence optional.\n\n## SOC credential fixtures\n\nAll SOC console logins are in-world accounts. Their native RAES\n`accounts.<account-id>.credential_bindings` declare `secret_fixture` material\nwith a value. Resolve a login by its account id and primary binding id; no\nbackend environment variable or secret-store lookup supplies these values.\n\n| Surface | Account reference | Username |\n| --- | --- | --- |\n| Wazuh indexer / dashboard interactive login / Filebeat | `accounts.wazuh-indexer-admin` | `admin` |\n| Wazuh dashboard service login to the indexer | `accounts.wazuh-indexer-kibanaserver` | `kibanaserver` |\n| Wazuh manager API | `accounts.wazuh-manager-api` | `wazuh-wui` |\n| Shuffle console | `accounts.shuffle-administrator` | `admin@techvault.local` |\n| MISP console | `accounts.misp-administrator` | `admin@admin.test` |\n| MISP synchronization API | `accounts.misp-suricata-sync-api-key` | `techvault-suricata-sync` |\n\nEach primary binding is named `<account-id>-primary`. These intentionally public\nsynthetic values belong to the scenario. The existing runtime MISP principal\nand API setting carry `redacted` posture because those RAES surfaces omit raw\nmaterial; their account bindings carry the `secret_fixture` values. This does\nnot make either identity an operator credential.\n\nThe MISP synchronization key is exactly 40 ASCII alphanumeric characters, as\nrequired by [MISP\u2019s authentication-key provisioning](https://github.com/MISP/MISP/blob/2.5/app/Console/Command/UserShell.php).\nThe pack-local author validator rejects primary fixture material with any other\nlength or characters, without including the rejected value in diagnostics.\n\nFilebeat and the dashboard's native configurations carry passwords matching\nthe declared bindings. The indexer hashes match the same authored values;\ntests verify both matches and incorrect-password rejection. Credential files\nhave restricted owner/mode declarations. The Filebeat configuration follows\n[Wazuh's 4.12.0 configuration](https://github.com/wazuh/wazuh/blob/v4.12.0/extensions/filebeat/7.x/filebeat.yml)\nfor its Wazuh module and index-template behavior, retaining certificate-verified\nHTTPS to the declared indexer.\n\nThe indexer's internal-users file defines initialization content. A retained\nsecurity index may still contain earlier state; the backend must corroborate\nthe declared credentials during realization and handle retained state through\nits own migration policy. Static validation does not prove live authentication\nor migrate retained data.\n\n## Flag values\n\nEach of `victim`, `workstation`, `webapp`, `fileshare`, and `ad` declares a user\nflag and a root flag in the SDL. The backend supplies fresh values for all ten\nrequired string variables (`flag_<host>_user` and `flag_<host>_root`) when it\ninstantiates a run. These variables have no defaults. Sensitive `content` files\nplace the values; each host's `filesystem_inventory` declares their ownership\nand permissions. User flags retain mode `0644`, with `labadmin` ownership on\n`victim`, `dev-user` on `workstation`, and `root` on the other hosts. Root flags\nare owned by `root:root` with mode `0600` at `/root/root.txt`.\n\nGeneration, signing, and verification belong to the backend. The pack supplies\nno flag generator, signing keys, token format, or flag-generation service.\nRequired variables express the backend-supplied values while RAES's native\nper-run generated-value declaration is tracked in\n[rae#1276](https://github.com/OpenRAE/rae/issues/1276). The SDL owns these file\ndeclarations; TechVault does not duplicate them in a flag placement map.\n\n## Participant MCP sources\n\nTechVault ships immutable source bundles for the participant tools based on APTL\ncommit `7c673a19f9fb6a3eb1d17305104196b600bd59cc`. The Kali workstation receives\n`aptl-mcp-common` and `mcp-red`; the separate SOC workstation receives the\ncommon package plus the six defensive MCP packages. Each host declares a\nNode.js 22 runtime. The archives contain only source, package/build manifests,\nthe upstream MIT license, and source metadata\u2014no dependencies, generated build\noutput, tests, backend configuration, or launch wrapper.\n\nRuntime Wazuh MCP configuration must send custom-rule writes to\n`PUT /rules/files/{filename}` with Wazuh JWT authentication and\n`overwrite=true`. Runtime configuration supplies service URLs and credentials.\n\nThe shared telemetry wrapper is adapted to emit only tool identity and status metadata; it never\nexports request, response, or error content. The SDL selects no installation or\nprocess-management method.\n\n## Suricata content contract\n\nThe Suricata configuration and 16-rule TechVault local corpus are exact pack\nartifacts. Product-provided built-in rules remain a separate source. The four\nempty MISP files are clean-start seeds in an ephemeral shared volume; the\ndeclared MISP forwarding agent may replace them and reload the engine through\nthe private Unix socket. A consumer must not source or copy replacement files\nfrom an APTL/LilRAE checkout.\n\nStatic validation joins the artifact identities, content placements, selected\nrule files, variables, engine inventory, generated-output path, SID namespace,\nshared volumes, reload target, and evidence requirements. Live readiness still\nrequires realized evidence showing a successful Suricata configuration and the\nselected sources and 16 active local SIDs. The declared behavioral probe sends\na participant-equivalent SQL-injection request to `/login` and requires\nSuricata SID `1000010` plus the existing Wazuh correlation rule `303020`.\nPassing static validation does not by itself establish that live result.\n\n## Red-team session evidence\n\nTechVault requires a transcript of every interactive session on the red-team\nworkstation, covering the commands issued and responses returned. The SDL's\n`redteam-session-transcript` evidence requirement defines its scope, lifetime,\nredaction, integrity, and loss-disclosure posture without selecting a capture\nmechanism. A realizing backend decides how to satisfy that requirement and must\nreport evidence loss rather than silently treating an uncaptured session as\ncaptured.\n",
+      "requirements/build.in": "# PEP 517 build frontend + the backend pyproject declares, hash-locked so no\n# build ever resolves its own toolchain from the network (#142).\nbuild==1.6.1\nhatchling==1.33.0\n# hatchling imports `editables` lazily when building an EDITABLE wheel and does\n# not declare it as a dependency, so `pip install --no-build-isolation -e .`\n# fails without it. Needed by CI's editable installs; inert for the release\n# build's regular wheel.\neditables==0.6\n",
+      "requirements/build.txt": "build==1.6.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\neditables==0.6 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nhatchling==1.33.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npackaging==26.3 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npathspec==1.1.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npluggy==1.6.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npyproject-hooks==1.2.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ntomlkit==0.15.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ntrove-classifiers==2026.6.1.19 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "requirements/coverage.in": "coverage==7.17.0\n# Synthetic Wazuh fixture password/hash agreement in the pack contract tests.\nbcrypt==5.0.0\n",
+      "requirements/coverage.txt": "bcrypt==5.0.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncoverage==7.17.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "requirements/docs.in": "sphinx==9.2.0\nmyst-parser==5.1.0\nfuro==2025.12.19\n",
+      "requirements/docs.txt": "accessible-pygments==0.0.5 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nalabaster==1.0.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nbabel==2.18.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nbeautifulsoup4==4.15.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncertifi==2026.10.19 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncharset-normalizer==3.4.9 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ndocutils==0.21.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nfuro==2025.12.19 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nidna==3.18 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nimagesize==2.0.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\njinja2==3.1.6 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmarkdown-it-py==4.2.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmarkupsafe==3.0.3 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmdit-py-plugins==0.6.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmdurl==0.1.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmyst-parser==5.1.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npackaging==26.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npygments==2.20.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npyyaml==6.0.3 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nrequests==2.34.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nroman-numerals==4.1.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsnowballstemmer==3.1.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsoupsieve==2.9.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsphinx==9.2.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsphinx-basic-ng==1.0.0b2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsphinxcontrib-applehelp==2.0.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsphinxcontrib-devhelp==2.0.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsphinxcontrib-htmlhelp==2.1.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsphinxcontrib-jsmath==1.0.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsphinxcontrib-qthelp==2.0.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsphinxcontrib-serializinghtml==2.0.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ntyping-extensions==4.16.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nurllib3==2.8.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "requirements/fuzz.in": "atheris==3.1.0\n",
+      "requirements/fuzz.txt": "atheris==3.1.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "requirements/pip-audit.in": "pip-audit==2.10.1\npip>=26.2  # PYSEC-2026-3721\nfilelock>=4.2.1  # CVE-2026-112907, CVE-2026-112913, CVE-2026-112940\nmsgpack>=1.2.3  # CVE-2026-114613\n",
+      "requirements/pip-audit.txt": "boolean-py==5.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncachecontrol==0.14.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncertifi==2026.10.19 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncharset-normalizer==3.5.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncyclonedx-python-lib==11.12.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ndefusedxml==0.7.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nfilelock==4.2.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nidna==3.20 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nlicense-expression==30.4.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmarkdown-it-py==4.2.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmdurl==0.1.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmsgpack==1.2.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npackageurl-python==0.17.6 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npackaging==26.3 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npip==26.2.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npip-api==0.0.35 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npip-audit==2.10.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npip-requirements-parser==32.0.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nplatformdirs==4.11.8 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npy-serializable==2.1.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npygments==2.21.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npyparsing==3.3.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nrequests==2.34.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nrich==15.0.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsortedcontainers==2.4.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ntomli==2.4.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ntomli-w==1.2.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nurllib3==2.8.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "requirements/runtime.in": "# Copy of [project].dependencies in pyproject.toml. Dependabot re-resolves a\n# lock only when the lock has an .in file with the same name, so runtime.txt\n# compiles from this file. tests/test_dependency_pinning.py checks that this\n# list and pyproject.toml are the same.\nPyYAML>=6\nraes==10.5.0\nmcp>=2,<3\njsonschema>=4\nanyio>=4,<5\n",
+      "requirements/runtime.txt": "annotated-doc==0.0.5 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nannotated-types==0.8.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nanyio==4.15.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nattrs==26.1.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nblake3==1.0.11 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncffi==2.1.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nclick==8.5.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncryptography==50.0.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ndefusedxml==0.7.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nfastapi==0.156.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nh11==0.16.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nhttpcore2==2.15.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nhttptools==0.9.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nhttpx2==2.15.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nidna==3.20 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\njsonschema==4.26.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\njsonschema-specifications==2025.9.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmarkdown-it-py==4.2.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmcp==2.3.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmcp-types==2.3.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nmdurl==0.1.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nopentelemetry-api==1.45.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npackaging==26.3 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npycparser==3.11 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npydantic==2.14.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npydantic-core==2.50.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npygments==2.21.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npyjwt==2.15.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npython-dotenv==1.2.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npython-multipart==0.0.32 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npyyaml==6.0.3 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nraes==10.5.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nreferencing==0.37.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nrfc8785==0.1.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nrich==15.0.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nrpds-py==0.30.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsemantic-version==2.10.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsemver==3.1.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nshellingham==1.5.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsse-starlette==3.5.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nstarlette==1.9.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ntruststore==0.10.5 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ntyper==0.27.3 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ntyping-extensions==4.16.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ntyping-inspection==0.4.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nunivers==32.0.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nuvicorn==0.54.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nuvloop==0.23.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nwatchfiles==1.3.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nwebsockets==17.3 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nz3-solver==4.16.0.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "requirements/sbom.in": "cyclonedx-bom==7.6.0\n",
+      "requirements/sbom.txt": "arrow==1.4.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nattrs==26.1.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nboolean-py==5.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nchardet==5.2.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ncyclonedx-bom==7.6.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ndefusedxml==0.7.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nfqdn==1.5.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nidna==3.20 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nisoduration==20.11.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\njsonpointer==3.1.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\njsonschema-specifications==2025.9.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nlark==1.3.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nlicense-expression==30.4.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nlxml==6.1.3 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npackageurl-python==0.17.6 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npackaging==26.3 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npip-requirements-parser==32.0.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npy-serializable==2.1.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npyparsing==3.3.2 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\npython-dateutil==2.9.0.post0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nreferencing==0.37.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nrfc3339-validator==0.1.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nrfc3986-validator==0.1.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nrfc3987-syntax==1.1.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nrpds-py==0.30.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsix==1.17.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsortedcontainers==2.4.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ntzdata==2026.4 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nuri-template==1.3.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nwebcolors==25.10.0 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "sonar-project.properties": "# SonarCloud Configuration\n# https://sonarcloud.io/project/overview?id=OpenRAE_env-packs\n\nsonar.projectKey=OpenRAE_env-packs\nsonar.organization=raesystem\n\n# Quality gate: make the scanner wait for the SonarCloud quality gate and fail\n# the CI `sonar` job when the gate fails. Sonar is intentionally not a universal\n# required context because repository secrets are unavailable to fork and\n# Dependabot pull requests (ADR 0029); branch protection continues to require\n# `verify`. The project's assigned gate must still be the strict gate that fails\n# on any new issue (mirroring `raes-strict` on Brad-Edwards_aces); this file\n# enforces the assigned gate whenever the scanner is eligible to run.\nsonar.qualitygate.wait=true\nsonar.qualitygate.timeout=600\n\n# Source and test files. Python sources live under src/ and Python tests under\n# tests/. Go sources and Go tests live in package directories across the\n# repository (ADR 0047), so both roots are the repository root and the\n# inclusion patterns select the files.\nsonar.sources=.\nsonar.inclusions=src/**,**/*.go\nsonar.tests=.\nsonar.test.inclusions=tests/**,**/*_test.go\n\n# Exclusions\nsonar.exclusions=\\\n  **/*_test.go,\\\n  **/testdata/**,\\\n  **/__pycache__/**,\\\n  **/.venv/**,\\\n  **/build/**,\\\n  **/dist/**,\\\n  **/*.egg-info/**\n\n# Match the CPython 3.14 range supported by RAES 9 and the package.\nsonar.python.version=3.14\n\n# Coverage. CI generates coverage.xml with coverage.py (see\n# .github/workflows/ci.yml and .coveragerc); the scanner maps it onto the\n# scripts/ sources.\nsonar.python.coverage.reportPaths=coverage.xml\n\n# Go coverage. The go CI job writes coverage-go.out with `make go-check` (see\n# docs/development/go-test-standard.md), and the sonar job downloads it.\nsonar.go.coverage.reportPaths=coverage-go.out\n"
+    },
+    "commands": [
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-audit",
+        "args": [
+          "make",
+          "go-audit"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-audit",
+        "args": [
+          "exit",
+          "0"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-audit",
+        "args": [
+          "echo",
+          "go-audit attempt $i failed; retrying in 10s..."
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-audit",
+        "args": [
+          "sleep",
+          "10"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-audit",
+        "args": [
+          "echo",
+          "go-audit failed after 3 attempts"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-audit",
+        "args": [
+          "exit",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "audit",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/runtime.txt",
+          "-r",
+          "requirements/build.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "audit",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--no-deps",
+          "--no-build-isolation",
+          "-e",
+          "."
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "audit",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/pip-audit.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "audit",
+        "args": [
+          "pip-audit"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "audit",
+        "args": [
+          "exit",
+          "0"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "audit",
+        "args": [
+          "echo",
+          "pip-audit attempt $i failed; retrying in 10s..."
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "audit",
+        "args": [
+          "sleep",
+          "10"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "audit",
+        "args": [
+          "echo",
+          "pip-audit failed after 3 attempts"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "audit",
+        "args": [
+          "exit",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "content",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/runtime.txt",
+          "-r",
+          "requirements/build.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "content",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--no-deps",
+          "--no-build-isolation",
+          "-e",
+          "."
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "content",
+        "args": [
+          "raes-pack-validate",
+          "--repo",
+          "."
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "content",
+        "args": [
+          "raes-pack-release",
+          "check",
+          "--all"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "content",
+        "args": [
+          "raes-pack-validate",
+          "--packs-root",
+          "packs"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "content",
+        "args": [
+          "raes-pack-release",
+          "check",
+          "--packs-root",
+          "packs"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-arch",
+        "args": [
+          "make",
+          "go-arch"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-arch",
+        "args": [
+          "make",
+          "go-arch-change",
+          "BASE=$BASE"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "compile",
+        "args": [
+          "python",
+          "-m",
+          "compileall",
+          "src",
+          "tests"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go",
+        "args": [
+          "make",
+          "go-check"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-lint",
+        "args": [
+          "make",
+          "go-lint"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-regression",
+        "args": [
+          "make",
+          "go-regression",
+          "BASE=$BASE"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "tests",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/runtime.txt",
+          "-r",
+          "requirements/coverage.txt",
+          "-r",
+          "requirements/build.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "tests",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--no-deps",
+          "--no-build-isolation",
+          "-e",
+          "."
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "tests",
+        "args": [
+          "coverage",
+          "run",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "tests",
+        "args": [
+          "coverage",
+          "xml"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "docs",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/docs.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "docs",
+        "args": [
+          "python",
+          "-m",
+          "sphinx",
+          "-W",
+          "-b",
+          "html",
+          "docs/public",
+          "docs/public/_build/html"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "docs",
+        "args": [
+          "python",
+          "tools/check_docs_publication_boundary.py",
+          "docs/public/_build/html"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "docs",
+        "args": [
+          "make",
+          "prose",
+          "BASE=$BASE"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "conformance",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/runtime.txt",
+          "-r",
+          "requirements/build.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "conformance",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--no-deps",
+          "--no-build-isolation",
+          "-e",
+          "."
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "conformance",
+        "args": [
+          "make",
+          "conformance"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "conformance-go",
+        "args": [
+          "make",
+          "conformance-go"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "go-mutation",
+        "args": [
+          "make",
+          "go-mutation",
+          "BASE=$BASE"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "verify",
+        "args": [
+          "echo",
+          "compile=$COMPILE tests=$TESTS audit=$AUDIT content=$CONTENT docs=$DOCS conformance=$CONFORMANCE conformance-go=$CONFORMANCE_GO go=$GO go-lint=$GO_LINT go-audit=$GO_AUDIT go-arch=$GO_ARCH go-mutation=$GO_MUTATION go-regression=$GO_REGRESSION"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "verify",
+        "args": [
+          "[",
+          "$result",
+          "!=",
+          "success",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "verify",
+        "args": [
+          "echo",
+          "::error::A mandatory verification job did not succeed; blocking merge."
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "verify",
+        "args": [
+          "exit",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/ci.yml",
+        "job": "verify",
+        "args": [
+          "echo",
+          "All mandatory verification jobs passed."
+        ]
+      },
+      {
+        "file": ".github/workflows/fuzz.yml",
+        "job": "go-fuzz",
+        "args": [
+          "make",
+          "go-fuzz",
+          "FUZZTIME=$FUZZTIME"
+        ]
+      },
+      {
+        "file": ".github/workflows/fuzz.yml",
+        "job": "fuzz",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/runtime.txt",
+          "-r",
+          "requirements/fuzz.txt",
+          "-r",
+          "requirements/build.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/fuzz.yml",
+        "job": "fuzz",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--no-deps",
+          "--no-build-isolation",
+          "-e",
+          "."
+        ]
+      },
+      {
+        "file": ".github/workflows/fuzz.yml",
+        "job": "fuzz",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/fuzz.yml",
+        "job": "fuzz",
+        "args": [
+          "mkdir",
+          "-p",
+          "fuzz-artifacts"
+        ]
+      },
+      {
+        "file": ".github/workflows/fuzz.yml",
+        "job": "fuzz",
+        "args": [
+          "python",
+          "fuzz/fuzz_validate_pack.py",
+          "-max_total_time=${FUZZ_SECONDS}",
+          "-rss_limit_mb=4096",
+          "-timeout=60",
+          "-artifact_prefix=fuzz-artifacts/"
+        ]
+      },
+      {
+        "file": ".github/workflows/ground-control-phase-e.yml",
+        "job": "finalize",
+        "args": [
+          "npx",
+          "--yes",
+          "grndctl@1.2.1",
+          "finalize-merged-pr",
+          "--pr",
+          "$PR"
+        ]
+      },
+      {
+        "file": ".github/workflows/mutation.yml",
+        "job": "go-mutation-all",
+        "args": [
+          "make",
+          "go-mutation-all"
+        ]
+      },
+      {
+        "file": ".github/workflows/pack-distribution.yml",
+        "job": "rehearse",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/pack-distribution.yml",
+        "job": "rehearse",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/runtime.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/pack-distribution.yml",
+        "job": "rehearse",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--no-deps",
+          "-e",
+          "."
+        ]
+      },
+      {
+        "file": ".github/workflows/pack-distribution.yml",
+        "job": "rehearse",
+        "args": [
+          "python",
+          "tests_integration/distribution_rehearsal.py"
+        ]
+      },
+      {
+        "file": ".github/workflows/pr-title.yml",
+        "job": "pr-title-guard",
+        "args": [
+          "[",
+          "!",
+          "-f",
+          "tools/check_pr_title.py",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/pr-title.yml",
+        "job": "pr-title-guard",
+        "args": [
+          "echo",
+          "::notice::tools/check_pr_title.py is not on the base ref yet; skipping (bootstrap for the PR that introduces the guard). Enforcement is active for every subsequent PR."
+        ]
+      },
+      {
+        "file": ".github/workflows/pr-title.yml",
+        "job": "pr-title-guard",
+        "args": [
+          "exit",
+          "0"
+        ]
+      },
+      {
+        "file": ".github/workflows/pr-title.yml",
+        "job": "pr-title-guard",
+        "args": [
+          "python",
+          "tools/check_pr_title.py"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "mkdir",
+          "-p",
+          "requirements"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "cat-file",
+          "-e",
+          "${TARGET_SHA}:requirements/build.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "cat-file",
+          "-e",
+          "${TARGET_SHA}:requirements/runtime.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "cat-file",
+          "-e",
+          "${TARGET_SHA}:requirements/sbom.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "Release target ${TARGET_SHA} has no hash-locked release tooling."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "exit",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "show",
+          "${TARGET_SHA}:requirements/build.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "show",
+          "${TARGET_SHA}:requirements/runtime.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "show",
+          "${TARGET_SHA}:requirements/sbom.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "curl",
+          "--fail",
+          "--silent",
+          "--show-error",
+          "--location",
+          "--proto",
+          "=https",
+          "--tlsv1.2",
+          "--retry",
+          "3",
+          "--output",
+          "${binary}",
+          "https://github.com/sigstore/gitsign/releases/download/v${GITSIGN_VERSION_PIN}/gitsign_${GITSIGN_VERSION_PIN}_linux_amd64"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "printf",
+          "%s  %s\\n",
+          "${GITSIGN_SHA256}",
+          "${binary}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "sha256sum",
+          "--check",
+          "--strict"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "chmod",
+          "0755",
+          "${binary}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "printf",
+          "GITSIGN_BIN=%s\\n",
+          "${binary}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "${GITSIGN_BIN}",
+          "version"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "grep",
+          "-oE",
+          "[0-9]+\\.[0-9]+\\.[0-9]+"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "head",
+          "-n1"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "true"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "[",
+          "-z",
+          "${installed}",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "Could not determine the installed gitsign version."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "exit",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "printf",
+          "%s\\n%s\\n",
+          "${installed}",
+          "${GITSIGN_VERSION_FLOOR}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "sort",
+          "-V"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "head",
+          "-n1"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "[",
+          "${lowest}",
+          "!=",
+          "${GITSIGN_VERSION_FLOOR}",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "gitsign ${installed} is below the required floor ${GITSIGN_VERSION_FLOOR} (CVE-2026-44310)."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "exit",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "gitsign ${installed} satisfies the >= ${GITSIGN_VERSION_FLOOR} floor."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "config",
+          "user.name",
+          "github-actions[bot]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "config",
+          "user.email",
+          "41898282+github-actions[bot]@users.noreply.github.com"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "config",
+          "gpg.x509.program",
+          "${GITSIGN_BIN}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "config",
+          "gpg.format",
+          "x509"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "${GITSIGN_BIN}",
+          "verify-tag",
+          "--certificate-identity=${CERT_IDENTITY}",
+          "--certificate-oidc-issuer=${CERT_OIDC_ISSUER}",
+          "${TAG}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "return",
+          "0"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "[",
+          "${attempt}",
+          "-eq",
+          "5",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "Signed tag verification failed after ${attempt} attempts."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "return",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "Transparency-log verification not ready; retrying in ${delay}s."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "sleep",
+          "${delay}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "ls-remote",
+          "--exit-code",
+          "--tags",
+          "origin",
+          "refs/tags/${TAG}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "Tag ${TAG} already exists on origin; validating for rerun."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "fetch",
+          "--no-tags",
+          "origin",
+          "refs/tags/${TAG}:refs/tags/${TAG}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "rev-list",
+          "-n",
+          "1",
+          "${TAG}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "[",
+          "${target}",
+          "!=",
+          "${TARGET_SHA}",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "Existing tag ${TAG} points at ${target}, not ${TARGET_SHA}; refusing."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "exit",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "verify_tag"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "Reusing existing verified tag ${TAG}."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "tag",
+          "-s",
+          "${TAG}",
+          "${TARGET_SHA}",
+          "-m",
+          "Release ${TAG}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "verify_tag"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "printf",
+          "verified=true\\n"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "gh",
+          "auth",
+          "setup-git"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "push",
+          "origin",
+          "refs/tags/${TAG}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "mkdir",
+          "-p",
+          "${artifact_dir}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "cat-file",
+          "-e",
+          "${TAG}^{tag}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "cat-file",
+          "tag",
+          "${TAG}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "rev-parse",
+          "${TAG}^{tag}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "git",
+          "rev-list",
+          "-n",
+          "1",
+          "${TAG}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/build.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "python",
+          "-m",
+          "build",
+          "--no-isolation",
+          "--outdir",
+          "dist"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/runtime.txt",
+          "-r",
+          "requirements/sbom.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--no-deps",
+          "dist/*.whl"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "mkdir",
+          "-p",
+          "sbom"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "python",
+          "-c",
+          "import tomllib; print(tomllib.load(open(\"pyproject.toml\", \"rb\"))[\"project\"][\"name\"])"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "cyclonedx-py",
+          "environment",
+          "--output-format",
+          "JSON",
+          "--output-file",
+          "sbom/${distribution}.cdx.json"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "python",
+          "tools/release_tag_gate.py",
+          "notes",
+          "--version",
+          "${VERSION}",
+          "--changelog",
+          "CHANGELOG.md",
+          "--output",
+          "release-notes.md"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "python",
+          "-c",
+          "import tomllib; print(tomllib.load(open(\"pyproject.toml\", \"rb\"))[\"project\"][\"name\"])"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "[",
+          "${distribution}",
+          "!=",
+          "raes-env-packs",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "Distribution ${distribution} is not authorized for PyPI publication."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "exit",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "gh",
+          "release",
+          "view",
+          "${TAG}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "echo",
+          "GitHub Release ${TAG} already exists; reusing it (rerun-safe)."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "gh",
+          "release",
+          "create",
+          "${TAG}",
+          "--verify-tag",
+          "--title",
+          "${TAG}",
+          "--notes-file",
+          "release-notes.md"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "gh",
+          "release",
+          "upload",
+          "${TAG}",
+          "dist/*",
+          "sbom/*.cdx.json",
+          "--clobber"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "gh",
+          "pr",
+          "edit",
+          "${PR}",
+          "--add-label",
+          "autorelease: tagged"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "gh",
+          "pr",
+          "edit",
+          "${PR}",
+          "--remove-label",
+          "autorelease: pending"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "publish",
+        "args": [
+          "true"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "gh",
+          "pr",
+          "list",
+          "--repo",
+          "${GITHUB_REPOSITORY}",
+          "--state",
+          "open",
+          "--base",
+          "main",
+          "--head",
+          "${RELEASE_BRANCH}",
+          "--json",
+          "number",
+          "--jq",
+          "length"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "printf",
+          "open=%s\\n",
+          "$([ \"${count}\" -gt 0 ] && echo true || echo false)"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "[",
+          "${count}",
+          "-gt",
+          "0",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "echo",
+          "true"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "echo",
+          "false"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/runtime.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/build.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--no-deps",
+          "--no-build-isolation",
+          "-e",
+          "."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "python",
+          "tools/sync_pack_versions.py"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "git",
+          "diff",
+          "--quiet"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "echo",
+          "Every pack already carries the release version."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "exit",
+          "0"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "python",
+          "-c",
+          "import tomllib; print(tomllib.load(open(\"pyproject.toml\", \"rb\"))[\"project\"][\"version\"])"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "git",
+          "config",
+          "user.name",
+          "github-actions[bot]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "git",
+          "config",
+          "user.email",
+          "41898282+github-actions[bot]@users.noreply.github.com"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "git",
+          "add",
+          "packs"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "git",
+          "commit",
+          "-m",
+          "chore: set pack versions to ${version}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "gh",
+          "auth",
+          "setup-git"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "sync-pack-versions",
+        "args": [
+          "git",
+          "push",
+          "origin",
+          "HEAD:refs/heads/${RELEASE_BRANCH}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "[",
+          "-n",
+          "${RECOVERY_PR}",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "echo",
+          "release_pr must be a positive integer."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "exit",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "gh",
+          "api",
+          "${api}",
+          "--jq",
+          ".state"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "gh",
+          "api",
+          "${api}",
+          "--jq",
+          ".merged_at // \"\""
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "gh",
+          "api",
+          "${api}",
+          "--jq",
+          ".base.ref"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "[",
+          "${state}",
+          "!=",
+          "closed",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "[",
+          "-z",
+          "${merged_at}",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "[",
+          "${base_ref}",
+          "!=",
+          "main",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "echo",
+          "Recovery requires a merged pull request into main."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "exit",
+          "1"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "gh",
+          "api",
+          "${api}",
+          "--jq",
+          ".merge_commit_sha // \"\""
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "git",
+          "cat-file",
+          "-e",
+          "${after}^{commit}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "git",
+          "rev-parse",
+          "${after}^"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "gh",
+          "api",
+          "${api}",
+          "--jq",
+          ".labels[].name"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "gh",
+          "api",
+          "${api}",
+          "--jq",
+          "[.[] | select(.merge_commit_sha == env.PUSH_AFTER) | .labels[].name] | .[]"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "true"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "gh",
+          "api",
+          "${api}",
+          "--jq",
+          "map(select(.merge_commit_sha == env.PUSH_AFTER)) | (.[0].number // \"\" | tostring)"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "true"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "echo",
+          "number=${number}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "echo",
+          "before=${before}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "echo",
+          "after=${after}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "detect-release",
+        "args": [
+          "python",
+          "tools/release_tag_gate.py",
+          "check",
+          "--before",
+          "${BEFORE_SHA}",
+          "--after",
+          "${AFTER_SHA}",
+          "--merged-pr-labels-file",
+          "pr-labels.txt",
+          "--github-output",
+          "${GITHUB_OUTPUT}"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "verify-pack-versions",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "verify-pack-versions",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/runtime.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "verify-pack-versions",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--require-hashes",
+          "-r",
+          "requirements/build.txt"
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "verify-pack-versions",
+        "args": [
+          "python",
+          "-m",
+          "pip",
+          "install",
+          "--no-deps",
+          "--no-build-isolation",
+          "-e",
+          "."
+        ]
+      },
+      {
+        "file": ".github/workflows/release-please.yml",
+        "job": "verify-pack-versions",
+        "args": [
+          "python",
+          "tools/sync_pack_versions.py",
+          "--check"
+        ]
+      },
+      {
+        "file": ".github/workflows/sync-main-to-dev.yml",
+        "job": "backmerge",
+        "args": [
+          "set",
+          "-euo",
+          "pipefail"
+        ]
+      },
+      {
+        "file": ".github/workflows/sync-main-to-dev.yml",
+        "job": "backmerge",
+        "args": [
+          "git",
+          "fetch",
+          "--quiet",
+          "origin",
+          "main",
+          "dev"
+        ]
+      },
+      {
+        "file": ".github/workflows/sync-main-to-dev.yml",
+        "job": "backmerge",
+        "args": [
+          "git",
+          "diff",
+          "--quiet",
+          "origin/dev",
+          "origin/main"
+        ]
+      },
+      {
+        "file": ".github/workflows/sync-main-to-dev.yml",
+        "job": "backmerge",
+        "args": [
+          "echo",
+          "dev and main content already match; nothing to sync."
+        ]
+      },
+      {
+        "file": ".github/workflows/sync-main-to-dev.yml",
+        "job": "backmerge",
+        "args": [
+          "exit",
+          "0"
+        ]
+      },
+      {
+        "file": ".github/workflows/sync-main-to-dev.yml",
+        "job": "backmerge",
+        "args": [
+          "git",
+          "push",
+          "--force",
+          "origin",
+          "origin/main:refs/heads/${branch}"
+        ]
+      },
+      {
+        "file": ".github/workflows/sync-main-to-dev.yml",
+        "job": "backmerge",
+        "args": [
+          "gh",
+          "pr",
+          "list",
+          "--head",
+          "${branch}",
+          "--base",
+          "dev",
+          "--state",
+          "open",
+          "--json",
+          "number",
+          "--jq",
+          ".[0].number // empty"
+        ]
+      },
+      {
+        "file": ".github/workflows/sync-main-to-dev.yml",
+        "job": "backmerge",
+        "args": [
+          "[",
+          "-n",
+          "${existing}",
+          "]"
+        ]
+      },
+      {
+        "file": ".github/workflows/sync-main-to-dev.yml",
+        "job": "backmerge",
+        "args": [
+          "echo",
+          "Back-merge PR #${existing} already open; its branch now points at latest main."
+        ]
+      },
+      {
+        "file": ".github/workflows/sync-main-to-dev.yml",
+        "job": "backmerge",
+        "args": [
+          "gh",
+          "pr",
+          "create",
+          "--base",
+          "dev",
+          "--head",
+          "${branch}",
+          "--title",
+          "chore: sync main -> dev",
+          "--body",
+          "Automated back-merge (ADR 0008): brings release commit(s) from \\`main\\` into \\`dev\\` so the branches stay in sync. Merge to keep dev current."
+        ]
+      }
+    ]
+  }
+}

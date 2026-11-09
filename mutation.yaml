@@ -1,5 +1,54 @@
 version: 1
 equivalents:
+  - file: tools/policyinput/main.go
+    function: main
+    mutator: branch/if
+    line: "status = outcome.ToolFailure"
+    mutated: "_, _ = status, outcome.ToolFailure"
+    reason: >-
+      This error requires Close on the sole owned os.Root to fail. No code
+      closes that root or its descriptor before this call, and collection
+      only opens independent files through Root.FS. The operating system
+      therefore cannot return an ordinary close error on this path.
+  - file: tools/policyinput/main.go
+    function: shellCommands
+    mutator: branch/if
+    line: "printErr = err"
+    mutated: "_, _ = printErr, err"
+    reason: >-
+      wordText prints only parser-produced WordPart nodes with default
+      printer options into bytes.Buffer. Printer 3.14.1 accepts WordPart
+      nodes, and this writer never returns an error. No parsed script can
+      reach the error assignment; the parser itself has a tested error path.
+  - file: tools/policyinput/main.go
+    function: shellCommands
+    mutator: statement/remove
+    line: "printErr = err"
+    mutated: "_, _ = printErr, err"
+    reason: >-
+      wordText prints parser-produced WordPart nodes into bytes.Buffer with
+      default printer options. Printer 3.14.1 accepts these nodes and the
+      writer cannot fail, so no parsed script reaches this assignment.
+  - file: tools/policyinput/main.go
+    function: wordText
+    mutator: branch/if
+    line: 'return "", err'
+    mutated: "_ = err"
+    reason: >-
+      Recursive quoted parts have the same valid WordPart types as their
+      parent. The only source of an error is the default printer into
+      bytes.Buffer; its supported node types and infallible writer make
+      that error unreachable for parser-produced words.
+  - file: tools/policyinput/main.go
+    function: wordText
+    mutator: branch/if
+    line: 'return "", errors.New("unsupported shell expression")'
+    mutated: "_ = errors.New"
+    reason: >-
+      Printer 3.14.1 accepts every WordPart node, its default options do
+      not conflict, and bytes.Buffer cannot fail a write. This error
+      remains defensive against future printer changes, but no parsed
+      shell word can trigger it at the pinned version.
   - file: internal/architecture/c4.go
     function: RenderDSL
     mutator: branch/if

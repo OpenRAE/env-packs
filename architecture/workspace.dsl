@@ -28,12 +28,15 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
                 raes_interface = component "raes-interface" "Declares the RAES operations that env-packs uses. Only its adapter calls the RAES Go module." "Go"
                 issue_skeleton = component "issue-skeleton" "Plans the standard planning issues of a new pack, and writes them to GitHub through gh." "Go"
                 strict_yaml = component "strict-yaml" "Decodes exactly one YAML document, and rejects unknown fields." "Go"
+                raes_adapter = component "raes-adapter" "Calls public RAES Go operations through the RAES interfaces." "Go"
             }
             repository_tools = container "Repository tools" "The tools that check and release this repository." "Go" {
                 report = component "report" "Holds the findings of the repository tools and writes them." "Go"
                 architecture = component "architecture" "Checks the code and the design records against this model." "Go"
                 test_gates = component "test-gates" "Runs mutation testing on changed lines and proves regression tests." "Go"
                 conformance = component "conformance" "Runs the conformance corpus against the Python or the Go implementation." "Go"
+                repository_policy = component "repository-policy" "Collects local repository inputs for Conftest without evaluating policy." "Go"
+                contract_alignment = component "contract-alignment" "Tests repository identity and the RAES concept and provenance boundaries." "Go"
             }
         }
 
@@ -56,6 +59,16 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
         env_packs.repository_tools.test_gates -> env_packs.library.strict_yaml "Depends on"
         env_packs.repository_tools.test_gates -> env_packs.repository_tools.report "Depends on"
         env_packs.repository_tools.test_gates -> env_packs.library.outcome "Depends on"
+        env_packs.repository_tools.repository_policy -> env_packs.library.strict_yaml "Depends on"
+        env_packs.repository_tools.repository_policy -> env_packs.repository_tools.report "Depends on"
+        env_packs.repository_tools.repository_policy -> env_packs.library.outcome "Depends on"
+        env_packs.repository_tools.repository_policy -> env_packs.library.terminal "Depends on"
+        env_packs.repository_tools.contract_alignment -> env_packs.library.raes_adapter "Depends on"
+        env_packs.repository_tools.contract_alignment -> env_packs.library.raes_interface "Depends on"
+        env_packs.repository_tools.contract_alignment -> env_packs.library.schema "Depends on"
+        env_packs.repository_tools.contract_alignment -> env_packs.library.document "Depends on"
+        env_packs.repository_tools.contract_alignment -> env_packs.library.root "Depends on"
+        env_packs.library.raes_adapter -> env_packs.library.raes_interface "Depends on"
     }
 
     views {

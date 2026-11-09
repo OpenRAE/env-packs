@@ -13,7 +13,7 @@ same time:
 
 | Workflow | Checks | Blocks merge? |
 | --- | --- | --- |
-| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `conformance`, `go`, `go-lint`, `go-audit`, `go-arch`, `go-mutation`, `go-regression`, **`verify`**, `sonar` | only **`verify`** |
+| `ci.yml` | `compile`, `tests`, `audit`, `content`, `docs`, `conformance`, `policy`, `go`, `go-lint`, `go-audit`, `go-arch`, `go-mutation`, `go-regression`, **`verify`**, `sonar` | only **`verify`** |
 | `codeql.yml` | `Analyze (python)` and `Analyze (go)`: static security analysis | depends on branch protection |
 | `fuzz.yml` | `Fuzz validate_pack`: bounded fuzzing of the untrusted-pack boundary. `Fuzz Go targets`: every native Go fuzz target | depends on branch protection |
 | `pr-title.yml` | `PR title guard`: the Conventional Commit shape | depends on branch protection |
@@ -33,6 +33,9 @@ does not wait for an unrelated job, and the fastest signal arrives first.
 
 - **`compile`**: `python -m compileall src tests`. It installs no dependency, so
   a syntax error fails in seconds. This is the earliest lane.
+- **`policy`**: runs `make policy` with pinned Conftest and actionlint.
+  It checks repository governance and RAES contract alignment.
+  Ground Control uses the same target. See [repository policy](repository-policy.md).
 - **`tests`**: installs the hash-locked runtime, coverage, and build closure. It
   then runs the whole unit suite under coverage (`coverage run -m unittest
   discover -s tests`) and uploads `coverage.xml`. This job is the **coverage

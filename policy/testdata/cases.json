@@ -1,0 +1,1326 @@
+{
+  "policy_cases": {
+    "workflow.permissions/None": {
+      "rule": "workflow.permissions",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/permissions",
+          "value": null
+        }
+      ]
+    },
+    "workflow.permissions/write-all": {
+      "rule": "workflow.permissions",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/permissions",
+          "value": "write-all"
+        }
+      ]
+    },
+    "workflow.permissions/{'contents': 'write'}": {
+      "rule": "workflow.permissions",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/permissions",
+          "value": {
+            "contents": "write"
+          }
+        }
+      ]
+    },
+    "workflow.permissions/True": {
+      "rule": "workflow.permissions",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/permissions",
+          "value": true
+        }
+      ]
+    },
+    "workflow.permissions/nonsense": {
+      "rule": "workflow.permissions",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/permissions",
+          "value": "nonsense"
+        }
+      ]
+    },
+    "workflow.job-scopes/jobs.tests.permissions": {
+      "rule": "workflow.job-scopes",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/tests/permissions",
+          "value": "write-all"
+        }
+      ]
+    },
+    "workflow.action-pins/jobs.tests.steps.0.uses": {
+      "rule": "workflow.action-pins",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/tests/steps/0/uses",
+          "value": "actions/checkout@main"
+        }
+      ]
+    },
+    "workflow.no-merge/jobs.tests.steps.0.run": {
+      "rule": "workflow.no-merge",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/tests/steps/0/run",
+          "value": "enablePullRequestAutoMerge"
+        }
+      ]
+    },
+    "codeql.triggers/branches": {
+      "rule": "codeql.triggers",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1codeql.yml/on/pull_request",
+          "value": {
+            "branches": [
+              "dev"
+            ]
+          }
+        }
+      ]
+    },
+    "codeql.triggers/schedule": {
+      "rule": "codeql.triggers",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1codeql.yml/on/schedule",
+          "value": []
+        }
+      ]
+    },
+    "codeql.analysis/permissions": {
+      "rule": "codeql.analysis",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1codeql.yml/permissions",
+          "value": null
+        }
+      ]
+    },
+    "codeql.analysis/jobs.analyze.permissions": {
+      "rule": "codeql.analysis",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1codeql.yml/jobs/analyze/permissions",
+          "value": null
+        }
+      ]
+    },
+    "codeql.analysis/jobs.analyze.strategy.matrix.include": {
+      "rule": "codeql.analysis",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1codeql.yml/jobs/analyze/strategy/matrix/include",
+          "value": null
+        }
+      ]
+    },
+    "codeql.analysis/concurrency.cancel-in-progress": {
+      "rule": "codeql.analysis",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1codeql.yml/concurrency/cancel-in-progress",
+          "value": null
+        }
+      ]
+    },
+    "codeql.analysis/actions/setup-go@": {
+      "rule": "codeql.analysis",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1codeql.yml/jobs/analyze/steps/1/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "codeql.analysis/github/codeql-action/init@": {
+      "rule": "codeql.analysis",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1codeql.yml/jobs/analyze/steps/2/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "codeql.analysis/github/codeql-action/analyze@": {
+      "rule": "codeql.analysis",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1codeql.yml/jobs/analyze/steps/3/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "codeql.analysis/paths-ignore": {
+      "rule": "codeql.analysis",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1codeql~1codeql-config.yml/paths-ignore",
+          "value": [
+            "packs/**"
+          ]
+        }
+      ]
+    },
+    "scorecard.triggers/on.push.branches": {
+      "rule": "scorecard.triggers",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1scorecard.yml/on/push/branches",
+          "value": null
+        }
+      ]
+    },
+    "scorecard.triggers/on.schedule": {
+      "rule": "scorecard.triggers",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1scorecard.yml/on/schedule",
+          "value": null
+        }
+      ]
+    },
+    "scorecard.triggers/concurrency.cancel-in-progress": {
+      "rule": "scorecard.triggers",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1scorecard.yml/concurrency/cancel-in-progress",
+          "value": null
+        }
+      ]
+    },
+    "scorecard.publication/ossf/scorecard-action@": {
+      "rule": "scorecard.publication",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1scorecard.yml/jobs/analysis/steps/1/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "scorecard.publication/github/codeql-action/upload-sarif@": {
+      "rule": "scorecard.publication",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1scorecard.yml/jobs/analysis/steps/3/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "scorecard.publication/jobs.analysis.permissions.contents": {
+      "rule": "scorecard.publication",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1scorecard.yml/jobs/analysis/permissions/contents",
+          "value": "write"
+        }
+      ]
+    },
+    "scorecard.publication/jobs.analysis.steps.0.with.persist-credentials": {
+      "rule": "scorecard.publication",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1scorecard.yml/jobs/analysis/steps/0/with/persist-credentials",
+          "value": true
+        }
+      ]
+    },
+    "scorecard.publication/badge": {
+      "rule": "scorecard.publication",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/README.md",
+          "value": ""
+        }
+      ]
+    },
+    "review.values/workflow.codex_review.pre_push_cap": {
+      "rule": "review.values",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.ground-control.yaml/workflow/codex_review/pre_push_cap",
+          "value": true
+        }
+      ]
+    },
+    "review.values/workflow.review_disposition.enabled": {
+      "rule": "review.values",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.ground-control.yaml/workflow/review_disposition/enabled",
+          "value": true
+        }
+      ]
+    },
+    "review.values/workflow.review_disposition.max_auto_overrides": {
+      "rule": "review.values",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.ground-control.yaml/workflow/review_disposition/max_auto_overrides",
+          "value": false
+        }
+      ]
+    },
+    "review.values/workflow.review_disposition.mode": {
+      "rule": "review.values",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.ground-control.yaml/workflow/review_disposition/mode",
+          "value": "auto"
+        }
+      ]
+    },
+    "review.values/workflow.review_disposition.judge.enabled": {
+      "rule": "review.values",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.ground-control.yaml/workflow/review_disposition/judge/enabled",
+          "value": true
+        }
+      ]
+    },
+    "review.values/workflow.base_branch": {
+      "rule": "review.values",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.ground-control.yaml/workflow/base_branch",
+          "value": "dev"
+        }
+      ]
+    },
+    "review.values/workflow.test_quality_review": {
+      "rule": "review.values",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.ground-control.yaml/workflow/test_quality_review",
+          "value": {}
+        }
+      ]
+    },
+    "review.values/codex_review": {
+      "rule": "review.values",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.ground-control.yaml/codex_review",
+          "value": {}
+        }
+      ]
+    },
+    "review.values/charter": {
+      "rule": "review.values",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/.gc~1plan-rules.md",
+          "value": ""
+        }
+      ]
+    },
+    "docs.configuration/sphinx.configuration": {
+      "rule": "docs.configuration",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.readthedocs.yaml/sphinx/configuration",
+          "value": null
+        }
+      ]
+    },
+    "docs.configuration/sphinx.fail_on_warning": {
+      "rule": "docs.configuration",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.readthedocs.yaml/sphinx/fail_on_warning",
+          "value": null
+        }
+      ]
+    },
+    "docs.configuration/python.install": {
+      "rule": "docs.configuration",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.readthedocs.yaml/python/install",
+          "value": null
+        }
+      ]
+    },
+    "docs.configuration/build.os": {
+      "rule": "docs.configuration",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.readthedocs.yaml/build/os",
+          "value": null
+        }
+      ]
+    },
+    "docs.configuration/build.tools.python": {
+      "rule": "docs.configuration",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.readthedocs.yaml/build/tools/python",
+          "value": null
+        }
+      ]
+    },
+    "docs.configuration/version": {
+      "rule": "docs.configuration",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.readthedocs.yaml/version",
+          "value": null
+        }
+      ]
+    },
+    "docs.configuration/sphinx-conf": {
+      "rule": "docs.configuration",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/docs~1public~1conf.py",
+          "value": ""
+        }
+      ]
+    },
+    "docs.navigation/docs/README.md": {
+      "rule": "docs.navigation",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/docs~1README.md",
+          "value": ""
+        }
+      ]
+    },
+    "docs.navigation/CONTRIBUTING.md": {
+      "rule": "docs.navigation",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/CONTRIBUTING.md",
+          "value": ""
+        }
+      ]
+    },
+    "docs.navigation/docs/public/index.md": {
+      "rule": "docs.navigation",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/docs~1public~1index.md",
+          "value": ""
+        }
+      ]
+    },
+    "docs.public-boundary/escape": {
+      "rule": "docs.public-boundary",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/docs~1public~1index.md",
+          "value": "[internal](../decisions/private.md)"
+        }
+      ]
+    },
+    "docs.public-boundary/internal": {
+      "rule": "docs.public-boundary",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/docs~1public~1decisions~10001-private.md",
+          "value": "private"
+        }
+      ]
+    },
+    "distribution.workflow/permissions": {
+      "rule": "distribution.workflow",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1pack-distribution.yml/permissions",
+          "value": null
+        }
+      ]
+    },
+    "distribution.workflow/on.workflow_dispatch.inputs.pack.default": {
+      "rule": "distribution.workflow",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1pack-distribution.yml/on/workflow_dispatch/inputs/pack/default",
+          "value": null
+        }
+      ]
+    },
+    "distribution.workflow/jobs.rehearse.permissions.contents": {
+      "rule": "distribution.workflow",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1pack-distribution.yml/jobs/rehearse/permissions/contents",
+          "value": null
+        }
+      ]
+    },
+    "distribution.workflow/jobs.rehearse.permissions.id-token": {
+      "rule": "distribution.workflow",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1pack-distribution.yml/jobs/rehearse/permissions/id-token",
+          "value": null
+        }
+      ]
+    },
+    "distribution.workflow/jobs.rehearse.services.registry.image": {
+      "rule": "distribution.workflow",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1pack-distribution.yml/jobs/rehearse/services/registry/image",
+          "value": null
+        }
+      ]
+    },
+    "distribution.workflow/sigstore/cosign-installer@": {
+      "rule": "distribution.workflow",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1pack-distribution.yml/jobs/rehearse/steps/2/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "distribution.workflow/oras-project/setup-oras@": {
+      "rule": "distribution.workflow",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1pack-distribution.yml/jobs/rehearse/steps/3/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "distribution.workflow/distribution_rehearsal.py": {
+      "rule": "distribution.workflow",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1pack-distribution.yml/jobs/rehearse/steps/5/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "distribution.workflow/interpolation": {
+      "rule": "distribution.workflow",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1pack-distribution.yml/jobs/rehearse/steps/5/run",
+          "value": "echo ${{ inputs.pack }}"
+        }
+      ]
+    },
+    "title.workflow/jobs.pr-title-guard.steps.0.with.ref": {
+      "rule": "title.workflow",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1pr-title.yml/jobs/pr-title-guard/steps/0/with/ref",
+          "value": "${{ github.event.pull_request.head.sha }}"
+        }
+      ]
+    },
+    "release.shape/concurrency.group": {
+      "rule": "release.shape",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/concurrency/group",
+          "value": null
+        }
+      ]
+    },
+    "release.shape/concurrency.cancel-in-progress": {
+      "rule": "release.shape",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/concurrency/cancel-in-progress",
+          "value": null
+        }
+      ]
+    },
+    "release.shape/on.push.branches": {
+      "rule": "release.shape",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/on/push/branches",
+          "value": null
+        }
+      ]
+    },
+    "release.shape/on.workflow_dispatch.inputs.release_pr.required": {
+      "rule": "release.shape",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/on/workflow_dispatch/inputs/release_pr/required",
+          "value": null
+        }
+      ]
+    },
+    "release.shape/on.workflow_dispatch.inputs.release_pr.type": {
+      "rule": "release.shape",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/on/workflow_dispatch/inputs/release_pr/type",
+          "value": null
+        }
+      ]
+    },
+    "release.signer/env.CERT_IDENTITY": {
+      "rule": "release.signer",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/env/CERT_IDENTITY",
+          "value": null
+        }
+      ]
+    },
+    "release.signer/env.CERT_OIDC_ISSUER": {
+      "rule": "release.signer",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/env/CERT_OIDC_ISSUER",
+          "value": null
+        }
+      ]
+    },
+    "release.signer/env.GITSIGN_VERSION_PIN": {
+      "rule": "release.signer",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/env/GITSIGN_VERSION_PIN",
+          "value": null
+        }
+      ]
+    },
+    "release.signer/env.GITSIGN_SHA256": {
+      "rule": "release.signer",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/env/GITSIGN_SHA256",
+          "value": null
+        }
+      ]
+    },
+    "release.signer/env.GITSIGN_VERSION_FLOOR": {
+      "rule": "release.signer",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/env/GITSIGN_VERSION_FLOOR",
+          "value": null
+        }
+      ]
+    },
+    "release.permissions/jobs.release-please.permissions": {
+      "rule": "release.permissions",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/release-please/permissions",
+          "value": {}
+        }
+      ]
+    },
+    "release.permissions/jobs.resume-release-please.permissions": {
+      "rule": "release.permissions",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/resume-release-please/permissions",
+          "value": {}
+        }
+      ]
+    },
+    "release.permissions/jobs.detect-release.permissions": {
+      "rule": "release.permissions",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/detect-release/permissions",
+          "value": {}
+        }
+      ]
+    },
+    "release.permissions/jobs.publish.permissions": {
+      "rule": "release.permissions",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/permissions",
+          "value": {}
+        }
+      ]
+    },
+    "release.authorization/jobs.release-please.if": {
+      "rule": "release.authorization",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/release-please/if",
+          "value": "always()"
+        }
+      ]
+    },
+    "release.authorization/jobs.resume-release-please.if": {
+      "rule": "release.authorization",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/resume-release-please/if",
+          "value": "always()"
+        }
+      ]
+    },
+    "release.authorization/jobs.publish.if": {
+      "rule": "release.authorization",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/if",
+          "value": "always()"
+        }
+      ]
+    },
+    "release.authorization/release_tag_gate.py": {
+      "rule": "release.authorization",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/detect-release/steps/3/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.order/gitsign_${GITSIGN_VERSION_PIN}_linux_amd64": {
+      "rule": "release.order",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/3/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.order/git tag -s": {
+      "rule": "release.order",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/5/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.order/gh release create": {
+      "rule": "release.order",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/13/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.order/gh release upload": {
+      "rule": "release.order",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/15/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.order/actions/attest-build-provenance@": {
+      "rule": "release.order",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/9/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.order/pypa/gh-action-pypi-publish@": {
+      "rule": "release.order",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/14/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.recovery/git cat-file tag": {
+      "rule": "release.recovery",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/6/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.recovery/git cat-file -e \"${TARGET_SHA}:requirements/build.txt\"": {
+      "rule": "release.recovery",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/2/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.rerun/gh release create": {
+      "rule": "release.rerun",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/13/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.rerun/pypa/gh-action-pypi-publish@": {
+      "rule": "release.rerun",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/14/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.rerun/--add-label \"autorelease: tagged\"": {
+      "rule": "release.rerun",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/16/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.rerun/tomllib": {
+      "rule": "release.rerun",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/12/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.no-force/jobs.publish.steps.0.run": {
+      "rule": "release.no-force",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/0/run",
+          "value": "git tag -f bad"
+        }
+      ]
+    },
+    "release.signed-target/git tag -s": {
+      "rule": "release.signed-target",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/5/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "release.signed-target/jobs.publish.env.TARGET_SHA": {
+      "rule": "release.signed-target",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/env/TARGET_SHA",
+          "value": "HEAD"
+        }
+      ]
+    },
+    "release.signed-target/jobs.publish.steps.0.with.ref": {
+      "rule": "release.signed-target",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/0/with/ref",
+          "value": "HEAD"
+        }
+      ]
+    },
+    "release.subjects/jobs.publish.steps.9.with.subject-path": {
+      "rule": "release.subjects",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1release-please.yml/jobs/publish/steps/9/with/subject-path",
+          "value": "dist/wrong"
+        }
+      ]
+    },
+    "ci.aggregate/jobs.verify.needs": {
+      "rule": "ci.aggregate",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/verify/needs",
+          "value": null
+        }
+      ]
+    },
+    "ci.aggregate/jobs.verify.if": {
+      "rule": "ci.aggregate",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/verify/if",
+          "value": null
+        }
+      ]
+    },
+    "ci.aggregate/jobs.new-mandatory": {
+      "rule": "ci.aggregate",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/new-mandatory",
+          "value": {
+            "steps": []
+          }
+        }
+      ]
+    },
+    "ci.aggregate/jobs.verify.steps.0.env": {
+      "rule": "ci.aggregate",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/verify/steps/0/env",
+          "value": {}
+        }
+      ]
+    },
+    "ci.independence/jobs.tests.needs": {
+      "rule": "ci.independence",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/tests/needs",
+          "value": [
+            "audit"
+          ]
+        }
+      ]
+    },
+    "ci.coverage/jobs.sonar.needs": {
+      "rule": "ci.coverage",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/sonar/needs",
+          "value": [
+            "tests"
+          ]
+        }
+      ]
+    },
+    "ci.coverage/coverage run": {
+      "rule": "ci.coverage",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/tests/steps/3/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "ci.coverage/coverage xml": {
+      "rule": "ci.coverage",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/tests/steps/3/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "ci.coverage/actions/upload-artifact@": {
+      "rule": "ci.coverage",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/go/steps/3/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "ci.coverage/actions/download-artifact@": {
+      "rule": "ci.coverage",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/sonar/steps/1/uses",
+          "value": "removed"
+        }
+      ]
+    },
+    "ci.secrets/jobs.sonar.if": {
+      "rule": "ci.secrets",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/sonar/if",
+          "value": "true"
+        }
+      ]
+    },
+    "ci.secrets/jobs.sonar.steps.3.env": {
+      "rule": "ci.secrets",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/sonar/steps/3/env",
+          "value": {}
+        }
+      ]
+    },
+    "ci.secrets/jobs.tests.steps.0.run": {
+      "rule": "ci.secrets",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/tests/steps/0/run",
+          "value": "echo $SONAR_TOKEN"
+        }
+      ]
+    },
+    "ci.cache/jobs.tests.steps.1.with.cache": {
+      "rule": "ci.cache",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/tests/steps/1/with/cache",
+          "value": "none"
+        }
+      ]
+    },
+    "ci.cache/jobs.audit.steps.1.with.cache": {
+      "rule": "ci.cache",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/audit/steps/1/with/cache",
+          "value": "none"
+        }
+      ]
+    },
+    "ci.cache/jobs.content.steps.1.with.cache": {
+      "rule": "ci.cache",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/content/steps/1/with/cache",
+          "value": "none"
+        }
+      ]
+    },
+    "ci.completeness/pip-audit": {
+      "rule": "ci.completeness",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/audit/steps/3/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "ci.completeness/raes-pack-validate": {
+      "rule": "ci.completeness",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/content/steps/3/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "ci.completeness/raes-pack-release": {
+      "rule": "ci.completeness",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/content/steps/4/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "ci.completeness/compileall src tests": {
+      "rule": "ci.completeness",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1workflows~1ci.yml/jobs/compile/steps/2/run",
+          "value": "removed"
+        }
+      ]
+    },
+    "make.safety/default": {
+      "rule": "make.safety",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/Makefile",
+          "value": "# Repository task shortcuts.\n#\n# `devmain` is the only target that acts on anything. The default goal is\n# deliberately `help`: Make runs the *first* target when invoked with no goal,\n# and the acting target here opens a pull request against `main`. A bare `make`\n# must never do that, so the default goal is pinned rather than left to file\n# order (ADR 0019).\n#\n# The local verification loop -- unittest, raes-pack-validate,\n# raes-pack-release, compileall -- is intentionally NOT restated here. AGENTS.md,\n# .ground-control.yaml, and .github/workflows/ci.yml already each hold that list;\n# a fourth copy would drift out of step with them.\n#\n# The Go checks of the port (ADR 0047) are the exception. CI runs `make\n# go-check`, so this target is their one definition, and the other lists call it.\n\n# Substitutable so the contract test in tests/test_makefile.py can drive the\n# promotion target without touching GitHub.\nGH ?= gh\n\n# Substitutable so a caller can select a specific Go toolchain binary.\nGO ?= go\n\n# Substitutable so a caller can use a mise binary that is not on PATH. mise\n# installs the tool versions that mise.toml pins and mise.lock verifies.\nMISE ?= mise\n\n.DEFAULT_GOAL := devmain\n\n.PHONY: help devmain prose conformance conformance-go go-check go-lint go-audit go-fuzz go-arch \\\n\tgo-arch-design go-arch-dsl go-mutation go-mutation-all go-regression\n\nhelp: ## List the available targets\n\t@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \\\n\t  | awk 'BEGIN {FS = \":.*?## \"}; {printf \"  %-15s %s\\n\", $$1, $$2}'\n\n# The promotion PR body, kept in an exported variable so the recipe passes it as\n# one literal argument: no shell metacharacters, no interpolation, and no editor\n# or --fill, which would let .github/PULL_REQUEST_TEMPLATE.md supply the blank\n# sections and unticked boxes that the hand-opened promotions carried.\ndefine DEVMAIN_BODY\nPromotes dev to main.\n\nMerge this with a merge commit. Do not squash it and do not rebase it.\n\nmain is where release-please reads Conventional Commit history to decide the\nversion bump and build CHANGELOG.md (ADR 0008, ADR 0019). Squashing or rebasing\ncollapses every promoted subject into a single one, and the next release loses\nboth its changelog entries and its version decision.\nendef\nexport DEVMAIN_BODY\n\n# Opens the PR and stops there. GitHub stays the authority on everything else:\n# it rejects a second open PR for the same head/base pair, and branch protection\n# on `main` still requires an approving review plus `verify`. That refusal is a\n# visible nonzero error and is deliberately left to propagate.\ndevmain: ## Open the dev -> main promotion PR\n\t@$(GH) pr create --base main --head dev \\\n\t  --title \"chore: promote dev to main\" \\\n\t  --body \"$$DEVMAIN_BODY\"\n\n# Builds, vets, and tests every Go package with the toolchain that go.mod pins.\n# The tests run with the race detector and in shuffled order, and write the\n# coverage profile that CI sends to SonarCloud (docs/development/go-test-standard.md).\ngo-check: ## Build, vet, and test the Go code\n\t$(GO) build ./...\n\t$(GO) vet ./...\n\t$(GO) test -race -shuffle=on -coverprofile=coverage-go.out ./...\n\n# Lints the Go code with the pinned golangci-lint once for each release\n# platform of the architecture model, so that each build-constrained file is\n# linted. Then it checks the formatting, and checks that go.mod and go.sum are\n# tidy (docs/development/go-style-map.md).\ngo-lint: ## Lint the Go code and check formatting and tidiness\n\t@set -eu; \\\n\tplatforms=$$($(GO) run ./tools/archcheck platforms); \\\n\tfor platform in $$platforms; do \\\n\t  echo \"go-lint: $$platform\"; \\\n\t  GOOS=$${platform%/*} GOARCH=$${platform#*/} CGO_ENABLED=0 \\\n\t    $(MISE) exec -- golangci-lint run ./...; \\\n\tdone\n\t$(MISE) exec -- golangci-lint fmt --diff ./...\n\t$(GO) mod tidy -diff\n\n# Checks the downloaded modules against go.sum, and reports each known\n# vulnerability that the code can reach, with the govulncheck version that\n# mise.toml pins. govulncheck reads the Go vulnerability database on the\n# network.\ngo-audit: ## Verify the Go modules and check them for known vulnerabilities\n\t$(GO) mod verify\n\t@set -eu; \\\n\tplatforms=$$($(GO) run ./tools/archcheck platforms); \\\n\tfor platform in $$platforms; do \\\n\t  echo \"go-audit: $$platform\"; \\\n\t  GOOS=$${platform%/*} GOARCH=$${platform#*/} CGO_ENABLED=0 \\\n\t    $(MISE) exec -- govulncheck ./...; \\\n\tdone\n\n# The fuzz time for each target. The weekly CI schedule raises it.\nFUZZTIME ?= 30s\n\n# Runs every native fuzz target in the module, one target at a time, for\n# FUZZTIME each (docs/development/go-test-standard.md). The package list and\n# each target list are captured first, so a failed command stops the run\n# instead of leaving a loop with nothing to fuzz.\ngo-fuzz: ## Run every Go fuzz target for FUZZTIME (default 30s)\n\t@set -eu; \\\n\tpkgs=$$($(GO) list ./...); \\\n\tfor pkg in $$pkgs; do \\\n\t  listing=$$($(GO) test -list '^Fuzz' \"$$pkg\"); \\\n\t  for target in $$(printf '%s\\n' \"$$listing\" | grep '^Fuzz' || true); do \\\n\t    echo \"go-fuzz: $$pkg $$target\"; \\\n\t    $(GO) test -run '^$$' -fuzz \"^$$target$$\" -fuzztime \"$(FUZZTIME)\" \"$$pkg\"; \\\n\t  done; \\\n\tdone\n\n# Checks the code, the design records, and the C4 view against the\n# architecture model (docs/development/designs/README.md).\ngo-arch: ## Check the code and design records against the architecture model\n\t$(GO) run ./tools/archcheck check\n\n# Git owns the diff. Include rule bodies, scopes, exceptions, and platforms,\n# as well as the structure that the design-record replay checks.\n.PHONY: go-arch-change\ngo-arch-change: ## Require a new design record for each committed model change\n\t@set -eu; \\\n\tchanged=$$(git diff --name-only --merge-base \"$(BASE)\" HEAD -- architecture/model.yaml); \\\n\tif [ -n \"$$changed\" ]; then \\\n\t  records=$$(git diff --name-only --diff-filter=A --merge-base \"$(BASE)\" HEAD -- 'docs/development/designs/[0-9][0-9][0-9][0-9]-*.md'); \\\n\t  if [ -z \"$$records\" ]; then \\\n\t    echo 'architecture/model.yaml: design-change: add a new numbered design record for the model change' >&2; \\\n\t    exit 1; \\\n\t  fi; \\\n\tfi\n\n# The design step: checks the model and the design records before the code\n# exists.\ngo-arch-design: ## Check the design records against the architecture model\n\t$(GO) run ./tools/archcheck design\n\n# Renders architecture/workspace.dsl from the architecture model.\ngo-arch-dsl: ## Render the C4 view of the architecture model\n\t$(GO) run ./tools/archcheck dsl -write\n\n# The base commit of the gates on the changed lines: the integration branch of\n# the Go port (ADR 0047). The cutover changes it to origin/dev. The gates read\n# only committed code, so commit the work before you run them.\nBASE ?= origin/go-cutover\n\n# Runs the conformance corpus against the Python console scripts on PATH\n# (docs/development/designs/0003-conformance-corpus.md). The corpus starts the\n# commands, so the test results do not come from the cache.\nconformance: ## Run the conformance corpus against the Python implementation\n\t$(GO) test ./conformance -count=1 -args -impl=python\n\n# Builds each Go command under cmd/ and runs its conformance cases against it.\n# The other commands have no Go implementation yet (design 0008).\nconformance-go: ## Run the conformance cases of the Go commands against Go\n\t@set -eu; bin=$$(mktemp -d); trap 'rm -rf \"$$bin\"' EXIT; \\\n\t$(GO) build -o \"$$bin/\" ./cmd/...; \\\n\tcommands=$$(ls cmd | paste -sd '|' -); \\\n\t$(GO) test ./conformance -count=1 -run \"TestCorpus/^($$commands)$$/\" -args -impl=go -bin \"$$bin\"\n\n# Checks the prose of each Markdown file that HEAD adds or changes since BASE,\n# with the Vale version that mise.toml pins and the rules in .vale/styles/STE\n# (docs/development/documentation-style-guide.md). It skips CHANGELOG.md, test\n# fixtures, and the assets of packs and kits.\nprose: ## Check the prose of the Markdown files changed since BASE\n\t@set -eu; \\\n\tfiles=$$(git diff --name-only --diff-filter=d --merge-base \"$(BASE)\" HEAD -- '*.md' \\\n\t  ':(exclude)CHANGELOG.md' ':(exclude,glob)**/testdata/**' ':(exclude)tests/fixtures' \\\n\t  ':(exclude,glob)packs/*/assets/**' ':(exclude,glob)kits/*/*/assets/**'); \\\n\tif [ -z \"$$files\" ]; then echo \"prose: no changed Markdown file\"; exit 0; fi; \\\n\t$(MISE) exec -- vale $$files\n\n# Mutation testing on the Go lines that HEAD changes since BASE, with the\n# go-mutesting version that mise.toml pins\n# (docs/development/go-test-standard.md).\ngo-mutation: ## Mutation testing on the Go lines changed since BASE\n\t$(MISE) exec -- $(GO) run ./tools/testgate mutation -base \"$(BASE)\"\n\n# Mutation testing on each Go file. A weekly workflow runs it.\ngo-mutation-all: ## Mutation testing on each Go file\n\t$(MISE) exec -- $(GO) run ./tools/testgate mutation -all\n\n# Proves that each regression test that HEAD adds or changes since BASE fails\n# on the merge base.\ngo-regression: ## Prove that each new regression test fails before its fix\n\t$(GO) run ./tools/testgate regression -base \"$(BASE)\"\n"
+        }
+      ]
+    },
+    "gate.same-command/workflow.policy_command": {
+      "rule": "gate.same-command",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.ground-control.yaml/workflow/policy_command",
+          "value": "different"
+        }
+      ]
+    },
+    "docs.badges/rtd": {
+      "rule": "docs.badges",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/README.md",
+          "value": "[docs](https://wrong.readthedocs.io/en/latest/index.html)"
+        }
+      ]
+    },
+    "ownership.boundary/missing": {
+      "rule": "ownership.boundary",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/docs~1public~1ownership-boundary.md",
+          "value": ""
+        }
+      ]
+    },
+    "ownership.pack/missing": {
+      "rule": "ownership.pack",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/packs~1techvault~1README.md",
+          "value": ""
+        }
+      ]
+    },
+    "ownership.navigation/missing": {
+      "rule": "ownership.navigation",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/docs~1public~1environment-packs.md",
+          "value": ""
+        }
+      ]
+    },
+    "dependency.lock-files/unhashed": {
+      "rule": "dependency.lock-files",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/requirements~1docs.txt",
+          "value": "sphinx==1.0\n"
+        }
+      ]
+    },
+    "dependency.floors/certifi": {
+      "rule": "dependency.floors",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/requirements~1docs.txt",
+          "value": "certifi==2020.1.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    "dependency.references/missing": {
+      "rule": "dependency.references",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/commands/-",
+          "value": {
+            "file": "x",
+            "job": "x",
+            "args": [
+              "pip",
+              "install",
+              "--require-hashes",
+              "-r",
+              "not-found.txt"
+            ]
+          }
+        }
+      ]
+    },
+    "dependency.pip-pins/unpinned": {
+      "rule": "dependency.pip-pins",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/commands/-",
+          "value": {
+            "file": "x",
+            "job": "x",
+            "args": [
+              "pip",
+              "install",
+              "bad==1.0"
+            ]
+          }
+        }
+      ]
+    },
+    "dependency.co-installed/conflicting": {
+      "rule": "dependency.co-installed",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/text/requirements~1coverage.txt",
+          "value": "pyyaml==0.1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    "dependency.update-owners/updates": {
+      "rule": "dependency.update-owners",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/documents/.github~1dependabot.yml/updates",
+          "value": []
+        }
+      ]
+    },
+    "public empty decisions directory": {
+      "rule": "docs.public-boundary",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/directories",
+          "value": [
+            "docs/public/decisions"
+          ]
+        }
+      ]
+    },
+    "public padded internal link": {
+      "rule": "docs.public-boundary",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/text/docs~1public~1index.md",
+          "value": "[internal]( ../development/ci.md )"
+        }
+      ]
+    },
+    "scorecard scope none": {
+      "rule": "scorecard.publication",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/documents/.github~1workflows~1scorecard.yml/permissions",
+          "value": {
+            "contents": "none"
+          }
+        }
+      ]
+    },
+    "dynamic editable source": {
+      "rule": "dependency.pip-pins",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/commands/0/args",
+          "value": [
+            "pip",
+            "install",
+            "--no-deps",
+            "-e",
+            "$SOURCE"
+          ]
+        }
+      ]
+    }
+  }
+}

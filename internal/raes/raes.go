@@ -147,6 +147,13 @@ type Modules interface {
 	ResolveLock(fsys fs.FS, path string) (map[string]any, error)
 }
 
+// VocabularyReader gives governed terms from the pinned RAES catalog.
+type VocabularyReader interface {
+	// VocabularyTerms returns an independent term list and whether the catalog
+	// contains id. A missing vocabulary does not return a local fallback.
+	VocabularyTerms(id string) ([]string, bool)
+}
+
 // Concepts gives the external concept bindings of a scenario.
 type Concepts interface {
 	// ConceptSubjects returns the published JSON form of each subject that a

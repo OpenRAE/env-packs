@@ -20,6 +20,10 @@ User-facing documentation is under [`public/`](public/index.md).
   and the check that enforces it.
 - [Go test standard](development/go-test-standard.md) — the test rules for every
   Go package.
+- [Repository policy preflight](development/repository-policy-preflight.md) —
+  invariant coverage, policy ownership, and cutover guardrails for issue #577.
+- [Repository policy](development/repository-policy.md) — the shared gate,
+  rule authoring, input boundaries, and assertion inventory.
 
 - [Pack-local consumer validation design](development/pack-local-consumer-validation-design.md)
   — RAES supplied-source parsing, lock writing, and threats for issue #412.
@@ -94,8 +98,8 @@ User-facing documentation is under [`public/`](public/index.md).
   #331.
 - [Migration scrub policy](development/scrub-policy.md) — how to adapt material
   from another source into this repository without leaking private vocabulary.
-- [Documentation style guide](development/documentation-style-guide.md) — how the
-  public docs are written, so a change reads like the rest.
+- [Documentation style guide](development/documentation-style-guide.md) — the
+  writing rules for public docs, so a change reads like the rest.
 
 ## Manual integration walkthroughs
 
@@ -107,6 +111,6 @@ User-facing documentation is under [`public/`](public/index.md).
 ## Contributing
 
 Setup, tests, and the submission path are in
-[`CONTRIBUTING.md`](../CONTRIBUTING.md). The release model — release-please owns
-the version and `CHANGELOG.md` — is summarized there and decided in
+[`CONTRIBUTING.md`](../CONTRIBUTING.md). That guide summarizes the release model:
+release-please owns the version and `CHANGELOG.md` under
 [ADR 0008](decisions/adrs/0008-adopt-release-please.md).
