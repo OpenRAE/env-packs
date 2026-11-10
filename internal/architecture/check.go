@@ -20,7 +20,7 @@ func CheckCode(m *Model, modelPath string, g Graph) []report.Finding {
 			Location: name,
 			Rule:     RuleUnreadPath,
 			Message:  "the check cannot read this path, so the rules of the model do not apply to it",
-			Fix:      "Remove the build constraint or the cgo code, or make the directory readable. If the code needs them, change tools/archcheck in a design step so that the check reads the path.",
+			Fix:      "Remove the build constraint, the cgo code, or the native source or object file, or make the directory readable. If the code needs them, change tools/archcheck in a design step so that the check reads the path.",
 		})
 	}
 	for _, p := range g.Packages {

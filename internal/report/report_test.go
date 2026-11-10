@@ -29,6 +29,22 @@ func TestFindingString(t *testing.T) {
 	}
 }
 
+// TestFindingStringEscapes checks that each field reaches the terminal
+// escaped. Regression test for #674: a file name or a mutation record with
+// control characters reached the terminal raw.
+func TestFindingStringEscapes(t *testing.T) {
+	f := Finding{
+		Location: "a\x1b]52;c;cGF5\a.go:3",
+		Rule:     "record",
+		Message:  "record 1 (b\x1b[2J.go, \"x\") matches no surviving mutant",
+		Fix:      "Remove\rthe record.",
+	}
+	want := "a\\x1b]52;c;cGF5\\x07.go:3: record: record 1 (b\\x1b[2J.go, \"x\") matches no surviving mutant\n\tfix: Remove\\x0dthe record."
+	if got := f.String(); got != want {
+		t.Errorf("Finding.String() = %q, want %q", got, want)
+	}
+}
+
 func TestWrite(t *testing.T) {
 	a := Finding{Location: "a.go:1", Rule: "r", Message: "m", Fix: "f"}
 	b := Finding{Location: "b.go:2", Rule: "r", Message: "m", Fix: "f"}

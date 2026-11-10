@@ -27,3 +27,7 @@ _build/
 
 # Codex agent scratch directory (local tooling, not repository content)
 .codex/
+
+# The DocTools Vale style, which `make prose` copies from the verified doc-tools
+# package.
+/.vale/styles/DocTools/

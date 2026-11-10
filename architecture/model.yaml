@@ -164,6 +164,7 @@ components:
       - github.com/OpenRAE/env-packs/internal/report
     depends_on:
       - outcome
+      - terminal
   - id: architecture
     container: repository-tools
     description: Checks the code and the design records against this model.

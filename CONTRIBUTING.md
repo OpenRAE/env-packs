@@ -14,8 +14,31 @@ python3 -m venv .venv
 pip install -e ".[test]"
 ```
 
-The Go checks also need [mise](https://mise.jdx.dev). `mise install` installs
-the tool versions that `mise.toml` pins and verifies them against `mise.lock`.
+The Go checks and `make prose` also need [mise](https://mise.jdx.dev).
+`mise install` installs the tool versions that `mise.toml` pins and verifies
+them against `mise.lock`. The tools include Vale and
+[doc-tools](https://github.com/OpenRAE/doc-tools). doc-tools runs on Linux and
+macOS, on x64 and arm64.
+
+### The documentation skill
+
+doc-tools also supplies the `documentation` skill for agents. If you have a
+personal skill named `documentation`, remove it first. Two skills with the
+same name can both show.
+
+Each installation uses commit `97866fad14d7fbb0d6752788ebdc5ae4f235573a`, which
+the `v0.1.0` tag names. A moved tag does not change the skill.
+
+- Claude Code: `.claude/settings.json` declares the `doc-tools` plugin at that
+  commit and turns it on. The plugin installs only `skills/documentation/`. If
+  the plugin does not load, run `/plugin install doc-tools@openrae-doc-tools`.
+- Codex: run the skill installer with the commit.
+
+  ```sh
+  python3 "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+    --repo OpenRAE/doc-tools --path skills/documentation \
+    --ref 97866fad14d7fbb0d6752788ebdc5ae4f235573a
+  ```
 
 ## Run the checks
 
@@ -30,12 +53,14 @@ raes-pack-validate --packs-root packs  # hosted first-party packs
 raes-pack-release check --packs-root packs
 python -m compileall src tests         # byte-compile
 make conformance                       # the conformance corpus against Python
+make conformance-go                    # the conformance cases of the Go commands
 make go-check                          # Go build, vet, and tests (ADR 0047)
 make go-lint                           # Go lint, formatting, and module tidiness
 make go-audit                          # Go module checksums and known vulnerabilities
 make go-arch                           # Go code and design records against the model
 make go-mutation                       # mutation testing on the changed Go lines
 make go-regression                     # each new regression test fails before its fix
+make policy                            # repository governance and RAES contract alignment
 make prose                             # prose of the changed Markdown files
 ```
 

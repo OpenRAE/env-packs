@@ -39,12 +39,14 @@ raes-pack-validate --packs-root packs
 raes-pack-release check --packs-root packs
 python3 -m compileall src tests
 make conformance
+make conformance-go
 make go-check
 make go-lint
 make go-audit
 make go-arch
 make go-mutation
 make go-regression
+make policy
 make prose
 ```
 

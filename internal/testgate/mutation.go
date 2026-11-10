@@ -117,7 +117,7 @@ func Mutation(ctx context.Context, r Runner, opts MutationOptions) (MutationResu
 		return MutationResult{}, err
 	}
 	if len(targets) == 0 {
-		return MutationResult{}, nil
+		return committedRecordFindings(ctx, r, opts.Repo)
 	}
 	if strings.ContainsAny(opts.Exec, " \t\n") {
 		return MutationResult{}, fmt.Errorf("the path of testgate, %q, has white space, but go-mutesting splits its exec command at spaces", opts.Exec)
@@ -129,6 +129,20 @@ func Mutation(ctx context.Context, r Runner, opts MutationOptions) (MutationResu
 		return treeErr
 	})
 	return res, err
+}
+
+// committedRecordFindings checks the records of HEAD when no Go line is a
+// target, so a change to the records alone cannot skip the check.
+func committedRecordFindings(ctx context.Context, r Runner, repo string) (MutationResult, error) {
+	data, err := runOK(ctx, r, Command{Dir: repo, Name: "git", Args: []string{"show", "HEAD:" + RecordsFile}})
+	if err != nil {
+		return MutationResult{}, fmt.Errorf("read %s: %w", RecordsFile, err)
+	}
+	records, err := ParseRecords(data)
+	if err != nil {
+		return MutationResult{}, err
+	}
+	return MutationResult{Findings: records.Check()}, nil
 }
 
 // mutateTree runs go-mutesting in the worktree tree, and evaluates its report

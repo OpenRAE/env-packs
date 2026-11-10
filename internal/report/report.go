@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/OpenRAE/env-packs/internal/outcome"
+	"github.com/OpenRAE/env-packs/internal/terminal"
 )
 
 // A Finding is one problem that a tool found.
@@ -23,9 +24,11 @@ type Finding struct {
 }
 
 // String formats the finding as two lines: the location, the rule, and the
-// message, then the fix.
+// message, then the fix. A field can hold a file name or a value from a
+// change, so String escapes each field for a terminal (design 0006).
 func (f Finding) String() string {
-	return f.Location + ": " + f.Rule + ": " + f.Message + "\n\tfix: " + f.Fix
+	return terminal.Escape(f.Location) + ": " + terminal.Escape(f.Rule) + ": " + terminal.Escape(f.Message) +
+		"\n\tfix: " + terminal.Escape(f.Fix)
 }
 
 // Sort sorts findings by location, rule, message, and fix, and removes exact

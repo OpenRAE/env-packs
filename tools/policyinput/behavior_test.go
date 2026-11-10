@@ -26,6 +26,8 @@ func child(t *testing.T, dir string, environment []string, name string, args ...
 		cmd = exec.CommandContext(ctx, "make", args...) //nolint:gosec // Tests supply fixed recipes, fake tools, and a credential-free environment under a deadline.
 	case "bash":
 		cmd = exec.CommandContext(ctx, "bash", args...) //nolint:gosec // The reviewed aggregate script runs only with synthetic job results and no credentials.
+	case "git":
+		cmd = exec.CommandContext(ctx, "git", args...) //nolint:gosec // Tests build a disposable repository in t.TempDir with fixed arguments and no credentials.
 	default:
 		t.Fatalf("unsupported test command %q", name)
 	}

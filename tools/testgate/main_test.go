@@ -151,7 +151,7 @@ func TestRunUsage(t *testing.T) {
 }
 
 func TestRunMutation(t *testing.T) {
-	r := answers(map[string]string{"git rev-parse": "abc\n"})
+	r := answers(map[string]string{"git rev-parse": "abc\n", "git show": "version: 1\nequivalents: []\n"})
 	status, stdout, stderr := runCommand(t, r, nil, "mutation", "-base", "origin/main")
 	wantStderr := "testgate: 0 mutants in 0 files: 0 skipped, 0 killed, 0 not compiled, 0 escaped, 0 equivalent\ntestgate: 0 findings\n"
 	if status != 0 || stdout != "" || stderr != wantStderr {

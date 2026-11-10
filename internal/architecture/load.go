@@ -189,9 +189,22 @@ func buildGraph(mod *packages.Module, roots []*packages.Package, modules map[str
 	return g
 }
 
+// isNativeInput reports whether name is a non-Go source or object that the go
+// command compiles or links into a package, as go/build classifies the file
+// extensions. The checks read only Go syntax, so each such file is unread.
+func isNativeInput(name string) bool {
+	switch path.Ext(name) {
+	case ".c", ".cc", ".cpp", ".cxx", ".m", ".h", ".hh", ".hpp", ".hxx",
+		".f", ".F", ".for", ".f90", ".s", ".S", ".sx", ".swig", ".swigcxx", ".syso":
+		return true
+	}
+	return false
+}
+
 // unread returns the paths under dir that match the pattern ./..., but that
 // are not in read: the Go files that build constraints exclude or that use
-// cgo, and each directory that fsys cannot list. Like the go command, it
+// cgo, the native sources and objects, and each directory that fsys cannot
+// list. Like the go command, it
 // skips the directories named vendor or testdata, the files and directories
 // whose names begin with "." or "_", and the directories of other modules.
 func unread(fsys fs.FS, dir string, read map[string]bool) []string {
@@ -210,7 +223,7 @@ func unread(fsys fs.FS, dir string, read map[string]bool) []string {
 			if e.Name() != "vendor" && e.Name() != "testdata" && !isModule(fsys, name) {
 				paths = append(paths, unread(fsys, name, read)...)
 			}
-		case strings.HasSuffix(e.Name(), ".go") && !read[name]:
+		case strings.HasSuffix(e.Name(), ".go") && !read[name], isNativeInput(e.Name()):
 			paths = append(paths, name)
 		}
 	}

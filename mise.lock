@@ -183,6 +183,49 @@ url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_
 url_api = "https://api.github.com/repos/rhysd/actionlint/releases/assets/384924919"
 provenance = "github-attestations"
 
+[[tools."github:OpenRAE/doc-tools"]]
+version = "0.1.0"
+backend = "github:OpenRAE/doc-tools"
+specifiers = ["0.1.0"]
+
+[tools."github:OpenRAE/doc-tools".options]
+asset_pattern = "doc-tools-*.tar.gz"
+
+[tools."github:OpenRAE/doc-tools"."platforms.linux-arm64"]
+checksum = "sha256:125104c0cc535698d1cc9bba3e57883bdf9d87db6da346ff583967c4ce42de6c"
+url = "https://github.com/OpenRAE/doc-tools/releases/download/v0.1.0/doc-tools-0.1.0.tar.gz"
+url_api = "https://api.github.com/repos/OpenRAE/doc-tools/releases/assets/724501388"
+
+[tools."github:OpenRAE/doc-tools"."platforms.linux-arm64-musl"]
+checksum = "sha256:125104c0cc535698d1cc9bba3e57883bdf9d87db6da346ff583967c4ce42de6c"
+url = "https://github.com/OpenRAE/doc-tools/releases/download/v0.1.0/doc-tools-0.1.0.tar.gz"
+url_api = "https://api.github.com/repos/OpenRAE/doc-tools/releases/assets/724501388"
+
+[tools."github:OpenRAE/doc-tools"."platforms.linux-x64"]
+checksum = "sha256:125104c0cc535698d1cc9bba3e57883bdf9d87db6da346ff583967c4ce42de6c"
+url = "https://github.com/OpenRAE/doc-tools/releases/download/v0.1.0/doc-tools-0.1.0.tar.gz"
+url_api = "https://api.github.com/repos/OpenRAE/doc-tools/releases/assets/724501388"
+
+[tools."github:OpenRAE/doc-tools"."platforms.linux-x64-musl"]
+checksum = "sha256:125104c0cc535698d1cc9bba3e57883bdf9d87db6da346ff583967c4ce42de6c"
+url = "https://github.com/OpenRAE/doc-tools/releases/download/v0.1.0/doc-tools-0.1.0.tar.gz"
+url_api = "https://api.github.com/repos/OpenRAE/doc-tools/releases/assets/724501388"
+
+[tools."github:OpenRAE/doc-tools"."platforms.macos-arm64"]
+checksum = "sha256:125104c0cc535698d1cc9bba3e57883bdf9d87db6da346ff583967c4ce42de6c"
+url = "https://github.com/OpenRAE/doc-tools/releases/download/v0.1.0/doc-tools-0.1.0.tar.gz"
+url_api = "https://api.github.com/repos/OpenRAE/doc-tools/releases/assets/724501388"
+
+[tools."github:OpenRAE/doc-tools"."platforms.macos-x64"]
+checksum = "sha256:125104c0cc535698d1cc9bba3e57883bdf9d87db6da346ff583967c4ce42de6c"
+url = "https://github.com/OpenRAE/doc-tools/releases/download/v0.1.0/doc-tools-0.1.0.tar.gz"
+url_api = "https://api.github.com/repos/OpenRAE/doc-tools/releases/assets/724501388"
+
+[tools."github:OpenRAE/doc-tools"."platforms.windows-x64"]
+checksum = "sha256:125104c0cc535698d1cc9bba3e57883bdf9d87db6da346ff583967c4ce42de6c"
+url = "https://github.com/OpenRAE/doc-tools/releases/download/v0.1.0/doc-tools-0.1.0.tar.gz"
+url_api = "https://api.github.com/repos/OpenRAE/doc-tools/releases/assets/724501388"
+
 [[tools."go:github.com/avito-tech/go-mutesting/cmd/go-mutesting"]]
 version = "0.0.0-20261002081621-9ce5f731e321"
 backend = "go:github.com/avito-tech/go-mutesting/cmd/go-mutesting"

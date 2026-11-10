@@ -161,17 +161,34 @@ conformance-go: ## Run the conformance cases of the Go commands against Go
 	commands=$$(ls cmd | paste -sd '|' -); \
 	$(GO) test ./conformance -count=1 -run "TestCorpus/^($$commands)$$/" -args -impl=go -bin "$$bin"
 
-# Checks the prose of each Markdown file that HEAD adds or changes since BASE,
-# with the Vale version that mise.toml pins and the rules in .vale/styles/STE
-# (docs/development/documentation-style-guide.md). It skips CHANGELOG.md, test
-# fixtures, and the assets of packs and kits.
+# Checks the prose of each Markdown file that HEAD adds or changes since BASE
+# (docs/development/documentation-style-guide.md). doc-tools, which mise.toml
+# pins and mise.lock verifies, supplies the STE checks and the DocTools Vale
+# style. Vale, which mise.toml also pins, applies DocTools and the rules in
+# .vale/styles/EnvPacks. The target skips CHANGELOG.md, test fixtures, and the
+# assets of packs and kits. An accepted decision record is immutable, so the
+# target checks a decision record that HEAD adds, and not one that HEAD
+# changes. Each file name goes to the checkers intact, after "--"
+# (docs/development/documentation-checks-design.md).
+ADR_RECORDS := docs/decisions/adrs/[0-9][0-9][0-9][0-9]-*.md
 prose: ## Check the prose of the Markdown files changed since BASE
 	@set -eu; \
-	files=$$(git diff --name-only --diff-filter=d --merge-base "$(BASE)" HEAD -- '*.md' \
+	files=$$(mktemp); trap 'rm -f "$$files"' EXIT; \
+	git diff -z --name-only --diff-filter=d --merge-base "$(BASE)" HEAD -- '*.md' \
 	  ':(exclude)CHANGELOG.md' ':(exclude,glob)**/testdata/**' ':(exclude)tests/fixtures' \
-	  ':(exclude,glob)packs/*/assets/**' ':(exclude,glob)kits/*/*/assets/**'); \
-	if [ -z "$$files" ]; then echo "prose: no changed Markdown file"; exit 0; fi; \
-	$(MISE) exec -- vale $$files
+	  ':(exclude,glob)packs/*/assets/**' ':(exclude,glob)kits/*/*/assets/**' \
+	  ':(exclude,glob)$(ADR_RECORDS)' > "$$files"; \
+	git diff -z --name-only --diff-filter=A --merge-base "$(BASE)" HEAD -- \
+	  ':(glob)$(ADR_RECORDS)' >> "$$files"; \
+	if [ ! -s "$$files" ]; then echo "prose: no changed Markdown file"; exit 0; fi; \
+	lint=$$($(MISE) exec -- sh -c 'command -v ste-lint.sh') || \
+	  { echo "prose: doc-tools is not installed; run mise install" >&2; exit 1; }; \
+	mkdir -p .vale/styles; rm -rf .vale/styles/DocTools; \
+	cp -R "$${lint%/tools/ste-lint.sh}/vale/DocTools" .vale/styles/DocTools; \
+	status=0; \
+	xargs -0 $(MISE) exec -- ste-lint.sh -- < "$$files" || status=1; \
+	xargs -0 $(MISE) exec -- vale -- < "$$files" || status=1; \
+	exit $$status
 
 # Mutation testing on the Go lines that HEAD changes since BASE, with the
 # go-mutesting version that mise.toml pins
