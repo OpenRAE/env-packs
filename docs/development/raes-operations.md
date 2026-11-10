@@ -2,7 +2,8 @@
 
 This page lists the RAES operations that env-packs uses (#552, design 0007).
 The Go code calls each operation through the interfaces of `internal/raes`.
-One adapter implements the interfaces with the RAES Go module.
+Only `internal/raesadapter` implements the interfaces with the RAES Go module.
+It implements vocabulary access now.
 
 The RAES Go module exists at `github.com/OpenRAE/rae/implementations/go`.
 The pinned upstream revision `17bf4515bf12` exposes public contract packages.

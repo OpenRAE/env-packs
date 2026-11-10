@@ -48,9 +48,9 @@ does not wait for an unrelated job, and the fastest signal arrives first.
   runs `raes-pack-validate --packs-root packs` and
   `raes-pack-release check --packs-root packs` for the first-party packs.
 - **`docs`**: builds `docs/public/` with warnings as errors, and checks the
-  publication boundary of the built site (ADR 0030). It then runs `make prose`
-  on the Markdown files that the change adds or changes (see
-  [the style guide](documentation-style-guide.md)).
+  publication boundary of the built site (ADR 0030). It then installs Vale and
+  doc-tools with mise and runs `make prose` on the Markdown files that the
+  change adds or changes (see [the style guide](documentation-style-guide.md)).
 - **`conformance`**: installs the hash-locked Python package and runs `make
   conformance`. The conformance corpus checks the exit statuses and the output
   streams of each command
@@ -85,11 +85,12 @@ rules are in [the Go test standard](go-test-standard.md).
 ## The full merge gate: `verify`
 
 Branch protection requires one status context: **`verify`**. It does no work
-itself. It is a **fail-closed aggregate**: it `needs` every mandatory job, it
-runs when one of them fails (`if: always()`), and it passes **only when every
-mandatory result is `success`**. A failed, cancelled, or skipped mandatory job
-blocks the merge. So the complete verification stays mandatory, and the work
-still runs in parallel.
+itself. It is a **fail-closed aggregate**. It `needs` every mandatory job, and
+it runs when one of them fails (`if: always()`). It passes **only when every
+mandatory result is `success`**.
+
+A failed, cancelled, or skipped mandatory job blocks the merge. So the complete
+verification stays mandatory, and the work still runs in parallel.
 
 To add a mandatory check, add its job to the `needs` of `verify` and to the
 result check inside it. `tests/test_ci_topology.py` fails when the aggregate

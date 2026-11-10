@@ -193,6 +193,9 @@ func (u unlistable) ReadDir(name string) ([]fs.DirEntry, error) {
 	return u.MapFS.ReadDir(name)
 }
 
+// TestUnread checks the inventory of the paths that the checks cannot read.
+// Regression test for #674: the inventory left out the assembly, object, and
+// other native files that the go command compiles or links.
 func TestUnread(t *testing.T) {
 	file := &fstest.MapFile{}
 	fsys := unlistable{dir: "locked", MapFS: fstest.MapFS{
@@ -203,6 +206,14 @@ func TestUnread(t *testing.T) {
 		"a/_a.go":         file,
 		"a/.a.go":         file,
 		"a/notes.txt":     file,
+		"a/asm_amd64.s":   file,
+		"a/blob.syso":     file,
+		"a/c.c":           file,
+		"a/c.h":           file,
+		"a/x.S":           file,
+		"a/x.cc":          file,
+		"a/f.f90":         file,
+		"a/w.swig":        file,
 		"d/d.go":          file,
 		"locked/l.go":     file,
 		"vendor/v/v.go":   file,
@@ -215,7 +226,7 @@ func TestUnread(t *testing.T) {
 	}}
 	read := map[string]bool{"doc.go": true, "a/a.go": true}
 	got := unread(fsys, ".", read)
-	want := []string{"a/gen.go", "d/d.go", "locked"}
+	want := []string{"a/asm_amd64.s", "a/blob.syso", "a/c.c", "a/c.h", "a/f.f90", "a/gen.go", "a/w.swig", "a/x.S", "a/x.cc", "d/d.go", "locked"}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("unread() mismatch (-want +got):\n%s", diff)
 	}

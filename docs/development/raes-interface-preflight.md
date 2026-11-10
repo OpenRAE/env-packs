@@ -13,9 +13,11 @@ The [operations inventory](raes-operations.md) must cover each symbol.
 The issue's count of 72 describes an earlier commit; do not remove newer imports
 to match that count.
 
-`internal/raes` already declares interfaces. This checkout has no adapter and no
-RAES Go dependency in `go.mod`. Its `TestErrorMessage` checks error formatting,
-not upstream compatibility. Existing documents describe upstream delivery at
+`internal/raes` already declares interfaces. At the time of this
+preflight, the checkout had no adapter and no RAES Go dependency in `go.mod`. Since then,
+`go.mod` pins the RAES Go module, and `internal/raesadapter` implements
+vocabulary access. `TestErrorMessage` checks error formatting, not upstream
+compatibility. Existing documents describe upstream delivery at
 their writing date; they do not prove current upstream availability.
 
 Keep one inventory for the RAES Go plan. Distinguish a related upstream issue
@@ -25,7 +27,8 @@ when delivery occurs. An unavailable operation blocks its dependent chunks;
 a mock, skipped test, or local replacement cannot establish runtime parity.
 
 The interface and inventory preparation can merge before those operations arrive.
-The concrete adapter and its real tests belong to #643, before the final cutover.
+The other adapter operations and their real tests belong to #643, before the
+final cutover.
 
 ## Caller contracts
 

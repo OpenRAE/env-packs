@@ -115,6 +115,8 @@ func (g *gate) respond(c Command) (Result, error) {
 			return ok(g.diff)
 		case strings.HasPrefix(line, "git ls-tree "):
 			return ok(g.files)
+		case line == "git show HEAD:"+RecordsFile:
+			return ok(g.records)
 		case strings.HasPrefix(line, "git worktree add "):
 			g.write(c.Args[4], RecordsFile, g.records)
 		case strings.HasPrefix(line, "go-mutesting "):
@@ -288,8 +290,25 @@ func TestMutationNothingToMutate(t *testing.T) {
 	g.diff = "diff --git a/a_test.go b/a_test.go\n--- a/a_test.go\n+++ b/a_test.go\n@@ -1 +1 @@\n-x\n+y\n"
 	r := g.runner()
 	got, err := Mutation(context.Background(), r, gateOptions(t))
-	if err != nil || got.Files != 0 || len(got.Findings) != 0 || len(r.commands) != 2 {
-		t.Errorf("Mutation() without changed code = %+v, %v after %d commands; want an empty result after 2", got, err, len(r.commands))
+	if err != nil || got.Files != 0 || len(got.Findings) != 0 || len(r.commands) != 3 {
+		t.Errorf("Mutation() without changed code = %+v, %v after %d commands; want an empty result after 3", got, err, len(r.commands))
+	}
+}
+
+// TestMutationChecksRecordsWithoutTargets checks the committed records when
+// no Go line changed. Regression test for #674: a change to mutation.yaml
+// alone skipped the check.
+func TestMutationChecksRecordsWithoutTargets(t *testing.T) {
+	g := newGate(t)
+	g.diff = "diff --git a/mutation.yaml b/mutation.yaml\n--- a/mutation.yaml\n+++ b/mutation.yaml\n@@ -1 +1 @@\n-x\n+y\n"
+	g.records = "version: 2\nequivalents:\n  - file: a.go\n"
+	got, err := Mutation(context.Background(), g.runner(), gateOptions(t))
+	if err != nil || len(got.Findings) != 2 || got.Findings[0].Rule != RuleRecord {
+		t.Errorf("Mutation() with incomplete records = %+v, %v; want two record findings", got, err)
+	}
+	g.records = "version: 1\nunknown: true\n"
+	if _, err := Mutation(context.Background(), g.runner(), gateOptions(t)); err == nil {
+		t.Error("Mutation() accepted records with an unknown field")
 	}
 }
 

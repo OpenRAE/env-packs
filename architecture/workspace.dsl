@@ -53,6 +53,7 @@ workspace "RAES environment-pack tooling" "Defines, validates, and releases RAES
         env_packs.commands.issue_skeleton_command -> env_packs.library.outcome "Depends on"
         env_packs.commands.issue_skeleton_command -> env_packs.library.terminal "Depends on"
         env_packs.repository_tools.report -> env_packs.library.outcome "Depends on"
+        env_packs.repository_tools.report -> env_packs.library.terminal "Depends on"
         env_packs.repository_tools.architecture -> env_packs.library.strict_yaml "Depends on"
         env_packs.repository_tools.architecture -> env_packs.repository_tools.report "Depends on"
         env_packs.repository_tools.architecture -> env_packs.library.outcome "Depends on"

@@ -63,6 +63,18 @@ func TestBody(t *testing.T) {
 	}
 }
 
+// TestBodyFirstPartyPackRoot checks that the contract deliverable names the
+// selected pack root. Regression test for #674: the contract named
+// environments/ for a first-party plan.
+func TestBodyFirstPartyPackRoot(t *testing.T) {
+	plan := testPlan()
+	plan.PackRoot = "packs"
+	got, err := loadTestTemplates(t).Body(plan, "contract")
+	if err != nil || !strings.Contains(got, "Scaffold `packs/example-pack/`") || strings.Contains(got, "environments/") {
+		t.Errorf("Body() for a first-party plan = %q, %v; want only the packs/ root", got, err)
+	}
+}
+
 func TestBodyNoSources(t *testing.T) {
 	plan := testPlan()
 	plan.Sources = nil

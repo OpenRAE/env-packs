@@ -186,7 +186,7 @@ def contract_body(plan: PackPlan) -> str:
     {COMMON_ANCHORS}
     ## Deliverables
     - Set `pack.yaml.requirement` to your upstream requirement id if you track one, or `null`; do not synthesize a UID.
-    - Scaffold `environments/{plan.pack_id}/` with the progressive wizard `raes-pack-new` (pick a starter route).
+    - Scaffold `{plan.pack_root}/{plan.pack_id}/` with the progressive wizard `raes-pack-new` (pick a starter route).
     - Fill `pack.yaml`, `pack.compatibility.yaml`, and `docs/provenance-ledger.yaml` with truthful initial metadata.
     - Replace template prose in `README.md`, `docs/concepts.md`, `docs/attack-path.md`, and `docs/lineage.md`.
     - Record source adaptation decisions: what is used, excluded, changed, or locally designed.

@@ -1,0 +1,29 @@
+{
+  "enabledPlugins": {
+    "doc-tools@openrae-doc-tools": true
+  },
+  "extraKnownMarketplaces": {
+    "openrae-doc-tools": {
+      "source": {
+        "source": "settings",
+        "name": "openrae-doc-tools",
+        "plugins": [
+          {
+            "name": "doc-tools",
+            "source": {
+              "source": "git-subdir",
+              "url": "https://github.com/OpenRAE/doc-tools.git",
+              "path": "skills/documentation",
+              "ref": "v0.1.0",
+              "sha": "97866fad14d7fbb0d6752788ebdc5ae4f235573a"
+            },
+            "description": "Diataxis and ASD-STE100 documentation skill"
+          }
+        ],
+        "owner": {
+          "name": "OpenRAE"
+        }
+      }
+    }
+  }
+}

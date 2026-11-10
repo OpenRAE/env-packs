@@ -8,6 +8,7 @@ exec_auto_install = false
 [tools]
 "aqua:golangci/golangci-lint" = "2.15.0"
 "aqua:errata-ai/vale" = "3.25.1"
+"github:OpenRAE/doc-tools" = { version = "0.1.0", asset_pattern = "doc-tools-*.tar.gz", strip_components = 1, bin_path = "tools" }
 "go:github.com/avito-tech/go-mutesting/cmd/go-mutesting" = "v0.0.0-20261002081621-9ce5f731e321"
 "go:golang.org/x/vuln/cmd/govulncheck" = "v1.9.0"
 "aqua:open-policy-agent/conftest" = "0.71.1"

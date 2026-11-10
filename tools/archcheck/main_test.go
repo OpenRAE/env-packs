@@ -125,19 +125,19 @@ func TestRunFindings(t *testing.T) {
 			name:       "model that does not decode",
 			mode:       "design",
 			change:     writeFile("architecture/model.yaml", "version: 1\nmodul: x\n"),
-			wantStdout: "architecture/model.yaml: model: decode model: yaml: unmarshal errors:\n  line 2: field modul not found in type architecture.Model\n\tfix: Correct the YAML of the model.",
+			wantStdout: "architecture/model.yaml: model: decode model: yaml: unmarshal errors:\\x0a  line 2: field modul not found in type architecture.Model\n\tfix: Correct the YAML of the model.",
 		},
 		{
 			name:       "model that does not decode, in the check mode",
 			mode:       "check",
 			change:     writeFile("architecture/model.yaml", "version: 1\nmodul: x\n"),
-			wantStdout: "architecture/model.yaml: model: decode model: yaml: unmarshal errors:\n  line 2: field modul not found in type architecture.Model\n\tfix: Correct the YAML of the model.",
+			wantStdout: "architecture/model.yaml: model: decode model: yaml: unmarshal errors:\\x0a  line 2: field modul not found in type architecture.Model\n\tfix: Correct the YAML of the model.",
 		},
 		{
 			name:       "model that does not decode, in the dsl mode",
 			mode:       "dsl",
 			change:     writeFile("architecture/model.yaml", "version: 1\nmodul: x\n"),
-			wantStdout: "architecture/model.yaml: model: decode model: yaml: unmarshal errors:\n  line 2: field modul not found in type architecture.Model\n\tfix: Correct the YAML of the model.",
+			wantStdout: "architecture/model.yaml: model: decode model: yaml: unmarshal errors:\\x0a  line 2: field modul not found in type architecture.Model\n\tfix: Correct the YAML of the model.",
 		},
 		{
 			name:       "invalid model",

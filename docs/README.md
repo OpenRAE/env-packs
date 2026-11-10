@@ -100,6 +100,9 @@ User-facing documentation is under [`public/`](public/index.md).
   from another source into this repository without leaking private vocabulary.
 - [Documentation style guide](development/documentation-style-guide.md) — the
   writing rules for public docs, so a change reads like the rest.
+- [Documentation checks design](development/documentation-checks-design.md) —
+  components, data flow, and security controls of the prose gate and the shared
+  authoring skill.
 
 ## Manual integration walkthroughs
 

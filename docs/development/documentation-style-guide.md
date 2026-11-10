@@ -20,30 +20,43 @@ applies to documents, comments, commit messages, issues, and pull requests.
   the text clearer.
 
 When you change a document, bring the complete document into the standard. Do
-not change a document only to pass the prose gate.
+not change a document only to pass the prose gate. Do not rewrite an accepted
+decision record; a later record supersedes it.
 
 ### The prose gate
 
 `make prose` checks the Markdown files that a change adds or changes since
-`BASE`. It runs Vale, which `mise.toml` pins, with the rules in
-`.vale/styles/STE/`:
+`BASE`. It uses [doc-tools](https://github.com/OpenRAE/doc-tools) and Vale.
+`mise.toml` pins both, and `mise.lock` verifies them. The gate applies these
+rules:
 
-| Rule | Check |
-| --- | --- |
-| `SentenceLength` | Each sentence has 25 words or fewer. |
-| `ParagraphLength` | Each paragraph has 6 sentences or fewer. |
-| `PassiveVoice` | No form of "be" comes before a past participle. |
-| `PlainWords` | The text does not use a word from a list of complex words. The message gives the simple word. |
+| Rule | Tool | Check |
+| --- | --- | --- |
+| `STE-4.2` | doc-tools STE check | The text has no contractions. |
+| `STE-5.1` | doc-tools STE check | Each sentence has 25 words or fewer. |
+| `STE-6.6` | doc-tools STE check | Each paragraph has 6 sentences or fewer. |
+| `DocTools.AvoidDismissive` | Vale | The text has no dismissive words, such as `simply` or `just`. |
+| `DocTools.AvoidHype` | Vale | The text has no promotional words, such as `powerful` or `seamless`. |
+| `DocTools.HeadingPunctuation` | Vale | No heading ends with `.`, `!`, `?`, `:`, or `;`. |
+| `DocTools.PlainWords` | Vale | The text does not use a word from a list of complex words. The message gives the simple word. |
+| `EnvPacks.PassiveVoice` | Vale | No form of "be" comes before a past participle. |
+
+doc-tools owns the STE and `DocTools` rules. `.vale/styles/EnvPacks/` holds
+the rules that only this repository uses.
 
 The `docs` CI job runs the gate, and `verify` requires that job. A tool cannot
 tell a procedural sentence from a descriptive sentence, so review checks the
-20-word limit. Review also checks the rules that no tool can check.
+20-word limit. Review also checks the rules that no tool can check. A clean
+result does not prove full ASD-STE100 conformance.
 
 The gate does not check these files:
 
 - `CHANGELOG.md`, because release-please writes it;
 - the test fixtures in `testdata` directories and in `tests/fixtures/`;
-- the assets of packs and kits, because they can hold in-world content.
+- the assets of packs and kits, because they can hold in-world content;
+- a decision record in `docs/decisions/adrs/` that the change modifies. An
+  accepted decision record does not change, so the gate checks a new record
+  only.
 
 ## Voice
 
@@ -63,7 +76,7 @@ The gate does not check these files:
   limits.
 - Do not use strings of abstract nouns, such as "the canonical shared contract
   boundary". Name the concrete thing that does the work.
-- Do not use marketing words, such as "seamless", "powerful", or "robust". Do
+- Do not use marketing words, such as `seamless`, `powerful`, or `robust`. Do
   not promise a roadmap, and do not claim adoption.
 - Keep internal process words out of the public pages: issue numbers,
   milestones, and review state. They belong in the developer documents.

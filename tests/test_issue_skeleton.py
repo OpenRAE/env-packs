@@ -45,6 +45,20 @@ class SkeletonTemplateTests(unittest.TestCase):
             milestone_number=42,
         )
 
+    def test_contract_scaffolds_under_the_selected_pack_root(self):
+        # Regression for #674: a first-party issue named the external root.
+        plan = SKELETON.PackPlan(
+            pack_id="example-pack",
+            title="Example Pack",
+            focus="A focused example scenario.",
+            sources=(),
+            labels=(),
+            pack_root="packs",
+        )
+        body = SKELETON.contract_body(plan)
+        self.assertIn("Scaffold `packs/example-pack/`", body)
+        self.assertNotIn("environments/", body)
+
     def test_has_nine_standard_issue_templates(self):
         self.assertEqual(len(SKELETON.ISSUE_TEMPLATES), 9)
         self.assertEqual(

@@ -34,8 +34,8 @@ Each row needs the source test and assertion, invariant, replacement rule or
 linter check, and passing and failing fixture. A retired row needs its reason
 and the governing cutover decision. One test can contain several invariants.
 
-Include helper behavior and regression cases, not just assertions over today's
-compliant files. Preserve boolean versus integer checks, required presence,
+Include helper behavior and regression cases, and not only assertions over
+today's compliant files. Preserve boolean versus integer checks, required presence,
 ordering, error propagation, negative claims, and nonempty discovery checks.
 Consolidate duplicate assertions under one rule, with each source assertion
 mapped to it. Do not preserve weaker duplicate implementations.
@@ -267,8 +267,9 @@ Do not infer adapter availability from a model declaration or an assumed upstrea
 package name. Design-mode validation checks intended structure; the full architecture
 gate requires the declared code and the matching generated C4 view.
 
-The inspected numbered draft names `contract/concept`, but this checkout contains
-no adapter or RAES Go module dependency that verifies that API.
+The inspected numbered draft names `contract/concept`. At the time of this
+preflight, the checkout had no adapter or RAES Go module dependency that verified
+that API. `internal/raesadapter` now implements vocabulary access with it.
 Its proposed YAML/TOML collection needs justification against native Conftest parsing.
 Its model dependencies must permit the existing output helpers that the collector uses.
 Reconcile these draft assumptions before implementation; do not weaken the architecture gate to admit missing packages.
