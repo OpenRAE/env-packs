@@ -310,6 +310,10 @@ func TestMutationChecksRecordsWithoutTargets(t *testing.T) {
 	if _, err := Mutation(context.Background(), g.runner(), gateOptions(t)); err == nil {
 		t.Error("Mutation() accepted records with an unknown field")
 	}
+	g.fail = map[string]Result{"git show ": {ExitCode: 128, Stderr: []byte("fatal: path 'mutation.yaml' does not exist in 'HEAD'")}}
+	if _, err := Mutation(context.Background(), g.runner(), gateOptions(t)); err == nil || !strings.Contains(err.Error(), "read "+RecordsFile+":") {
+		t.Errorf("Mutation() without committed records error = %v, want the read error", err)
+	}
 }
 
 func TestMutationErrors(t *testing.T) {
