@@ -9,7 +9,7 @@ Use the supported Python package and an admitted kit source.
 Keep the source revision immutable during inspection and composition.
 Select an exact kit ID and version from the [release reference](kit-release-reference.md#release-references).
 Read that release's README, `assets/integration.md`, `kit.yaml`, and `module.sdl.yaml`.
-For Owlbear, also read its [source provenance](../../kits/infrastructure.owlbear-protected-target/1.0.0/assets/provenance.md).
+For Owlbear, also read the selected release's source provenance: [1.0.0](../../kits/infrastructure.owlbear-protected-target/1.0.0/assets/provenance.md) or [1.1.0](../../kits/infrastructure.owlbear-protected-target/1.1.0/assets/provenance.md).
 
 Kit inspection and proposals do not qualify a runtime backend.
 Only use trusted author content when a later author check executes pack-local validators or tests.

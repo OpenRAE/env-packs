@@ -9,9 +9,10 @@ Use the `security-operations` concern.
 The module exports one ARM64 Linux compute node named `target`.
 Its OS is Ubuntu 24.04.
 Its planning estimate is two CPU cores, 4 GiB RAM, and 8 GiB storage.
+
 The compute substrate remains open.
 A backend must admit the required kernel access before realization.
-No host privileges, host mounts, network listeners, or cloud services are granted.
+The kit grants no host privileges, host mounts, network listeners, or cloud services.
 
 The source reference is Owlbear commit `fa4497f3273517611e2d62f5fb32c620a00a9681`.
 Its README identifies the prototype as version 2.3.0.
@@ -22,8 +23,9 @@ Four exported content declarations require the kernel module, daemon, game, and 
 Each declaration uses the existing RAES `Source` selector with the reference revision.
 These selectors identify required build outputs, not published binary releases.
 Their immutable binary identities remain unresolved until authorized artifact admission.
+
 The daemon includes the upstream eBPF skeletons.
-No separate eBPF runtime object is invented.
+The design invents no separate eBPF runtime object.
 The release includes no Owlbear executable or upstream source bytes.
 Its provenance document records the upstream revision, license, and artifact paths.
 
@@ -31,7 +33,8 @@ The `daemon_active_state` parameter accepts `active` or `inactive`.
 It changes the typed RAES service-manager unit state.
 The unit has a portable unit ID and no fixed native unit name or manager.
 Backend preparation supplies the unit mapping and process target.
-The upstream project does not supply that service-manager wrapper.
+
+The upstream project does not supply a service-manager wrapper for the daemon.
 Inactive daemon state does not establish an unprotected kernel.
 Active daemon state does not establish effective enforcement.
 The kit supplies no new runtime configuration language or lifecycle script.
@@ -41,6 +44,26 @@ Profile labels do not change resource allocation.
 The benign seed inventory describes the reference workload, component paths, and default daemon state.
 Copied seed assets describe defaults; module parameters do not render those assets.
 Connections to other kits belong at the consuming pack root.
+
+## Release 1.1.0
+
+Release `1.1.0` pins Owlbear revision `652df5d6883809664917e6c734eec32a14fa40c4`.
+That revision's `VERSION` file contains `2.7.0`.
+The release keeps the 1.0.0 parameters, exports, resources, and paths.
+The upstream daemon, module, game, and signature source paths did not change.
+
+The revision adds a versioned ARM64 research-artifact build.
+Each build writes an archive, a build manifest, and `SHA256SUMS`.
+`owlbeard --version`, `modinfo`, and control replies report the build identity.
+The kit documents these admission checks and does not pin an archive digest.
+
+The revision also adds local experiment interfaces: `--sensors`, `--control`, and `--events`.
+The backend or controller selects these values for each run.
+They are not kit parameters, and they add no network listener.
+
+The revision contains a backend-specific runtime adapter under `adapters/`.
+The kit does not bundle, declare, or require it.
+Provider image preparation and qualification records also stay outside the kit.
 
 ## Data flows and trust boundaries
 
@@ -86,7 +109,7 @@ Existing admission and redistribution tests remain the executable policy.
 Update collection counts and documentation to include the new release.
 
 ADRs 0009, 0035, 0036, and 0041 already authorize this architecture.
-No decision changes, new infrastructure template, or deployment diagram are required.
+The design requires no decision change, new infrastructure template, or deployment diagram.
 The module and existing schema provide the architecture as code.
 The data-flow diagram also identifies the components and their interfaces.
 

@@ -1,10 +1,10 @@
 # Build environments from infrastructure kits
 
-An infrastructure kit is a reusable piece of environment source: a RAES SDL
-module plus its pack-local assets, documentation, tests, provenance, resource
-estimates, and software-component inventory inputs. It is the part you should
-not have to recreate each time you need a domain controller, workstation,
-database, mail system, model service, or observability stack.
+An infrastructure kit is a reusable piece of environment source. It is a RAES
+SDL module with its pack-local assets, documentation, tests, provenance, resource
+estimates, and software-component inventory inputs. You do not have to recreate
+it each time you need a domain controller, workstation, database, mail system,
+model service, or observability stack.
 
 Kits do not add a runtime layer. After composition, the result is an ordinary
 environment pack containing editable RAES SDL, ordinary assets,
@@ -12,8 +12,8 @@ environment pack containing editable RAES SDL, ordinary assets,
 `kit.materializations.json` ownership record. A backend sees the resulting RAES
 scenario; it does not call a kit API.
 
-The complete first-party collection is published under `kits/`. Its scope and
-release quality bar are defined by the [kit content strategy](kit-content-strategy.md).
+The repository publishes the complete first-party collection under `kits/`. The
+[kit content strategy](kit-content-strategy.md) defines its scope and release quality bar.
 
 ## What an author gets
 
@@ -39,7 +39,7 @@ and discovery functions print and log nothing.
 
 ## When a kit requires a virtual machine
 
-A kit lets the backend choose the compute substrate unless the kit can't work
+A kit lets the backend choose the compute substrate unless the kit cannot work
 without a particular one. Each node states this in the kit's `module.sdl.yaml`
 as a RAES compute-substrate constraint. A Linux kit leaves the choice open:
 
@@ -92,19 +92,25 @@ Follow the [Owlbear composition guide](owlbear-composition.md) for a synthetic
 study scaffold, a daemon-state update, and the independent runtime-adapter
 qualification boundary.
 
-`infrastructure.owlbear-protected-target` version `1.0.0` exports one ARM64 Ubuntu target and four Owlbear input-file declarations.
-It also exports a benign seed inventory.
+`infrastructure.owlbear-protected-target` versions `1.0.0` and `1.1.0` export one ARM64 Ubuntu target and four Owlbear input-file declarations.
+Version `1.0.0` pins Owlbear revision `fa4497f3273517611e2d62f5fb32c620a00a9681`.
+Version `1.1.0` pins Owlbear revision `652df5d6883809664917e6c734eec32a14fa40c4`.
+That revision adds versioned research-artifact builds and local experiment interfaces.
+Each release also exports a benign seed inventory.
+
 The `daemon_active_state` parameter selects `active` or `inactive` typed service state.
 The backend supplies the service binding, kernel-compatible artifacts, target PID, and enforcement arguments.
-No upstream service unit or executable is bundled.
+The kit bundles no upstream service unit or executable.
 Service activity alone does not establish effective protection.
 
 The compute substrate remains open.
 Kernel access, BTF, BPF LSM, and module compatibility require backend admission.
 The kit grants no host privileges and configures no network listener or external telemetry destination.
+
 The two deployment profile labels use the same resource requirements.
 Copied seed assets describe defaults; parameters do not render those files.
-See the release's [integration material](https://github.com/OpenRAE/env-packs/blob/dev/kits/infrastructure.owlbear-protected-target/1.0.0/assets/integration.md) and [provenance](https://github.com/OpenRAE/env-packs/blob/dev/kits/infrastructure.owlbear-protected-target/1.0.0/assets/provenance.md).
+See the 1.1.0 release's [integration material](https://github.com/OpenRAE/env-packs/blob/dev/kits/infrastructure.owlbear-protected-target/1.1.0/assets/integration.md) and [provenance](https://github.com/OpenRAE/env-packs/blob/dev/kits/infrastructure.owlbear-protected-target/1.1.0/assets/provenance.md).
+The 1.0.0 release keeps its own [integration material](https://github.com/OpenRAE/env-packs/blob/dev/kits/infrastructure.owlbear-protected-target/1.0.0/assets/integration.md) and [provenance](https://github.com/OpenRAE/env-packs/blob/dev/kits/infrastructure.owlbear-protected-target/1.0.0/assets/provenance.md).
 
 ## Discover and inspect
 
@@ -152,7 +158,7 @@ running kit code, or contacting the network. The source root contains `kits/`;
 it is also usable with the CLI's existing source arguments.
 
 The helper requires filesystem-backed installed resources. If they are absent
-or the package is loaded from a ZIP file, it raises `KitError` without extracting
+or Python loads the package from a ZIP file, it raises `KitError` without extracting
 files or searching a checkout. Editable installations should use an explicit
 checkout source as shown below.
 
@@ -212,10 +218,10 @@ printf '%s\n' '{"deployment_profile":"standard","service_label":"directory"}' |
     --preview --json
 ```
 
-Preview constructs and validates the complete successor in private staging, but
+Preview constructs and validates the complete successor in private staging. It
 does not change the pack, write its lock, create a RAES cache in it, execute
 content, or contact a registry. Remove `--preview` to commit the exact proposal.
-Parameter values are read from stdin and are not repeated in preview output.
+The CLI reads parameter values from stdin and does not repeat them in preview output.
 
 Repeat the operation with distinct namespaces to add endpoints, DNS,
 application, data, and observability services. Namespace, export, version,
@@ -224,8 +230,8 @@ conflicts are blocking diagnostics.
 
 For a complete security-operations example, follow the verified
 [defensive-tooling composition](defensive-tooling-composition.md) walkthrough.
-It composes the published Wazuh and Suricata releases, declares one
-supported relationship at the pack root, and keeps static environment state
+It composes the published Wazuh and Suricata releases and declares one
+supported relationship at the pack root. It keeps static environment state
 separate from runtime telemetry and backend realization.
 
 ## Update, replace, and remove
@@ -263,24 +269,24 @@ raes-pack-kit remove environments/realistic-lab gateway --preview --json
 ```
 
 If an author changed an owned file after materialization, update, replacement,
-and removal stop with `kit.author-modification.conflict`. Unowned files are not
-selected by filename or byte similarity. Shared SDL and lock files carry
+and removal stop with `kit.author-modification.conflict`. The tools do not
+select unowned files by filename or byte similarity. Shared SDL and lock files carry
 explicit multi-owner state and are rewritten only as part of a fully validated
 successor.
 
-Kit assets can be placed only below `assets/briefing/`, `assets/content/`,
-`assets/kits/`, or `docs/kits/`. They cannot add pack validators, tests, hooks,
+A kit can place assets only below `assets/briefing/`, `assets/content/`,
+`assets/kits/`, or `docs/kits/`. Kit assets cannot add pack validators, tests, hooks,
 or workflows. Catalog titles are also treated as untrusted terminal text.
 
 Release inspection parses the kit module in memory and denies imports. Local
 composition resolves imports through RAES with an empty registry policy;
-`raes-trust.yaml` and known secret-file names are refused before content reads.
+it refuses `raes-trust.yaml` and known secret-file names before it reads content.
 An MCP host uses [separate preparation and review steps](mcp.md) before applying
 a kit proposal.
 
 An exceptionally rare failed recovery exchange returns a tool failure and a
 `recovery:` path. That directory contains the preserved original pack; do not
-delete it until the target and recovery copy have been inspected.
+delete it until you inspect the target and recovery copy.
 
 ## Validate the ordinary result
 
