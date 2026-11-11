@@ -52,6 +52,7 @@ once accepted; a later ADR supersedes an earlier one rather than editing it.
 | [0044](0044-restore-breaking-changes-to-major-releases.md) | Restore breaking changes to major releases (supersedes 0039) | Accepted |
 | [0045](0045-version-packs-with-the-package.md) | Version packs with the package (extends 0008) | Accepted |
 | [0046](0046-admit-pinned-local-imports-through-raes-supplied-sources.md) | Admit pinned local imports through RAES supplied sources (amends 0013, 0035) | Accepted |
+| [0047](0047-merge-dev-pull-requests-through-a-merge-queue.md) | Merge dev pull requests through a merge queue (amends 0020) | Accepted |
 
 ```{toctree}
 :hidden:

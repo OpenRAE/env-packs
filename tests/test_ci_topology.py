@@ -333,6 +333,69 @@ class SecretEligibilityTests(unittest.TestCase):
                 )
 
 
+def _triggers() -> dict:
+    # PyYAML parses a bare ``on:`` key as the YAML 1.1 boolean ``True``.
+    data = _load()
+    return data.get("on", data.get(True)) or {}
+
+
+class MergeQueueTests(unittest.TestCase):
+    """The required context reports on each dev merge group (ADR 0047).
+
+    The dev merge queue merges a group only when every required context reports
+    success on the group. A producer without a ``merge_group`` trigger never
+    reports, so the queue never merges. A job that a condition skips on the group
+    makes ``verify`` fail closed.
+    """
+
+    def setUp(self) -> None:
+        self.jobs = _jobs()
+        self.triggers = _triggers()
+
+    def test_the_required_producer_runs_on_dev_merge_groups(self) -> None:
+        merge_group = self.triggers.get("merge_group")
+        self.assertIsInstance(
+            merge_group, dict,
+            "ci.yml produces the required `verify` context, so it must have a "
+            "`merge_group` trigger for the dev merge queue (ADR 0047)",
+        )
+        self.assertEqual(merge_group.get("types"), ["checks_requested"])
+        self.assertEqual(
+            merge_group.get("branches"), ["dev"],
+            "only dev uses a merge queue; main keeps manual merges (ADR 0047)",
+        )
+
+    def test_the_gate_runs_every_mandatory_job_on_a_merge_group(self) -> None:
+        # The required job and each job it gates must not carry a condition
+        # that can skip it on a merge group. `verify` keeps only `always()`.
+        self.assertEqual(
+            str(self.jobs[_REQUIRED_CONTEXT].get("if", "")).strip(), "always()",
+        )
+        for name in _needs(self.jobs[_REQUIRED_CONTEXT]):
+            with self.subTest(job=name):
+                self.assertNotIn(
+                    "if", self.jobs[name],
+                    f"`{name}` is gated by `verify`; a job-level condition can "
+                    "skip it on a merge group (ADR 0047)",
+                )
+
+    def test_the_prose_check_diffs_a_merge_group_against_its_base(self) -> None:
+        # Without the merge-group base, the prose check falls back to the
+        # empty tree and lints the whole corpus on each merge group.
+        base = ""
+        for step in _steps(self.jobs["docs"]):
+            base += str((step.get("env") or {}).get("BASE", ""))
+        self.assertIn("github.event.merge_group.base_sha", base)
+
+    def test_sonar_does_not_scan_a_merge_group(self) -> None:
+        # Sonar names the events it scans. An exclusion such as
+        # `event_name != 'pull_request'` would also admit `merge_group`.
+        cond = str(self.jobs["sonar"].get("if", ""))
+        self.assertIn("github.event_name == 'push'", cond)
+        self.assertIn("github.event_name == 'pull_request'", cond)
+        self.assertNotIn("github.event_name !=", cond)
+
+
 class CachingTests(unittest.TestCase):
     """Dependency caching is reproducible: keyed on the hash-locked requirements."""
 

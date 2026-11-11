@@ -1,0 +1,6 @@
+# ggshield 1.56.1 declares oauthlib<4. oauthlib 3.3.1 carries PYSEC-2026-4114 and
+# CVE-2026-49272, which oauthlib 4.0.1 fixes. ggshield uses oauthlib only for
+# `ggshield auth login`. The CI job authenticates with an API key.
+# The job installs ggshield.txt with --no-deps, because pip refuses the declared
+# bound that this override replaces.
+oauthlib>=4.0.1

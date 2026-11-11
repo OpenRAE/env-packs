@@ -1,0 +1,75 @@
+# GitGuardian secret scan with ggshield (ADR 0047).
+#
+# The GitGuardian App posts its check on pull request commits only. A merge
+# group commit has no pull request, so the App check does not report on the dev
+# merge queue. This job produces the GitGuardian context on both events. The
+# GitGuardian App stays installed.
+#
+# The scan reads each commit in the range, not only the final tree. A finding
+# fails the job, and the job fails when the API key is not available, for
+# example on a pull request from a fork. The key comes from the Actions secret
+# store and, for Dependabot pull requests, from the Dependabot secret store.
+name: GitGuardian
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+  merge_group:
+    types: [checks_requested]
+    branches:
+      - dev
+
+# Least privilege (#142): the scan only reads the repository.
+permissions: read-all
+
+concurrency:
+  group: gitguardian-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ggshield:
+    name: GitGuardian secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            requirements/ggshield.txt
+
+      # The lock is complete. --no-deps keeps pip from refusing the oauthlib
+      # override that requirements/ggshield.overrides explains.
+      - name: Install the hash-locked ggshield
+        run: python -m pip install --require-hashes --no-deps -r requirements/ggshield.txt
+
+      - name: Scan the commits for secrets
+        env:
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GITGUARDIAN_API_KEY" ]; then
+            echo "::error::GITGUARDIAN_API_KEY is not available; the scan cannot run."
+            exit 1
+          fi
+          for sha in "$BASE" "$HEAD"; do
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || [[ "$sha" =~ ^0+$ ]]; then
+              echo "::error::The event has no valid commit range to scan."
+              exit 1
+            fi
+          done
+          ggshield secret scan commit-range "$BASE..$HEAD"

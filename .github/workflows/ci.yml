@@ -9,6 +9,13 @@ on:
     branches:
       - main
       - dev
+  # The dev merge queue tests each merge group before it merges (ADR 0047).
+  # `verify` is the required context, so it must report on the merge group.
+  # main has no merge queue.
+  merge_group:
+    types: [checks_requested]
+    branches:
+      - dev
 
 # Least privilege (#142): CI only reads the repository. SonarCloud authenticates
 # with SONAR_TOKEN, not GITHUB_TOKEN, so no job here needs a write scope. An
@@ -223,7 +230,7 @@ jobs:
       - name: Check changed Markdown prose
         shell: bash
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: |
           set -euo pipefail
           # NUL-delimited explicit paths include hidden directories and assets.
@@ -271,9 +278,12 @@ jobs:
     # runs on the post-merge push to dev/main with full token access, so the
     # quality gate covers the integrated code. Dependency bumps don't touch
     # sonar.sources (src/) anyway, so there is nothing new to analyze here.
+    # A merge group is also skipped: its temporary queue branch is not a branch
+    # to analyze, and the push to dev after the merge scans the result (ADR 0047).
     if: >-
-      github.event_name != 'pull_request' ||
-      (github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
        github.actor != 'dependabot[bot]')
     steps:
       - name: Check out repository
