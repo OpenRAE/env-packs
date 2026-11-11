@@ -59,6 +59,9 @@ Keep current Python instructions until the separate Go migration and cutover lan
   (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, `ci:`, `build:`). A
   required check enforces this and bans tool-branding prefixes. Feature PRs are
   squash-merged, so the title becomes the commit — get it right.
+- A PR into `dev` merges through the `dev` merge queue. The queue merges the PR
+  when `verify` passes on the merge group (see
+  [ADR 0047](docs/decisions/adrs/0047-merge-dev-pull-requests-through-a-merge-queue.md)).
 - For a change to the contract or a schema, include the rationale, the
   compatibility impact, and how you validated it.
 

@@ -64,6 +64,10 @@ python3 -m compileall src tests
   digests (ADR 0045).
 - Squash-merge feature PRs. See
   `docs/decisions/adrs/0008-adopt-release-please.md`.
+- A PR into `dev` merges through the `dev` merge queue, which squash-merges.
+  The `/implement` and `/quickfix` readiness step adds the PR to the queue.
+  No workflow merges a PR or adds one to the queue. See
+  [ADR 0047](docs/decisions/adrs/0047-merge-dev-pull-requests-through-a-merge-queue.md).
 - Open the `dev` → `main` promotion PR with `make devmain`. Merge it with a
   **merge commit** — never squash or rebase it. Otherwise, release-please loses
   the individual Conventional Commit subjects that determine the version and changelog. See
