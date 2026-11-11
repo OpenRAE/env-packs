@@ -41,8 +41,9 @@ A merge group commit has no pull request, so the App check does not report on a 
   It also fails when the event has no valid commit range.
 - `requirements/ggshield.txt` pins ggshield with hashes.
   `requirements/ggshield.overrides` raises oauthlib to a version without known vulnerabilities.
-- SonarCloud does not scan a merge group.
-  The push to `dev` after the merge scans the result, as before.
+- SonarCloud scans a merge group.
+  It runs the pull request analysis of the queued pull request against `dev`.
+  It fails closed when the merge group ref does not name a pull request that targets `dev`.
 - `dev` does not use strict status checks. `main` keeps strict status checks.
 - The maintainer authorizes the `/implement` and `/quickfix` readiness step to add a pull request that targets `dev` to the queue.
   Readiness adds it after it records the Phase E handoff, so the pull request cannot merge before readiness.

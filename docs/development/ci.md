@@ -76,7 +76,9 @@ A PR into `dev` merges through a GitHub merge queue
   merge.
 - The prose check diffs a merge group against the merge group base. That diff
   also contains the PRs in front of the PR.
-- `sonar` does not run on a merge group.
+- `sonar` runs on a merge group. It analyzes the queued pull request against
+  `dev`. It fails when the merge group ref does not name a pull request that
+  targets `dev`.
 - `dev` does not use strict status checks, because the queue tests each PR
   against the latest `dev`. `main` keeps strict status checks.
 
@@ -89,9 +91,10 @@ Without it, the context never reports on a merge group, and the queue stops.
 
 `sonar` is a secret-backed quality gate. It depends **only** on the `tests`
 coverage producer, downloads that same-run `coverage.xml`, and runs the
-SonarCloud scan — it does **not** re-run the suite. It runs on a push and on a
-pull request from this repository. It does not run for fork and Dependabot pull
-requests, which cannot see `SONAR_TOKEN`, or for a merge group.
+SonarCloud scan — it does **not** re-run the suite. It runs on a push, on a
+pull request from this repository, and on a merge group. On a merge group it
+analyzes the queued pull request against `dev`. It does not run for fork and
+Dependabot pull requests, which cannot see `SONAR_TOKEN`.
 
 So it is **not**
 part of the universally-required `verify` aggregate. The post-merge push to

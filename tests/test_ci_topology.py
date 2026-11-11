@@ -24,6 +24,7 @@ import pathlib
 import re
 import shutil
 import subprocess
+import tempfile
 import unittest
 
 import yaml
@@ -333,69 +334,6 @@ class SecretEligibilityTests(unittest.TestCase):
                 )
 
 
-def _triggers() -> dict:
-    # PyYAML parses a bare ``on:`` key as the YAML 1.1 boolean ``True``.
-    data = _load()
-    return data.get("on", data.get(True)) or {}
-
-
-class MergeQueueTests(unittest.TestCase):
-    """The required context reports on each dev merge group (ADR 0047).
-
-    The dev merge queue merges a group only when every required context reports
-    success on the group. A producer without a ``merge_group`` trigger never
-    reports, so the queue never merges. A job that a condition skips on the group
-    makes ``verify`` fail closed.
-    """
-
-    def setUp(self) -> None:
-        self.jobs = _jobs()
-        self.triggers = _triggers()
-
-    def test_the_required_producer_runs_on_dev_merge_groups(self) -> None:
-        merge_group = self.triggers.get("merge_group")
-        self.assertIsInstance(
-            merge_group, dict,
-            "ci.yml produces the required `verify` context, so it must have a "
-            "`merge_group` trigger for the dev merge queue (ADR 0047)",
-        )
-        self.assertEqual(merge_group.get("types"), ["checks_requested"])
-        self.assertEqual(
-            merge_group.get("branches"), ["dev"],
-            "only dev uses a merge queue; main keeps manual merges (ADR 0047)",
-        )
-
-    def test_the_gate_runs_every_mandatory_job_on_a_merge_group(self) -> None:
-        # The required job and each job it gates must not carry a condition
-        # that can skip it on a merge group. `verify` keeps only `always()`.
-        self.assertEqual(
-            str(self.jobs[_REQUIRED_CONTEXT].get("if", "")).strip(), "always()",
-        )
-        for name in _needs(self.jobs[_REQUIRED_CONTEXT]):
-            with self.subTest(job=name):
-                self.assertNotIn(
-                    "if", self.jobs[name],
-                    f"`{name}` is gated by `verify`; a job-level condition can "
-                    "skip it on a merge group (ADR 0047)",
-                )
-
-    def test_the_prose_check_diffs_a_merge_group_against_its_base(self) -> None:
-        # Without the merge-group base, the prose check falls back to the
-        # empty tree and lints the whole corpus on each merge group.
-        base = ""
-        for step in _steps(self.jobs["docs"]):
-            base += str((step.get("env") or {}).get("BASE", ""))
-        self.assertIn("github.event.merge_group.base_sha", base)
-
-    def test_sonar_does_not_scan_a_merge_group(self) -> None:
-        # Sonar names the events it scans. An exclusion such as
-        # `event_name != 'pull_request'` would also admit `merge_group`.
-        cond = str(self.jobs["sonar"].get("if", ""))
-        self.assertIn("github.event_name == 'push'", cond)
-        self.assertIn("github.event_name == 'pull_request'", cond)
-        self.assertNotIn("github.event_name !=", cond)
-
-
 class CachingTests(unittest.TestCase):
     """Dependency caching is reproducible: keyed on the hash-locked requirements."""
 
@@ -422,6 +360,135 @@ class CachingTests(unittest.TestCase):
                     f"`{name}` must key the cache on the hash-locked "
                     "requirements/*.txt so restores stay reproducible (ADR 0029)",
                 )
+
+
+
+class MergeQueueTests(unittest.TestCase):
+    """The `dev` merge queue gets a real `verify` on the merge group (#680)."""
+
+    def setUp(self) -> None:
+        self.workflow = _load()
+        self.jobs = self.workflow.get("jobs") or {}
+
+    def _triggers(self) -> dict:
+        # PyYAML reads the bare `on:` key as the boolean True.
+        return self.workflow.get("on") or self.workflow.get(True) or {}
+
+    def test_ci_runs_on_merge_groups_without_filters(self) -> None:
+        trigger = self._triggers().get("merge_group")
+        self.assertEqual(
+            trigger, {"types": ["checks_requested"]},
+            "ci.yml must run on `merge_group` so the queue receives `verify`; "
+            "branch and path filters do not apply to this event (#680)",
+        )
+
+    def test_docs_diff_uses_the_merge_group_base(self) -> None:
+        envs = [
+            str((step.get("env") or {}).get("BASE", ""))
+            for step in _steps(self.jobs["docs"])
+        ]
+        self.assertTrue(
+            any("github.event.merge_group.base_sha" in env for env in envs),
+            "the changed-prose check must diff a merge group against its base "
+            "commit, not the empty tree (#680)",
+        )
+
+    def test_the_gate_runs_every_mandatory_job_on_a_merge_group(self) -> None:
+        # The required job and each job it gates must not carry a condition
+        # that can skip it on a merge group. `verify` keeps only `always()`.
+        self.assertEqual(
+            str(self.jobs[_REQUIRED_CONTEXT].get("if", "")).strip(), "always()",
+        )
+        for name in _needs(self.jobs[_REQUIRED_CONTEXT]):
+            with self.subTest(job=name):
+                self.assertNotIn(
+                    "if", self.jobs[name],
+                    f"`{name}` is gated by `verify`; a job-level condition can "
+                    "skip it on a merge group (ADR 0047)",
+                )
+
+    def _target_step(self) -> dict:
+        for step in _steps(self.jobs["sonar"]):
+            if step.get("id") == "target":
+                return step
+        raise AssertionError("the sonar job has no `target` resolution step")
+
+    def _run_target(
+        self, event: str, queue_ref: str, api_head_ref: str = ""
+    ) -> tuple[int, str]:
+        script = str(self._target_step()["run"])
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = pathlib.Path(tmp)
+            fake_gh = tmpdir / "gh"
+            # The fake honours the step's `--jq` filter: it prints the head ref
+            # only when the pull request targets `dev`.
+            fake_gh.write_text(
+                "#!/usr/bin/env bash\n"
+                f"printf '%s' '{api_head_ref}'\n",
+                encoding="utf-8",
+            )
+            fake_gh.chmod(0o755)
+            output = tmpdir / "output"
+            output.write_text("", encoding="utf-8")
+            env = {
+                "PATH": f"{tmpdir}{os.pathsep}{os.environ.get('PATH', '')}",
+                "EVENT_NAME": event,
+                "QUEUE_REF": queue_ref,
+                "GITHUB_OUTPUT": str(output),
+                "GITHUB_REPOSITORY": "OpenRAE/env-packs",
+            }
+            code = subprocess.run(
+                ["bash", "-c", script], env=env, capture_output=True, text=True
+            ).returncode
+            return code, output.read_text(encoding="utf-8")
+
+    @unittest.skipUnless(shutil.which("bash"), "bash is required to exercise the step")
+    def test_sonar_analyzes_the_queued_pull_request_on_a_merge_group(self) -> None:
+        code, output = self._run_target(
+            "merge_group",
+            "refs/heads/gh-readonly-queue/dev/pr-680-" + "a" * 40,
+            "680-merge-group-checks",
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            output,
+            "args=-Dsonar.pullrequest.key=680"
+            " -Dsonar.pullrequest.branch=680-merge-group-checks"
+            " -Dsonar.pullrequest.base=dev\n",
+        )
+
+    @unittest.skipUnless(shutil.which("bash"), "bash is required to exercise the step")
+    def test_sonar_target_is_empty_outside_a_merge_group(self) -> None:
+        code, output = self._run_target("push", "")
+        self.assertEqual((code, output), (0, "args=\n"))
+
+    @unittest.skipUnless(shutil.which("bash"), "bash is required to exercise the step")
+    def test_sonar_target_fails_closed(self) -> None:
+        cases = {
+            "unexpected ref": ("refs/heads/dev", "680-merge-group-checks"),
+            "not targeting dev": (
+                "refs/heads/gh-readonly-queue/dev/pr-680-" + "a" * 40, ""
+            ),
+            "unsafe branch": (
+                "refs/heads/gh-readonly-queue/dev/pr-680-" + "a" * 40, "a b;c"
+            ),
+        }
+        for name, (queue_ref, head_ref) in cases.items():
+            with self.subTest(case=name):
+                code, output = self._run_target("merge_group", queue_ref, head_ref)
+                self.assertNotEqual(code, 0)
+                self.assertEqual(output, "")
+
+    def test_sonar_scan_consumes_the_resolved_target(self) -> None:
+        scans = [
+            step for step in _steps(self.jobs["sonar"])
+            if "sonarqube-scan-action" in str(step.get("uses", ""))
+        ]
+        self.assertEqual(len(scans), 1)
+        self.assertEqual(
+            (scans[0].get("with") or {}).get("args"),
+            "${{ steps.target.outputs.args }}",
+        )
 
 
 if __name__ == "__main__":

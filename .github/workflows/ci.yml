@@ -9,13 +9,10 @@ on:
     branches:
       - main
       - dev
-  # The dev merge queue tests each merge group before it merges (ADR 0047).
-  # `verify` is the required context, so it must report on the merge group.
-  # main has no merge queue.
+  # The `dev` merge queue requires `verify` on the merge group commit (#680).
+  # Branch and path filters do not apply to this event.
   merge_group:
     types: [checks_requested]
-    branches:
-      - dev
 
 # Least privilege (#142): CI only reads the repository. SonarCloud authenticates
 # with SONAR_TOKEN, not GITHUB_TOKEN, so no job here needs a write scope. An
@@ -230,7 +227,8 @@ jobs:
       - name: Check changed Markdown prose
         shell: bash
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          # A merge group diffs against its own base commit on `dev` (#680).
+          BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.event.before }}
         run: |
           set -euo pipefail
           # NUL-delimited explicit paths include hidden directories and assets.
@@ -278,12 +276,10 @@ jobs:
     # runs on the post-merge push to dev/main with full token access, so the
     # quality gate covers the integrated code. Dependency bumps don't touch
     # sonar.sources (src/) anyway, so there is nothing new to analyze here.
-    # A merge group is also skipped: its temporary queue branch is not a branch
-    # to analyze, and the push to dev after the merge scans the result (ADR 0047).
+    # A merge group runs: only a user with write access can queue one.
     if: >-
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
        github.actor != 'dependabot[bot]')
     steps:
       - name: Check out repository
@@ -299,8 +295,44 @@ jobs:
         with:
           name: coverage-xml
 
+      # SonarCloud has no merge queue support. A merge group runs the pull
+      # request analysis and quality gate of the queued pull request against
+      # `dev`, on the merge group commit (#680). The step fails closed when the
+      # merge group ref does not name a pull request that targets `dev`.
+      - name: Resolve the analysis target
+        id: target
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" != "merge_group" ]; then
+            echo "args=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          pattern='^refs/heads/gh-readonly-queue/dev/pr-([0-9]+)-[0-9a-f]{40}$'
+          if [[ ! "${QUEUE_REF}" =~ ${pattern} ]]; then
+            echo "Unexpected merge group ref '${QUEUE_REF}'" >&2
+            exit 1
+          fi
+          number="${BASH_REMATCH[1]}"
+          head_ref="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" --jq 'select(.base.ref == "dev") | .head.ref')"
+          if [ -z "${head_ref}" ]; then
+            echo "Pull request ${number} does not target dev" >&2
+            exit 1
+          fi
+          if [[ ! "${head_ref}" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "Queued pull request branch '${head_ref}' is not a plain ref name" >&2
+            exit 1
+          fi
+          printf 'args=-Dsonar.pullrequest.key=%s -Dsonar.pullrequest.branch=%s -Dsonar.pullrequest.base=dev\n' \
+            "${number}" "${head_ref}" >> "${GITHUB_OUTPUT}"
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v7
+        with:
+          args: ${{ steps.target.outputs.args }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
