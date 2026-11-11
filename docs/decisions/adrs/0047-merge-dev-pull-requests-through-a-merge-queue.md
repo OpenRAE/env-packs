@@ -38,6 +38,9 @@ A merge group commit has no pull request, so the App check does not report on a 
   It scans each commit in the range of the event.
   `dev` requires the context. The GitGuardian App stays installed.
 - The ggshield job fails when the API key is not available, for example on a pull request from a fork.
+  It also fails when the event has no valid commit range.
+- `requirements/ggshield.txt` pins ggshield with hashes.
+  `requirements/ggshield.overrides` raises oauthlib to a version without known vulnerabilities.
 - SonarCloud does not scan a merge group.
   The push to `dev` after the merge scans the result, as before.
 - `dev` does not use strict status checks. `main` keeps strict status checks.
@@ -46,8 +49,9 @@ A merge group commit has no pull request, so the App check does not report on a 
 - The maintainer adds each other pull request to the queue.
 - No workflow merges a pull request or adds one to the queue.
   The repository setting `allow_auto_merge` stays `false`.
-- The main to dev sync pull request must keep its merge commit, but the queue squash-merges.
-  The maintainer merges that pull request with a merge commit through the ruleset bypass for the repository admin role.
+- The main to dev back-merge keeps its merge commit.
+  The release procedure merges it through the existing bypass for the repository admin role.
+  Readiness never uses that bypass.
 
 ## Enforcement
 

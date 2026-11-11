@@ -126,7 +126,7 @@ the source of truth.
 | `content` | `raes-pack-validate --repo .`, `raes-pack-release check --all`, then the equivalent explicit `--packs-root packs` gates |
 | `sonar` | runs in CI only (needs `SONAR_TOKEN`); the coverage input is the `coverage.xml` from `tests` |
 | `PR title guard` | `python tools/check_pr_title.py` (reads the PR title from the event) |
-| `GitGuardian secret scan` | `ggshield secret scan commit-range "<base>..<head>"` with `GITGUARDIAN_API_KEY` set, after `pip install --require-hashes -r requirements/ggshield.txt` |
+| `GitGuardian secret scan` | `ggshield secret scan commit-range "<base>..<head>"` with `GITGUARDIAN_API_KEY` set, after `pip install --require-hashes --no-deps -r requirements/ggshield.txt` |
 
 ## Timing evidence
 

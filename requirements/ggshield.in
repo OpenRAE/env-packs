@@ -1,1 +1,3 @@
+# The scanner for .github/workflows/gitguardian.yml. Compile ggshield.txt with:
+#   uv pip compile --generate-hashes --python-version 3.14 --override requirements/ggshield.overrides requirements/ggshield.in -o requirements/ggshield.txt
 ggshield==1.56.1

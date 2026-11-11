@@ -32,6 +32,7 @@ jobs:
   ggshield:
     name: GitGuardian secret scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -49,8 +50,10 @@ jobs:
           cache-dependency-path: |
             requirements/ggshield.txt
 
+      # The lock is complete. --no-deps keeps pip from refusing the oauthlib
+      # override that requirements/ggshield.overrides explains.
       - name: Install the hash-locked ggshield
-        run: python -m pip install --require-hashes -r requirements/ggshield.txt
+        run: python -m pip install --require-hashes --no-deps -r requirements/ggshield.txt
 
       - name: Scan the commits for secrets
         env:
@@ -63,4 +66,10 @@ jobs:
             echo "::error::GITGUARDIAN_API_KEY is not available; the scan cannot run."
             exit 1
           fi
+          for sha in "$BASE" "$HEAD"; do
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || [[ "$sha" =~ ^0+$ ]]; then
+              echo "::error::The event has no valid commit range to scan."
+              exit 1
+            fi
+          done
           ggshield secret scan commit-range "$BASE..$HEAD"

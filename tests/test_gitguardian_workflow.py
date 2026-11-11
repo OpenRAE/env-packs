@@ -21,6 +21,7 @@ import yaml
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _WORKFLOW = _ROOT / ".github" / "workflows" / "gitguardian.yml"
 _LOCK_INPUT = _ROOT / "requirements" / "ggshield.in"
+_LOCK = _ROOT / "requirements" / "ggshield.txt"
 _JOB = "ggshield"
 _CONTEXT = "GitGuardian secret scan"
 
@@ -107,10 +108,29 @@ class GitGuardianWorkflowContractTests(unittest.TestCase):
         self.assertIn('if [ -z "$GITGUARDIAN_API_KEY" ]', run)
         self.assertIn("exit 1", run)
 
+    def test_an_invalid_commit_range_fails_the_job(self) -> None:
+        # An empty or all-zero SHA must not turn into an unrelated scan.
+        run = self.scan["run"]
+        self.assertIn('for sha in "$BASE" "$HEAD"', run)
+        self.assertIn("^[0-9a-f]{40}$", run)
+        self.assertIn("^0+$", run)
+
     def test_no_option_downgrades_a_finding(self) -> None:
         for marker in _DOWNGRADE_MARKERS:
             with self.subTest(marker=marker):
                 self.assertNotIn(marker, self.scan["run"])
+
+    def test_the_lock_excludes_vulnerable_oauthlib(self) -> None:
+        # ggshield declares oauthlib<4. oauthlib 3.3.1 carries PYSEC-2026-4114
+        # and CVE-2026-49272, so requirements/ggshield.overrides raises it.
+        # A recompile without the override would drop back below 4.0.1.
+        pins = {}
+        for line in _LOCK.read_text(encoding="utf-8").splitlines():
+            if "==" in line and not line.startswith((" ", "#")):
+                name, version = line.split(" ")[0].split("==")
+                pins[name] = version
+        major, minor, patch = (int(part) for part in pins["oauthlib"].split(".")[:3])
+        self.assertGreaterEqual((major, minor, patch), (4, 0, 1))
 
     def test_ggshield_is_pinned_exactly(self) -> None:
         lines = [
