@@ -20,7 +20,9 @@ If a required check does not report, the queue does not merge the pull request.
 
 `verify` is the only required context on `dev` and on `main`.
 The `ci.yml` workflow produces it.
-Branch protection does not require GitGuardian, SonarCloud, or the PR title guard.
+
+The GitGuardian App posts its check on pull request commits only.
+A merge group commit has no pull request, so the App check does not report on a merge group.
 
 ## Decision
 
@@ -32,6 +34,10 @@ Branch protection does not require GitGuardian, SonarCloud, or the PR title guar
 - `ci.yml` runs on `merge_group` events for `dev`.
   `verify` and each job that it gates run on each merge group, with no condition that can skip them.
 - The prose check diffs a merge group against the merge group base.
+- A ggshield job in `gitguardian.yml` produces the `GitGuardian secret scan` context on `pull_request` and `merge_group` events.
+  It scans each commit in the range of the event.
+  `dev` requires the context. The GitGuardian App stays installed.
+- The ggshield job fails when the API key is not available, for example on a pull request from a fork.
 - SonarCloud does not scan a merge group.
   The push to `dev` after the merge scans the result, as before.
 - `dev` does not use strict status checks. `main` keeps strict status checks.
@@ -47,13 +53,15 @@ Branch protection does not require GitGuardian, SonarCloud, or the PR title guar
 
 - `tests/test_ci_topology.py` fails when `ci.yml` has no `merge_group` trigger for `dev`.
   It also fails when a job that `verify` gates has a job-level condition.
+- `tests/test_gitguardian_workflow.py` fails when the ggshield job has no `merge_group` trigger for `dev`.
+  It also fails when a condition can skip the scan, or an option can downgrade a finding.
 - `tests/test_workflow_permissions.py` fails when a workflow merges a pull request, turns on auto-merge, or adds a pull request to the queue.
 - The queue, the strict setting, and the bypass are repository configuration.
   No test in this repository reads them, as ADR 0020 records for `allow_auto_merge`.
 
 ## Consequences
 
-- A pull request that readiness hands off merges when its merge group passes `verify`, with no manual step.
+- A pull request that readiness hands off merges when its merge group passes the required checks, with no manual step.
 - A failed check on a merge group removes the pull request from the queue, and the pull request does not merge.
 - A new required context on `dev` needs a producer with a `merge_group` trigger, or the queue stops.
 - The diff of a merge group also contains the pull requests in front of it.

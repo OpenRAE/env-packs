@@ -16,6 +16,7 @@ workflows concurrently:
 | `codeql.yml` | `Analyze (python)` — SAST | branch-protection dependent |
 | `fuzz.yml` | `Fuzz validate_pack` — bounded fuzzing of the untrusted-pack boundary | branch-protection dependent |
 | `pr-title.yml` | `PR title guard` — Conventional Commit shape | branch-protection dependent |
+| `gitguardian.yml` | `GitGuardian secret scan` — ggshield scan of each commit in the range | yes, on `dev` |
 
 `scorecard.yml` publishes supply-chain posture from `main` and on a schedule; it
 does not run on pull requests.
@@ -65,8 +66,12 @@ A PR into `dev` merges through a GitHub merge queue
   maintainer adds each other PR.
 - The queue makes a merge group from `dev`, the PRs in front of the PR, and the
   PR. A merge group can contain more than one PR.
-- `ci.yml` runs on the `merge_group` event, so `verify` reports on each merge
-  group. The queue squash-merges the group only when `verify` passes.
+- `ci.yml` and `gitguardian.yml` run on the `merge_group` event, so `verify`
+  and `GitGuardian secret scan` report on each merge group. The queue
+  squash-merges the group only when both pass.
+- The GitGuardian App check does not report on a merge group, because a merge
+  group commit has no pull request. The ggshield job produces the required
+  context instead. It fails when `GITGUARDIAN_API_KEY` is not available.
 - A failed check on a merge group removes the PR from the queue. The PR does not
   merge.
 - The prose check diffs a merge group against the merge group base. That diff
@@ -77,7 +82,8 @@ A PR into `dev` merges through a GitHub merge queue
 
 A new required context on `dev` needs a producer with a `merge_group` trigger.
 Without it, the context never reports on a merge group, and the queue stops.
-`tests/test_ci_topology.py` fails if `ci.yml` loses its `merge_group` trigger.
+`tests/test_ci_topology.py` and `tests/test_gitguardian_workflow.py` fail if
+`ci.yml` or `gitguardian.yml` loses its `merge_group` trigger.
 
 ## Optional analysis: `sonar`
 
@@ -120,6 +126,7 @@ the source of truth.
 | `content` | `raes-pack-validate --repo .`, `raes-pack-release check --all`, then the equivalent explicit `--packs-root packs` gates |
 | `sonar` | runs in CI only (needs `SONAR_TOKEN`); the coverage input is the `coverage.xml` from `tests` |
 | `PR title guard` | `python tools/check_pr_title.py` (reads the PR title from the event) |
+| `GitGuardian secret scan` | `ggshield secret scan commit-range "<base>..<head>"` with `GITGUARDIAN_API_KEY` set, after `pip install --require-hashes -r requirements/ggshield.txt` |
 
 ## Timing evidence
 
