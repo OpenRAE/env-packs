@@ -16,13 +16,14 @@ workflows concurrently:
 | `codeql.yml` | `Analyze (python)` — SAST | branch-protection dependent |
 | `fuzz.yml` | `Fuzz validate_pack` — bounded fuzzing of the untrusted-pack boundary | branch-protection dependent |
 | `pr-title.yml` | `PR title guard` — Conventional Commit shape | branch-protection dependent |
+| `gitguardian.yml` | `GitGuardian secret scan` — ggshield scan of each commit in the range | yes, on `dev` |
 
 `scorecard.yml` publishes supply-chain posture from `main` and on a schedule; it
 does not run on pull requests.
 
 ## Fast-feedback lanes (inside `ci.yml`)
 
-`ci.yml` runs its mandatory work as four **independent** jobs so a failure in one
+`ci.yml` runs its mandatory work as **independent** jobs. A failure in one job
 does not wait behind an unrelated stage, and the fastest actionable signal
 arrives first:
 
@@ -52,31 +53,67 @@ mandatory job blocks the merge. So the complete pre-merge verification stays
 mandatory even though the work now runs in parallel.
 
 Adding a new mandatory check means adding its job to `verify`'s `needs` and to the
-result check inside it. `tests/test_ci_topology.py` fails if a mandatory job is
-left out of the aggregate.
+result check inside it. `tests/test_ci_topology.py` fails if the aggregate does
+not include a mandatory job.
+
+## The `dev` merge queue
+
+A PR into `dev` merges through a GitHub merge queue
+([ADR 0047](../decisions/adrs/0047-merge-dev-pull-requests-through-a-merge-queue.md)).
+`main` has no merge queue.
+
+- The `/implement` and `/quickfix` readiness step adds the PR to the queue. The
+  maintainer adds each other PR.
+- The queue makes a merge group from `dev`, the PRs in front of the PR, and the
+  PR. A merge group can contain more than one PR.
+- `ci.yml` and `gitguardian.yml` run on the `merge_group` event, so `verify`
+  and `GitGuardian secret scan` report on each merge group. The queue
+  squash-merges the group only when both pass.
+- The GitGuardian App check does not report on a merge group, because a merge
+  group commit has no pull request. The ggshield job produces the required
+  context instead. It fails when `GITGUARDIAN_API_KEY` is not available.
+- A failed check on a merge group removes the PR from the queue. The PR does not
+  merge.
+- The prose check diffs a merge group against the merge group base. That diff
+  also contains the PRs in front of the PR.
+- `sonar` runs on a merge group. It analyzes the queued pull request against
+  `dev`. It fails when the merge group ref does not name a pull request that
+  targets `dev`.
+- `dev` does not use strict status checks, because the queue tests each PR
+  against the latest `dev`. `main` keeps strict status checks.
+
+A new required context on `dev` needs a producer with a `merge_group` trigger.
+Without it, the context never reports on a merge group, and the queue stops.
+`tests/test_ci_topology.py` and `tests/test_gitguardian_workflow.py` fail if
+`ci.yml` or `gitguardian.yml` loses its `merge_group` trigger.
 
 ## Optional analysis: `sonar`
 
 `sonar` is a secret-backed quality gate. It depends **only** on the `tests`
 coverage producer, downloads that same-run `coverage.xml`, and runs the
-SonarCloud scan — it does **not** re-run the suite. It is skipped for fork and
-Dependabot pull requests (which cannot see `SONAR_TOKEN`) and therefore is **not**
-part of the universally-required `verify` aggregate; the post-merge push to
+SonarCloud scan — it does **not** re-run the suite. It runs on a push, on a
+pull request from this repository, and on a merge group. On a merge group it
+analyzes the queued pull request against `dev`. It does not run for fork and
+Dependabot pull requests, which cannot see `SONAR_TOKEN`.
+
+So it is **not**
+part of the universally-required `verify` aggregate. The post-merge push to
 `dev`/`main` scans the integrated code with full token access. The assigned
 SonarCloud quality gate stays strict (`sonar.qualitygate.wait=true`).
 
 ## Shard ownership
 
-The unit suite is **not sharded**. It is a single job (`tests`) that runs one
-`unittest discover -s tests`, so every test executes exactly once per run. At 474
-tests in about 14 seconds locally, splitting the suite across runners would add
-more per-shard install and coverage fan-in overhead than it removes
+The repository does **not shard** the unit suite. It is a single job (`tests`) that runs one
+`unittest discover -s tests`, so every test executes exactly once per run. The
+suite has 474 tests and takes about 14 seconds locally. Shards would add more
+per-shard install and coverage fan-in overhead than they remove
 ([ADR 0029](../decisions/adrs/0029-parallel-pr-feedback-with-a-complete-merge-gate.md)).
+
 If GitHub-hosted p95 evidence later justifies sharding, the scaling seam is a
-single canonical test inventory assigning every test to exactly one
-`(shard_index, shard_count)` pair whose manifests are proven disjoint with a
-complete union before coverage is combined — never hand-maintained per-shard file
-lists.
+single canonical test inventory. It assigns every test to exactly one
+`(shard_index, shard_count)` pair. Before the coverage merge, a check must prove
+that the shard manifests are disjoint and that their union is complete. Never
+hand-maintain per-shard file lists.
 
 ## Reproduce a failing check locally
 
@@ -92,12 +129,13 @@ the source of truth.
 | `content` | `raes-pack-validate --repo .`, `raes-pack-release check --all`, then the equivalent explicit `--packs-root packs` gates |
 | `sonar` | runs in CI only (needs `SONAR_TOKEN`); the coverage input is the `coverage.xml` from `tests` |
 | `PR title guard` | `python tools/check_pr_title.py` (reads the PR title from the event) |
+| `GitGuardian secret scan` | `ggshield secret scan commit-range "<base>..<head>"` with `GITGUARDIAN_API_KEY` set, after `pip install --require-hashes --no-deps -r requirements/ggshield.txt` |
 
 ## Timing evidence
 
 End-to-end GitHub Actions time, including queueing, measured from event creation
 to job completion for a fixed cohort of non-cancelled pull-request `ci.yml` runs.
-Median and nearest-rank p95. Push, schedule, and rerun populations are excluded.
+Median and nearest-rank p95. The cohort excludes push, schedule, and rerun populations.
 
 **Before** — serial `verify`, then `sonar` re-installing and re-running the whole
 suite for coverage.
@@ -117,8 +155,8 @@ suite for coverage.
 produced once by `tests` and handed to `sonar`. Measured from this change's own
 pull-request `ci.yml` runs.
 
-- Workflow revision: `cf8d81fd300a6c1f6618b1e9d07e289a5bfbf78b` (`ci.yml` is
-  unchanged by the doc-only follow-up commits, so every run below exercises the
+- Workflow revision: `cf8d81fd300a6c1f6618b1e9d07e289a5bfbf78b` (the doc-only
+  follow-up commits do not change `ci.yml`, so every run below exercises the
   same workflow)
 - Sample window: 2026-07-28T18:54:22Z – 2026-07-28T19:01:39Z
 - Sample count: 2 pull-request runs — the first with a **cold** pip cache, the
@@ -139,13 +177,13 @@ What the numbers show, honestly:
 - **Total wall-clock** dropped from a 139s median to ~105s (~25%): `sonar`
   overlaps the mandatory jobs and no longer re-runs the suite.
 - **First actionable feedback** is materially earlier — `compile` at ~10s and the
-  independent `audit`/`content` checks by ~26–35s, rather than one serial job in
-  which the first signal was the unit-test step ~30s in.
+  independent `audit`/`content` checks by ~26–35s. Before, one serial job gave
+  its first signal at the unit-test step, ~30s in.
 - The required **`verify`** gate is modestly *slower* — ~54–55s across both the
   cold and warm runs, versus a 42s before median. The cause is structural, not
-  the cache: `tests` now runs under coverage and uploads the artifact that feeds
-  `sonar`, which makes it the aggregate's ~50s critical path, and pip caching
-  mainly speeds `audit`/`content`, which are not on that path. This is the
+  the cache. `tests` now runs under coverage and uploads the artifact that feeds
+  `sonar`, which makes it the aggregate's ~50s critical path. Pip caching mainly
+  speeds `audit`/`content`, which are not on that path. This is the
   deliberate trade for producing coverage once (ADR 0029): a ~12s-slower required
   gate buys the total-wall-clock and first-feedback wins above. Moving coverage
   off `verify`'s critical path (a separate coverage producer for `sonar`) would

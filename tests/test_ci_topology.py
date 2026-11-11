@@ -393,6 +393,20 @@ class MergeQueueTests(unittest.TestCase):
             "commit, not the empty tree (#680)",
         )
 
+    def test_the_gate_runs_every_mandatory_job_on_a_merge_group(self) -> None:
+        # The required job and each job it gates must not carry a condition
+        # that can skip it on a merge group. `verify` keeps only `always()`.
+        self.assertEqual(
+            str(self.jobs[_REQUIRED_CONTEXT].get("if", "")).strip(), "always()",
+        )
+        for name in _needs(self.jobs[_REQUIRED_CONTEXT]):
+            with self.subTest(job=name):
+                self.assertNotIn(
+                    "if", self.jobs[name],
+                    f"`{name}` is gated by `verify`; a job-level condition can "
+                    "skip it on a merge group (ADR 0047)",
+                )
+
     def _target_step(self) -> dict:
         for step in _steps(self.jobs["sonar"]):
             if step.get("id") == "target":

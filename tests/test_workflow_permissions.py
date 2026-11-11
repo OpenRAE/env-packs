@@ -255,6 +255,14 @@ class NoAutoMergeTests(unittest.TestCase):
                     f"{path.name} merges a pull request from CI; ADR 0020 puts "
                     "every merge in a person's hands",
                 )
+                # ADR 0047 lets the delivery readiness step add a pull request
+                # to the dev merge queue. A workflow must not do it.
+                self.assertNotIn(
+                    "enqueuepullrequest",
+                    body,
+                    f"{path.name} adds a pull request to the merge queue from CI; "
+                    "ADR 0047 gives that step to readiness and the maintainer",
+                )
 
     def test_the_guard_would_catch_the_removed_workflow(self) -> None:
         # Guards the guard. Both halves matter: the markers must still match a
