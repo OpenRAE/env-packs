@@ -24,6 +24,7 @@ import pathlib
 import re
 import shutil
 import subprocess
+import tempfile
 import unittest
 
 import yaml
@@ -359,6 +360,121 @@ class CachingTests(unittest.TestCase):
                     f"`{name}` must key the cache on the hash-locked "
                     "requirements/*.txt so restores stay reproducible (ADR 0029)",
                 )
+
+
+
+class MergeQueueTests(unittest.TestCase):
+    """The `dev` merge queue gets a real `verify` on the merge group (#680)."""
+
+    def setUp(self) -> None:
+        self.workflow = _load()
+        self.jobs = self.workflow.get("jobs") or {}
+
+    def _triggers(self) -> dict:
+        # PyYAML reads the bare `on:` key as the boolean True.
+        return self.workflow.get("on") or self.workflow.get(True) or {}
+
+    def test_ci_runs_on_merge_groups_without_filters(self) -> None:
+        trigger = self._triggers().get("merge_group")
+        self.assertEqual(
+            trigger, {"types": ["checks_requested"]},
+            "ci.yml must run on `merge_group` so the queue receives `verify`; "
+            "branch and path filters do not apply to this event (#680)",
+        )
+
+    def test_docs_diff_uses_the_merge_group_base(self) -> None:
+        envs = [
+            str((step.get("env") or {}).get("BASE", ""))
+            for step in _steps(self.jobs["docs"])
+        ]
+        self.assertTrue(
+            any("github.event.merge_group.base_sha" in env for env in envs),
+            "the changed-prose check must diff a merge group against its base "
+            "commit, not the empty tree (#680)",
+        )
+
+    def _target_step(self) -> dict:
+        for step in _steps(self.jobs["sonar"]):
+            if step.get("id") == "target":
+                return step
+        raise AssertionError("the sonar job has no `target` resolution step")
+
+    def _run_target(
+        self, event: str, queue_ref: str, api_head_ref: str = ""
+    ) -> tuple[int, str]:
+        script = str(self._target_step()["run"])
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = pathlib.Path(tmp)
+            fake_gh = tmpdir / "gh"
+            # The fake honours the step's `--jq` filter: it prints the head ref
+            # only when the pull request targets `dev`.
+            fake_gh.write_text(
+                "#!/usr/bin/env bash\n"
+                f"printf '%s' '{api_head_ref}'\n",
+                encoding="utf-8",
+            )
+            fake_gh.chmod(0o755)
+            output = tmpdir / "output"
+            output.write_text("", encoding="utf-8")
+            env = {
+                "PATH": f"{tmpdir}{os.pathsep}{os.environ.get('PATH', '')}",
+                "EVENT_NAME": event,
+                "QUEUE_REF": queue_ref,
+                "GITHUB_OUTPUT": str(output),
+                "GITHUB_REPOSITORY": "OpenRAE/env-packs",
+            }
+            code = subprocess.run(
+                ["bash", "-c", script], env=env, capture_output=True, text=True
+            ).returncode
+            return code, output.read_text(encoding="utf-8")
+
+    @unittest.skipUnless(shutil.which("bash"), "bash is required to exercise the step")
+    def test_sonar_analyzes_the_queued_pull_request_on_a_merge_group(self) -> None:
+        code, output = self._run_target(
+            "merge_group",
+            "refs/heads/gh-readonly-queue/dev/pr-680-" + "a" * 40,
+            "680-merge-group-checks",
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            output,
+            "args=-Dsonar.pullrequest.key=680"
+            " -Dsonar.pullrequest.branch=680-merge-group-checks"
+            " -Dsonar.pullrequest.base=dev\n",
+        )
+
+    @unittest.skipUnless(shutil.which("bash"), "bash is required to exercise the step")
+    def test_sonar_target_is_empty_outside_a_merge_group(self) -> None:
+        code, output = self._run_target("push", "")
+        self.assertEqual((code, output), (0, "args=\n"))
+
+    @unittest.skipUnless(shutil.which("bash"), "bash is required to exercise the step")
+    def test_sonar_target_fails_closed(self) -> None:
+        cases = {
+            "unexpected ref": ("refs/heads/dev", "680-merge-group-checks"),
+            "not targeting dev": (
+                "refs/heads/gh-readonly-queue/dev/pr-680-" + "a" * 40, ""
+            ),
+            "unsafe branch": (
+                "refs/heads/gh-readonly-queue/dev/pr-680-" + "a" * 40, "a b;c"
+            ),
+        }
+        for name, (queue_ref, head_ref) in cases.items():
+            with self.subTest(case=name):
+                code, output = self._run_target("merge_group", queue_ref, head_ref)
+                self.assertNotEqual(code, 0)
+                self.assertEqual(output, "")
+
+    def test_sonar_scan_consumes_the_resolved_target(self) -> None:
+        scans = [
+            step for step in _steps(self.jobs["sonar"])
+            if "sonarqube-scan-action" in str(step.get("uses", ""))
+        ]
+        self.assertEqual(len(scans), 1)
+        self.assertEqual(
+            (scans[0].get("with") or {}).get("args"),
+            "${{ steps.target.outputs.args }}",
+        )
 
 
 if __name__ == "__main__":
