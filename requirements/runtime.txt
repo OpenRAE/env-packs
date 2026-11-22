@@ -646,7 +646,7 @@ pygments==2.21.0 \
     --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9 \
     --hash=sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c
     # via rich
-pyjwt==2.15.1 \
+pyjwt[crypto]==2.15.1 \
     --hash=sha256:42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193 \
     --hash=sha256:4f259e80cdfb6b3fc18a7de51fd1ef9ec79652f25019bae68975ca2468a34df8
     # via mcp
@@ -736,9 +736,9 @@ pyyaml==6.0.3 \
     #   -r requirements/runtime.in
     #   raes
     #   uvicorn
-raes==11.0.0 \
-    --hash=sha256:8c6b6adfbf63c2ea31cb1af525e2ba1aaeb72a68ed4dd54608737901b2ba73f8 \
-    --hash=sha256:f66e5101cc46c036caba2502e1375b932aa2123e3a1607a940417fee8bb7487c
+raes==12.0.0 \
+    --hash=sha256:2248377413a2f56fa8015d4317e05003b1b3265198220dec59481a9ce064f3eb \
+    --hash=sha256:7f1a3fda434a24953e908668a9db8344b14e6bcf355ce8df58729e5dfb3509bf
     # via -r requirements/runtime.in
 referencing==0.37.0 \
     --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231 \
@@ -948,7 +948,7 @@ univers==32.0.1 \
     --hash=sha256:50a574ff2321e31e1eba7aa586bf63a9558d91c69c70316bf26c75e1b122499b \
     --hash=sha256:fae187245f72bee1581f29b0b0b6e907049b2ea136e3e52bf8d8edbfef10e7f0
     # via raes
-uvicorn==0.54.0 \
+uvicorn[standard]==0.54.0 \
     --hash=sha256:505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf \
     --hash=sha256:a2e33cbfaa0306f8e6b0c13e0cb89d7d7a2da3e62b90c66e18c33d9807b28620
     # via
